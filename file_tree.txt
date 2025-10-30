@@ -1,0 +1,214 @@
+  ├── 📁 core/
+  │   ├── 📁 color/
+  │   │   ├── 📄 AnsiColor.java
+  │   │   ├── 📄 ChatColor.java
+  │   │   └── 📄 EColor.java
+  │   ├── 📁 crypt/
+  │   │   ├── 📄 ByteCrypt.java
+  │   │   └── 📄 ChecksumUtils.java
+  │   ├── 📁 easing/
+  │   │   ├── 📄 Animation.java
+  │   │   └── 📄 Easing.java
+  │   ├── 📁 event/
+  │   │   ├── 📄 Event.java
+  │   │   ├── 📄 EventSystem.java
+  │   │   ├── 📁 interfaces/
+  │   │   │   ├── 📄 LinkEvent.java
+  │   │   │   ├── 📄 Listener.java
+  │   │   │   └── 📄 Operation.java
+  │   │   ├── 📁 priority/
+  │   │   │   └── 📄 Priority.java
+  │   │   └── 📄 State.java
+  │   ├── 📁 exception/
+  │   │   ├── 📄 AuthFailureException.java
+  │   │   ├── 📄 ExceptionUtils.java
+  │   │   └── 📄 NoStackTraceThrowable.java
+  │   ├── 📁 logger/
+  │   │   ├── 📄 EcstacyLogger.java
+  │   │   └── 📄 LogHelper.java
+  │   ├── 📁 math/
+  │   │   ├── 📁 algo/
+  │   │   │   ├── 📄 EloUtils.java
+  │   │   │   └── 📄 LinkedStackUtils.java
+  │   │   ├── 📄 CycleArray.java
+  │   │   ├── 📄 Mask.java
+  │   │   ├── 📄 MathUtils.java
+  │   │   ├── 📄 Pair.java
+  │   │   ├── 📁 pointer/
+  │   │   │   ├── 📄 Ptr.java
+  │   │   │   └── 📄 Ref.java
+  │   │   ├── 📄 RandomUtils.java
+  │   │   ├── 📁 stack/
+  │   │   │   ├── 📄 DequeStack.java
+  │   │   │   ├── 📄 LinkedStack.java
+  │   │   │   ├── 📄 Node.java
+  │   │   │   ├── 📄 Stack.java
+  │   │   │   └── 📄 StackContext.java
+  │   │   └── 📁 vector/
+  │   │       ├── 📄 CoordUtils.java
+  │   │       ├── 📁 d2/
+  │   │       │   ├── 📄 Polar.java
+  │   │       │   ├── 📄 PolarF.java
+  │   │       │   ├── 📄 Vector2d.java
+  │   │       │   ├── 📄 Vector2f.java
+  │   │       │   └── 📄 Vector2i.java
+  │   │       └── 📁 d3/
+  │   │           ├── 📄 Spherical.java
+  │   │           ├── 📄 SphericalF.java
+  │   │           ├── 📄 Vector3d.java
+  │   │           ├── 📄 Vector3f.java
+  │   │           └── 📄 Vector3i.java
+  │   ├── 📁 service/
+  │   │   ├── 📄 Provider.java
+  │   │   ├── 📄 ServiceHelper.java
+  │   │   ├── 📄 ServiceKey.java
+  │   │   ├── 📄 ServiceManager.java
+  │   │   └── 📄 ServiceRegistry.java
+  │   ├── 📁 system/
+  │   │   ├── 📄 OperatingSystem.java
+  │   │   └── 📄 SystemUtils.java
+  │   ├── 📁 thread/
+  │   │   ├── 📄 ProfileThread.java
+  │   │   └── 📄 ThreadManager.java
+  │   ├── 📁 time/
+  │   │   ├── 📄 StopWatch.java
+  │   │   └── 📄 TimeUtils.java
+  │   └── 📁 util/
+  │       ├── 📄 Expirable.java
+  │       ├── 📄 FastScalableCountingBloomFilter.java
+  │       ├── 📄 ObjectUtils.java
+  │       ├── 📄 ResourceUtils.java
+  │       └── 📄 UUIDUtils.java
+  ├── 📁 integration/
+  │   ├── 📁 auth/
+  │   │   ├── 📄 AccountType.java
+  │   │   ├── 📄 AltStorage.java
+  │   │   └── 📄 MicrosoftLogin.java
+  │   └── 📁 spotify/
+  │       ├── 📁 api/
+  │       │   └── 📄 SpotifyWebInterface.java
+  │       ├── 📁 auth/
+  │       │   ├── 📄 AuthToken.java
+  │       │   └── 📄 SpotifyOAuth.java
+  │       ├── 📁 client/
+  │       │   └── 📄 SpotifyClient.java
+  │       ├── 📁 model/
+  │       │   ├── 📄 Album.java
+  │       │   ├── 📄 Artist.java
+  │       │   ├── 📁 device/
+  │       │   │   ├── 📄 Device.java
+  │       │   │   └── 📄 Devices.java
+  │       │   ├── 📄 Image.java
+  │       │   ├── 📁 playback/
+  │       │   │   ├── 📄 ExternalUrls.java
+  │       │   │   ├── 📄 Playback.java
+  │       │   │   └── 📄 PlaybackContext.java
+  │       │   ├── 📄 Queue.java
+  │       │   └── 📁 track/
+  │       │       ├── 📄 Track.java
+  │       │       └── 📄 TrackItem.java
+  │       ├── 📁 registry/
+  │       │   └── 📄 EndpointRegistry.java
+  │       └── 📄 SpotifyManager.java
+  ├── 📁 module/
+  │   ├── 📁 extension/
+  │   │   ├── 📄 Extension.java
+  │   │   ├── 📄 ExtensionInfo.java
+  │   │   ├── 📄 ExtensionManager.java
+  │   │   ├── 📄 ExtensionNotFoundException.java
+  │   │   └── 📄 Toggleable.java
+  │   ├── 📁 feature/
+  │   │   ├── 📄 FeatureManager.java
+  │   │   └── 📄 OptionalFeature.java
+  │   └── 📁 loader/
+  │       ├── 📄 DownloadFile.java
+  │       ├── 📄 ExtensionClassLoader.java
+  │       ├── 📄 InMemoryJarURLHandler.java
+  │       ├── 📄 Loadable.java
+  │       ├── 📄 RuntimeDependencyLoader.java
+  │       └── 📄 SingleClassLoader.java
+  ├── 📁 network/
+  │   ├── 📁 cloud/
+  │   │   ├── 📁 impl/
+  │   │   │   ├── 📁 file/
+  │   │   │   │   └── 📄 FilePacket.java
+  │   │   │   ├── 📄 PacketRegistry.java
+  │   │   │   └── 📁 text/
+  │   │   │       └── 📄 TextPacket.java
+  │   │   ├── 📁 messaging/
+  │   │   │   ├── 📄 Client.java
+  │   │   │   ├── 📁 exception/
+  │   │   │   │   ├── 📄 ClientException.java
+  │   │   │   │   ├── 📄 ClientInvalid.java
+  │   │   │   │   └── 📄 PacketDecode.java
+  │   │   │   ├── 📁 listener/
+  │   │   │   │   ├── 📁 decoder/
+  │   │   │   │   │   └── 📄 NettyDecoder.java
+  │   │   │   │   ├── 📁 encoder/
+  │   │   │   │   │   └── 📄 NettyEncoder.java
+  │   │   │   │   └── 📁 watcher/
+  │   │   │   │       └── 📄 NettyWatcher.java
+  │   │   │   ├── 📁 model/
+  │   │   │   │   └── 📄 Messenger.java
+  │   │   │   └── 📄 Server.java
+  │   │   └── 📁 packet/
+  │   │       ├── 📁 buffer/
+  │   │       │   ├── 📄 FileBuffer.java
+  │   │       │   └── 📄 PacketBuffer.java
+  │   │       ├── 📁 incoming/
+  │   │       │   ├── 📄 CallableDecoder.java
+  │   │       │   ├── 📄 Decoder.java
+  │   │       │   └── 📄 PacketIn.java
+  │   │       ├── 📁 model/
+  │   │       │   ├── 📄 Bound.java
+  │   │       │   ├── 📄 IPacket.java
+  │   │       │   └── 📄 Packet.java
+  │   │       └── 📁 outgoing/
+  │   │           ├── 📄 CallableEncoder.java
+  │   │           ├── 📄 Encoder.java
+  │   │           └── 📄 PacketOut.java
+  │   ├── 📄 HttpUtils.java
+  │   └── 📁 ping/
+  │       ├── 📁 exception/
+  │       │   ├── 📄 EndOfStreamException.java
+  │       │   ├── 📄 InvalidPacketDataException.java
+  │       │   └── 📄 NetworkException.java
+  │       ├── 📁 io/
+  │       │   ├── 📄 PacketInputStream.java
+  │       │   ├── 📄 PacketOutputStream.java
+  │       │   ├── 📄 PacketReader.java
+  │       │   └── 📄 PacketWriter.java
+  │       ├── 📄 MinecraftPing.java
+  │       ├── 📁 packet/
+  │       │   ├── 📄 C2SPacket.java
+  │       │   └── 📄 S2CPacket.java
+  │       └── 📄 PingUtils.java
+  ├── 📁 persistence/
+  │   ├── 📁 config/
+  │   │   ├── 📁 adapters/
+  │   │   │   ├── 📄 ColorAdapter.java
+  │   │   │   ├── 📄 EColorAdapter.java
+  │   │   │   ├── 📄 GsonAdapter.java
+  │   │   │   └── 📄 GsonAdapters.java
+  │   │   ├── 📁 compression/
+  │   │   │   └── 📄 GzipCompressor.java
+  │   │   ├── 📄 ConfigManager.java
+  │   │   ├── 📄 FileContainer.java
+  │   │   ├── 📁 format/
+  │   │   │   ├── 📄 ConfigFormat.java
+  │   │   │   ├── 📄 Format.java
+  │   │   │   └── 📄 JsonFormat.java
+  │   │   └── 📄 GsonUtils.java
+  │   └── 📁 sql/
+  │       ├── 📄 ConnectionType.java
+  │       ├── 📄 Database.java
+  │       ├── 📄 Repository.java
+  │       └── 📄 Table.java
+  ├── 📁 test/
+  │   ├── 📄 ListFiles.java
+  │   ├── 📄 SimpleFileServer.java
+  │   ├── 📄 TestFeature.java
+  │   └── 📄 TestFeatureMain.java
+  └── 📁 version/
+      ├── 📄 MinecraftVersion.java
+      └── 📄 VersionComparison.java
