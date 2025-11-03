@@ -4,6 +4,9 @@ public enum PacketRegistry {
     TEXT(0x1),
     FILE(0x2),
 
+
+    METRICS(0xFE),
+    CLOSING(0Xff),
     ;
     public static final PacketRegistry[] VALUES = values();
 

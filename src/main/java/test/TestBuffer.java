@@ -16,7 +16,7 @@ public class TestBuffer {
 
 
 
-        buffer.insertAtStart(buff -> {
+        buffer.wrapData(buff -> {
             buff.writeString("stronzo");
         });
 

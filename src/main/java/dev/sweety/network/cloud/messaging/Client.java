@@ -21,6 +21,7 @@ public abstract class Client extends Messenger<Bootstrap> {
 
             this.channel.flush();
         }
+
     }
 
     public void sendPacket(PacketOut packet) {

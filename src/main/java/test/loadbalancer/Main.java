@@ -1,10 +1,14 @@
 package test.loadbalancer;
 
+import dev.sweety.core.logger.EcstacyLogger;
 import dev.sweety.core.time.TimeUtils;
 import dev.sweety.network.cloud.impl.text.TextPacket;
-import dev.sweety.network.cloud.loadbalancer.BackendNode;
 import dev.sweety.network.cloud.loadbalancer.LoadBalancerServer;
+import dev.sweety.network.cloud.loadbalancer.backend.BackendNode;
+import dev.sweety.network.cloud.loadbalancer.backend.pool.BackendPool;
+import dev.sweety.network.cloud.loadbalancer.backend.pool.balancer.Balancers;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -16,6 +20,83 @@ public class Main {
     private static final int BACKEND_2_PORT = 8082;
 
     public static void main(String[] args) throws InterruptedException {
+        // Modalità CLI per eseguire ogni componente in un processo separato.
+        // Usage:
+        //  - java -cp <cp> test.loadbalancer.Main local
+        //  - java -cp <cp> test.loadbalancer.Main backend <host> <port>
+        //  - java -cp <cp> test.loadbalancer.Main lb <host> <port> <backendList>
+        //      backendList -> comma separated host:port (es. 127.0.0.1:8081,127.0.0.1:8082)
+        //  - java -cp <cp> test.loadbalancer.Main client <host> <port>
+
+        if (args.length == 0) {
+            System.out.println("Nessuna modalità specificata. Avvio in modalità 'local' (embedded threads) per compatibilità.");
+            runLocalEmbedded();
+            return;
+        }
+
+        String mode = args[0].toLowerCase();
+        switch (mode) {
+            case "local":
+                runLocalEmbedded();
+                break;
+
+            case "backend":
+                if (args.length < 3) {
+                    System.out.println("Usage: backend <host> <port>");
+                    return;
+                }
+                String bh = args[1];
+                int bp = Integer.parseInt(args[2]);
+                new DummyBackend(bh, bp).start();
+                // backend runs indefinitely
+                break;
+
+            case "lb":
+                if (args.length < 4) {
+                    System.out.println("Usage: lb <host> <port> <backendList>");
+                    System.out.println("backendList example: 127.0.0.1:8081,127.0.0.1:8082");
+                    return;
+                }
+                String lbHost = args[1];
+                int lbPort = Integer.parseInt(args[2]);
+                String backendList = args[3];
+                List<BackendNode> backends = parseBackendList(backendList);
+                LoadBalancerServer loadBalancer = new LoadBalancerServer(lbPort, lbHost,
+                        new BackendPool(new EcstacyLogger("pool").fallback(), backends, Balancers.OPTIMIZED_ADAPTIVE.get()));
+                loadBalancer.start();
+                break;
+
+            case "client":
+                if (args.length < 3) {
+                    System.out.println("Usage: client <host> <port>");
+                    return;
+                }
+                String ch = args[1];
+                int cp = Integer.parseInt(args[2]);
+                runClientAgainst(ch, cp);
+                break;
+
+            default:
+                System.out.println("Modalità non riconosciuta: " + mode);
+                System.out.println("Usa: local | backend | lb | client");
+        }
+    }
+
+    private static List<BackendNode> parseBackendList(String backendList) {
+        String[] parts = backendList.split(",");
+        List<BackendNode> out = new ArrayList<>();
+        for (String p : parts) {
+            String[] hp = p.trim().split(":");
+            if (hp.length != 2) continue;
+            out.add(new BackendNode(hp[0], Integer.parseInt(hp[1])));
+        }
+        return out;
+    }
+
+    // ------------------------------------------------------------------
+    // Modalità "embedded" (stesso comportamento di prima): utile per testing
+    // ------------------------------------------------------------------
+    private static void runLocalEmbedded() throws InterruptedException {
         // 1. Avvia i server di backend
         new Thread(() -> new DummyBackend(HOST, BACKEND_1_PORT).start()).start();
         new Thread(() -> new DummyBackend(HOST, BACKEND_2_PORT).start()).start();
@@ -28,7 +109,7 @@ public class Main {
                 new BackendNode(HOST, BACKEND_1_PORT),
                 new BackendNode(HOST, BACKEND_2_PORT)
         );
-        LoadBalancerServer loadBalancer = new LoadBalancerServer(LB_PORT, HOST, backends);
+        LoadBalancerServer loadBalancer = new LoadBalancerServer(LB_PORT, HOST, new BackendPool(new EcstacyLogger("pool").fallback(), backends, Balancers.OPTIMIZED_ADAPTIVE.get()));
         new Thread(loadBalancer::start).start();
         System.out.println("Load Balancer in avvio sulla porta " + LB_PORT);
 
@@ -37,26 +118,33 @@ public class Main {
         // 3. Avvia il client e invia pacchetti
         DummyClient client = new DummyClient(HOST, LB_PORT);
 
-        final int n = 3;
+        final int n = 30;
         client.connect().thenRun(() -> {
             System.out.println("Client sta inviando " + n + " pacchetti di testo...");
 
-            TimeUtils.sleep(5,TimeUnit.SECONDS);
+            TimeUtils.sleep(5, TimeUnit.SECONDS);
 
             for (int i = 0; i < n; i++) {
-                System.out.println("\n\n\n\n\n\nInvio pacchetto #" + (i + 1));
-                // Usiamo un pacchetto concreto come TextPacket
+                System.out.println("\n\n\n\nInvio pacchetto #" + (i + 1));
                 client.sendPacket(new TextPacket.Out("Messaggio di test numero " + i));
-                TimeUtils.sleep(5,TimeUnit.SECONDS);
+                TimeUtils.sleep(100, TimeUnit.MILLISECONDS);
             }
         });
 
-        TimeUtils.sleep(5,TimeUnit.MINUTES);
+        TimeUtils.sleep(50, TimeUnit.SECONDS);
 
         // 4. Arresto
         System.out.println("Arresto dell'applicazione...");
         client.stop();
         loadBalancer.stop();
         System.exit(0);
+    }
+
+    private static void runClientAgainst(String host, int port) {
+        DummyClient client = new DummyClient(host, port);
+        client.connect().thenRun(() -> {
+            System.out.println("Client connesso al Load Balancer: " + host + ":" + port);
+            client.sendPacket(new TextPacket.Out("Messaggio di prova da processo client"));
+        });
     }
 }

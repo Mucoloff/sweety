@@ -58,22 +58,20 @@ public record PacketBuffer(ByteBuf nettyBuffer) {
     }
 
     public void replace(int offset, long newValue) {
-        if (offset >= 0 && offset + 8 <= this.nettyBuffer.capacity()) {
-            this.nettyBuffer.setLong(offset, newValue);
-        } else {
+        if (offset < 0 || offset + 8 > this.nettyBuffer.capacity())
             throw new IndexOutOfBoundsException("Invalid offset");
-        }
+
+        this.nettyBuffer.setLong(offset, newValue);
     }
 
     public void replaceWithShift(int offset, long newValue) {
-        if (offset >= 0 && offset + 8 <= this.nettyBuffer.capacity()) {
-            byte[] remaining = new byte[this.nettyBuffer.readableBytes() - (offset + 8)];
-            this.nettyBuffer.getBytes(offset + 8, remaining);
-            this.nettyBuffer.setLong(offset, newValue);
-            this.nettyBuffer.setBytes(offset + 8, remaining);
-        } else {
+        if (offset < 0 || offset + 8 > this.nettyBuffer.capacity())
             throw new IndexOutOfBoundsException("Invalid offset");
-        }
+
+        byte[] remaining = new byte[this.nettyBuffer.readableBytes() - (offset + 8)];
+        this.nettyBuffer.getBytes(offset + 8, remaining);
+        this.nettyBuffer.setLong(offset, newValue);
+        this.nettyBuffer.setBytes(offset + 8, remaining);
     }
 
     public byte readByte() {
@@ -190,7 +188,7 @@ public record PacketBuffer(ByteBuf nettyBuffer) {
         this.nettyBuffer.writeBytes(data, offset, length);
     }
 
-    public void insertAtStart(Encoder encoder) {
+    public void wrapData(Encoder encoder) {
         byte[] bytes = getBytes();
         encoder.write(this);
         writeBytes(bytes);

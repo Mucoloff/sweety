@@ -25,9 +25,7 @@ public class NettyDecoder extends ByteToMessageDecoder {
             }
 
             timestamp = in.readLong();
-        } else {
-            timestamp = System.currentTimeMillis();
-        }
+        } else timestamp = System.currentTimeMillis();
 
         if (in.readableBytes() < 2) {
             in.resetReaderIndex();

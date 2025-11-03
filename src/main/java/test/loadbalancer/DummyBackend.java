@@ -3,7 +3,7 @@ package test.loadbalancer;// File: DummyBackend.java
 import dev.sweety.core.logger.EcstacyLogger;
 import dev.sweety.network.cloud.impl.PacketRegistry;
 import dev.sweety.network.cloud.impl.text.TextPacket;
-import dev.sweety.network.cloud.loadbalancer.BackendServer;
+import dev.sweety.network.cloud.loadbalancer.backend.BackendServer;
 import dev.sweety.network.cloud.packet.incoming.PacketIn;
 import dev.sweety.network.cloud.packet.outgoing.PacketOut;
 import io.netty.channel.ChannelHandlerContext;

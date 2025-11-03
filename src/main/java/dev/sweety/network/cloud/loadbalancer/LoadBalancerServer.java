@@ -4,14 +4,16 @@ import dev.sweety.core.crypt.ChecksumUtils;
 import dev.sweety.core.logger.EcstacyLogger;
 import dev.sweety.core.math.RandomUtils;
 import dev.sweety.core.math.vector.queue.LinkedQueue;
+import dev.sweety.network.cloud.loadbalancer.backend.BackendNode;
+import dev.sweety.network.cloud.loadbalancer.backend.pool.BackendPool;
+import dev.sweety.network.cloud.loadbalancer.backend.pool.IBackendPool;
+import dev.sweety.network.cloud.loadbalancer.packet.PacketQueue;
 import dev.sweety.network.cloud.messaging.Server;
 import dev.sweety.network.cloud.packet.incoming.PacketIn;
 import dev.sweety.network.cloud.packet.outgoing.PacketOut;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -25,7 +27,7 @@ import java.util.zip.CRC32;
  */
 public class LoadBalancerServer extends Server {
 
-    private final BackendPool backendPool;
+    private final IBackendPool backendPool;
     private final EcstacyLogger logger = new EcstacyLogger(LoadBalancerServer.class).fallback();
 
     private final LinkedQueue<PacketQueue> pendingPackets = new LinkedQueue<>();
@@ -34,10 +36,9 @@ public class LoadBalancerServer extends Server {
 
     private final Map<Long, ChannelHandlerContext> clientRequestContexts = new ConcurrentHashMap<>();
 
-    public LoadBalancerServer(int port, String host, List<BackendNode> backends) {
+    public LoadBalancerServer(int port, String host, BackendPool backendPool) {
         super(host, port);
-        backends.forEach(node -> node.setLoadBalancer(this));
-        this.backendPool = new BackendPool(backends);
+        (this.backendPool = backendPool).pool().forEach(node -> node.setLoadBalancer(this));
         // Avvia le connessioni verso i backend
         this.backendPool.initialize();
 
@@ -48,7 +49,7 @@ public class LoadBalancerServer extends Server {
 
     @Override
     public void onPacketReceive(ChannelHandlerContext ctx, PacketIn packet) {
-        BackendNode backend = backendPool.nextBackend();
+        BackendNode backend = backendPool.nextBackend(packet, ctx);
 
         if (backend == null) {
             pendingPackets.enqueue(new PacketQueue(packet, ctx));
@@ -85,7 +86,6 @@ public class LoadBalancerServer extends Server {
                 : clientRequestContexts.get(correlationId);
 
         if (isClosing) {
-            logger.info("closing data: " + Arrays.toString(packetData));
             return;
         }
 
@@ -107,8 +107,9 @@ public class LoadBalancerServer extends Server {
         for (int i = 0; i < queueSize; i++) {
             PacketQueue pq = pendingPackets.dequeue();
             if (pq == null) break;
+            final PacketIn packet = pq.packet();
 
-            BackendNode backend = backendPool.nextBackend();
+            BackendNode backend = backendPool.nextBackend(pq.packet(), pq.ctx());
             if (backend == null) {
                 pendingPackets.enqueue(pq);
                 break;
@@ -117,8 +118,8 @@ public class LoadBalancerServer extends Server {
             long correlationId = generateCorrelation();
             clientRequestContexts.put(correlationId, pq.ctx());
             System.out.println();
-            logger.info("Inoltro pacchetto (" + pq.packet.getId() + ") pending #" + Long.toHexString(correlationId) + " al backend " + backend.getPort());
-            backend.forwardPacket(pq.packet(), correlationId);
+            logger.info("Inoltro pacchetto (" + packet.getId() + ") pending #" + Long.toHexString(correlationId) + " al backend " + backend.getPort());
+            backend.forwardPacket(packet, correlationId);
         }
     }
 
@@ -148,7 +149,4 @@ public class LoadBalancerServer extends Server {
         super.removeClient(ctx.channel().remoteAddress());
     }
 
-    public record PacketQueue(PacketIn packet, ChannelHandlerContext ctx) {
-
-    }
 }
