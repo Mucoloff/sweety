@@ -31,14 +31,14 @@ public class EcstacyLogger implements LogHelper {
         this.logger = LoggerFactory.getLogger(clazz);
     }
 
-    public static void log(Level level, Logger logger, Object... input){
+    public static void log(Level level, Logger logger, Object... input) {
         final String color = getColor(level);
         final String message = parseMessage(input) + AnsiColor.RESET.getColor();
 
         logger.makeLoggingEventBuilder(level).log(color + message);
     }
 
-    public static void log(Level level, String name, Object... input){
+    public static void log(Level level, String name, Object... input) {
         final String color = getColor(level);
         final String message = parseMessage(input) + AnsiColor.RESET.getColor();
 
@@ -116,5 +116,6 @@ public class EcstacyLogger implements LogHelper {
             case TRACE -> AnsiColor.RESET;
         }).getColor();
     }
+
 
 }

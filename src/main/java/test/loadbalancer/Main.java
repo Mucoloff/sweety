@@ -4,8 +4,8 @@ import dev.sweety.core.logger.EcstacyLogger;
 import dev.sweety.core.time.TimeUtils;
 import dev.sweety.network.cloud.impl.file.FilePacket;
 import dev.sweety.network.cloud.impl.loadbalancer.ForwardPacket;
-import dev.sweety.network.cloud.impl.loadbalancer.WrappedPacket;
 import dev.sweety.network.cloud.impl.loadbalancer.MetricsUpdatePacket;
+import dev.sweety.network.cloud.impl.loadbalancer.WrappedPacket;
 import dev.sweety.network.cloud.impl.text.TextPacket;
 import dev.sweety.network.cloud.loadbalancer.LoadBalancerServer;
 import dev.sweety.network.cloud.loadbalancer.backend.BackendNode;
@@ -14,16 +14,17 @@ import dev.sweety.network.cloud.loadbalancer.backend.pool.balancer.Balancers;
 import dev.sweety.network.cloud.packet.registry.IPacketRegistry;
 import dev.sweety.network.cloud.packet.registry.OptimizedPacketRegistry;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class Main {
 
     private static final String HOST = "127.0.0.1";
     private static final int LB_PORT = 8080;
-    private static final int BACKEND_1_PORT = 8081;
-    private static final int BACKEND_2_PORT = 8082;
+
+    private static final int[] BACKENDS = {8081, 8082, 8083};
+
+    public static final Balancers balancerSystem = Balancers.OPTIMIZED_ADAPTIVE;
 
     private static IPacketRegistry packetRegistry;
 
@@ -41,7 +42,8 @@ public class Main {
                 FilePacket.class,
                 MetricsUpdatePacket.class,
                 ForwardPacket.class,
-                WrappedPacket.class
+                WrappedPacket.class,
+                PlayerPacket.class
         );
 
         if (args.length == 0) {
@@ -78,7 +80,7 @@ public class Main {
                 String backendList = args[3];
                 List<BackendNode> backends = parseBackendList(backendList);
                 LoadBalancerServer loadBalancer = new LoadBalancerServer(lbPort, lbHost,
-                        new BackendPool(new EcstacyLogger("pool").fallback(), backends, Balancers.OPTIMIZED_ADAPTIVE.get()), packetRegistry);
+                        new BackendPool(new EcstacyLogger("pool").fallback(), backends, new ACBalancer(balancerSystem)), packetRegistry);
                 loadBalancer.start();
 
 
@@ -116,18 +118,19 @@ public class Main {
     // ------------------------------------------------------------------
     private static void runLocalEmbedded() throws InterruptedException {
         // 1. Avvia i server di backend
-        new Thread(() -> new DummyBackend(HOST, BACKEND_1_PORT, packetRegistry).start()).start();
-        new Thread(() -> new DummyBackend(HOST, BACKEND_2_PORT, packetRegistry).start()).start();
-        System.out.println("Backend avviati sulle porte " + BACKEND_1_PORT + " e " + BACKEND_2_PORT);
+        for (int backend : BACKENDS) {
+            new Thread(() -> new DummyBackend(HOST, backend, packetRegistry).start()).start();
+        }
+
+        System.out.println("Backend avviati sulle porte " + Arrays.toString(BACKENDS));
 
         TimeUnit.SECONDS.sleep(2);
 
+
         // 2. Configura e avvia il Load Balancer
-        List<BackendNode> backends = List.of(
-                new BackendNode(HOST, BACKEND_1_PORT, packetRegistry),
-                new BackendNode(HOST, BACKEND_2_PORT, packetRegistry)
-        );
-        LoadBalancerServer loadBalancer = new LoadBalancerServer(LB_PORT, HOST, new BackendPool(new EcstacyLogger("pool").fallback(), backends, Balancers.OPTIMIZED_ADAPTIVE.get()), packetRegistry);
+        List<BackendNode> backends = Arrays.stream(BACKENDS).mapToObj(port -> new BackendNode(HOST, port, packetRegistry)).toList();
+
+        LoadBalancerServer loadBalancer = new LoadBalancerServer(LB_PORT, HOST, new BackendPool(new EcstacyLogger("pool").fallback(), backends, new ACBalancer(balancerSystem)), packetRegistry);
         new Thread(loadBalancer::start).start();
         System.out.println("Load Balancer in avvio sulla porta " + LB_PORT);
 
@@ -136,18 +139,36 @@ public class Main {
         // 3. Avvia il client e invia pacchetti
         DummyClient client = new DummyClient(HOST, LB_PORT, packetRegistry);
 
-        final int n = 1;
-        client.connect().thenRun(() -> {
-            System.out.println("Client sta inviando " + n + " pacchetti di testo...");
+        final int n = 8;
+        client.start();
+        System.out.println("Ogni player sta inviando " + n + " pacchetti di testo...");
 
-            TimeUtils.sleep(3, TimeUnit.SECONDS);
+        /*
+        TimeUtils.sleep(3, TimeUnit.SECONDS);
 
-            for (int i = 0; i < n; i++) {
-                System.out.println("\n\n\n\nInvio pacchetto #" + (i + 1));
-                client.sendPacket(new TextPacket("Messaggio di test numero " + i));
-                TimeUtils.sleep(50, TimeUnit.MILLISECONDS);
+        for (int i = 0; i < n; i++) {
+            System.out.println("\n\n\n\nInvio pacchetto #" + (i + 1));
+            client.sendPacket(new TextPacket("Messaggio di test numero " + i));
+            TimeUtils.sleep(50, TimeUnit.MILLISECONDS);
+        }
+         */
+
+        PlayerPacket[] packets = new PlayerPacket[n * n];
+
+        for (int i = 0; i < n; i++) {
+            UUID id = UUID.randomUUID();
+            for (int j = 0; j < n; j++) {
+                packets[i * n + j] = new PlayerPacket(id, "Player #" + i + " - Messaggio #" + (i * n + j));
             }
-        });
+        }
+
+        Collections.shuffle(Arrays.asList(packets));
+
+        for (PlayerPacket packet : packets) {
+            System.out.println("\n\n");
+            client.sendPacket(packet);
+            TimeUtils.sleep(50, TimeUnit.MILLISECONDS);
+        }
 
         TimeUtils.sleep(50, TimeUnit.SECONDS);
 

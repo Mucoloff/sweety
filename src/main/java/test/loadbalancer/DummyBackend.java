@@ -8,6 +8,8 @@ import dev.sweety.network.cloud.packet.registry.IPacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
+import java.util.UUID;
+
 /**
  * Un semplice server di backend che estende la tua classe Server.
  * Stampa un messaggio quando riceve un pacchetto.
@@ -41,6 +43,14 @@ public class DummyBackend extends BackendServer {
                     new TextPacket("Prima parte della risposta."),
                     new TextPacket("Seconda e ultima parte per: " + originalText)
             };
+        }
+
+        if (packet instanceof PlayerPacket playerPacket) {
+            UUID id = playerPacket.getUuid();
+            String text = playerPacket.getText();
+
+            logger.info("player ", id, ":", text);
+
         }
 
         // Nessuna risposta per altri tipi di pacchetti

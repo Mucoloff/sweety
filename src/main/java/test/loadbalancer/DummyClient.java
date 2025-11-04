@@ -23,7 +23,6 @@ public class DummyClient extends Client {
     public void onPacketReceive(ChannelHandlerContext ctx, Packet packet) {
         if (packet instanceof TextPacket text)
             logger.info("messaggio: " + text.getText());
-
     }
 
     @Override

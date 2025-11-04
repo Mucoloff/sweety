@@ -154,6 +154,16 @@ public record PacketBuffer(ByteBuf nettyBuffer) {
         object.write(this);
     }
 
+    public <T> void writeObject(T object, CallableEncoder<T> encoder) {
+        if (object == null) {
+            writeBoolean(false);
+            return;
+        }
+
+        writeBoolean(true);
+        encoder.write(object, this);
+    }
+
     public <T> T readObject(CallableDecoder<T> decoder) {
         if (!readBoolean()) return null;
         return decoder.read(this);

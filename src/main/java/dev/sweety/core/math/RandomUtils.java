@@ -23,7 +23,7 @@ public class RandomUtils {
     }
 
     public static int range(int min, int max) {
-        return RANDOM.nextInt(min, max+1);
+        return RANDOM.nextInt(min, max + 1);
     }
 
 }
