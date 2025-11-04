@@ -2,16 +2,20 @@ package dev.sweety.core.math.pointer;
 
 public class Ptr<T> {
     private final T[] array;
-    private int index;
+    private int index = 0;
 
-    public Ptr(T[] array, int index) {
-        this.array = array;
-        this.index = index;
+    @SafeVarargs
+    public Ptr(T... values) {
+        this.array = values;
     }
 
     // Dereferenziazione: *p
     public T get() {
         return array[index];
+    }
+
+    public T get(int index) {
+        return array[this.index = (index % array.length)];
     }
 
     // Assegnazione: *p = val
@@ -21,23 +25,28 @@ public class Ptr<T> {
 
     // Operatore ++ (avanza il puntatore)
     public Ptr<T> next() {
-        index++;
+        this.index = ((this.index + 1) % array.length);
         return this;
     }
 
     // Operatore -- (indietro)
     public Ptr<T> prev() {
-        index--;
+        this.index = ((this.index - 1) % array.length);
         return this;
     }
 
     // Copia con offset: p + n
     public Ptr<T> offset(int n) {
-        return new Ptr<>(array, index + n);
+        this.index = ((this.index + n) % array.length);
+        return this;
+    }
+
+    public T[] values() {
+        return this.array;
     }
 
     @Override
     public String toString() {
-        return "&[" + index + "]=" + array[index];
+        return "&v[" + index + "] = " + array[index];
     }
 }

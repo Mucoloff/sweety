@@ -1,12 +1,19 @@
 package dev.sweety.network.cloud.packet.buffer;
 
-import dev.sweety.network.cloud.packet.incoming.CallableDecoder;
-import dev.sweety.network.cloud.packet.outgoing.Encoder;
+import dev.sweety.network.cloud.messaging.exception.PacketDecodeException;
+import dev.sweety.network.cloud.packet.buffer.io.CallableDecoder;
+import dev.sweety.network.cloud.packet.buffer.io.CallableEncoder;
+import dev.sweety.network.cloud.packet.buffer.io.Decoder;
+import dev.sweety.network.cloud.packet.buffer.io.Encoder;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 public record PacketBuffer(ByteBuf nettyBuffer) {
     public PacketBuffer() {
@@ -53,8 +60,20 @@ public record PacketBuffer(ByteBuf nettyBuffer) {
         this.nettyBuffer.writeBoolean(value);
     }
 
+    public void writeFloat(float value) {
+        this.nettyBuffer.writeFloat(value);
+    }
+
     public float readFloat() {
         return this.nettyBuffer.readFloat();
+    }
+
+    public void writeLong(long value) {
+        this.nettyBuffer.writeLong(value);
+    }
+
+    public long readLong() {
+        return this.nettyBuffer.readLong();
     }
 
     public void replace(int offset, long newValue) {
@@ -78,10 +97,6 @@ public record PacketBuffer(ByteBuf nettyBuffer) {
         return this.nettyBuffer.readByte();
     }
 
-    public void writeLong(long lungo) {
-        this.nettyBuffer.writeLong(lungo);
-    }
-
     public void writeString(String data) {
         byte[] bytes = data.getBytes(StandardCharsets.UTF_8);
         this.writeInt(bytes.length);
@@ -95,36 +110,34 @@ public record PacketBuffer(ByteBuf nettyBuffer) {
         return new String(bytes, StandardCharsets.UTF_8);
     }
 
-    public void writeFloat(float pitch) {
-        this.nettyBuffer.writeFloat(pitch);
-    }
-
     public void writeEnum(Enum<?> value) {
-        this.nettyBuffer.writeByte(value.ordinal());
+        this.nettyBuffer.writeShort(value.ordinal());
     }
 
     public <T extends Enum<T>> T readEnum(Class<T> clazz) {
         T[] constants = clazz.getEnumConstants();
-        byte ordinal = this.readByte();
+        short ordinal = this.readShort();
         if (ordinal >= 0 && ordinal < constants.length) return constants[ordinal];
-        else throw new IllegalArgumentException("Invalid enum ordinal: " + ordinal);
+        else throw new PacketDecodeException("Invalid enum ordinal: " + ordinal);
     }
 
     public void writeUuid(UUID uuid) {
-        this.nettyBuffer.writeLong(uuid.getMostSignificantBits());
-        this.nettyBuffer.writeLong(uuid.getLeastSignificantBits());
+        writeLong(uuid.getMostSignificantBits());
+        writeLong(uuid.getLeastSignificantBits());
     }
 
     public UUID readUuid() {
-        return new UUID(this.nettyBuffer.readLong(), this.nettyBuffer.readLong());
+        if (this.nettyBuffer.readableBytes() < 16)
+            throw new PacketDecodeException("Not enough readableBytes to read UUID: " + readableBytes() + " / 16");
+        return new UUID(readLong(), readLong());
     }
 
     public void writeBytesArray(byte[] bytes) {
         writeInt(bytes.length);
-        this.nettyBuffer.writeBytes(bytes);
+        writeBytes(bytes);
     }
 
-    public byte[] readByteArray() {
+    public byte[] readBytesArray() {
         int len = readInt();
         byte[] bytes = new byte[len];
         this.nettyBuffer.readBytes(bytes);
@@ -146,6 +159,55 @@ public record PacketBuffer(ByteBuf nettyBuffer) {
         return decoder.read(this);
     }
 
+
+    public <T extends Decoder> T readObject(Supplier<T> factory) {
+        if (!readBoolean()) return null;
+        T object = factory.get();
+        object.read(this);
+        return object;
+    }
+
+    /**
+     * Write a list of objects into the buffer, which can be encoded.
+     *
+     * @param collection The collection of data to store.
+     * @param <T>        The type of the encoder object.
+     */
+    public <T extends Encoder> void writeCollection(Collection<T> collection) {
+        writeCollection(collection, Encoder::write);
+    }
+
+    /**
+     * Read a list of objects from the buffer, which can be encoded.
+     *
+     * @param factory The factory which creates an empty object based on {@code T}.
+     * @param <T>     The typo of the decoder object.
+     * @return The read list filled with optional data.
+     */
+    public <T extends Decoder> List<T> readCollection(Supplier<T> factory) {
+        return readCollection(buffer -> {
+            T instance = factory.get();
+            instance.read(buffer);
+            return instance;
+        });
+    }
+
+    public <T> void writeCollection(Collection<T> collection, CallableEncoder<T> encoder) {
+        writeInt(collection.size());
+        for (T entry : collection) {
+            encoder.write(entry, this);
+        }
+    }
+
+    public <T> List<T> readCollection(CallableDecoder<T> decoder) {
+        int size = readInt();
+        List<T> data = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+            data.add(decoder.read(this));
+        }
+        return data;
+    }
+
     public void release() {
         this.nettyBuffer.release();
     }
@@ -159,13 +221,9 @@ public record PacketBuffer(ByteBuf nettyBuffer) {
     }
 
     public byte[] getBytes() {
-        byte[] bytes = new byte[this.nettyBuffer.readableBytes()];
-        this.nettyBuffer.readBytes(bytes);
+        byte[] bytes = new byte[readableBytes()];
+        readBytes(bytes);
         return bytes;
-    }
-
-    public long readLong() {
-        return this.nettyBuffer.readLong();
     }
 
     public int readableBytes() {
@@ -174,6 +232,18 @@ public record PacketBuffer(ByteBuf nettyBuffer) {
 
     public void resetReaderIndex() {
         this.nettyBuffer.resetReaderIndex();
+    }
+
+    public void markReaderIndex() {
+        this.nettyBuffer.markReaderIndex();
+    }
+
+    public void resetWriterIndex() {
+        this.nettyBuffer.resetWriterIndex();
+    }
+
+    public void markWriterIndex() {
+        this.nettyBuffer.markWriterIndex();
     }
 
     public void readBytes(byte[] data) {
@@ -193,4 +263,5 @@ public record PacketBuffer(ByteBuf nettyBuffer) {
         encoder.write(this);
         writeBytes(bytes);
     }
+
 }

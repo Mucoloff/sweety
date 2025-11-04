@@ -1,26 +1,20 @@
 package dev.sweety.network.cloud.impl.text;
 
-import dev.sweety.network.cloud.impl.PacketRegistry;
-import dev.sweety.network.cloud.packet.incoming.PacketIn;
-import dev.sweety.network.cloud.packet.model.IPacket;
-import dev.sweety.network.cloud.packet.outgoing.PacketOut;
+import dev.sweety.network.cloud.packet.model.Packet;
 import lombok.Getter;
 
-public interface TextPacket extends IPacket {
-    @Getter
-    class In extends PacketIn implements TextPacket{
-        private final String text;
+public class TextPacket extends Packet {
 
-        public In(PacketIn packet) {
-            super(packet);
-            this.text = this.buffer.readString();
-        }
+    @Getter
+    private String text;
+
+    public TextPacket(String text) {
+        this.buffer.writeString(text);
     }
 
-    class Out extends PacketOut implements TextPacket {
-        public Out(String text) {
-            super(PacketRegistry.TEXT.id());
-            this.buffer.writeString(text);
-        }
+    public TextPacket(byte id, long timestamp, byte[] data) {
+        super(id, timestamp, data);
+        this.text = this.buffer.readString();
     }
 }
+

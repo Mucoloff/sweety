@@ -85,7 +85,7 @@ public record FileBuffer(String fileName, boolean isDir, byte[] bytes) {
     public static FileBuffer read(PacketBuffer buffer) {
         String name = buffer.readString();
         boolean dir = buffer.readBoolean();
-        byte[] data = buffer.readByteArray();
+        byte[] data = buffer.readBytesArray();
         return new FileBuffer(name, dir, data);
     }
 
@@ -159,5 +159,46 @@ public record FileBuffer(String fileName, boolean isDir, byte[] bytes) {
         }
     }
 
+    // --- NUOVI METODI: ZIPPARE/UNZIPPARE byte[] ---
+    /**
+     * Comprime un array di byte in un archivio ZIP con una sola entry.
+     * Restituisce i byte dell'archivio ZIP.
+     */
+    @SneakyThrows
+    public static byte[] zipByteArray(byte[] data, String entryName) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(baos))) {
+            zos.setLevel(Deflater.BEST_COMPRESSION);
+            zos.putNextEntry(new ZipEntry(entryName));
+            try (InputStream is = new ByteArrayInputStream(data)) {
+                is.transferTo(zos);
+            }
+            zos.closeEntry();
+        }
+        return baos.toByteArray();
+    }
+
+    /**
+     * Estrae il primo file non-directory trovato in un archivio ZIP fornito come byte[].
+     * Restituisce i byte del file estratto. Lancia IOException se non ci sono entry di file.
+     */
+    @SneakyThrows
+    public static byte[] unzipFirstFileFromZip(byte[] zipBytes) throws IOException {
+        try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                if (entry.isDirectory()) {
+                    zis.closeEntry();
+                    continue;
+                }
+
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                zis.transferTo(baos);
+                zis.closeEntry();
+                return baos.toByteArray();
+            }
+        }
+        throw new IOException("ZIP contains no file entries");
+    }
 
 }

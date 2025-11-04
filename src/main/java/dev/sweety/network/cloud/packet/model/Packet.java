@@ -1,26 +1,50 @@
 package dev.sweety.network.cloud.packet.model;
 
+import dev.sweety.core.time.TimeUtils;
 import dev.sweety.network.cloud.packet.buffer.PacketBuffer;
 import lombok.Getter;
 
 @Getter
-public abstract class Packet implements IPacket {
+public abstract class Packet {
+
     protected final byte id;
-    protected final Long timestamp;
+    protected final long timestamp;
     protected final PacketBuffer buffer;
 
-    public Packet(byte id, Long timestamp, PacketBuffer buffer) {
+    public Packet() {
+        this((byte) -1, -1L);
+    }
+
+    public Packet(long timestamp) {
+        this((byte) -1, timestamp);
+    }
+
+    public Packet(byte id, long timestamp) {
         this.id = id;
         this.timestamp = timestamp;
-        this.buffer = buffer;
+        this.buffer = new PacketBuffer();
     }
 
-    public Packet(Packet packet) {
-        this(packet.id, packet.timestamp, packet.buffer);
+    // (decoder)
+    public Packet(byte id, long timestamp, byte[] data) {
+        this.id = id;
+        this.timestamp = timestamp;
+        this.buffer = new PacketBuffer(data);
+        this.buffer.markReaderIndex();
     }
 
-    @Override
     public byte[] getData() {
         return this.buffer.getBytes();
     }
+
+    public String name() {
+        return this.getClass().getSimpleName();
+    }
+
+    @Override
+    public String toString() {
+        String time = " [" + TimeUtils.date(timestamp, "dd-mm-yyyy hh:MM:ss") + "] ";
+        return name() + " (" + id + ")" + (timestamp > 0 ? time : " ") + "- " + buffer.readableBytes() + " bytes";
+    }
+
 }

@@ -1,11 +1,12 @@
 package dev.sweety.network.cloud.loadbalancer.backend;
 
 import com.sun.management.OperatingSystemMXBean;
-import dev.sweety.network.cloud.impl.PacketRegistry;
-import dev.sweety.network.cloud.loadbalancer.packet.MetricsUpdatePacket;
+import dev.sweety.network.cloud.impl.loadbalancer.ForwardPacket;
+import dev.sweety.network.cloud.impl.loadbalancer.MetricsUpdatePacket;
+import dev.sweety.network.cloud.impl.loadbalancer.WrappedPacket;
 import dev.sweety.network.cloud.messaging.Server;
-import dev.sweety.network.cloud.packet.incoming.PacketIn;
-import dev.sweety.network.cloud.packet.outgoing.PacketOut;
+import dev.sweety.network.cloud.packet.model.Packet;
+import dev.sweety.network.cloud.packet.registry.IPacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.lang.management.ManagementFactory;
@@ -20,8 +21,8 @@ public abstract class BackendServer extends Server {
     private long lastCpuTime = 0;
     private long lastMeasuredTime = System.nanoTime();
 
-    public BackendServer(String host, int port, PacketOut... packets) {
-        super(host, port, packets);
+    public BackendServer(String host, int port, IPacketRegistry packetRegistry, Packet... packets) {
+        super(host, port, packetRegistry, packets);
         this.metricsScheduler.scheduleAtFixedRate(this::sendMetrics, 1, 1, TimeUnit.SECONDS);
     }
 
@@ -29,7 +30,7 @@ public abstract class BackendServer extends Server {
         double cpuLoad = getCpuLoad();
         double ramUsage = getRamUsage();
 
-        MetricsUpdatePacket.Out metricsPacket = new MetricsUpdatePacket.Out(cpuLoad, ramUsage);
+        MetricsUpdatePacket metricsPacket = new MetricsUpdatePacket(cpuLoad, ramUsage);
         sendAll(metricsPacket);
     }
 
@@ -40,36 +41,43 @@ public abstract class BackendServer extends Server {
      *
      * @param ctx    Il contesto del canale.
      * @param packet Il pacchetto in arrivo.
-     * @return Un array di PacketOut da inviare come risposta.
+     * @return Un array di Packet da inviare come risposta.
      */
-    public abstract PacketOut[] handlePackets(ChannelHandlerContext ctx, PacketIn packet);
+    public abstract Packet[] handlePackets(ChannelHandlerContext ctx, Packet packet);
 
     @Override
-    public final void onPacketReceive(ChannelHandlerContext ctx, PacketIn packet) {
-        if (packet.getId() == PacketRegistry.METRICS.id()) return;
+    public void onPacketReceive(ChannelHandlerContext ctx, Packet packet) {
+        if (packet instanceof MetricsUpdatePacket) return;
         if (!ctx.channel().isActive()) return;
 
-        // 1. Leggi il correlationId, che è sempre all'inizio.
-        long correlationId = packet.getBuffer().readLong();
+        if (!(packet instanceof ForwardPacket forward)) return;
+        forward.getBuffer().resetReaderIndex();
 
-        // 2. Crea un nuovo pacchetto "pulito" con solo i dati originali per la logica di business.
-        PacketIn originalClientPacket = new PacketIn(packet.getId(), packet.getTimestamp(), packet.getBuffer().readByteArray());
+        // 1. Leggi il correlationId, che è sempre all'inizio.
+        long correlationId = forward.getCorrelationId();
+
+        Packet original;
+        try {
+            original = getPacketRegistry().constructPacket(forward.getOriginalId(), forward.getOriginalTimestamp(), forward.getOriginalData());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return;
+        }
+
 
         // 3. Chiama la logica di business dell'utente.
-        PacketOut[] responses = handlePackets(ctx, originalClientPacket);
+        Packet[] responses = handlePackets(ctx, original);
 
         if (responses != null && responses.length != 0) {// 4. Invia le risposte wrappate.
-            for (PacketOut response : responses) {
-                response.getBuffer().wrapData(buffer -> buffer.writeLong(correlationId));
+            for (int i = 0; i < responses.length; i++) {
+                responses[i] = new WrappedPacket(correlationId, i == responses.length - 1, getPacketRegistry().getPacketId(responses[i].getClass()), responses[i]);
+
 
             }
 
             send(ctx, responses);
         }
 
-        PacketOut closingPacket = new PacketOut(PacketRegistry.CLOSING.id());
-        closingPacket.getBuffer().writeLong(correlationId);
-        send(ctx, closingPacket);
     }
 
     private double getCpuLoad() {

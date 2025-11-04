@@ -38,12 +38,6 @@
   │   │   │   ├── 📄 Ptr.java
   │   │   │   └── 📄 Ref.java
   │   │   ├── 📄 RandomUtils.java
-  │   │   ├── 📁 stack/
-  │   │   │   ├── 📄 DequeStack.java
-  │   │   │   ├── 📄 LinkedStack.java
-  │   │   │   ├── 📄 Node.java
-  │   │   │   ├── 📄 Stack.java
-  │   │   │   └── 📄 StackContext.java
   │   │   └── 📁 vector/
   │   │       ├── 📄 CoordUtils.java
   │   │       ├── 📁 d2/
@@ -52,12 +46,21 @@
   │   │       │   ├── 📄 Vector2d.java
   │   │       │   ├── 📄 Vector2f.java
   │   │       │   └── 📄 Vector2i.java
-  │   │       └── 📁 d3/
-  │   │           ├── 📄 Spherical.java
-  │   │           ├── 📄 SphericalF.java
-  │   │           ├── 📄 Vector3d.java
-  │   │           ├── 📄 Vector3f.java
-  │   │           └── 📄 Vector3i.java
+  │   │       ├── 📁 d3/
+  │   │       │   ├── 📄 Spherical.java
+  │   │       │   ├── 📄 SphericalF.java
+  │   │       │   ├── 📄 Vector3d.java
+  │   │       │   ├── 📄 Vector3f.java
+  │   │       │   └── 📄 Vector3i.java
+  │   │       ├── 📁 queue/
+  │   │       │   ├── 📄 LinkedQueue.java
+  │   │       │   └── 📄 Queue.java
+  │   │       └── 📁 stack/
+  │   │           ├── 📄 DequeStack.java
+  │   │           ├── 📄 LinkedStack.java
+  │   │           ├── 📄 Node.java
+  │   │           ├── 📄 Stack.java
+  │   │           └── 📄 StackContext.java
   │   ├── 📁 service/
   │   │   ├── 📄 Provider.java
   │   │   ├── 📄 ServiceHelper.java
@@ -132,15 +135,32 @@
   │   │   ├── 📁 impl/
   │   │   │   ├── 📁 file/
   │   │   │   │   └── 📄 FilePacket.java
-  │   │   │   ├── 📄 PacketRegistry.java
+  │   │   │   ├── 📁 loadbalancer/
+  │   │   │   │   ├── 📄 ForwardPacket.java
+  │   │   │   │   ├── 📄 MetricsUpdatePacket.java
+  │   │   │   │   ├── 📄 PacketQueue.java
+  │   │   │   │   └── 📄 WrappedPacket.java
   │   │   │   └── 📁 text/
   │   │   │       └── 📄 TextPacket.java
+  │   │   ├── 📁 loadbalancer/
+  │   │   │   ├── 📁 backend/
+  │   │   │   │   ├── 📄 BackendNode.java
+  │   │   │   │   ├── 📄 BackendServer.java
+  │   │   │   │   └── 📁 pool/
+  │   │   │   │       ├── 📄 BackendPool.java
+  │   │   │   │       ├── 📁 balancer/
+  │   │   │   │       │   ├── 📄 Balancers.java
+  │   │   │   │       │   └── 📄 BalancerSystem.java
+  │   │   │   │       └── 📄 IBackendPool.java
+  │   │   │   └── 📄 LoadBalancerServer.java
   │   │   ├── 📁 messaging/
   │   │   │   ├── 📄 Client.java
   │   │   │   ├── 📁 exception/
   │   │   │   │   ├── 📄 ClientException.java
   │   │   │   │   ├── 📄 ClientInvalid.java
-  │   │   │   │   └── 📄 PacketDecode.java
+  │   │   │   │   ├── 📄 PacketDecodeException.java
+  │   │   │   │   ├── 📄 PacketEncodeException.java
+  │   │   │   │   └── 📄 PacketRegistrationException.java
   │   │   │   ├── 📁 listener/
   │   │   │   │   ├── 📁 decoder/
   │   │   │   │   │   └── 📄 NettyDecoder.java
@@ -151,22 +171,25 @@
   │   │   │   ├── 📁 model/
   │   │   │   │   └── 📄 Messenger.java
   │   │   │   └── 📄 Server.java
-  │   │   └── 📁 packet/
-  │   │       ├── 📁 buffer/
-  │   │       │   ├── 📄 FileBuffer.java
-  │   │       │   └── 📄 PacketBuffer.java
-  │   │       ├── 📁 incoming/
-  │   │       │   ├── 📄 CallableDecoder.java
-  │   │       │   ├── 📄 Decoder.java
-  │   │       │   └── 📄 PacketIn.java
-  │   │       ├── 📁 model/
-  │   │       │   ├── 📄 Bound.java
-  │   │       │   ├── 📄 IPacket.java
-  │   │       │   └── 📄 Packet.java
-  │   │       └── 📁 outgoing/
-  │   │           ├── 📄 CallableEncoder.java
-  │   │           ├── 📄 Encoder.java
-  │   │           └── 📄 PacketOut.java
+  │   │   ├── 📁 packet/
+  │   │   │   ├── 📁 buffer/
+  │   │   │   │   ├── 📄 FileBuffer.java
+  │   │   │   │   ├── 📁 io/
+  │   │   │   │   │   ├── 📄 CallableDecoder.java
+  │   │   │   │   │   ├── 📄 CallableEncoder.java
+  │   │   │   │   │   ├── 📄 Decoder.java
+  │   │   │   │   │   └── 📄 Encoder.java
+  │   │   │   │   └── 📄 PacketBuffer.java
+  │   │   │   ├── 📁 model/
+  │   │   │   │   ├── 📄 Bound.java
+  │   │   │   │   └── 📄 Packet.java
+  │   │   │   └── 📁 registry/
+  │   │   │       ├── 📄 IPacketRegistry.java
+  │   │   │       ├── 📄 OptimizedPacketRegistry.java
+  │   │   │       ├── 📄 RegisteredPacket.java
+  │   │   │       └── 📄 SimplePacketRegistry.java
+  │   │   └── 📁 util/
+  │   │       └── 📄 CompressionProbe.java
   │   ├── 📄 HttpUtils.java
   │   └── 📁 ping/
   │       ├── 📁 exception/
@@ -204,11 +227,6 @@
   │       ├── 📄 Database.java
   │       ├── 📄 Repository.java
   │       └── 📄 Table.java
-  ├── 📁 test/
-  │   ├── 📄 ListFiles.java
-  │   ├── 📄 SimpleFileServer.java
-  │   ├── 📄 TestFeature.java
-  │   └── 📄 TestFeatureMain.java
   └── 📁 version/
       ├── 📄 MinecraftVersion.java
       └── 📄 VersionComparison.java

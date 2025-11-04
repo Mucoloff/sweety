@@ -90,7 +90,7 @@ public class FastScalableCountingBloomFilter {
         return "FastSCBF{size=" + filter.length + ", elements=" + elements + ", FPP=" + getEstimatedFPP() + "}";
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Throwable {
         FastScalableCountingBloomFilter scbf = new FastScalableCountingBloomFilter(1024, 4, 2.0);
 
         String[] data = {"ciao", "hello", "world", "java", "bloom"};

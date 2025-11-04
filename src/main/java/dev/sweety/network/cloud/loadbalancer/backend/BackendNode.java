@@ -1,13 +1,13 @@
 package dev.sweety.network.cloud.loadbalancer.backend;
 
 import dev.sweety.core.logger.EcstacyLogger;
-import dev.sweety.network.cloud.impl.PacketRegistry;
+import dev.sweety.network.cloud.impl.loadbalancer.ForwardPacket;
+import dev.sweety.network.cloud.impl.loadbalancer.MetricsUpdatePacket;
+import dev.sweety.network.cloud.impl.loadbalancer.WrappedPacket;
 import dev.sweety.network.cloud.loadbalancer.LoadBalancerServer;
-import dev.sweety.network.cloud.loadbalancer.packet.MetricsUpdatePacket;
 import dev.sweety.network.cloud.messaging.Client;
-import dev.sweety.network.cloud.packet.buffer.PacketBuffer;
-import dev.sweety.network.cloud.packet.incoming.PacketIn;
-import dev.sweety.network.cloud.packet.outgoing.PacketOut;
+import dev.sweety.network.cloud.packet.model.Packet;
+import dev.sweety.network.cloud.packet.registry.IPacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import lombok.Getter;
@@ -57,14 +57,9 @@ public class BackendNode extends Client {
     private volatile double cpuLoad = 0.0;
     private volatile double ramUsage = 0.0;
 
-
-    public BackendNode(String host, int port) {
-        super(host, port);
+    public BackendNode(String host, int port, IPacketRegistry packetRegistry) {
+        super(host, port, packetRegistry);
         this.logger = new EcstacyLogger("node - " + port).fallback();
-    }
-
-    public int getPort() {
-        return super.port;
     }
 
     /**
@@ -72,32 +67,46 @@ public class BackendNode extends Client {
      * Usiamo questo evento per decrementare il contatore di carico.
      */
     @Override
-    public void onPacketReceive(ChannelHandlerContext ctx, PacketIn packet) {
-        if (packet.getId() == PacketRegistry.METRICS.id()) {
-            MetricsUpdatePacket.In metrics = new MetricsUpdatePacket.In(packet);
+    public void onPacketReceive(ChannelHandlerContext ctx, Packet packet) {
+
+        if (packet instanceof MetricsUpdatePacket metrics) {
             this.cpuLoad = metrics.getCpuLoad();
             this.ramUsage = metrics.getRamUsage();
-
             return;
         }
 
         if (loadBalancer == null) return;
 
-        boolean isClosing = packet.getId() == PacketRegistry.CLOSING.id();
+        if (!(packet instanceof WrappedPacket wrapped)){
+            logger.warn("Ricevuto un pacchetto non wrappato: " + packet);
+            return;
+        }
 
-        long correlationId = packet.getBuffer().readLong();
+        long correlationId = wrapped.getCorrelationId();
+        boolean isClosing = wrapped.isClosing();
 
         if (isClosing) requestCompleted(correlationId);
 
-        loadBalancer.forwardResponseToClient(correlationId, packet.getId(), packet.getData(), isClosing);
+        Packet original;
+        try {
+            original = getPacketRegistry().constructPacket(wrapped.getOriginalId(), wrapped.getOriginalTimestamp(), wrapped.getOriginalData());
+            original.getBuffer().resetReaderIndex();
+        } catch (Exception e) {
+            return;
+        }
+
+        loadBalancer.forwardResponseToClient(correlationId, original, isClosing);
     }
 
 
     /**
      * Inoltra un pacchetto a questo backend, anteponendo l'ID di correlazione.
      */
-    public void forwardPacket(PacketIn packet, long correlationId) {
-        if (!this.running()) return;
+    public void forwardPacket(Packet packet, long correlationId) {
+        if (!this.running()) {
+            logger.info("backend non attivo, ignorando");
+            return;
+        }
 
         int packetSize = packet.getBuffer().readableBytes();
         pendingRequestLoads.put(correlationId, packetSize);
@@ -105,11 +114,12 @@ public class BackendNode extends Client {
         // registra il timestamp di invio (nanoTime per misure di latenza)
         pendingRequestTimestamps.put(correlationId, System.nanoTime());
 
-        PacketOut forwardedPacket = new PacketOut(packet.getId(), packet.getTimestamp());
-        PacketBuffer buffer = forwardedPacket.getBuffer();
-        buffer.writeLong(correlationId);
-        buffer.writeBytesArray(packet.getData());
-        sendPacket(forwardedPacket);
+        packet.getBuffer().resetReaderIndex();
+
+        ForwardPacket forward = new ForwardPacket(correlationId, packet);
+
+        logger.info("forwarding packet", forward, Long.toHexString(correlationId));
+        sendPacket(forward);
     }
 
     /**
@@ -150,45 +160,50 @@ public class BackendNode extends Client {
     /**
      * Verifica se il backend è attivo usando il metodo ereditato da Messenger.
      */
-     public boolean isActive() {
-         return this.channel != null && this.channel.isActive() && this.running();
-     }
+    public boolean isActive() {
+        return this.channel != null && this.channel.isActive() && this.running();
+    }
 
-     /**
-      * Calcola un punteggio di carico combinato basato su rete, CPU e RAM.
-      * @return Un valore double che rappresenta il carico totale. Più alto è, più il nodo è occupato.
-      */
-     public double getCombinedLoad() {
-         // Normalizza il carico di rete in un range [0, 1]
-         double normalizedNetwork = Math.min(1.0, (double) networkLoad.get() / MAX_NETWORK_LOAD);
+    /**
+     * Calcola un punteggio di carico combinato basato su rete, CPU e RAM.
+     *
+     * @return Un valore double che rappresenta il carico totale. Più alto è, più il nodo è occupato.
+     */
+    public double getCombinedLoad() {
+        // Normalizza il carico di rete in un range [0, 1]
+        double normalizedNetwork = Math.min(1.0, (double) networkLoad.get() / MAX_NETWORK_LOAD);
 
-         logger.info("Carichi - Rete: " + String.format("%.2f", normalizedNetwork) +
-                 ", CPU: " + String.format("%.2f", cpuLoad) +
-                 ", RAM: " + String.format("%.2f", ramUsage));;
-         // Calcola il punteggio pesato
-         return (normalizedNetwork * W_NET) + (cpuLoad * W_CPU) + (ramUsage * W_RAM);
-     }
+        /*
+        logger.info("Carichi - Rete: " + String.format("%.2f", normalizedNetwork) +
+                ", CPU: " + String.format("%.2f", cpuLoad) +
+                ", RAM: " + String.format("%.2f", ramUsage));
 
-     @Override
-     public void exception(ChannelHandlerContext ctx, Throwable throwable) {
-         logger.error("Errore sulla connessione al backend " + host + ":" + port, throwable.getMessage());
-         ctx.close();
-     }
+         */
 
-     @Override
-     public void join(ChannelHandlerContext ctx, ChannelPromise promise) {
-         logger.info("Load Balancer connesso al backend: " + host + ":" + port);
-     }
+        // Calcola il punteggio pesato
+        return (normalizedNetwork * W_NET) + (cpuLoad * W_CPU) + (ramUsage * W_RAM);
+    }
 
-     @Override
-     public void quit(ChannelHandlerContext ctx, ChannelPromise promise) {
-         logger.warn("Backend disconnesso: " + host + ":" + port);
-         this.cpuLoad = 0.0;
-         this.ramUsage = 0.0;
-         this.networkLoad.set(0);
-         this.pendingRequestLoads.clear();
-         this.pendingRequestTimestamps.clear();
-     }
+    @Override
+    public void exception(ChannelHandlerContext ctx, Throwable throwable) {
+        logger.error("Errore sulla connessione al backend " + host + ":" + port, throwable);
+        ctx.close();
+    }
+
+    @Override
+    public void join(ChannelHandlerContext ctx, ChannelPromise promise) {
+        logger.info("Load Balancer connesso al backend: " + host + ":" + port);
+    }
+
+    @Override
+    public void quit(ChannelHandlerContext ctx, ChannelPromise promise) {
+        logger.warn("Backend disconnesso: " + host + ":" + port);
+        this.cpuLoad = 0.0;
+        this.ramUsage = 0.0;
+        this.networkLoad.set(0);
+        this.pendingRequestLoads.clear();
+        this.pendingRequestTimestamps.clear();
+    }
 
     /**
      * Restituisce la latenza media osservata in millisecondi.

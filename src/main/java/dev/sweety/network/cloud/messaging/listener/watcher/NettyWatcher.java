@@ -1,8 +1,7 @@
 package dev.sweety.network.cloud.messaging.listener.watcher;
 
 import dev.sweety.network.cloud.messaging.model.Messenger;
-import dev.sweety.network.cloud.packet.incoming.PacketIn;
-import dev.sweety.network.cloud.packet.outgoing.PacketOut;
+import dev.sweety.network.cloud.packet.model.Packet;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
@@ -16,7 +15,7 @@ public class NettyWatcher extends ChannelHandlerAdapter {
     }
 
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        if (msg instanceof PacketIn packet) this.messenger.onPacketReceive(ctx, packet);
+        if (msg instanceof Packet packet) this.messenger.onPacketReceive(ctx, packet);
         else ctx.close();
     }
 
@@ -24,7 +23,7 @@ public class NettyWatcher extends ChannelHandlerAdapter {
         this.messenger.join(ctx, ctx.newPromise());
 
         try {
-            for (PacketOut packet : this.messenger.getPackets()) ctx.channel().write(packet);
+            for (Packet packet : this.messenger.getPackets()) ctx.channel().write(packet);
             ctx.channel().flush();
         } catch (Exception e) {
             this.messenger.exception(ctx, new Exception("Watcher failed to send initial packets", e));

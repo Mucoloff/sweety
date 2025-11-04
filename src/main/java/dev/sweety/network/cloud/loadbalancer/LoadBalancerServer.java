@@ -4,13 +4,14 @@ import dev.sweety.core.crypt.ChecksumUtils;
 import dev.sweety.core.logger.EcstacyLogger;
 import dev.sweety.core.math.RandomUtils;
 import dev.sweety.core.math.vector.queue.LinkedQueue;
+import dev.sweety.network.cloud.impl.text.TextPacket;
 import dev.sweety.network.cloud.loadbalancer.backend.BackendNode;
 import dev.sweety.network.cloud.loadbalancer.backend.pool.BackendPool;
 import dev.sweety.network.cloud.loadbalancer.backend.pool.IBackendPool;
-import dev.sweety.network.cloud.loadbalancer.packet.PacketQueue;
+import dev.sweety.network.cloud.impl.loadbalancer.PacketQueue;
 import dev.sweety.network.cloud.messaging.Server;
-import dev.sweety.network.cloud.packet.incoming.PacketIn;
-import dev.sweety.network.cloud.packet.outgoing.PacketOut;
+import dev.sweety.network.cloud.packet.model.Packet;
+import dev.sweety.network.cloud.packet.registry.IPacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
@@ -36,8 +37,8 @@ public class LoadBalancerServer extends Server {
 
     private final Map<Long, ChannelHandlerContext> clientRequestContexts = new ConcurrentHashMap<>();
 
-    public LoadBalancerServer(int port, String host, BackendPool backendPool) {
-        super(host, port);
+    public LoadBalancerServer(int port, String host, BackendPool backendPool, IPacketRegistry packetRegistry) {
+        super(host, port, packetRegistry);
         (this.backendPool = backendPool).pool().forEach(node -> node.setLoadBalancer(this));
         // Avvia le connessioni verso i backend
         this.backendPool.initialize();
@@ -48,8 +49,13 @@ public class LoadBalancerServer extends Server {
     private static final long REQUEST_TIMEOUT_SECONDS = 30;
 
     @Override
-    public void onPacketReceive(ChannelHandlerContext ctx, PacketIn packet) {
+    public void onPacketReceive(ChannelHandlerContext ctx, Packet packet) {
         BackendNode backend = backendPool.nextBackend(packet, ctx);
+
+        logger.info("received packet", packet);
+        if (packet instanceof TextPacket text){
+            logger.info("content: " + text.getText());
+        }
 
         if (backend == null) {
             pendingPackets.enqueue(new PacketQueue(packet, ctx));
@@ -75,28 +81,24 @@ public class LoadBalancerServer extends Server {
      * Inoltra una risposta dal backend al client originale.
      *
      * @param correlationId L'ID per trovare il client.
-     * @param packetId      L'ID del pacchetto di risposta.
-     * @param packetData    Il payload del pacchetto di risposta.
+     * @param packet        Il pacchetto di risposta.
      * @param isClosing     Se true, il contesto del client viene rimosso.// Inoltra i dati del wrapper al LoadBalancer
      */
-    public void forwardResponseToClient(long correlationId, byte packetId, byte[] packetData, boolean isClosing) {
+    public void forwardResponseToClient(long correlationId, Packet packet, boolean isClosing) {
         // Se è un pacchetto di chiusura, rimuoviamo il contesto. Altrimenti, lo cerchiamo soltanto.
         ChannelHandlerContext clientCtx = isClosing
                 ? clientRequestContexts.remove(correlationId)
                 : clientRequestContexts.get(correlationId);
-
-        if (isClosing) {
-            return;
-        }
 
         if (clientCtx == null || !clientCtx.channel().isActive()) {
             logger.warn("Contesto client non trovato per #" + Long.toHexString(correlationId));
             return;
         }
 
-        final PacketOut forwardPacket = new PacketOut(packetId);
-        forwardPacket.getBuffer().writeBytes(packetData);
-        clientCtx.channel().writeAndFlush(forwardPacket);
+
+        logger.info("Inoltro pacchetto (" + packet + ") response #" + Long.toHexString(correlationId) + " al client");
+
+        clientCtx.channel().writeAndFlush(packet);
 
     }
 
@@ -107,7 +109,7 @@ public class LoadBalancerServer extends Server {
         for (int i = 0; i < queueSize; i++) {
             PacketQueue pq = pendingPackets.dequeue();
             if (pq == null) break;
-            final PacketIn packet = pq.packet();
+            final Packet packet = pq.packet();
 
             BackendNode backend = backendPool.nextBackend(pq.packet(), pq.ctx());
             if (backend == null) {

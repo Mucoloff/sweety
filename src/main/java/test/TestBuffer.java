@@ -5,7 +5,7 @@ import dev.sweety.network.cloud.packet.buffer.PacketBuffer;
 public class TestBuffer {
 
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Throwable {
         PacketBuffer buffer = new PacketBuffer();
         buffer.writeString("Hello, World!");
         buffer.writeInt(42);

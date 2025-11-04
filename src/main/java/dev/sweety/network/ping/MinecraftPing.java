@@ -12,7 +12,7 @@ import java.net.Socket;
 
 public class MinecraftPing {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Throwable {
         String address = "play.coralmc.it";
         int port = 25565;
 

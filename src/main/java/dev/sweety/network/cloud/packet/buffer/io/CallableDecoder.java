@@ -1,4 +1,4 @@
-package dev.sweety.network.cloud.packet.incoming;
+package dev.sweety.network.cloud.packet.buffer.io;
 
 import dev.sweety.network.cloud.packet.buffer.PacketBuffer;
 

@@ -3,7 +3,7 @@ package dev.sweety.network.cloud.loadbalancer.backend.pool;
 import dev.sweety.core.logger.EcstacyLogger;
 import dev.sweety.network.cloud.loadbalancer.backend.BackendNode;
 import dev.sweety.network.cloud.loadbalancer.backend.pool.balancer.BalancerSystem;
-import dev.sweety.network.cloud.packet.incoming.PacketIn;
+import dev.sweety.network.cloud.packet.model.Packet;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.List;
@@ -31,7 +31,7 @@ public record BackendPool(EcstacyLogger logger, List<BackendNode> pool,
      * @return Il BackendNode selezionato, o null se nessuno è disponibile.
      */
     @Override
-    public BackendNode nextBackend(PacketIn packet, ChannelHandlerContext ctx) {
+    public BackendNode nextBackend(Packet packet, ChannelHandlerContext ctx) {
         if (pool.isEmpty()) return null;
 
         return balancerSystem.nextBackend(pool, logger, packet, ctx);

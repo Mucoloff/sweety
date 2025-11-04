@@ -51,6 +51,15 @@ public class ResourceUtils {
         buffer.unzip(targetDir.toFile());
     }
 
+    // --- METODI PER byte[] ---
+    @SneakyThrows
+    public byte[] zipBytes(byte[] data, String entryName) {
+        return FileBuffer.zipByteArray(data, entryName);
+    }
+
+    @SneakyThrows
+    public byte[] unzipBytes(byte[] zipData) {
+        return FileBuffer.unzipFirstFileFromZip(zipData);
+    }
+
 }
-
-

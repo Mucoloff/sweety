@@ -3,7 +3,7 @@ package dev.sweety.network.cloud.loadbalancer.backend.pool.balancer;
 import dev.sweety.core.logger.EcstacyLogger;
 import dev.sweety.core.math.RandomUtils;
 import dev.sweety.network.cloud.loadbalancer.backend.BackendNode;
-import dev.sweety.network.cloud.packet.incoming.PacketIn;
+import dev.sweety.network.cloud.packet.model.Packet;
 import io.netty.channel.ChannelHandlerContext;
 import lombok.AllArgsConstructor;
 
@@ -19,7 +19,7 @@ public enum Balancers {
         private final AtomicInteger roundRobinCounter = new AtomicInteger(0);
 
         @Override
-        public BackendNode nextBackend(List<BackendNode> pool, EcstacyLogger logger, PacketIn packet, ChannelHandlerContext ctx) {
+        public BackendNode nextBackend(List<BackendNode> pool, EcstacyLogger logger, Packet packet, ChannelHandlerContext ctx) {
             return IntStream.range(0, pool.size())
                     .map(i -> roundRobinCounter.getAndIncrement() % pool.size())
                     .mapToObj(pool::get)
@@ -57,7 +57,7 @@ public enum Balancers {
         private final AtomicInteger rrCounter = new AtomicInteger(0);
 
         @Override
-        public BackendNode nextBackend(List<BackendNode> pool, EcstacyLogger logger, PacketIn packet, ChannelHandlerContext ctx) {
+        public BackendNode nextBackend(List<BackendNode> pool, EcstacyLogger logger, Packet packet, ChannelHandlerContext ctx) {
             if (pool.isEmpty()) return null;
 
             // Calcola metriche globali
