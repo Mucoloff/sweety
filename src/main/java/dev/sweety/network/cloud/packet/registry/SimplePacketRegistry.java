@@ -10,10 +10,29 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class SimplePacketRegistry implements IPacketRegistry {
 
-    private final Map<Byte, RegisteredPacket> packets = new ConcurrentHashMap<>();
+    private final Map<Short, RegisteredPacket> packets;
+
+    public SimplePacketRegistry() {
+        this.packets = new ConcurrentHashMap<>();
+    }
+
+    public SimplePacketRegistry(final short size) {
+        this.packets = new ConcurrentHashMap<>(size);
+    }
+
+    @SafeVarargs
+    public SimplePacketRegistry(Class<? extends Packet>... packets) throws PacketRegistrationException {
+        this((short) packets.length);
+        registerPackets(packets);
+    }
+
+    public SimplePacketRegistry(Map<Short, Class<? extends Packet>> packets) throws PacketRegistrationException {
+        this((short) packets.size());
+        registerPackets(packets);
+    }
 
     @Override
-    public void registerPacket(byte packetId, Class<? extends Packet> packet) throws PacketRegistrationException {
+    public void registerPacket(short packetId, Class<? extends Packet> packet) throws PacketRegistrationException {
         if (containsPacketId(packetId)) throw new PacketRegistrationException("PacketID is already in use");
 
         try {
@@ -25,18 +44,18 @@ public class SimplePacketRegistry implements IPacketRegistry {
     }
 
     @Override
-    public byte getPacketId(Class<? extends Packet> packetClass) {
-        return packets.entrySet().stream().filter(entry -> entry.getValue().getPacketClass().equals(packetClass)).findFirst().map(Map.Entry::getKey).orElse((byte) -1);
+    public short getPacketId(Class<? extends Packet> packetClass) {
+        return packets.entrySet().stream().filter(entry -> entry.getValue().getPacketClass().equals(packetClass)).findFirst().map(Map.Entry::getKey).orElse((short) -1);
     }
 
     @Override
-    public <T extends Packet> T constructPacket(byte packetId, long timestamp, byte[] data) throws InvocationTargetException, InstantiationException, IllegalAccessException {
+    public <T extends Packet> T constructPacket(short packetId, long timestamp, byte[] data) throws InvocationTargetException, InstantiationException, IllegalAccessException {
         if (!containsPacketId(packetId)) throw new IllegalArgumentException("Packet " + packetId + " not found");
-        return packets.get(packetId).create(packetId,timestamp, data);
+        return packets.get(packetId).create(packetId, timestamp, data);
     }
 
     @Override
-    public boolean containsPacketId(byte id) {
+    public boolean containsPacketId(short id) {
         return packets.containsKey(id);
     }
 

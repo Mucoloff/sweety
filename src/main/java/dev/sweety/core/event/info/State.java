@@ -1,4 +1,4 @@
-package dev.sweety.core.event;
+package dev.sweety.core.event.info;
 
 
 public enum State {

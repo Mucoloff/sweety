@@ -4,7 +4,6 @@ import dev.sweety.network.cloud.messaging.model.Messenger;
 import dev.sweety.network.cloud.packet.model.Packet;
 import dev.sweety.network.cloud.packet.registry.IPacketRegistry;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.net.SocketAddress;
@@ -18,33 +17,14 @@ public abstract class Server extends Messenger<ServerBootstrap> {
         super(new ServerBootstrap(), host, port, packetRegistry, packets);
     }
 
-    public void send(ChannelHandlerContext ctx, Packet... msgs) {
-        final Channel channel = ctx.channel();
-        if (!channel.isActive()) return;
-        for (Packet msg : msgs) {
-            channel.write(msg);
-        }
-        channel.flush();
-    }
-
-    public void send(ChannelHandlerContext ctx, Packet msg) {
-        final Channel channel = ctx.channel();
-        if (!channel.isActive()) return;
-        channel.writeAndFlush(msg);
-    }
-
-    public void sendAll(final Packet... msgs) {
+    public void broadcastPacket(final Packet msg) {
         if (clients.isEmpty()) return;
-        this.clients.values().forEach((ctx) -> send(ctx, msgs));
+        this.clients.values().forEach((ctx) -> sendPacket(ctx, msg));
     }
 
-    public void sendAll(final Packet msg) {
+    public void broadcastPacket(final Packet... msgs) {
         if (clients.isEmpty()) return;
-        this.clients.values().forEach((ctx) -> {
-            final Channel channel = ctx.channel();
-            if (!channel.isActive()) return;
-            channel.writeAndFlush(msg);
-        });
+        this.clients.values().forEach((ctx) -> sendPacket(ctx, msgs));
     }
 
     public void addClient(ChannelHandlerContext ctx, SocketAddress address) {

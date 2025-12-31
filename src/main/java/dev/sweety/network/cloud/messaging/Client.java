@@ -5,25 +5,34 @@ import dev.sweety.network.cloud.packet.model.Packet;
 import dev.sweety.network.cloud.packet.registry.IPacketRegistry;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CompletableFuture;
 
 public abstract class Client extends Messenger<Bootstrap> {
+
     public Client(String host, int port, IPacketRegistry packetRegistry, Packet... packets) {
         super(new Bootstrap(), host, port, packetRegistry, packets);
     }
 
-    private final AtomicInteger pendingWrites = new AtomicInteger(0);
+    public CompletableFuture<Void> sendPacket(Packet packet) {
+        return super.sendPacket(channelContext(), packet);
+    }
 
-    public void sendPackets(Packet... packets) {
-        if (this.channel != null && this.channel.isActive()) {
-            for (Packet packet : packets) {
-                this.channel.write(packet);
-            }
+    public CompletableFuture<Void> sendPacket(Packet... packets) {
+        return sendPacket(channelContext(), packets);
+    }
 
-            this.channel.flush();
-        }
+    public CompletableFuture<Void> writePacket(Packet packet) {
+        return super.writePacket(channelContext(), packet);
+    }
 
+    public CompletableFuture<Void> writePacket(Packet... packets) {
+        return super.writePacket(channelContext(), packets);
+    }
+
+    public void flush() {
+        super.flush(channelContext());
     }
 
     public Channel channel() {
@@ -33,37 +42,10 @@ public abstract class Client extends Messenger<Bootstrap> {
         return channel;
     }
 
-    public void sendPacket(Packet packet) {
-        if (this.channel != null && this.channel.isActive()) {
-            this.channel.writeAndFlush(packet);
+    private ChannelHandlerContext channelContext() {
+        if (channel == null || !channel.isActive()) {
+            return null;
         }
-    }
-
-    public void writePacket(Packet packet) {
-        if (channel != null && channel.isActive()) {
-            pendingWrites.incrementAndGet();
-            channel.write(packet).addListener(f -> pendingWrites.decrementAndGet());
-        }
-    }
-
-    public void writePackets(Packet... packets) {
-        if (this.channel != null && this.channel.isActive()) {
-            for (Packet packet : packets) {
-                pendingWrites.incrementAndGet();
-                channel.write(packet).addListener(f -> pendingWrites.decrementAndGet());
-            }
-
-        }
-    }
-
-    public void flush() {
-        if (!hasPendingWrites()) return;
-        if (this.channel != null && this.channel.isActive()) {
-            this.channel.flush();
-        }
-    }
-
-    public boolean hasPendingWrites() {
-        return pendingWrites.get() > 0;
+        return channel.pipeline().firstContext();
     }
 }

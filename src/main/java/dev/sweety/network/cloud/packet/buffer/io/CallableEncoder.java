@@ -2,8 +2,15 @@ package dev.sweety.network.cloud.packet.buffer.io;
 
 import dev.sweety.network.cloud.packet.buffer.PacketBuffer;
 
-public interface CallableEncoder<T> {
+import java.util.function.BiConsumer;
 
-    void write(T data, PacketBuffer buffer);
+@FunctionalInterface
+public interface CallableEncoder<T> extends BiConsumer<T, PacketBuffer> {
 
+    void write(PacketBuffer buffer, T data);
+
+    @Override
+    default void accept(T data, PacketBuffer buffer){
+        write(buffer, data);
+    }
 }

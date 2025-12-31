@@ -1,7 +1,16 @@
 package dev.sweety.core.event.interfaces;
 
-@FunctionalInterface
-public interface Listener<Event> {
+import dev.sweety.core.event.IEvent;
 
-    void call(Event event);
+import java.util.function.Consumer;
+
+@FunctionalInterface
+public interface Listener<E extends IEvent> extends Consumer<E> {
+
+    void call(E event);
+
+    @Override
+    default void accept(E event){
+        call(event);
+    }
 }

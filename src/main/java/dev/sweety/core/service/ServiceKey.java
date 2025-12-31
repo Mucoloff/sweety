@@ -28,24 +28,25 @@ public final class ServiceKey<T> {
 
     @NotNull
     public Class<T> getType() {
-        return type;
+        return this.type;
     }
 
     @Nullable
     public String getName() {
-        return name;
+        return this.name;
     }
 
     public boolean equals(final Object obj) {
-        if (!(obj instanceof ServiceKey<?> that)) return false;
-        return type == that.type && Objects.equals(name, that.name);
+        if (!(obj instanceof ServiceKey<?>)) return false;
+        ServiceKey<?> that = (ServiceKey<?>) obj;
+        return this.type == that.type && Objects.equals(this.name, that.name);
     }
 
     public int hashCode() {
-        return hashCode;
+        return this.hashCode;
     }
 
     public String toString() {
-        return name == null ? type.getName() : type.getName() + "(" + name + ")";
+        return this.name == null ? this.type.getName() : this.type.getName() + "(" + this.name + ")";
     }
 }

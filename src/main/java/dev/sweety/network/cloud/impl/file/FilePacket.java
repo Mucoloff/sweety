@@ -16,14 +16,14 @@ public class FilePacket extends Packet {
 
     @SneakyThrows
     public FilePacket(File file) {
-        FileBuffer.fromFile(file).write(buffer);
+        FileBuffer.fromFile(file).write(buffer());
     }
 
-    public FilePacket(byte id, long timestamp, byte[] data) {
-        super(id, timestamp, data);
+    public FilePacket(short _id, long _timestamp, byte[] _data) {
+        super(_id, _timestamp, _data);
 
-        this.size = buffer.readableBytes();
-        this.fileBuffer = FileBuffer.read(buffer);
+        this.size = buffer().readableBytes();
+        this.fileBuffer = FileBuffer.read(buffer());
     }
 
     public File readFile(File dir) {

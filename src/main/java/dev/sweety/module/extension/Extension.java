@@ -2,7 +2,7 @@ package dev.sweety.module.extension;
 
 import dev.sweety.core.logger.EcstacyLogger;
 import dev.sweety.core.service.ServiceHelper;
-import dev.sweety.core.service.ServiceManager;
+import dev.sweety.core.service.impl.ServiceManager;
 import dev.sweety.core.service.ServiceRegistry;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;

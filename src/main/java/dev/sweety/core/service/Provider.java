@@ -1,5 +1,9 @@
 package dev.sweety.core.service;
 
-public interface Provider<T> {
+import java.util.function.Supplier;
+
+public interface Provider<T> extends Supplier<T> {
+
+    @Override
     T get();
 }

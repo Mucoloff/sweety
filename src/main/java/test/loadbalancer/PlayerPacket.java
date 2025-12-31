@@ -14,13 +14,13 @@ public class PlayerPacket extends Packet {
     private final String text;
 
     public PlayerPacket(UUID uuid, String text) {
-        this.buffer.writeUuid(this.uuid = uuid);
-        this.buffer.writeString(this.text = text);
+        this.buffer().writeUuid(this.uuid = uuid);
+        this.buffer().writeString(this.text = text);
     }
 
-    public PlayerPacket(byte id, long timestamp, byte[] data) {
-        super(id, timestamp, data);
-        this.uuid = this.buffer.readUuid();
-        this.text = this.buffer.readString();
+    public PlayerPacket(short _id, long _timestamp, byte[] _data) {
+        super(_id, _timestamp, _data);
+        this.uuid = this.buffer().readUuid();
+        this.text = this.buffer().readString();
     }
 }

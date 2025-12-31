@@ -1,5 +1,6 @@
 package test.testzipnet;
 
+import dev.sweety.core.event.info.State;
 import dev.sweety.core.logger.EcstacyLogger;
 import dev.sweety.network.cloud.impl.file.FilePacket;
 import dev.sweety.network.cloud.impl.text.TextPacket;
@@ -9,6 +10,7 @@ import dev.sweety.network.cloud.packet.registry.IPacketRegistry;
 import dev.sweety.network.cloud.packet.registry.OptimizedPacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
+import test.testzipnet.ping.PingTransaction;
 
 public class TestServer extends Server {
 
@@ -23,7 +25,19 @@ public class TestServer extends Server {
 
         if (packet instanceof TextPacket text) {
             logger.info("messaggio: " + text.getText());
+        } else if (packet instanceof PingTransaction transaction) {
+            if (transaction.hasRequest()) {
+                long requestId = transaction.getRequestId();
+                logger.info("Ricevuto ping con ID: " + requestId);
+                ctx.channel().writeAndFlush(new PingTransaction(requestId, new PingTransaction.Pong()));
+            }
         }
+
+    }
+
+    @Override
+    public void onPacketSend(ChannelHandlerContext ctx, Packet packet, State state) {
+
     }
 
     @Override
@@ -46,7 +60,7 @@ public class TestServer extends Server {
 
     public static void main(String[] args) throws Throwable {
 
-        IPacketRegistry packetRegistry = new OptimizedPacketRegistry(TextPacket.class, FilePacket.class);
+        IPacketRegistry packetRegistry = new OptimizedPacketRegistry(TextPacket.class, FilePacket.class, PingTransaction.class);
 
         TestServer server = new TestServer("localhost", 8080, packetRegistry);
         server.start();

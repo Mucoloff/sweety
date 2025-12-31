@@ -9,7 +9,6 @@ import dev.sweety.integration.spotify.client.SpotifyClient;
 import dev.sweety.integration.spotify.auth.AuthToken;
 import dev.sweety.integration.spotify.auth.SpotifyOAuth;
 
-
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URL;

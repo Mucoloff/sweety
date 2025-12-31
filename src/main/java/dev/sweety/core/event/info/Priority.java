@@ -1,4 +1,4 @@
-package dev.sweety.core.event.priority;
+package dev.sweety.core.event.info;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

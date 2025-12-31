@@ -1,11 +1,10 @@
 package dev.sweety.core.event;
 
-
-
-
 import dev.sweety.core.event.interfaces.LinkEvent;
 import dev.sweety.core.event.interfaces.Listener;
 import dev.sweety.core.event.interfaces.Operation;
+import dev.sweety.core.event.info.State;
+import it.unimi.dsi.fastutil.Pair;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
@@ -17,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 public class EventSystem {
@@ -24,10 +24,20 @@ public class EventSystem {
     private static final Comparator<EventCallback> priorityFilter =
             Comparator.comparingInt(EventCallback::priority);
 
+    private static final BiConsumer<IEvent, Boolean> CHANGED = (IEvent, state) -> {
+        try {
+            Field changed = Event.class.getDeclaredField("changed");
+            if (!changed.isAccessible()) changed.setAccessible(true);
+            changed.setBoolean(IEvent, state);
+        } catch (IllegalAccessException | NoSuchFieldException e) {
+            e.printStackTrace();
+        }
+    };
+
     private final Map<Type, List<EventCallback>> callSiteMap = new ConcurrentHashMap<>();
 
-    public void subscribe(Object object) {
-        for (final Field field : object.getClass().getDeclaredFields()) {
+    public void subscribe(Object container) {
+        for (final Field field : container.getClass().getDeclaredFields()) {
             final LinkEvent annotation = field.getAnnotation(LinkEvent.class);
             if (annotation == null) continue;
 
@@ -38,35 +48,34 @@ public class EventSystem {
                 continue;
             }
 
-            if (!field.canAccess(object)) field.setAccessible(true);
+            if (!field.isAccessible()) field.setAccessible(true);
 
-            final Listener<Event> listener;
+            final Listener<IEvent> listener;
             try {
                 //noinspection unchecked
-                listener = (Listener<Event>) LOOKUP.unreflectGetter(field).invokeWithArguments(object);
+                listener = (Listener<IEvent>) LOOKUP.unreflectGetter(field).invokeWithArguments(container);
             } catch (Throwable ignored) {
                 continue;
             }
 
-            // Ottimizza: usa CopyOnWriteArrayList (thread-safe e altamente performante per pochi scrittori e molti lettori)
             final List<EventCallback> callSites = this.callSiteMap.computeIfAbsent(eventType, k -> new CopyOnWriteArrayList<>());
-            callSites.add(new EventCallback(object, listener, annotation.priority() == -1 ? annotation.level().getValue() : annotation.priority(), annotation.state()));
+            callSites.add(new EventCallback(container, listener, annotation.priority() == -1 ? annotation.level().getValue() : annotation.priority(), annotation.state()));
             callSites.sort(priorityFilter);
         }
     }
 
-
-    public void unsubscribe(final Object object) {
+    public void unsubscribe(final Object container) {
         for (Map.Entry<Type, List<EventCallback>> entry : callSiteMap.entrySet()) {
             final List<EventCallback> callSites = entry.getValue();
-            callSites.removeIf(cb -> cb.event() == object);
+            callSites.removeIf(cb -> cb.event() == container);
         }
     }
 
     @SuppressWarnings("ForLoopReplaceableByForEach")
     public <T extends Event> T dispatch(T event) {
         event.setCancelled(false);
-        event.setChanged(false);
+        CHANGED.accept(event, false);
+
         final int hash = event.hashCode();
         final List<EventCallback> callbacks = this.callSiteMap.get(event.getClass());
         if (callbacks == null || callbacks.isEmpty()) return event;
@@ -80,37 +89,29 @@ public class EventSystem {
                 cb.listener().call(event);
             }
 
-            if (hash != event.hashCode()) event.setChanged(true);
+            if (hash != event.hashCode()) CHANGED.accept(event, true);
             if (event.isCancelled()) break;
         }
         return event;
     }
 
-    /**
-     * Dispatcha un evento generico con gestione cancel/change e post-event.
-     *
-     * @param event             evento iniziale
-     * @param original          operazione originale da chiamare
-     * @param changedArgsMapper funzione che calcola i nuovi argomenti se l'evento è cambiato
-     * @param args              argomenti originali da passare all'original.call
-     * @param <T>               tipo dell'evento
-     */
-    public <T extends Event> void dispatchWrapped(
+    public <T extends Event, R> Pair<T, R> dispatchWrapped(
             T event,
-            Operation<Void> original,
+            Operation<R> original,
             Function<T, Object[]> changedArgsMapper,
             Object... args
     ) {
         final T e = dispatch(event);
 
-        if (e.isCancelled()) return;
+        if (e.isCancelled()) return Pair.of(e, null);
 
-        original.call(e.isChanged() ? changedArgsMapper.apply(e) : args);
+        R call = original.call(e.isChanged() ? changedArgsMapper.apply(e) : args);
 
-        dispatch(e.post());
+        final T post = dispatch(e.post());
+
+        return Pair.of(post, call);
     }
 
-
-    record EventCallback(Object event, Listener<Event> listener, int priority, State state) {
+    private record EventCallback(Object event, Listener<IEvent> listener, int priority, State state) {
     }
 }

@@ -1,7 +1,7 @@
 package dev.sweety.core.event.interfaces;
 
-import dev.sweety.core.event.State;
-import dev.sweety.core.event.priority.Priority;
+import dev.sweety.core.event.info.State;
+import dev.sweety.core.event.info.Priority;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

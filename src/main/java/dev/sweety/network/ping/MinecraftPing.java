@@ -13,14 +13,14 @@ import java.net.Socket;
 public class MinecraftPing {
 
     public static void main(String[] args) throws Throwable {
-        String address = "play.coralmc.it";
+        String address = "play.hypixel.net";
         int port = 25565;
 
         try (Socket socket = openSock(address, port)) {
             PacketOutputStream pos = new PacketOutputStream(socket.getOutputStream(), false);
             PacketInputStream pis = new PacketInputStream(socket.getInputStream(), true, pos::setCompressionEnabled);
 
-            int protocolVersion = MinecraftVersion.V_1_19_4.getProtocolVersion();
+            int protocolVersion = MinecraftVersion.V_1_21_10.getProtocolVersion();
 
             // Handshake
             pos.write(new C2SPacket(0x00, w -> w
@@ -36,7 +36,7 @@ public class MinecraftPing {
             // Leggi Status Response
             S2CPacket status = pis.read();
             String json = status.getPacketReader().readString();
-            System.out.println("Status JSON: " + json);
+            System.out.println("Status JSON:\n" + json);
 
             // Ping
             long timestamp = System.currentTimeMillis();

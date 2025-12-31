@@ -1,5 +1,6 @@
 package dev.sweety.network.cloud.messaging.model;
 
+import dev.sweety.core.event.info.State;
 import dev.sweety.network.cloud.messaging.listener.decoder.NettyDecoder;
 import dev.sweety.network.cloud.messaging.listener.encoder.NettyEncoder;
 import dev.sweety.network.cloud.messaging.listener.watcher.NettyWatcher;
@@ -29,6 +30,7 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
     private final NioEventLoopGroup boss;
     private final NioEventLoopGroup worker;
     // ===================================/
+    public static final int SEED = 0x000FFFFF;
 
     protected Channel channel;
 
@@ -61,7 +63,11 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
 
         final Consumer<SocketChannel> initChannelConsumer = (ch) -> {
             ChannelPipeline pipeline = ch.pipeline();
-            pipeline.addLast(new NettyDecoder(this.packetRegistry), new NettyWatcher(this), new NettyEncoder(this.packetRegistry));
+            pipeline.addLast(
+                    new NettyDecoder(this.packetRegistry),
+                    new NettyWatcher(this),
+                    new NettyEncoder(this.packetRegistry)
+            );
         };
 
         // Configura bootstrap UNA volta sola
@@ -99,27 +105,20 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
     public CompletableFuture<Channel> connect() {
         final CompletableFuture<Channel> future = new CompletableFuture<>();
 
+        ChannelFutureListener channelFutureListener = (f) -> {
+            boolean success = f.isSuccess();
+            running(success);
+            if (success) {
+                future.complete(this.channel = f.channel());
+            } else {
+                future.completeExceptionally(f.cause());
+            }
+        };
+
         if (this.bootstrap instanceof ServerBootstrap server) {
-            server.bind(this.port).addListener((ChannelFutureListener) (bindFuture) -> {
-                boolean success = bindFuture.isSuccess();
-                running(success);
-                if (success) {
-                    future.complete(bindFuture.channel());
-                } else {
-                    future.completeExceptionally(bindFuture.cause());
-                }
-            });
+            server.bind(this.port).addListener(channelFutureListener);
         } else if (this.bootstrap instanceof Bootstrap client) {
-            client.connect(this.host, this.port).addListener((ChannelFutureListener) (connectFuture) -> {
-                boolean success = connectFuture.isSuccess();
-                running(success);
-                if (success) {
-                    this.channel = connectFuture.channel();
-                    future.complete(this.channel);
-                } else {
-                    future.completeExceptionally(connectFuture.cause());
-                }
-            });
+            client.connect(this.host, this.port).addListener(channelFutureListener);
         } else {
             running(false);
             future.completeExceptionally(
@@ -127,6 +126,55 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
         }
 
         return future;
+    }
+
+    public CompletableFuture<Void> sendPacket(ChannelHandlerContext ctx, Packet packet) {
+        CompletableFuture<Void> future = writePacket(ctx, packet);
+        flush(ctx);
+        return future;
+    }
+
+    public CompletableFuture<Void> sendPacket(ChannelHandlerContext ctx, Packet... msgs) {
+        if (msgs == null || msgs.length == 0) return CompletableFuture.completedFuture(null);
+        if (msgs.length == 1) return sendPacket(ctx, msgs[0]);
+        CompletableFuture<Void> future = writePacket(ctx, msgs);
+        flush(ctx);
+        return future;
+    }
+
+    public CompletableFuture<Void> writePacket(ChannelHandlerContext ctx, Packet packet) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        if (ctx == null || !ctx.channel().isActive()) {
+            future.completeExceptionally(new IllegalStateException("Channel not active or context is null"));
+            return future;
+        }
+        onPacketSend(ctx, packet, State.PRE);
+        ctx.channel().write(packet).addListener(f -> {
+            if (f.isSuccess()) {
+                onPacketSend(ctx, packet, State.POST);
+                future.complete(null);
+            } else {
+                future.completeExceptionally(f.cause());
+            }
+        });
+        return future;
+    }
+
+    public CompletableFuture<Void> writePacket(ChannelHandlerContext ctx, Packet... msgs) {
+        if (msgs == null || msgs.length == 0) return CompletableFuture.completedFuture(null);
+        if (msgs.length == 1) return writePacket(ctx, msgs[0]);
+
+        CompletableFuture<Void> lastWrite = null;
+        for (Packet packet : msgs) {
+            lastWrite = writePacket(ctx, packet);
+        }
+        return lastWrite != null ? lastWrite : CompletableFuture.completedFuture(null);
+    }
+
+    public void flush(ChannelHandlerContext ctx) {
+        if (ctx != null && ctx.channel().isActive()) {
+            ctx.channel().flush();
+        }
     }
 
     public void stop() {
@@ -138,14 +186,20 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
     protected void running(final boolean running) {
         this.running.set(running);
     }
+
     public boolean running() {
         return this.running.get();
     }
 
     public abstract void onPacketReceive(ChannelHandlerContext ctx, Packet packet);
 
+    public void onPacketSend(ChannelHandlerContext ctx, Packet packet, State state) {
+    }
+
     public abstract void exception(ChannelHandlerContext ctx, Throwable throwable);
+
     public abstract void join(ChannelHandlerContext ctx, ChannelPromise promise);
+
     public abstract void quit(ChannelHandlerContext ctx, ChannelPromise promise);
 
 }

@@ -15,7 +15,7 @@ import java.util.zip.ZipOutputStream;
 
 public record FileBuffer(String fileName, boolean isDir, byte[] bytes) {
 
-    private static final long ZIP_THRESHOLD = 64 * 1024; // 64 KB
+    private static final int ZIP_THRESHOLD = 64 * 1024; // 64 KB
     private static final String EXTENSION = ".buff.zip";
 
     // --- CREA UN FILEBUFFER DA FILE O DIRECTORY ---

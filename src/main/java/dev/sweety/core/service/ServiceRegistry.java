@@ -3,6 +3,7 @@ package dev.sweety.core.service;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
@@ -14,6 +15,9 @@ public interface ServiceRegistry {
     Set<Map.Entry<ServiceKey<?>, Provider<?>>> entrySet();
 
     @NotNull
+    Collection<Provider<?>> providers();
+
+    @NotNull
     default <T> T get(@NotNull final ServiceKey<T> key) {
         final T service = getOrNull(key);
         if (service == null) throw new NullPointerException("Service not found: " + key);
@@ -23,6 +27,12 @@ public interface ServiceRegistry {
     @NotNull
     default <T> T get(@NotNull final Class<T> type) {
         return get(ServiceKey.key(type));
+    }
+
+    <T> boolean contains(@NotNull ServiceKey<T> key);
+
+    default <T> boolean contains(@NotNull final Class<T> type) {
+        return contains(ServiceKey.key(type));
     }
 
     @Nullable

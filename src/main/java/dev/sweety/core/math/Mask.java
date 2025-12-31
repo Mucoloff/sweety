@@ -1,5 +1,8 @@
 package dev.sweety.core.math;
 
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
 public class Mask {
     private static final byte[] INDEXES = {
             0x1,
@@ -16,18 +19,20 @@ public class Mask {
         return INDEXES[index % INDEXES.length];
     }
 
-    private byte _mask;
-
-    public void set(byte index) {
-        this._mask |= index;
+    public boolean isPresent(byte _mask, byte index) {
+        return (_mask & index) != 0;
     }
 
-    public boolean isPresent(byte index) {
-        return (this._mask & index) != 0;
+    public byte set(byte _mask, byte index) {
+        return (byte) (_mask | index);
     }
 
-    public void reset() {
-        this._mask = 0;
+    public byte clear(byte _mask, byte index) {
+        return (byte) (_mask & ~index);
+    }
+
+    public byte setState(byte _mask, byte index, boolean state) {
+        return state ? set(_mask, index) : clear(_mask, index);
     }
 
 }

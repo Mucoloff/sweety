@@ -2,34 +2,40 @@ package dev.sweety.network.cloud.packet.registry;
 
 import dev.sweety.network.cloud.messaging.exception.PacketRegistrationException;
 import dev.sweety.network.cloud.packet.model.Packet;
-import it.unimi.dsi.fastutil.bytes.Byte2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.IdentityHashMap;
+import java.util.Map;
 
 public class OptimizedPacketRegistry implements IPacketRegistry {
 
-    private final Byte2ObjectOpenHashMap<RegisteredPacket> idToPacket;
-    private final IdentityHashMap<Class<? extends Packet>, Byte> classToId;
+    private final Short2ObjectOpenHashMap<RegisteredPacket> idToPacket;
+    private final IdentityHashMap<Class<? extends Packet>, Short> classToId;
 
     public OptimizedPacketRegistry() {
-        this.idToPacket = new Byte2ObjectOpenHashMap<>();
+        this.idToPacket = new Short2ObjectOpenHashMap<>();
         this.classToId = new IdentityHashMap<>();
     }
 
-    public OptimizedPacketRegistry(final byte size) {
-        this.idToPacket = new Byte2ObjectOpenHashMap<>(size);
+    public OptimizedPacketRegistry(final short size) {
+        this.idToPacket = new Short2ObjectOpenHashMap<>(size);
         this.classToId = new IdentityHashMap<>(size);
     }
 
     @SafeVarargs
     public OptimizedPacketRegistry(Class<? extends Packet>... packets) throws PacketRegistrationException {
-        this((byte) packets.length);
+        this((short) packets.length);
+        registerPackets(packets);
+    }
+
+    public OptimizedPacketRegistry(Map<Short, Class<? extends Packet>> packets) throws PacketRegistrationException {
+        this((short) packets.size());
         registerPackets(packets);
     }
 
     @Override
-    public void registerPacket(byte packetId, Class<? extends Packet> packet) throws PacketRegistrationException {
+    public void registerPacket(short packetId, Class<? extends Packet> packet) throws PacketRegistrationException {
         if (idToPacket.containsKey(packetId))
             throw new PacketRegistrationException("PacketID already in use");
 
@@ -43,12 +49,12 @@ public class OptimizedPacketRegistry implements IPacketRegistry {
     }
 
     @Override
-    public byte getPacketId(Class<? extends Packet> packetClass) {
-        return this.classToId.getOrDefault(packetClass, (byte) -1);
+    public short getPacketId(Class<? extends Packet> packetClass) {
+        return this.classToId.getOrDefault(packetClass, (short) -1);
     }
 
     @Override
-    public <T extends Packet> T constructPacket(byte packetId, long timestamp, byte[] data)
+    public <T extends Packet> T constructPacket(short packetId, long timestamp, byte[] data)
             throws InvocationTargetException, InstantiationException, IllegalAccessException {
         if (!idToPacket.containsKey(packetId))
             throw new IllegalArgumentException("Unknown packet id " + packetId);
@@ -57,7 +63,7 @@ public class OptimizedPacketRegistry implements IPacketRegistry {
     }
 
     @Override
-    public boolean containsPacketId(byte id) {
+    public boolean containsPacketId(short id) {
         return idToPacket.containsKey(id);
     }
 }

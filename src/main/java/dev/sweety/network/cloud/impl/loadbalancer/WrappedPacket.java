@@ -9,27 +9,27 @@ public class WrappedPacket extends Packet {
     private long correlationId;
     private boolean closing;
 
-    private byte originalId;
+    private short originalId;
     private long originalTimestamp;
     private byte[] originalData;
 
-    public WrappedPacket(long correlationId, boolean closing, byte originalId, Packet original) {
-        buffer.writeLong(correlationId);
-        buffer.writeBoolean(closing);
+    public WrappedPacket(long correlationId, boolean closing, short originalId, Packet original) {
+        buffer().writeLong(correlationId);
+        buffer().writeBoolean(closing);
 
-        buffer.writeByte(originalId);
-        buffer.writeLong(original.getTimestamp());
-        buffer.writeBytesArray(original.getData());
+        buffer().writeShort(originalId);
+        buffer().writeLong(original.timestamp());
+        buffer().writeBytesArray(original.buffer().getBytes());
     }
 
-    public WrappedPacket(byte id, long timestamp, byte[] data) {
-        super(id, timestamp, data);
-        this.correlationId = this.buffer.readLong();
-        this.closing = this.buffer.readBoolean();
+    public WrappedPacket(short _id, long _timestamp, byte[] _data) {
+        super(_id, _timestamp, _data);
+        this.correlationId = this.buffer().readLong();
+        this.closing = this.buffer().readBoolean();
 
-        this.originalId = this.buffer.readByte();
-        this.originalTimestamp = this.buffer.readLong();
-        this.originalData = this.buffer.readBytesArray();
+        this.originalId = this.buffer().readShort();
+        this.originalTimestamp = this.buffer().readLong();
+        this.originalData = this.buffer().readBytesArray();
     }
 
 }

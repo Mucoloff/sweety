@@ -1,8 +1,6 @@
 package dev.sweety.core.thread;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ProfileThread {
@@ -26,14 +24,19 @@ public class ProfileThread {
         this.thread.execute(runnable);
     }
 
-    public void executeWithDelay(Runnable runnable, long delay, TimeUnit unit) {
-        if (this.thread.isShutdown() || this.thread.isTerminated()) return;
-        this.thread.schedule(runnable, delay, unit);
+    public <V> ScheduledFuture<V> executeWithDelay(Callable<V> callable, long delay, TimeUnit unit) {
+        if (this.thread.isShutdown() || this.thread.isTerminated()) return null;
+        return this.thread.schedule(callable, delay, unit);
     }
 
-    public void executeRepeatingTask(Runnable runnable, long initialDelay, long period, TimeUnit unit) {
-        if (this.thread.isShutdown() || this.thread.isTerminated()) return;
-        this.thread.scheduleAtFixedRate(runnable, initialDelay, period, unit);
+    public ScheduledFuture<?> executeWithDelay(Runnable runnable, long delay, TimeUnit unit) {
+        if (this.thread.isShutdown() || this.thread.isTerminated()) return null;
+        return this.thread.schedule(runnable, delay, unit);
+    }
+
+    public ScheduledFuture<?> executeRepeatingTask(Runnable runnable, long initialDelay, long period, TimeUnit unit) {
+        if (this.thread.isShutdown() || this.thread.isTerminated()) return null;
+        return this.thread.scheduleAtFixedRate(runnable, initialDelay, period, unit);
     }
 
     public ProfileThread incrementAndGet() {
@@ -42,7 +45,6 @@ public class ProfileThread {
     }
 
     public void decrement() {
-        // evita valori negativi
         this.profileCount.updateAndGet(v -> v > 0 ? v - 1 : 0);
     }
 

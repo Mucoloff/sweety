@@ -7,9 +7,12 @@ import dev.sweety.network.cloud.packet.model.Packet;
 import io.netty.channel.ChannelHandlerContext;
 import lombok.AllArgsConstructor;
 
+import java.io.Serializable;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.stream.IntStream;
 
 @AllArgsConstructor
@@ -42,11 +45,11 @@ public enum Balancers {
     }),
     LOWEST_LOAD((pool, logger, packet, ctx) -> pool.stream()
             .filter(BackendNode::isActive)
-            .min(Comparator.comparingDouble(BackendNode::getCombinedLoad))
+            .min(comparingFloat(BackendNode::getCombinedLoad))
             .orElse(null)),
     LOWEST_LATENCY((pool, logger, packet, ctx) -> pool.stream()
             .filter(BackendNode::isActive)
-            .min(Comparator.comparingDouble(BackendNode::getAverageLatency))
+            .min(comparingFloat(BackendNode::getAverageLatency))
             .orElse(null)),
     RANDOM((pool, logger, packet, ctx) -> IntStream.range(0, pool.size())
             .mapToObj(i -> RandomUtils.randomElement(pool))
@@ -61,22 +64,22 @@ public enum Balancers {
             if (pool.isEmpty()) return null;
 
             // Calcola metriche globali
-            double avgLoad = pool.stream().filter(BackendNode::isActive)
+            float avgLoad = (float) pool.stream().filter(BackendNode::isActive)
                     .mapToDouble(BackendNode::getCombinedLoad).average().orElse(0.0);
-            double avgLatency = pool.stream().filter(BackendNode::isActive)
+            float avgLatency = (float) pool.stream().filter(BackendNode::isActive)
                     .mapToDouble(BackendNode::getAverageLatency).average().orElse(0.0);
 
-            double maxLoad = pool.stream().filter(BackendNode::isActive)
+            float maxLoad = (float) pool.stream().filter(BackendNode::isActive)
                     .mapToDouble(BackendNode::getCombinedLoad).max().orElse(1.0);
-            double maxLatency = pool.stream().filter(BackendNode::isActive)
+            float maxLatency = (float) pool.stream().filter(BackendNode::isActive)
                     .mapToDouble(BackendNode::getAverageLatency).max().orElse(1.0);
 
             // Pesi adattivi (alpha: carico, beta: latenza)
-            double loadVariance = Math.max(0.05, Math.abs(avgLoad - maxLoad));
-            double latencyVariance = Math.max(0.05, Math.abs(avgLatency - maxLatency));
+            float loadVariance = (float) Math.max(0.05, Math.abs(avgLoad - maxLoad));
+            float latencyVariance = (float) Math.max(0.05, Math.abs(avgLatency - maxLatency));
 
-            double alpha = latencyVariance / (loadVariance + latencyVariance);
-            double beta = loadVariance / (loadVariance + latencyVariance);
+            float alpha = latencyVariance / (loadVariance + latencyVariance);
+            float beta = loadVariance / (loadVariance + latencyVariance);
 
             int size = pool.size();
             int startIndex = rrCounter.getAndIncrement() % size;
@@ -98,14 +101,20 @@ public enum Balancers {
 
             // Calcola score dinamico e sceglie il migliore
             return candidates.stream()
-                    .min(Comparator.comparingDouble(node -> {
-                        double normalizedLoad = node.getCombinedLoad() / Math.max(1e-9, maxLoad);
-                        double normalizedLatency = node.getAverageLatency() / Math.max(1e-9, maxLatency);
+                    .min(comparingFloat(node -> {
+                        float normalizedLoad = (float) (node.getCombinedLoad() / Math.max(1e-9, maxLoad));
+                        float normalizedLatency = (float) (node.getAverageLatency() / Math.max(1e-9, maxLatency));
                         return alpha * normalizedLoad + beta * normalizedLatency;
                     }))
                     .orElse(null);
         }
     });
+
+    public static<T> Comparator<T> comparingFloat(Function<? super T,Float> keyExtractor) {
+        Objects.requireNonNull(keyExtractor);
+        return (Comparator<T> & Serializable)
+                (c1, c2) -> Float.compare(keyExtractor.apply(c1), keyExtractor.apply(c2));
+    }
 
     private final BalancerSystem balancerSystem;
 

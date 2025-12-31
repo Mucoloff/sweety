@@ -1,36 +1,34 @@
 package dev.sweety.core.thread;
 
+import dev.sweety.core.math.MathUtils;
 import dev.sweety.core.math.RandomUtils;
 import lombok.Getter;
 import lombok.SneakyThrows;
 
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 @Getter
 public class ThreadManager {
 
     private static final int MAX_THREADS = Runtime.getRuntime().availableProcessors() * 2;
-    private static final Comparator<ProfileThread> comparator = Comparator.comparing(ProfileThread::getProfileCount);
 
-    private final List<ProfileThread> profileThreads = new ArrayList<>();
+    private final List<ProfileThread> profileThreads = new CopyOnWriteArrayList<>();
 
     @SneakyThrows
-    public ProfileThread getAvailableProfileThread() {
+    public synchronized ProfileThread getAvailableProfileThread() {
         ProfileThread profileThread;
 
-        if (this.profileThreads.size() < MAX_THREADS) {
-            this.profileThreads.add(profileThread = new ProfileThread());
-        } else
-            profileThread = this.profileThreads.stream().min(comparator).orElse(RandomUtils.randomElement(this.profileThreads));
+        if (this.profileThreads.size() < MAX_THREADS) this.profileThreads.add(profileThread = new ProfileThread());
+        else profileThread = MathUtils.findBest(profileThreads, (a, b) -> a.getProfileCount() < b.getProfileCount(), RandomUtils.randomElement(this.profileThreads));
+
         if (profileThread == null)
             throw new Exception("Encountered a null profile thread, Please restart the server to avoid any issues.");
 
         return profileThread.incrementAndGet();
     }
 
-    public void shutdown(final ProfileThread profileThread) {
+    public synchronized void shutdown(final ProfileThread profileThread) {
         if (profileThread == null) return;
         if (profileThread.getProfileCount() > 1) {
             profileThread.decrement();
@@ -41,6 +39,6 @@ public class ThreadManager {
     }
 
     public void shutdown() {
-        profileThreads.forEach(this::shutdown);
+        MathUtils.parallel(profileThreads).forEach(this::shutdown);
     }
 }

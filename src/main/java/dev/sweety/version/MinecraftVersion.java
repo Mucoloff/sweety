@@ -32,7 +32,7 @@ public enum MinecraftVersion {
     ERROR(-1, true);
 
     private static final MinecraftVersion[] VALUES = values();
-    private static final Map<Integer, List<MinecraftVersion>> BY_PROTOCOL =
+    private static final Map<Short, List<MinecraftVersion>> BY_PROTOCOL =
             Arrays.stream(VALUES)
                     .collect(Collectors.groupingBy(MinecraftVersion::getProtocolVersion));
 
@@ -41,12 +41,14 @@ public enum MinecraftVersion {
                     .flatMap(v -> Arrays.stream(new String[]{
                             v.name().toUpperCase(Locale.ROOT),
                             v.getReleaseName()
-                    }).map(key -> Map.entry(key, v)))
+                    }).map(key -> new AbstractMap.SimpleEntry<>(key, v)))
                     .collect(Collectors.toMap(
                             Map.Entry::getKey,
                             Map.Entry::getValue,
                             (a, b) -> a
                     ));
+
+    private static final List<MinecraftVersion> EMPTY = Collections.emptyList();
 
     /**
      * -- GETTER --
@@ -54,7 +56,7 @@ public enum MinecraftVersion {
      *
      * @return Protocol version.
      */
-    private final int protocolVersion;
+    private final short protocolVersion;
     /**
      * -- GETTER --
      * Get the release name of this version.
@@ -65,17 +67,17 @@ public enum MinecraftVersion {
     private final String releaseName;
 
     MinecraftVersion(int protocolVersion) {
-        this.protocolVersion = protocolVersion;
+        this.protocolVersion = (short) protocolVersion;
         this.releaseName = name().substring(2).replace("_", ".");
     }
 
     MinecraftVersion(int protocolVersion, boolean isNotRelease) {
-        this.protocolVersion = protocolVersion;
+        this.protocolVersion = (short) protocolVersion;
         this.releaseName = isNotRelease ? name() : name().substring(2).replace("_", ".");
     }
 
-    public static List<MinecraftVersion> get(int protocolVersion) {
-        return BY_PROTOCOL.getOrDefault(protocolVersion, Collections.emptyList());
+    public static List<MinecraftVersion> get(short protocolVersion) {
+        return BY_PROTOCOL.getOrDefault(protocolVersion, EMPTY);
     }
 
     public static MinecraftVersion get(String name) {

@@ -120,7 +120,7 @@ public class LoadBalancerServer extends Server {
             long correlationId = generateCorrelation();
             clientRequestContexts.put(correlationId, pq.ctx());
             System.out.println();
-            logger.info("Inoltro pacchetto (" + packet.getId() + ") pending #" + Long.toHexString(correlationId) + " al backend " + backend.getPort());
+            logger.info("Inoltro pacchetto (" + packet.id() + ") pending #" + Long.toHexString(correlationId) + " al backend " + backend.getPort());
             backend.forwardPacket(packet, correlationId);
         }
     }

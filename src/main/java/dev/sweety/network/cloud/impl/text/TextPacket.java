@@ -9,12 +9,12 @@ public class TextPacket extends Packet {
     private String text;
 
     public TextPacket(String text) {
-        this.buffer.writeString(text);
+        this.buffer().writeString(text);
     }
 
-    public TextPacket(byte id, long timestamp, byte[] data) {
-        super(id, timestamp, data);
-        this.text = this.buffer.readString();
+    public TextPacket(short _id, long _timestamp, byte[] _data) {
+        super(_id, _timestamp, _data);
+        this.text = this.buffer().readString();
     }
 }
 

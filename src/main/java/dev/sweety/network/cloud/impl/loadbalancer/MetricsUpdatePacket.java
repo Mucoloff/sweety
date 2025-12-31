@@ -6,17 +6,17 @@ import lombok.Getter;
 @Getter
 public class MetricsUpdatePacket extends Packet {
 
-    private double cpuLoad;
-    private double ramUsage;
+    private float cpuLoad;
+    private float ramUsage;
 
-    public MetricsUpdatePacket(double cpuLoad, double ramUsage) {
-        this.buffer.writeDouble(cpuLoad);
-        this.buffer.writeDouble(ramUsage);
+    public MetricsUpdatePacket(float cpuLoad, float ramUsage) {
+        this.buffer().writeFloat(cpuLoad);
+        this.buffer().writeFloat(ramUsage);
     }
 
-    public MetricsUpdatePacket(byte id, long timestamp, byte[] data) {
-        super(id, timestamp, data);
-        this.cpuLoad = this.buffer.readDouble();
-        this.ramUsage = this.buffer.readDouble();
+    public MetricsUpdatePacket(short _id, long _timestamp, byte[] _data) {
+        super(_id, _timestamp, _data);
+        this.cpuLoad = this.buffer().readFloat();
+        this.ramUsage = this.buffer().readFloat();
     }
 }

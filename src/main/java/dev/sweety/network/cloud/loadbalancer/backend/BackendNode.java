@@ -1,5 +1,6 @@
 package dev.sweety.network.cloud.loadbalancer.backend;
 
+import dev.sweety.core.event.info.State;
 import dev.sweety.core.logger.EcstacyLogger;
 import dev.sweety.network.cloud.impl.loadbalancer.ForwardPacket;
 import dev.sweety.network.cloud.impl.loadbalancer.MetricsUpdatePacket;
@@ -41,21 +42,21 @@ public class BackendNode extends Client {
 
     // EMA (exponential moving average) in nanosecondi per latenza
     // usiamo volatile + sincronizzazione per aggiornamento numerico semplice
-    private volatile double emaLatencyNs = 0.0;
-    private static final double EMA_ALPHA = 0.15; // smoothing factor
+    private volatile float emaLatencyNs = 0.0f;
+    private static final float EMA_ALPHA = 0.15f; // smoothing factor
 
     // -----------------------------------------------------------------
 
     // Pesi per il calcolo del carico combinato
-    private static final double W_NET = 0.4; // Peso del carico di rete
-    private static final double W_CPU = 0.1; // Peso del carico CPU
-    private static final double W_RAM = 0.5; // Peso del carico RAM
+    private static final float W_NET = 0.4f; // Peso del carico di rete
+    private static final float W_CPU = 0.1f; // Peso del carico CPU
+    private static final float W_RAM = 0.5f; // Peso del carico RAM
 
     // Valori per la normalizzazione
     private static final long MAX_NETWORK_LOAD = 1 * 1024 * 1024; // 1 MB
 
-    private volatile double cpuLoad = 0.0;
-    private volatile double ramUsage = 0.0;
+    private volatile float cpuLoad = 0.0f;
+    private volatile float ramUsage = 0.0f;
 
     public BackendNode(String host, int port, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
@@ -90,7 +91,7 @@ public class BackendNode extends Client {
         Packet original;
         try {
             original = getPacketRegistry().constructPacket(wrapped.getOriginalId(), wrapped.getOriginalTimestamp(), wrapped.getOriginalData());
-            original.getBuffer().resetReaderIndex();
+            original.buffer().resetReaderIndex();
         } catch (Exception e) {
             return;
         }
@@ -108,13 +109,13 @@ public class BackendNode extends Client {
             return;
         }
 
-        int packetSize = packet.getBuffer().readableBytes();
+        int packetSize = packet.buffer().readableBytes();
         pendingRequestLoads.put(correlationId, packetSize);
         networkLoad.addAndGet(packetSize);
         // registra il timestamp di invio (nanoTime per misure di latenza)
         pendingRequestTimestamps.put(correlationId, System.nanoTime());
 
-        packet.getBuffer().resetReaderIndex();
+        packet.buffer().resetReaderIndex();
 
         ForwardPacket forward = new ForwardPacket(correlationId, packet);
 
@@ -147,13 +148,13 @@ public class BackendNode extends Client {
     }
 
     /**
-     * Aggiorna la EMA della latenza (in nanosecondi). Sincronizzato perché scriviamo su double volatile.
+     * Aggiorna la EMA della latenza (in nanosecondi). Sincronizzato perché scriviamo su float volatile.
      */
     private synchronized void updateEmaLatency(long elapsedNs) {
         if (emaLatencyNs == 0.0) {
-            emaLatencyNs = (double) elapsedNs;
+            emaLatencyNs = (float) elapsedNs;
         } else {
-            emaLatencyNs = EMA_ALPHA * (double) elapsedNs + (1.0 - EMA_ALPHA) * emaLatencyNs;
+            emaLatencyNs = EMA_ALPHA * (float) elapsedNs + (1.0f - EMA_ALPHA) * emaLatencyNs;
         }
     }
 
@@ -167,11 +168,11 @@ public class BackendNode extends Client {
     /**
      * Calcola un punteggio di carico combinato basato su rete, CPU e RAM.
      *
-     * @return Un valore double che rappresenta il carico totale. Più alto è, più il nodo è occupato.
+     * @return Un valore float che rappresenta il carico totale. Più alto è, più il nodo è occupato.
      */
-    public double getCombinedLoad() {
+    public float getCombinedLoad() {
         // Normalizza il carico di rete in un range [0, 1]
-        double normalizedNetwork = Math.min(1.0, (double) networkLoad.get() / MAX_NETWORK_LOAD);
+        float normalizedNetwork = (float) Math.min(1.0, (float) networkLoad.get() / MAX_NETWORK_LOAD);
 
         /*
         logger.info("Carichi - Rete: " + String.format("%.2f", normalizedNetwork) +
@@ -198,8 +199,8 @@ public class BackendNode extends Client {
     @Override
     public void quit(ChannelHandlerContext ctx, ChannelPromise promise) {
         logger.warn("Backend disconnesso: " + host + ":" + port);
-        this.cpuLoad = 0.0;
-        this.ramUsage = 0.0;
+        this.cpuLoad = 0.0f;
+        this.ramUsage = 0.0f;
         this.networkLoad.set(0);
         this.pendingRequestLoads.clear();
         this.pendingRequestTimestamps.clear();
@@ -209,13 +210,13 @@ public class BackendNode extends Client {
      * Restituisce la latenza media osservata in millisecondi.
      * Utilizza la media aritmetica (total/cnt) se disponibile, altrimenti la EMA.
      */
-    public double getAverageLatency() {
+    public float getAverageLatency() {
         long completed = completedRequests.get();
         if (completed > 0) {
-            double avgNs = (double) totalLatencyNs.get() / (double) completed;
-            return avgNs / 1_000_000.0; // ms
+            float avgNs = (float) totalLatencyNs.get() / (float) completed;
+            return (avgNs / 1_000_000.0f); // ms
         }
         // fallback sulla EMA se non abbiamo completate sufficienti misure
-        return emaLatencyNs > 0.0 ? emaLatencyNs / 1_000_000.0 : 0.0;
+        return (emaLatencyNs > 0.0f ? emaLatencyNs / 1_000_000.0f : 0.0f);
     }
 }

@@ -31,7 +31,7 @@ public class DummyBackend extends BackendServer {
 
     @Override
     public Packet[] handlePackets(ChannelHandlerContext ctx, Packet packet) {
-        logger.info(String.format("Pacchetto ricevuto! ID: %d, Timestamp: %d", packet.getId(), packet.getTimestamp()));
+        logger.info(String.format("Pacchetto ricevuto! ID: %d, Timestamp: %d", packet.id(), packet.timestamp()));
         logger.info(packet);
 
         if (packet instanceof TextPacket text) {

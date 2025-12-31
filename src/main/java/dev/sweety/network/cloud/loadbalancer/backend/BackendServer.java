@@ -27,11 +27,11 @@ public abstract class BackendServer extends Server {
     }
 
     private void sendMetrics() {
-        double cpuLoad = getCpuLoad();
-        double ramUsage = getRamUsage();
+        float cpuLoad = getCpuLoad();
+        float ramUsage = getRamUsage();
 
         MetricsUpdatePacket metricsPacket = new MetricsUpdatePacket(cpuLoad, ramUsage);
-        sendAll(metricsPacket);
+        broadcastPacket(metricsPacket);
     }
 
     /**
@@ -51,7 +51,7 @@ public abstract class BackendServer extends Server {
         if (!ctx.channel().isActive()) return;
 
         if (!(packet instanceof ForwardPacket forward)) return;
-        forward.getBuffer().resetReaderIndex();
+        forward.buffer().resetReaderIndex();
 
         // 1. Leggi il correlationId, che è sempre all'inizio.
         long correlationId = forward.getCorrelationId();
@@ -75,12 +75,12 @@ public abstract class BackendServer extends Server {
 
             }
 
-            send(ctx, responses);
+            sendPacket(ctx, responses);
         }
 
     }
 
-    private double getCpuLoad() {
+    private float getCpuLoad() {
         long now = System.nanoTime();
         long currentCpuTime = osBean.getProcessCpuTime();
 
@@ -90,19 +90,19 @@ public abstract class BackendServer extends Server {
         lastMeasuredTime = now;
         lastCpuTime = currentCpuTime;
 
-        if (timeDelta <= 0) return 0.0;
+        if (timeDelta <= 0) return 0.0f;
 
         // Calcola il load totale (CPU process time / tempo reale * numero core)
-        double cpuUsage = (double) cpuDelta / timeDelta;
+        float cpuUsage = (float) cpuDelta / timeDelta;
 
         // Normalizza in base ai core
         cpuUsage /= osBean.getAvailableProcessors();
 
-        return Math.max(0.0, Math.min(1.0, cpuUsage));
+        return (float) Math.max(0.0, Math.min(1.0, cpuUsage));
     }
 
 
-    private double getRamUsage() {
+    private float getRamUsage() {
         long totalPhysical = osBean.getTotalMemorySize();
 
         // Heap (Java)
@@ -117,7 +117,7 @@ public abstract class BackendServer extends Server {
 
 
         long processUsed = heapUsed + metaspaceUsed;
-        return (double) processUsed / totalPhysical;
+        return (float) processUsed / totalPhysical;
     }
 
 
