@@ -1,29 +1,51 @@
-package test.testzipnet;
+package dev.sweety.testzipnet;
 
+import dev.sweety.core.event.Event;
+import dev.sweety.core.event.EventSystem;
 import dev.sweety.core.event.info.State;
+import dev.sweety.core.event.interfaces.LinkEvent;
+import dev.sweety.core.event.interfaces.Listener;
 import dev.sweety.core.logger.EcstacyLogger;
-import dev.sweety.network.cloud.impl.file.FilePacket;
-import dev.sweety.network.cloud.impl.text.TextPacket;
+import dev.sweety.event.processor.GenerateEvent;
 import dev.sweety.network.cloud.messaging.Client;
 import dev.sweety.network.cloud.packet.TransactionManager;
+import dev.sweety.network.cloud.packet.buffer.PacketBuffer;
 import dev.sweety.network.cloud.packet.model.Packet;
 import dev.sweety.network.cloud.packet.model.PacketTransaction;
 import dev.sweety.network.cloud.packet.registry.IPacketRegistry;
 import dev.sweety.network.cloud.packet.registry.OptimizedPacketRegistry;
+import dev.sweety.packet.file.FilePacket;
+import dev.sweety.packet.text.TextPacket;
+import dev.sweety.packet.text.event.TextPacketEvent;
+import dev.sweety.testzipnet.ping.PingTransaction;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
-import test.testzipnet.ping.PingTransaction;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 public class TestClient extends Client {
 
     EcstacyLogger logger = new EcstacyLogger("Client").fallback();
 
-    TransactionManager transactionManager = new TransactionManager();
+    private final TransactionManager transactionManager = new TransactionManager();
+    private final EventSystem eventSystem = new EventSystem();
+    private final Map<Class<?>, Function<Packet, Event>> packetEventMap = new ConcurrentHashMap<>();
+
 
     public TestClient(String host, int port, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
+
+        eventSystem.subscribe(new Object() {
+
+            @LinkEvent
+            Listener<TextPacketEvent> onText = event -> logger.info("Evento TextPacketEvent ricevuto con testo: " + event.getText());
+
+        });
+
     }
 
     @Override
@@ -37,11 +59,24 @@ public class TestClient extends Client {
                 logger.info("passed: " + b);
             }
         }
+
+        Function<Packet, Event> fun = packetEventMap.get(packet.getClass());
+        if (fun == null) return;
+        Event e = fun.apply(packet);
+        eventSystem.dispatch(e);
     }
 
     @Override
     public void onPacketSend(ChannelHandlerContext ctx, Packet packet, State state) {
         logger.info("sending: " + packet.getClass().getSimpleName() + " - " + state);
+
+        if (state != State.PRE) return;
+
+        if (packet instanceof TextPacket t) {
+            PacketBuffer b = t.buffer();
+            b.writeString("[messaggio editato]" + b.readString());
+        }
+
     }
 
     @Override
@@ -72,6 +107,25 @@ public class TestClient extends Client {
         IPacketRegistry packetRegistry = new OptimizedPacketRegistry(TextPacket.class, FilePacket.class, PingTransaction.class);
 
         TestClient client = new TestClient("localhost", 8080, packetRegistry);
+
+        for (Class<? extends Packet> packetClass : packetRegistry.packets()) {
+            if (!packetClass.isAnnotationPresent(GenerateEvent.class)) continue;
+            //noinspection unchecked
+            Class<? extends Event> eventClass = (Class<? extends Event>) Class.forName(packetClass.getPackageName() + "." + "event" + "." + packetClass.getSimpleName() + "Event");
+            System.out.println("Registered event class: " + eventClass.getSimpleName());
+
+            Function<Packet, Event> construct = p -> {
+                try {
+                    return eventClass.getConstructor(packetClass).newInstance(p);
+                } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
+                         NoSuchMethodException e) {
+                    throw new RuntimeException(e);
+                }
+            };
+
+            client.packetEventMap.put(packetClass, construct);
+        }
+
         client.start();
 
         Runtime.getRuntime().addShutdownHook(new Thread(client::stop));

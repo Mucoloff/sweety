@@ -1,16 +1,16 @@
-package test.testzipnet;
+package dev.sweety.testzipnet;
 
 import dev.sweety.core.event.info.State;
 import dev.sweety.core.logger.EcstacyLogger;
-import dev.sweety.network.cloud.impl.file.FilePacket;
-import dev.sweety.network.cloud.impl.text.TextPacket;
 import dev.sweety.network.cloud.messaging.Server;
 import dev.sweety.network.cloud.packet.model.Packet;
 import dev.sweety.network.cloud.packet.registry.IPacketRegistry;
 import dev.sweety.network.cloud.packet.registry.OptimizedPacketRegistry;
+import dev.sweety.packet.file.FilePacket;
+import dev.sweety.packet.text.TextPacket;
+import dev.sweety.testzipnet.ping.PingTransaction;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
-import test.testzipnet.ping.PingTransaction;
 
 public class TestServer extends Server {
 
@@ -25,11 +25,12 @@ public class TestServer extends Server {
 
         if (packet instanceof TextPacket text) {
             logger.info("messaggio: " + text.getText());
+            sendPacket(ctx, new TextPacket("Ricevuto il tuo messaggio: " + text.getText()));
         } else if (packet instanceof PingTransaction transaction) {
             if (transaction.hasRequest()) {
                 long requestId = transaction.getRequestId();
                 logger.info("Ricevuto ping con ID: " + requestId);
-                ctx.channel().writeAndFlush(new PingTransaction(requestId, new PingTransaction.Pong()));
+                sendPacket(ctx, new PingTransaction(requestId, new PingTransaction.Pong()));
             }
         }
 

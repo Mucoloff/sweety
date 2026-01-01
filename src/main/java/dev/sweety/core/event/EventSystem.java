@@ -24,11 +24,11 @@ public class EventSystem {
     private static final Comparator<EventCallback> priorityFilter =
             Comparator.comparingInt(EventCallback::priority);
 
-    private static final BiConsumer<IEvent, Boolean> CHANGED = (IEvent, state) -> {
+    private static final BiConsumer<IEvent, Boolean> CHANGED = (event, state) -> {
         try {
             Field changed = Event.class.getDeclaredField("changed");
-            if (!changed.isAccessible()) changed.setAccessible(true);
-            changed.setBoolean(IEvent, state);
+            if (!changed.canAccess(event)) changed.setAccessible(true);
+            changed.setBoolean(event, state);
         } catch (IllegalAccessException | NoSuchFieldException e) {
             e.printStackTrace();
         }
@@ -48,7 +48,7 @@ public class EventSystem {
                 continue;
             }
 
-            if (!field.isAccessible()) field.setAccessible(true);
+            if (!field.canAccess(container)) field.setAccessible(true);
 
             final Listener<IEvent> listener;
             try {

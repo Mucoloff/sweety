@@ -1,6 +1,6 @@
-package dev.sweety;
+package dev.sweety.loadbalancer.test;
 
-import test.loadbalancer.Main;
+import dev.sweety.loadbalancer.Main;
 
 public class RunBackend2 {
     public static void main(String[] args) throws Throwable {

@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
 import java.lang.reflect.InvocationTargetException;
 import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class OptimizedPacketRegistry implements IPacketRegistry {
 
@@ -65,5 +66,10 @@ public class OptimizedPacketRegistry implements IPacketRegistry {
     @Override
     public boolean containsPacketId(short id) {
         return idToPacket.containsKey(id);
+    }
+
+    @Override
+    public Set<Class<? extends Packet>> packets() {
+        return classToId.keySet();
     }
 }

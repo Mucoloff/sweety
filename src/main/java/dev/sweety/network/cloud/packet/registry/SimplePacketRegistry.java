@@ -6,7 +6,9 @@ import dev.sweety.network.cloud.packet.model.Packet;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class SimplePacketRegistry implements IPacketRegistry {
 
@@ -59,4 +61,8 @@ public class SimplePacketRegistry implements IPacketRegistry {
         return packets.containsKey(id);
     }
 
+    @Override
+    public Set<Class<? extends Packet>> packets() {
+        return packets.values().stream().map(RegisteredPacket::getPacketClass).collect(Collectors.toSet());
+    }
 }

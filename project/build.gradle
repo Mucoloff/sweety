@@ -1,5 +1,7 @@
 
 dependencies {
     implementation project(":")
+    implementation project(":event-processor")
+    annotationProcessor project(":event-processor")
 }
 

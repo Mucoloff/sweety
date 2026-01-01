@@ -4,11 +4,9 @@ import dev.sweety.core.crypt.ChecksumUtils;
 import dev.sweety.core.logger.EcstacyLogger;
 import dev.sweety.core.math.RandomUtils;
 import dev.sweety.core.math.vector.queue.LinkedQueue;
-import dev.sweety.network.cloud.impl.text.TextPacket;
 import dev.sweety.network.cloud.loadbalancer.backend.BackendNode;
 import dev.sweety.network.cloud.loadbalancer.backend.pool.BackendPool;
 import dev.sweety.network.cloud.loadbalancer.backend.pool.IBackendPool;
-import dev.sweety.network.cloud.impl.loadbalancer.PacketQueue;
 import dev.sweety.network.cloud.messaging.Server;
 import dev.sweety.network.cloud.packet.model.Packet;
 import dev.sweety.network.cloud.packet.registry.IPacketRegistry;
@@ -53,9 +51,7 @@ public class LoadBalancerServer extends Server {
         BackendNode backend = backendPool.nextBackend(packet, ctx);
 
         logger.info("received packet", packet);
-        if (packet instanceof TextPacket text){
-            logger.info("content: " + text.getText());
-        }
+        //if (packet instanceof TextPacket text) logger.info("content: " + text.getText());
 
         if (backend == null) {
             pendingPackets.enqueue(new PacketQueue(packet, ctx));

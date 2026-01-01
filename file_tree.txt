@@ -12,32 +12,33 @@
   │   ├── 📁 event/
   │   │   ├── 📄 Event.java
   │   │   ├── 📄 EventSystem.java
-  │   │   ├── 📁 interfaces/
-  │   │   │   ├── 📄 LinkEvent.java
-  │   │   │   ├── 📄 Listener.java
-  │   │   │   └── 📄 Operation.java
-  │   │   ├── 📁 priority/
-  │   │   │   └── 📄 Priority.java
-  │   │   └── 📄 State.java
+  │   │   ├── 📄 IEvent.java
+  │   │   ├── 📁 info/
+  │   │   │   ├── 📄 Priority.java
+  │   │   │   └── 📄 State.java
+  │   │   └── 📁 interfaces/
+  │   │       ├── 📄 LinkEvent.java
+  │   │       ├── 📄 Listener.java
+  │   │       └── 📄 Operation.java
   │   ├── 📁 exception/
   │   │   ├── 📄 AuthFailureException.java
+  │   │   ├── 📄 Except.java
   │   │   ├── 📄 ExceptionUtils.java
   │   │   └── 📄 NoStackTraceThrowable.java
   │   ├── 📁 logger/
   │   │   ├── 📄 EcstacyLogger.java
   │   │   └── 📄 LogHelper.java
   │   ├── 📁 math/
-  │   │   ├── 📁 algo/
-  │   │   │   ├── 📄 EloUtils.java
-  │   │   │   └── 📄 LinkedStackUtils.java
-  │   │   ├── 📄 CycleArray.java
   │   │   ├── 📄 Mask.java
   │   │   ├── 📄 MathUtils.java
   │   │   ├── 📄 Pair.java
+  │   │   ├── 📄 RandomUtils.java
+  │   │   ├── 📁 algo/
+  │   │   │   ├── 📄 EloUtils.java
+  │   │   │   └── 📄 LinkedStackUtils.java
   │   │   ├── 📁 pointer/
   │   │   │   ├── 📄 Ptr.java
   │   │   │   └── 📄 Ref.java
-  │   │   ├── 📄 RandomUtils.java
   │   │   └── 📁 vector/
   │   │       ├── 📄 CoordUtils.java
   │   │       ├── 📁 d2/
@@ -65,8 +66,11 @@
   │   │   ├── 📄 Provider.java
   │   │   ├── 📄 ServiceHelper.java
   │   │   ├── 📄 ServiceKey.java
-  │   │   ├── 📄 ServiceManager.java
-  │   │   └── 📄 ServiceRegistry.java
+  │   │   ├── 📄 ServiceRegistry.java
+  │   │   └── 📁 impl/
+  │   │       ├── 📄 ServiceContext.java
+  │   │       ├── 📄 ServiceManager.java
+  │   │       └── 📄 TypedServiceManager.java
   │   ├── 📁 system/
   │   │   ├── 📄 OperatingSystem.java
   │   │   └── 📄 SystemUtils.java
@@ -81,6 +85,7 @@
   │       ├── 📄 FastScalableCountingBloomFilter.java
   │       ├── 📄 ObjectUtils.java
   │       ├── 📄 ResourceUtils.java
+  │       ├── 📄 TriFunction.java
   │       └── 📄 UUIDUtils.java
   ├── 📁 integration/
   │   ├── 📁 auth/
@@ -88,6 +93,7 @@
   │   │   ├── 📄 AltStorage.java
   │   │   └── 📄 MicrosoftLogin.java
   │   └── 📁 spotify/
+  │       ├── 📄 SpotifyManager.java
   │       ├── 📁 api/
   │       │   └── 📄 SpotifyWebInterface.java
   │       ├── 📁 auth/
@@ -98,21 +104,20 @@
   │       ├── 📁 model/
   │       │   ├── 📄 Album.java
   │       │   ├── 📄 Artist.java
+  │       │   ├── 📄 Image.java
+  │       │   ├── 📄 Queue.java
   │       │   ├── 📁 device/
   │       │   │   ├── 📄 Device.java
   │       │   │   └── 📄 Devices.java
-  │       │   ├── 📄 Image.java
   │       │   ├── 📁 playback/
   │       │   │   ├── 📄 ExternalUrls.java
   │       │   │   ├── 📄 Playback.java
   │       │   │   └── 📄 PlaybackContext.java
-  │       │   ├── 📄 Queue.java
   │       │   └── 📁 track/
   │       │       ├── 📄 Track.java
   │       │       └── 📄 TrackItem.java
-  │       ├── 📁 registry/
-  │       │   └── 📄 EndpointRegistry.java
-  │       └── 📄 SpotifyManager.java
+  │       └── 📁 registry/
+  │           └── 📄 EndpointRegistry.java
   ├── 📁 module/
   │   ├── 📁 extension/
   │   │   ├── 📄 Extension.java
@@ -131,30 +136,28 @@
   │       ├── 📄 RuntimeDependencyLoader.java
   │       └── 📄 SingleClassLoader.java
   ├── 📁 network/
+  │   ├── 📄 HttpUtils.java
   │   ├── 📁 cloud/
   │   │   ├── 📁 impl/
-  │   │   │   ├── 📁 file/
-  │   │   │   │   └── 📄 FilePacket.java
-  │   │   │   ├── 📁 loadbalancer/
-  │   │   │   │   ├── 📄 ForwardPacket.java
-  │   │   │   │   ├── 📄 MetricsUpdatePacket.java
-  │   │   │   │   ├── 📄 PacketQueue.java
-  │   │   │   │   └── 📄 WrappedPacket.java
-  │   │   │   └── 📁 text/
-  │   │   │       └── 📄 TextPacket.java
+  │   │   │   └── 📁 loadbalancer/
+  │   │   │       ├── 📄 ForwardPacket.java
+  │   │   │       ├── 📄 MetricsUpdatePacket.java
+  │   │   │       └── 📄 WrappedPacket.java
   │   │   ├── 📁 loadbalancer/
-  │   │   │   ├── 📁 backend/
-  │   │   │   │   ├── 📄 BackendNode.java
-  │   │   │   │   ├── 📄 BackendServer.java
-  │   │   │   │   └── 📁 pool/
-  │   │   │   │       ├── 📄 BackendPool.java
-  │   │   │   │       ├── 📁 balancer/
-  │   │   │   │       │   ├── 📄 Balancers.java
-  │   │   │   │       │   └── 📄 BalancerSystem.java
-  │   │   │   │       └── 📄 IBackendPool.java
-  │   │   │   └── 📄 LoadBalancerServer.java
+  │   │   │   ├── 📄 LoadBalancerServer.java
+  │   │   │   ├── 📄 PacketQueue.java
+  │   │   │   └── 📁 backend/
+  │   │   │       ├── 📄 BackendNode.java
+  │   │   │       ├── 📄 BackendServer.java
+  │   │   │       └── 📁 pool/
+  │   │   │           ├── 📄 BackendPool.java
+  │   │   │           ├── 📄 IBackendPool.java
+  │   │   │           └── 📁 balancer/
+  │   │   │               ├── 📄 BalancerSystem.java
+  │   │   │               └── 📄 Balancers.java
   │   │   ├── 📁 messaging/
   │   │   │   ├── 📄 Client.java
+  │   │   │   ├── 📄 Server.java
   │   │   │   ├── 📁 exception/
   │   │   │   │   ├── 📄 ClientException.java
   │   │   │   │   ├── 📄 ClientInvalid.java
@@ -163,26 +166,28 @@
   │   │   │   │   └── 📄 PacketRegistrationException.java
   │   │   │   ├── 📁 listener/
   │   │   │   │   ├── 📁 decoder/
-  │   │   │   │   │   └── 📄 NettyDecoder.java
+  │   │   │   │   │   ├── 📄 NettyDecoder.java
+  │   │   │   │   │   └── 📄 PacketDecoder.java
   │   │   │   │   ├── 📁 encoder/
-  │   │   │   │   │   └── 📄 NettyEncoder.java
+  │   │   │   │   │   ├── 📄 NettyEncoder.java
+  │   │   │   │   │   └── 📄 PacketEncoder.java
   │   │   │   │   └── 📁 watcher/
   │   │   │   │       └── 📄 NettyWatcher.java
-  │   │   │   ├── 📁 model/
-  │   │   │   │   └── 📄 Messenger.java
-  │   │   │   └── 📄 Server.java
+  │   │   │   └── 📁 model/
+  │   │   │       └── 📄 Messenger.java
   │   │   ├── 📁 packet/
+  │   │   │   ├── 📄 TransactionManager.java
   │   │   │   ├── 📁 buffer/
   │   │   │   │   ├── 📄 FileBuffer.java
-  │   │   │   │   ├── 📁 io/
-  │   │   │   │   │   ├── 📄 CallableDecoder.java
-  │   │   │   │   │   ├── 📄 CallableEncoder.java
-  │   │   │   │   │   ├── 📄 Decoder.java
-  │   │   │   │   │   └── 📄 Encoder.java
-  │   │   │   │   └── 📄 PacketBuffer.java
+  │   │   │   │   ├── 📄 PacketBuffer.java
+  │   │   │   │   └── 📁 io/
+  │   │   │   │       ├── 📄 CallableDecoder.java
+  │   │   │   │       ├── 📄 CallableEncoder.java
+  │   │   │   │       ├── 📄 Decoder.java
+  │   │   │   │       └── 📄 Encoder.java
   │   │   │   ├── 📁 model/
-  │   │   │   │   ├── 📄 Bound.java
-  │   │   │   │   └── 📄 Packet.java
+  │   │   │   │   ├── 📄 Packet.java
+  │   │   │   │   └── 📄 PacketTransaction.java
   │   │   │   └── 📁 registry/
   │   │   │       ├── 📄 IPacketRegistry.java
   │   │   │       ├── 📄 OptimizedPacketRegistry.java
@@ -190,8 +195,9 @@
   │   │   │       └── 📄 SimplePacketRegistry.java
   │   │   └── 📁 util/
   │   │       └── 📄 CompressionProbe.java
-  │   ├── 📄 HttpUtils.java
   │   └── 📁 ping/
+  │       ├── 📄 MinecraftPing.java
+  │       ├── 📄 PingUtils.java
   │       ├── 📁 exception/
   │       │   ├── 📄 EndOfStreamException.java
   │       │   ├── 📄 InvalidPacketDataException.java
@@ -201,13 +207,14 @@
   │       │   ├── 📄 PacketOutputStream.java
   │       │   ├── 📄 PacketReader.java
   │       │   └── 📄 PacketWriter.java
-  │       ├── 📄 MinecraftPing.java
-  │       ├── 📁 packet/
-  │       │   ├── 📄 C2SPacket.java
-  │       │   └── 📄 S2CPacket.java
-  │       └── 📄 PingUtils.java
+  │       └── 📁 packet/
+  │           ├── 📄 C2SPacket.java
+  │           └── 📄 S2CPacket.java
   ├── 📁 persistence/
   │   ├── 📁 config/
+  │   │   ├── 📄 ConfigManager.java
+  │   │   ├── 📄 FileContainer.java
+  │   │   ├── 📄 GsonUtils.java
   │   │   ├── 📁 adapters/
   │   │   │   ├── 📄 ColorAdapter.java
   │   │   │   ├── 📄 EColorAdapter.java
@@ -215,13 +222,10 @@
   │   │   │   └── 📄 GsonAdapters.java
   │   │   ├── 📁 compression/
   │   │   │   └── 📄 GzipCompressor.java
-  │   │   ├── 📄 ConfigManager.java
-  │   │   ├── 📄 FileContainer.java
-  │   │   ├── 📁 format/
-  │   │   │   ├── 📄 ConfigFormat.java
-  │   │   │   ├── 📄 Format.java
-  │   │   │   └── 📄 JsonFormat.java
-  │   │   └── 📄 GsonUtils.java
+  │   │   └── 📁 format/
+  │   │       ├── 📄 ConfigFormat.java
+  │   │       ├── 📄 Format.java
+  │   │       └── 📄 JsonFormat.java
   │   └── 📁 sql/
   │       ├── 📄 ConnectionType.java
   │       ├── 📄 Database.java
@@ -230,3 +234,29 @@
   └── 📁 version/
       ├── 📄 MinecraftVersion.java
       └── 📄 VersionComparison.java
+  └── 📁 event/
+      └── 📁 processor/
+          ├── 📄 EventProcessor.java
+          └── 📄 GenerateEvent.java
+  ├── 📁 loadbalancer/
+  │   ├── 📄 ACBalancer.java
+  │   ├── 📄 DummyBackend.java
+  │   ├── 📄 DummyClient.java
+  │   ├── 📄 Main.java
+  │   ├── 📄 PlayerPacket.java
+  │   └── 📁 test/
+  │       ├── 📄 RunBackend1.java
+  │       ├── 📄 RunBackend2.java
+  │       ├── 📄 RunBackend3.java
+  │       ├── 📄 RunClient.java
+  │       └── 📄 RunLb.java
+  ├── 📁 packet/
+  │   ├── 📁 file/
+  │   │   └── 📄 FilePacket.java
+  │   └── 📁 text/
+  │       └── 📄 TextPacket.java
+  └── 📁 testzipnet/
+      ├── 📄 TestClient.java
+      ├── 📄 TestServer.java
+      └── 📁 ping/
+          └── 📄 PingTransaction.java

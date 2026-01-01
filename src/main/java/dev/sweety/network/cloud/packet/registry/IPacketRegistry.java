@@ -5,6 +5,7 @@ import dev.sweety.network.cloud.packet.model.Packet;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
+import java.util.Set;
 
 public interface IPacketRegistry {
 
@@ -28,5 +29,7 @@ public interface IPacketRegistry {
     default void registerPackets(Class<? extends Packet>... packets) throws PacketRegistrationException {
         for (short id = 0; id < packets.length; id++) registerPacket(id, packets[id]);
     }
+
+    Set<Class<? extends Packet>> packets();
 
 }

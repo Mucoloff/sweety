@@ -1,5 +1,6 @@
-package dev.sweety.network.cloud.impl.file;
+package dev.sweety.packet.file;
 
+import dev.sweety.event.processor.GenerateEvent;
 import dev.sweety.network.cloud.packet.buffer.FileBuffer;
 import dev.sweety.network.cloud.packet.model.Packet;
 import lombok.Getter;
@@ -7,9 +8,10 @@ import lombok.SneakyThrows;
 
 import java.io.File;
 
+@GenerateEvent
 public class FilePacket extends Packet {
 
-    private FileBuffer fileBuffer;
+    private FileBuffer _fileBuffer;
 
     @Getter
     private int size;
@@ -23,11 +25,11 @@ public class FilePacket extends Packet {
         super(_id, _timestamp, _data);
 
         this.size = buffer().readableBytes();
-        this.fileBuffer = FileBuffer.read(buffer());
+        this._fileBuffer = FileBuffer.read(buffer());
     }
 
     public File readFile(File dir) {
-        return fileBuffer.read(dir);
+        return _fileBuffer.read(dir);
     }
 
 }

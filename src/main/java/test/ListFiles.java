@@ -19,7 +19,7 @@ public class ListFiles {
 
     private static void printFiles(File file, String indent) {
         File[] children = list(file);
-        Arrays.sort(children, java.util.Comparator.comparing(File::getName, String.CASE_INSENSITIVE_ORDER));
+        Arrays.sort(children, java.util.Comparator.comparing(File::getName));
         for (int i = 0; i < children.length; i++) {
             File f = children[i];
             boolean isLast = i == children.length - 1;
@@ -34,14 +34,16 @@ public class ListFiles {
     }
 
     public static void main(String[] args) throws IOException {
-        File file = new File("/run/media/sweety/shared/dev/projects/java/sweety/src/main/java/dev/sweety/");
-
         File o = new File("file_tree.txt");
-        if (!o.exists()) {o.createNewFile();}
+        if (!o.exists()) {
+            o.createNewFile();
+        }
 
         out = new PrintStream(o);
 
-        printFiles(file, "  ");
+        for (String s : new String[]{"", "/event-processor", "/project"}) {
+            printFiles(new File("/home/sweety/projects/java/sweety" + s + "/src/main/java/dev/sweety/"), "  ");
+        }
 
     }
 

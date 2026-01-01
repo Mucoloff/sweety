@@ -1,12 +1,12 @@
-package test.loadbalancer;
+package dev.sweety.loadbalancer;
 
 import dev.sweety.core.logger.EcstacyLogger;
 import dev.sweety.core.time.TimeUtils;
-import dev.sweety.network.cloud.impl.file.FilePacket;
+import dev.sweety.packet.file.FilePacket;
 import dev.sweety.network.cloud.impl.loadbalancer.ForwardPacket;
 import dev.sweety.network.cloud.impl.loadbalancer.MetricsUpdatePacket;
 import dev.sweety.network.cloud.impl.loadbalancer.WrappedPacket;
-import dev.sweety.network.cloud.impl.text.TextPacket;
+import dev.sweety.packet.text.TextPacket;
 import dev.sweety.network.cloud.loadbalancer.LoadBalancerServer;
 import dev.sweety.network.cloud.loadbalancer.backend.BackendNode;
 import dev.sweety.network.cloud.loadbalancer.backend.pool.BackendPool;

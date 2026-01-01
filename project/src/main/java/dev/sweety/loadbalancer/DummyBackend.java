@@ -1,7 +1,7 @@
-package test.loadbalancer;// File: DummyBackend.java
+package dev.sweety.loadbalancer;// File: DummyBackend.java
 
 import dev.sweety.core.logger.EcstacyLogger;
-import dev.sweety.network.cloud.impl.text.TextPacket;
+import dev.sweety.packet.text.TextPacket;
 import dev.sweety.network.cloud.loadbalancer.backend.BackendServer;
 import dev.sweety.network.cloud.packet.model.Packet;
 import dev.sweety.network.cloud.packet.registry.IPacketRegistry;

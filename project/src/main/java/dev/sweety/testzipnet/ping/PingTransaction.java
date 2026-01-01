@@ -1,4 +1,4 @@
-package test.testzipnet.ping;
+package dev.sweety.testzipnet.ping;
 
 import dev.sweety.network.cloud.packet.model.PacketTransaction;
 

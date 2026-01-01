@@ -1,4 +1,4 @@
-package test.loadbalancer;
+package dev.sweety.loadbalancer;
 
 import dev.sweety.network.cloud.packet.model.Packet;
 import lombok.Getter;

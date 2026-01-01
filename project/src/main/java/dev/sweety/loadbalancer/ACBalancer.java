@@ -1,4 +1,4 @@
-package test.loadbalancer;
+package dev.sweety.loadbalancer;
 
 import dev.sweety.core.logger.EcstacyLogger;
 import dev.sweety.core.math.RandomUtils;

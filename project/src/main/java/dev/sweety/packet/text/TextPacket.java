@@ -1,8 +1,10 @@
-package dev.sweety.network.cloud.impl.text;
+package dev.sweety.packet.text;
 
+import dev.sweety.event.processor.GenerateEvent;
 import dev.sweety.network.cloud.packet.model.Packet;
 import lombok.Getter;
 
+@GenerateEvent
 public class TextPacket extends Packet {
 
     @Getter
@@ -17,4 +19,3 @@ public class TextPacket extends Packet {
         this.text = this.buffer().readString();
     }
 }
-

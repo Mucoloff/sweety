@@ -1,7 +1,7 @@
-package test.loadbalancer;// File: DummyClient.java
+package dev.sweety.loadbalancer;// File: DummyClient.java
 
 import dev.sweety.core.logger.EcstacyLogger;
-import dev.sweety.network.cloud.impl.text.TextPacket;
+import dev.sweety.packet.text.TextPacket;
 import dev.sweety.network.cloud.messaging.Client;
 import dev.sweety.network.cloud.packet.model.Packet;
 import dev.sweety.network.cloud.packet.registry.IPacketRegistry;

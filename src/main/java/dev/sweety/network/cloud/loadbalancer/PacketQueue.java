@@ -1,4 +1,4 @@
-package dev.sweety.network.cloud.impl.loadbalancer;
+package dev.sweety.network.cloud.loadbalancer;
 
 import dev.sweety.network.cloud.packet.model.Packet;
 import io.netty.channel.ChannelHandlerContext;

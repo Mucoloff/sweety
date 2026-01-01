@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 public class Ref<T> {
     public T value;
 
-
     @Override
     public String toString() {
         return String.valueOf(value);

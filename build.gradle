@@ -10,7 +10,6 @@ allprojects {
         plugin('io.freefair.lombok')
     }
 
-
     group = 'dev.sweety'
     version = '1.0'
 
@@ -51,4 +50,11 @@ allprojects {
         useJUnitPlatform()
     }
 
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(24)
+        }
+    }
+
 }
+
