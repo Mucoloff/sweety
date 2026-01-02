@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id 'io.freefair.lombok' version '9.0.0'
+    id 'maven-publish'
 }
 
 allprojects {
@@ -8,6 +9,7 @@ allprojects {
     apply {
         plugin('java')
         plugin('io.freefair.lombok')
+        plugin('maven-publish')
     }
 
     group = 'dev.sweety'
@@ -15,6 +17,7 @@ allprojects {
 
     repositories {
         mavenCentral()
+        mavenLocal()
     }
 
     dependencies {
@@ -56,4 +59,31 @@ allprojects {
         }
     }
 
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                from components.java
+            }
+        }
+    }
+
+}
+
+tasks.register('buildAll') {
+    dependsOn subprojects.collect {
+        it.tasks.named('build')
+    }
+}
+
+tasks.register('publishAll') {
+    dependsOn subprojects.collect {
+        it.tasks.named('publish')
+    }
+}
+
+tasks.register('build-and-publish') {
+    dependsOn subprojects.collect {
+        it.tasks.named('build')
+        it.tasks.named('publish')
+    }
 }
