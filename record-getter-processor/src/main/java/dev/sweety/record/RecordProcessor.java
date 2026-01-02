@@ -1,6 +1,9 @@
 package dev.sweety.record;
 
 import com.google.auto.service.AutoService;
+import dev.sweety.record.annotations.RecordData;
+import dev.sweety.record.annotations.RecordGetter;
+import dev.sweety.record.annotations.RecordSetter;
 
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
@@ -19,7 +22,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@SupportedAnnotationTypes("dev.sweety.record.RecordGetter")
+@SupportedAnnotationTypes(
+        {"dev.sweety.record.annotations.RecordGetter",
+                "dev.sweety.record.annotations.RecordSetter",
+                "dev.sweety.record.annotations.RecordData"}
+)
 @SupportedSourceVersion(SourceVersion.RELEASE_21)
 @AutoService(Processor.class)
 public class RecordProcessor extends AbstractProcessor {
@@ -38,25 +45,25 @@ public class RecordProcessor extends AbstractProcessor {
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        Set<Element> toProcess = new HashSet<>();
-        for (Element element : roundEnv.getElementsAnnotatedWith(RecordGetter.class)) {
+        Set<Element> toProcess = new HashSet<>(), annotatedElements = new HashSet<>();
+
+        annotatedElements.addAll(roundEnv.getElementsAnnotatedWith(RecordData.class));
+        annotatedElements.addAll(roundEnv.getElementsAnnotatedWith(RecordGetter.class));
+        annotatedElements.addAll(roundEnv.getElementsAnnotatedWith(RecordSetter.class));
+
+        for (Element element : annotatedElements) {
             boolean isField = element.getKind().equals(ElementKind.FIELD);
             if (element.getKind() != ElementKind.CLASS && !isField) {
                 messager.printMessage(Diagnostic.Kind.ERROR, "Can't be applied to " + element.getKind(), element);
                 return true;
             }
 
-            if (isField) {
-                toProcess.add(element.getEnclosingElement());
-                continue;
-            }
-
-            toProcess.add(element);
+            toProcess.add(isField ? element.getEnclosingElement() : element);
         }
 
         for (Element element : toProcess) {
             try {
-                generateGetterInterface((TypeElement) element);
+                generateInterface((TypeElement) element);
             } catch (IOException e) {
                 messager.printMessage(Diagnostic.Kind.ERROR, "Couldn't generate event class", element);
             }
@@ -65,17 +72,30 @@ public class RecordProcessor extends AbstractProcessor {
         return true;
     }
 
-    private void generateGetterInterface(TypeElement classElement) throws IOException {
-        RecordGetter classAnnotation = classElement.getAnnotation(RecordGetter.class);
+    private void generateInterface(TypeElement classElement) throws IOException {
+        RecordData dataAnnotation = classElement.getAnnotation(RecordData.class);
+        RecordGetter getterAnnotation = classElement.getAnnotation(RecordGetter.class);
+        RecordSetter settetAnnotation = classElement.getAnnotation(RecordSetter.class);
 
-        final boolean applyAll, includeStatic;
-        if (classAnnotation != null) {
-            applyAll = classAnnotation.applyAll();
-            includeStatic = classAnnotation.includeStatic();
-        } else applyAll = includeStatic = false;
+        final boolean applyAll, includeStatic, getters, setters;
+        if (dataAnnotation != null) {
+            applyAll = dataAnnotation.applyAll();
+            includeStatic = dataAnnotation.includeStatic();
+            getters = setters = true;
+        } else if (getterAnnotation != null) {
+            applyAll = getterAnnotation.applyAll();
+            includeStatic = getterAnnotation.includeStatic();
+            getters = true;
+            setters = false;
+        } else if (settetAnnotation != null) {
+            applyAll = settetAnnotation.applyAll();
+            includeStatic = settetAnnotation.includeStatic();
+            getters = false;
+            setters = true;
+        } else applyAll = includeStatic = getters = setters = false;
 
         String className = classElement.getSimpleName().toString();
-        String interfaceName = className + "Getters";
+        String interfaceName = className + "Accessors";
         String packageName = elementUtils.getPackageOf(classElement).getQualifiedName().toString();
 
         JavaFileObject sourceFile = processingEnv.getFiler().createSourceFile(packageName + "." + interfaceName, classElement);
@@ -83,7 +103,7 @@ public class RecordProcessor extends AbstractProcessor {
         try (PrintWriter writer = new PrintWriter(sourceFile.openWriter())) {
             writer.println("package " + packageName + ";");
             writer.println();
-            writer.println("import dev.sweety.record.GetterUtils;");
+            writer.println("import dev.sweety.record.DataUtils;");
             writer.println("import lombok.SneakyThrows;");
             writer.println();
             writer.println("public interface " + interfaceName + " {");
@@ -99,30 +119,66 @@ public class RecordProcessor extends AbstractProcessor {
                 String fieldType = field.asType().toString();
                 boolean isStatic = field.getModifiers().contains(Modifier.STATIC);
                 boolean isPrivate = field.getModifiers().contains(Modifier.PRIVATE);
+                boolean isFinal = field.getModifiers().contains(Modifier.FINAL);
 
-                boolean hasAnnotation = field.getAnnotation(RecordGetter.class) != null;
+                boolean hasData = field.getAnnotation(RecordData.class) != null;
+                boolean hasGetter = field.getAnnotation(RecordGetter.class) != null;
+                boolean hasSetter = field.getAnnotation(RecordSetter.class) != null;
+
+                boolean hasAnnotation = hasData || hasGetter || hasSetter;
 
                 if (hasAnnotation || (applyAll && (!isStatic || includeStatic))) {
-                    writer.println("    @SneakyThrows");
 
-                    writer.print("    ");
-                    writer.print(isStatic ? "static" : "default");
-                    writer.println(" " + fieldType + " " + fieldName + "() {");
-
-                    if (isPrivate) {
-                        writer.print("        return (" + fieldType + ") GetterUtils.get(" + className + ".class, \"" + fieldName);
-                        writer.println(isStatic ? "\");" : "\", this);");
-                    } else {
-                        writer.println("        return " + (isStatic ? className : "((" + className + ") this)") + "." + fieldName + ";");
+                    if (getters || hasData || hasGetter)
+                        getter(isPrivate, writer, isStatic, fieldType, fieldName, className);
+                    if (setters || hasData || hasSetter) {
+                        if (!isFinal) setter(isPrivate, writer, isStatic, fieldType, fieldName, className);
+                        else if (hasSetter)
+                            messager.printError("Cannot generate setter for final field: " + fieldName, field);
                     }
-
-                    writer.println("    }");
-                    writer.println();
                 }
             }
 
             writer.println("}");
         }
+    }
+
+    private void getter(boolean isPrivate, PrintWriter writer, boolean isStatic, String fieldType, String fieldName, String className) {
+        if (isPrivate) writer.println("    @SneakyThrows");
+
+        writer.print("    ");
+        writer.print(isStatic ? "static" : "default");
+        writer.println(" " + fieldType + " " + fieldName + "() {");
+
+        if (isPrivate) {
+            writer.print("        return (" + fieldType + ") DataUtils.get(" + className + ".class, \"" + fieldName);
+            writer.println(isStatic ? "\");" : "\", this);");
+        } else {
+            writer.println("        return " + (isStatic ? className : "((" + className + ") this)") + "." + fieldName + ";");
+        }
+
+        writer.println("    }");
+        writer.println();
+    }
+
+    private void setter(boolean isPrivate, PrintWriter writer, boolean isStatic, String fieldType, String fieldName, String className) {
+
+        if (isPrivate) writer.println("    @SneakyThrows");
+
+        writer.print("    ");
+        writer.print(isStatic ? "static" : "default");
+        writer.println(" void " + fieldName + "(final " + fieldType + " " + fieldName + ") {");
+
+        if (isPrivate) {
+            writer.print("        DataUtils.set(" + className + ".class, \"" + fieldName + "\", ");
+            writer.print(isStatic ? fieldName : "this, " + fieldName);
+            writer.println(");");
+        } else {
+            writer.println("        " + (isStatic ? className : "((" + className + ") this)") + "." + fieldName + " = " + fieldName + ";");
+        }
+
+        writer.println("    }");
+        writer.println();
     }
 }
 

@@ -1,18 +1,19 @@
 package dev.sweety.project.getters;
 
-import dev.sweety.record.RecordGetter;
+import dev.sweety.record.annotations.RecordData;
+import dev.sweety.record.annotations.RecordGetter;
 
-public class Example2Class implements Example2ClassGetters {
+public class Example2Class implements Example2ClassAccessors{
 
-    @RecordGetter
+    @RecordData
     private int id;
 
-    @RecordGetter
+    @RecordData
     String name;
     private byte[] data;
 
     @RecordGetter
-    private static final String example = "example";
+    private static String example = "example";
 
     public static void main(String[] args) {
         Example2Class c = new Example2Class();

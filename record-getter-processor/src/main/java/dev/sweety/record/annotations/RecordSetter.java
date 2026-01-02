@@ -1,0 +1,17 @@
+package dev.sweety.record.annotations;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Target({ElementType.FIELD, ElementType.TYPE})
+@Retention(RetentionPolicy.SOURCE)
+public @interface RecordSetter {
+
+    boolean applyAll() default true;
+
+    boolean includeStatic() default false;
+
+}
+

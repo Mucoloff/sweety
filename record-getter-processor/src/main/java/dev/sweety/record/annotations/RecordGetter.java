@@ -1,4 +1,4 @@
-package dev.sweety.record;
+package dev.sweety.record.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
