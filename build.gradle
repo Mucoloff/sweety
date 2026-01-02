@@ -13,7 +13,7 @@ allprojects {
     }
 
     group = 'dev.sweety'
-    version = '1.0'
+    version = '1.0.0'
 
     repositories {
         mavenCentral()
@@ -86,4 +86,12 @@ tasks.register('build-and-publish') {
         it.tasks.named('build')
         it.tasks.named('publish')
     }
+}
+
+subprojects {
+
+    group = 'dev.sweety.' + project.name
+
+    println(group)
+
 }

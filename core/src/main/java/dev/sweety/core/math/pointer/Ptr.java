@@ -1,5 +1,7 @@
 package dev.sweety.core.math.pointer;
 
+import java.util.Arrays;
+
 public class Ptr<T> {
     private final T[] array;
     private int index = 0;
@@ -47,6 +49,8 @@ public class Ptr<T> {
 
     @Override
     public String toString() {
-        return "&v[" + index + "] = " + array[index];
+        String arr = Arrays.toString(array);
+        String curr = get().toString();
+        return "%s -> %s".formatted(arr, curr);
     }
 }

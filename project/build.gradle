@@ -3,6 +3,10 @@ dependencies {
     implementation project(":event")
     implementation project(":netty")
     implementation project(":module")
+
     implementation project(":event-processor")
     annotationProcessor project(":event-processor")
+
+    implementation project(":record-getter-processor")
+    annotationProcessor project(":record-getter-processor")
 }

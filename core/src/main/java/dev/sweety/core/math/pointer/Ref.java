@@ -10,6 +10,6 @@ public class Ref<T> {
 
     @Override
     public String toString() {
-        return String.valueOf(value);
+        return value.toString();
     }
 }

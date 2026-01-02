@@ -47,10 +47,12 @@ public class ResourceUtils {
         return ZipUtils.unzip(Files.readAllBytes(zipFile), targetDir.toFile());
     }
 
+    @SneakyThrows
     public byte[] zipBytes(byte[] data, String entryName) {
         return ZipUtils.zipByteArray(data, entryName);
     }
 
+    @SneakyThrows
     public byte[] unzipBytes(byte[] zipData) {
         return ZipUtils.unzipFirstFileFromZip(zipData);
     }

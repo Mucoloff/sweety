@@ -4,7 +4,7 @@ package dev.sweety.test;
 import dev.sweety.core.file.ZipUtils;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Utility standalone per misurare quando la compressione ZIP migliora o peggiora la dimensione.
@@ -79,7 +79,7 @@ public final class CompressionProbe {
 
     private static byte[] generateRandom(int size) {
         byte[] b = new byte[size];
-        new Random().nextBytes(b);
+        ThreadLocalRandom.current().nextBytes(b);
         return b;
     }
 

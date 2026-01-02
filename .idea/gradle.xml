@@ -15,6 +15,7 @@
             <option value="$PROJECT_DIR$/module" />
             <option value="$PROJECT_DIR$/netty" />
             <option value="$PROJECT_DIR$/project" />
+            <option value="$PROJECT_DIR$/record-getter-processor" />
             <option value="$PROJECT_DIR$/spotify" />
           </set>
         </option>

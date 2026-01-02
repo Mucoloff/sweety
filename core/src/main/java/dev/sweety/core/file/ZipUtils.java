@@ -1,7 +1,7 @@
 package dev.sweety.core.file;
 
-import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.nio.file.FileVisitResult;
@@ -44,9 +44,9 @@ public class ZipUtils {
 
             Files.walkFileTree(basePath, new SimpleFileVisitor<>() {
                 @Override
-                public FileVisitResult preVisitDirectory(Path d, BasicFileAttributes attrs) throws IOException {
+                public @NotNull FileVisitResult preVisitDirectory(@NotNull Path d, @NotNull BasicFileAttributes attrs) throws IOException {
                     String entryName = basePath.relativize(d).toString().replace(File.separatorChar, '/') + "/";
-                    if (!entryName.isEmpty() && !entryName.equals("/")) {
+                    if (!entryName.equals("/")) {
                         zos.putNextEntry(new ZipEntry(entryName));
                         zos.closeEntry();
                     }
@@ -54,7 +54,7 @@ public class ZipUtils {
                 }
 
                 @Override
-                public FileVisitResult visitFile(Path f, BasicFileAttributes attrs) throws IOException {
+                public @NotNull FileVisitResult visitFile(@NotNull Path f, @NotNull BasicFileAttributes attrs) throws IOException {
                     String entryName = basePath.relativize(f).toString().replace(File.separatorChar, '/');
                     zos.putNextEntry(new ZipEntry(entryName));
                     try (InputStream is = Files.newInputStream(f)) {
@@ -69,8 +69,8 @@ public class ZipUtils {
         return baos.toByteArray();
     }
 
-    @SneakyThrows
-    public byte[] zipByteArray(byte[] data, String entryName) {
+
+    public byte[] zipByteArray(byte[] data, String entryName)throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(baos))) {
             zos.setLevel(Deflater.BEST_COMPRESSION);
@@ -83,8 +83,7 @@ public class ZipUtils {
         return baos.toByteArray();
     }
 
-    @SneakyThrows
-    public byte[] unzipFirstFileFromZip(byte[] zipData) {
+    public byte[] unzipFirstFileFromZip(byte[] zipData) throws IOException{
         try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipData))) {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
@@ -102,8 +101,7 @@ public class ZipUtils {
         throw new IOException("ZIP contains no file entries");
     }
 
-    @SneakyThrows
-    public File unzip(byte[] bytes, File outputDir) {
+    public File unzip(byte[] bytes, File outputDir) throws IOException{
         if (!outputDir.exists() && !outputDir.mkdirs())
             throw new IOException("Cannot create output dir: " + outputDir);
 
@@ -115,7 +113,7 @@ public class ZipUtils {
                 String entryName = entry.getName();
 
                 // Skip entry vuote o root '/'
-                if (entryName == null || entryName.isBlank() || entryName.equals("/") || entryName.equals("\\")) {
+                if (entryName.isBlank() || entryName.equals("/") || entryName.equals("\\")) {
                     zis.closeEntry();
                     continue;
                 }
