@@ -116,7 +116,6 @@ public class RecordProcessor extends AbstractProcessor {
                         writer.println("        return " + (isStatic ? className : "((" + className + ") this)") + "." + fieldName + ";");
                     }
 
-
                     writer.println("    }");
                     writer.println();
                 }

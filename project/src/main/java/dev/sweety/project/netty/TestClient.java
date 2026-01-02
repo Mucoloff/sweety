@@ -1,5 +1,11 @@
 package dev.sweety.project.netty;
 
+import dev.sweety.core.logger.SimpleLogger;
+import dev.sweety.event.Event;
+import dev.sweety.event.EventSystem;
+import dev.sweety.event.interfaces.LinkEvent;
+import dev.sweety.event.interfaces.Listener;
+import dev.sweety.event.processor.GenerateEvent;
 import dev.sweety.netty.messaging.Client;
 import dev.sweety.netty.packet.TransactionManager;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
@@ -7,15 +13,9 @@ import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.model.PacketTransaction;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import dev.sweety.netty.packet.registry.OptimizedPacketRegistry;
-import dev.sweety.core.logger.SimpleLogger;
-import dev.sweety.event.Event;
-import dev.sweety.event.EventSystem;
-import dev.sweety.event.interfaces.LinkEvent;
-import dev.sweety.event.interfaces.Listener;
-import dev.sweety.event.processor.GenerateEvent;
 import dev.sweety.project.netty.packet.file.FilePacket;
 import dev.sweety.project.netty.packet.text.TextPacket;
-import dev.sweety.packet.text.event.TextPacketEvent;
+import dev.sweety.project.netty.packet.text.event.TextPacketEvent;
 import dev.sweety.project.netty.ping.PingTransaction;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;

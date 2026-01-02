@@ -59,10 +59,14 @@ allprojects {
         }
     }
 
-    publishing {
-        publications {
-            mavenJava(MavenPublication) {
-                from components.java
+    afterEvaluate {
+        if (plugins.hasPlugin('java')) {
+            publishing {
+                publications {
+                    mavenJava(MavenPublication) {
+                        from components.java
+                    }
+                }
             }
         }
     }
@@ -77,14 +81,14 @@ tasks.register('buildAll') {
 
 tasks.register('publishAll') {
     dependsOn subprojects.collect {
-        it.tasks.named('publish')
+        it.tasks.named('publishToMavenLocal')
     }
 }
 
 tasks.register('build-and-publish') {
     dependsOn subprojects.collect {
         it.tasks.named('build')
-        it.tasks.named('publish')
+        it.tasks.named('publishToMavenLocal')
     }
 }
 
