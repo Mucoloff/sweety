@@ -2,6 +2,7 @@ dependencies {
     implementation project(":core")
     implementation project(":event")
     implementation project(":netty")
+    implementation project(":loadbalancer")
     implementation project(":module")
 
     implementation project(":event-processor")

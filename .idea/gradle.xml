@@ -13,6 +13,7 @@
             <option value="$PROJECT_DIR$/event" />
             <option value="$PROJECT_DIR$/event-processor" />
             <option value="$PROJECT_DIR$/loadbalancer" />
+            <option value="$PROJECT_DIR$/minecraft" />
             <option value="$PROJECT_DIR$/module" />
             <option value="$PROJECT_DIR$/netty" />
             <option value="$PROJECT_DIR$/project" />
