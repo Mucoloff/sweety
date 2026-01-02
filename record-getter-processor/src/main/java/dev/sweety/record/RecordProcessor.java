@@ -144,41 +144,25 @@ public class RecordProcessor extends AbstractProcessor {
     }
 
     private void getter(boolean isPrivate, PrintWriter writer, boolean isStatic, String fieldType, String fieldName, String className) {
-        if (isPrivate) writer.println("    @SneakyThrows");
+        Formats format;
+        if (isPrivate)
+            if (isStatic) format = Formats.PRIVATE_STATIC_GETTER;
+            else format = Formats.PRIVATE_GETTER;
+        else if (isStatic) format = Formats.STATIC_GETTER;
+        else format = Formats.GETTER;
 
-        writer.print("    ");
-        writer.print(isStatic ? "static" : "default");
-        writer.println(" " + fieldType + " " + fieldName + "() {");
-
-        if (isPrivate) {
-            writer.print("        return (" + fieldType + ") DataUtils.get(" + className + ".class, \"" + fieldName);
-            writer.println(isStatic ? "\");" : "\", this);");
-        } else {
-            writer.println("        return " + (isStatic ? className : "((" + className + ") this)") + "." + fieldName + ";");
-        }
-
-        writer.println("    }");
-        writer.println();
+        writer.println("    " + format.apply(fieldType, fieldName, className));
     }
 
     private void setter(boolean isPrivate, PrintWriter writer, boolean isStatic, String fieldType, String fieldName, String className) {
+        Formats format;
+        if (isPrivate)
+            if (isStatic) format = Formats.PRIVATE_STATIC_SETTER;
+            else format = Formats.PRIVATE_SETTER;
+        else if (isStatic) format = Formats.STATIC_SETTER;
+        else format = Formats.SETTER;
 
-        if (isPrivate) writer.println("    @SneakyThrows");
-
-        writer.print("    ");
-        writer.print(isStatic ? "static" : "default");
-        writer.println(" void " + fieldName + "(final " + fieldType + " " + fieldName + ") {");
-
-        if (isPrivate) {
-            writer.print("        DataUtils.set(" + className + ".class, \"" + fieldName + "\", ");
-            writer.print(isStatic ? fieldName : "this, " + fieldName);
-            writer.println(");");
-        } else {
-            writer.println("        " + (isStatic ? className : "((" + className + ") this)") + "." + fieldName + " = " + fieldName + ";");
-        }
-
-        writer.println("    }");
-        writer.println();
+        writer.println("    " + format.apply(fieldType, fieldName, className));
     }
 }
 
