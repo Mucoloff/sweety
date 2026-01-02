@@ -1,9 +1,9 @@
 package dev.sweety.testzipnet;
 
-import dev.sweety.cloud.messaging.Server;
-import dev.sweety.cloud.packet.model.Packet;
-import dev.sweety.cloud.packet.registry.IPacketRegistry;
-import dev.sweety.cloud.packet.registry.OptimizedPacketRegistry;
+import dev.sweety.netty.messaging.Server;
+import dev.sweety.netty.packet.model.Packet;
+import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.OptimizedPacketRegistry;
 import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.packet.file.FilePacket;
 import dev.sweety.packet.text.TextPacket;

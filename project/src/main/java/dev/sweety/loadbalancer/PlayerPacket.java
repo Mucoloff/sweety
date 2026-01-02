@@ -1,6 +1,6 @@
 package dev.sweety.loadbalancer;
 
-import dev.sweety.cloud.packet.model.Packet;
+import dev.sweety.netty.packet.model.Packet;
 import lombok.Getter;
 
 import java.util.UUID;

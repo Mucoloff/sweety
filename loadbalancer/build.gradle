@@ -1,0 +1,6 @@
+group = 'dev.sweety.netty.loadbalancer'
+
+dependencies {
+    implementation project(':core')
+    implementation project(':netty')
+}

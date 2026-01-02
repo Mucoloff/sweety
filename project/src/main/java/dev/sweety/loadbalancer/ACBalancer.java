@@ -2,10 +2,10 @@ package dev.sweety.loadbalancer;
 
 import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.core.math.RandomUtils;
-import dev.sweety.cloud.loadbalancer.backend.BackendNode;
-import dev.sweety.cloud.loadbalancer.backend.pool.balancer.BalancerSystem;
-import dev.sweety.cloud.loadbalancer.backend.pool.balancer.Balancers;
-import dev.sweety.cloud.packet.model.Packet;
+import dev.sweety.netty.loadbalancer.backend.BackendNode;
+import dev.sweety.netty.loadbalancer.backend.pool.balancer.BalancerSystem;
+import dev.sweety.netty.loadbalancer.backend.pool.balancer.Balancers;
+import dev.sweety.netty.packet.model.Packet;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.List;

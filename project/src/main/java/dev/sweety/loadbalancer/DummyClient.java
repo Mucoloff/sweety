@@ -2,9 +2,9 @@ package dev.sweety.loadbalancer;// File: DummyClient.java
 
 import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.packet.text.TextPacket;
-import dev.sweety.cloud.messaging.Client;
-import dev.sweety.cloud.packet.model.Packet;
-import dev.sweety.cloud.packet.registry.IPacketRegistry;
+import dev.sweety.netty.messaging.Client;
+import dev.sweety.netty.packet.model.Packet;
+import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 

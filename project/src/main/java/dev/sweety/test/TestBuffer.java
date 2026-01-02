@@ -1,6 +1,6 @@
 package dev.sweety.test;
 
-import dev.sweety.cloud.packet.buffer.PacketBuffer;
+import dev.sweety.netty.packet.buffer.PacketBuffer;
 
 public class TestBuffer {
 

@@ -1,12 +1,12 @@
 package dev.sweety.testzipnet;
 
-import dev.sweety.cloud.messaging.Client;
-import dev.sweety.cloud.packet.TransactionManager;
-import dev.sweety.cloud.packet.buffer.PacketBuffer;
-import dev.sweety.cloud.packet.model.Packet;
-import dev.sweety.cloud.packet.model.PacketTransaction;
-import dev.sweety.cloud.packet.registry.IPacketRegistry;
-import dev.sweety.cloud.packet.registry.OptimizedPacketRegistry;
+import dev.sweety.netty.messaging.Client;
+import dev.sweety.netty.packet.TransactionManager;
+import dev.sweety.netty.packet.buffer.PacketBuffer;
+import dev.sweety.netty.packet.model.Packet;
+import dev.sweety.netty.packet.model.PacketTransaction;
+import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.OptimizedPacketRegistry;
 import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.event.Event;
 import dev.sweety.event.EventSystem;

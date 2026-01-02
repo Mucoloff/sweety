@@ -1,6 +1,6 @@
 package dev.sweety.testzipnet.ping;
 
-import dev.sweety.cloud.packet.model.PacketTransaction;
+import dev.sweety.netty.packet.model.PacketTransaction;
 
 public class PingTransaction extends PacketTransaction<PingTransaction.Ping, PingTransaction.Pong> {
 
