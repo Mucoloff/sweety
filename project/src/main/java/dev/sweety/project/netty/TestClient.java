@@ -5,6 +5,7 @@ import dev.sweety.event.Event;
 import dev.sweety.event.EventSystem;
 import dev.sweety.event.interfaces.LinkEvent;
 import dev.sweety.event.interfaces.Listener;
+import dev.sweety.event.processor.EventMapping;
 import dev.sweety.event.processor.GenerateEvent;
 import dev.sweety.netty.messaging.Client;
 import dev.sweety.netty.packet.TransactionManager;
@@ -20,11 +21,7 @@ import dev.sweety.project.netty.ping.PingTransaction;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
-import java.lang.reflect.InvocationTargetException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
 
 public class TestClient extends Client {
 
@@ -32,8 +29,7 @@ public class TestClient extends Client {
 
     private final TransactionManager transactionManager = new TransactionManager();
     private final EventSystem eventSystem = new EventSystem();
-    private final Map<Class<?>, Function<Packet, Event>> packetEventMap = new ConcurrentHashMap<>();
-
+    private final EventMapping eventMapping = new EventMapping(eventSystem);
 
     public TestClient(String host, int port, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
@@ -59,10 +55,7 @@ public class TestClient extends Client {
             }
         }
 
-        Function<Packet, Event> fun = packetEventMap.get(packet.getClass());
-        if (fun == null) return;
-        Event e = fun.apply(packet);
-        eventSystem.dispatch(e);
+        eventMapping.dispatch(packet);
     }
 
     @Override
@@ -113,16 +106,7 @@ public class TestClient extends Client {
             Class<? extends Event> eventClass = (Class<? extends Event>) Class.forName(packetClass.getPackageName() + "." + "event" + "." + packetClass.getSimpleName() + "Event");
             System.out.println("Registered event class: " + eventClass.getSimpleName());
 
-            Function<Packet, Event> construct = p -> {
-                try {
-                    return eventClass.getConstructor(packetClass).newInstance(p);
-                } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
-                         NoSuchMethodException e) {
-                    throw new RuntimeException(e);
-                }
-            };
-
-            client.packetEventMap.put(packetClass, construct);
+            client.eventMapping.registerEventMapping(eventClass, packetClass);
         }
 
         client.start();
