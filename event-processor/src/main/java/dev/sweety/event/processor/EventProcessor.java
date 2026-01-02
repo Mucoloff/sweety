@@ -96,7 +96,7 @@ public class EventProcessor extends AbstractProcessor {
                 fields.add(FieldSpec.builder(TypeName.get(fieldType), fieldName, Modifier.PRIVATE, Modifier.FINAL).addAnnotation(Getter.class).build());
                 constructorBuilder.addStatement("this.$N = p.$N()", fieldName, getterName);
             } else {
-                messager.printMessage(Diagnostic.Kind.NOTE, "Skipping field without getter: " + fieldName, variableElement);
+                //messager.printMessage(Diagnostic.Kind.NOTE, "Skipping field without getter: " + fieldName, variableElement);
             }
         }
 

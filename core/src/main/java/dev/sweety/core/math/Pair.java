@@ -16,6 +16,7 @@ import java.util.Iterator;
 public class Pair<T> implements Collection<T> {
 
     private T first, second;
+    private int size = 0;
 
     public T get(int index) {
         return switch (index) {
@@ -27,9 +28,6 @@ public class Pair<T> implements Collection<T> {
 
     @Override
     public int size() {
-        int size = 0;
-        if (first != null) size++;
-        if (second != null) size++;
         return size;
     }
 
@@ -96,9 +94,11 @@ public class Pair<T> implements Collection<T> {
     public boolean remove(Object o) {
         if (first.equals(o)) {
             first = null;
+            size--;
             return true;
         } else if (second.equals(o)) {
             second = null;
+            size--;
             return true;
         }
         return false;
@@ -135,10 +135,12 @@ public class Pair<T> implements Collection<T> {
         boolean modified = false;
         if (!c.contains(first)) {
             first = null;
+            size--;
             modified = true;
         }
         if (!c.contains(second)) {
             second = null;
+            size--;
             modified = true;
         }
         return modified;
@@ -148,8 +150,8 @@ public class Pair<T> implements Collection<T> {
     public void clear() {
         this.first = null;
         this.second = null;
+        size = 0;
     }
-
 
     public int indexOf(T t) {
         if (first.equals(t)) return 0;
@@ -158,12 +160,10 @@ public class Pair<T> implements Collection<T> {
     }
 
     public void set(int index, T t) {
-        if (index == 0) {
-            first = t;
-        } else if (index == 1) {
-            second = t;
-        } else {
-            throw new IndexOutOfBoundsException("Index: " + index + ", Size: 2");
-        }
+        if (index == 0) first = t;
+        else if (index == 1) second = t;
+        else throw new IndexOutOfBoundsException("Index: " + index + ", Size: 2");
+        if (t == null) size--;
+        else size++;
     }
 }
