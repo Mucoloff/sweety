@@ -1,8 +1,8 @@
 package dev.sweety.packet.file;
 
 import dev.sweety.event.processor.GenerateEvent;
-import dev.sweety.network.cloud.packet.buffer.FileBuffer;
-import dev.sweety.network.cloud.packet.model.Packet;
+import dev.sweety.cloud.packet.buffer.FileBuffer;
+import dev.sweety.cloud.packet.model.Packet;
 import lombok.Getter;
 import lombok.SneakyThrows;
 

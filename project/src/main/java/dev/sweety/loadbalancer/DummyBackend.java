@@ -1,10 +1,10 @@
 package dev.sweety.loadbalancer;// File: DummyBackend.java
 
-import dev.sweety.core.logger.EcstacyLogger;
+import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.packet.text.TextPacket;
-import dev.sweety.network.cloud.loadbalancer.backend.BackendServer;
-import dev.sweety.network.cloud.packet.model.Packet;
-import dev.sweety.network.cloud.packet.registry.IPacketRegistry;
+import dev.sweety.cloud.loadbalancer.backend.BackendServer;
+import dev.sweety.cloud.packet.model.Packet;
+import dev.sweety.cloud.packet.registry.IPacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
@@ -16,11 +16,11 @@ import java.util.UUID;
  */
 public class DummyBackend extends BackendServer {
 
-    final EcstacyLogger logger;
+    final SimpleLogger logger;
 
     public DummyBackend(String host, int port, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
-        this.logger = new EcstacyLogger("ServerBackend - " + port).fallback();
+        this.logger = new SimpleLogger("ServerBackend - " + port).fallback();
     }
 
     @Override

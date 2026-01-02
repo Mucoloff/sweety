@@ -1,10 +1,10 @@
 package dev.sweety.loadbalancer;// File: DummyClient.java
 
-import dev.sweety.core.logger.EcstacyLogger;
+import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.packet.text.TextPacket;
-import dev.sweety.network.cloud.messaging.Client;
-import dev.sweety.network.cloud.packet.model.Packet;
-import dev.sweety.network.cloud.packet.registry.IPacketRegistry;
+import dev.sweety.cloud.messaging.Client;
+import dev.sweety.cloud.packet.model.Packet;
+import dev.sweety.cloud.packet.registry.IPacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
@@ -13,7 +13,7 @@ import io.netty.channel.ChannelPromise;
  */
 public class DummyClient extends Client {
 
-    EcstacyLogger logger = new EcstacyLogger("Client").fallback();
+    SimpleLogger logger = new SimpleLogger("Client").fallback();
 
     public DummyClient(String host, int port, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);

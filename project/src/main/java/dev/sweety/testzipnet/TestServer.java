@@ -1,11 +1,10 @@
 package dev.sweety.testzipnet;
 
-import dev.sweety.core.event.info.State;
-import dev.sweety.core.logger.EcstacyLogger;
-import dev.sweety.network.cloud.messaging.Server;
-import dev.sweety.network.cloud.packet.model.Packet;
-import dev.sweety.network.cloud.packet.registry.IPacketRegistry;
-import dev.sweety.network.cloud.packet.registry.OptimizedPacketRegistry;
+import dev.sweety.cloud.messaging.Server;
+import dev.sweety.cloud.packet.model.Packet;
+import dev.sweety.cloud.packet.registry.IPacketRegistry;
+import dev.sweety.cloud.packet.registry.OptimizedPacketRegistry;
+import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.packet.file.FilePacket;
 import dev.sweety.packet.text.TextPacket;
 import dev.sweety.testzipnet.ping.PingTransaction;
@@ -14,7 +13,7 @@ import io.netty.channel.ChannelPromise;
 
 public class TestServer extends Server {
 
-    EcstacyLogger logger = new EcstacyLogger("Server").fallback();
+    SimpleLogger logger = new SimpleLogger("Server").fallback();
 
     public TestServer(String host, int port, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
@@ -37,7 +36,7 @@ public class TestServer extends Server {
     }
 
     @Override
-    public void onPacketSend(ChannelHandlerContext ctx, Packet packet, State state) {
+    public void onPacketSend(ChannelHandlerContext ctx, Packet packet, boolean pre) {
 
     }
 

@@ -1,7 +1,7 @@
 package dev.sweety.packet.text;
 
 import dev.sweety.event.processor.GenerateEvent;
-import dev.sweety.network.cloud.packet.model.Packet;
+import dev.sweety.cloud.packet.model.Packet;
 import lombok.Getter;
 
 @GenerateEvent

@@ -1,19 +1,18 @@
 package dev.sweety.testzipnet;
 
-import dev.sweety.core.event.Event;
-import dev.sweety.core.event.EventSystem;
-import dev.sweety.core.event.info.State;
-import dev.sweety.core.event.interfaces.LinkEvent;
-import dev.sweety.core.event.interfaces.Listener;
-import dev.sweety.core.logger.EcstacyLogger;
+import dev.sweety.cloud.messaging.Client;
+import dev.sweety.cloud.packet.TransactionManager;
+import dev.sweety.cloud.packet.buffer.PacketBuffer;
+import dev.sweety.cloud.packet.model.Packet;
+import dev.sweety.cloud.packet.model.PacketTransaction;
+import dev.sweety.cloud.packet.registry.IPacketRegistry;
+import dev.sweety.cloud.packet.registry.OptimizedPacketRegistry;
+import dev.sweety.core.logger.SimpleLogger;
+import dev.sweety.event.Event;
+import dev.sweety.event.EventSystem;
+import dev.sweety.event.interfaces.LinkEvent;
+import dev.sweety.event.interfaces.Listener;
 import dev.sweety.event.processor.GenerateEvent;
-import dev.sweety.network.cloud.messaging.Client;
-import dev.sweety.network.cloud.packet.TransactionManager;
-import dev.sweety.network.cloud.packet.buffer.PacketBuffer;
-import dev.sweety.network.cloud.packet.model.Packet;
-import dev.sweety.network.cloud.packet.model.PacketTransaction;
-import dev.sweety.network.cloud.packet.registry.IPacketRegistry;
-import dev.sweety.network.cloud.packet.registry.OptimizedPacketRegistry;
 import dev.sweety.packet.file.FilePacket;
 import dev.sweety.packet.text.TextPacket;
 import dev.sweety.packet.text.event.TextPacketEvent;
@@ -29,7 +28,7 @@ import java.util.function.Function;
 
 public class TestClient extends Client {
 
-    EcstacyLogger logger = new EcstacyLogger("Client").fallback();
+    SimpleLogger logger = new SimpleLogger("Client").fallback();
 
     private final TransactionManager transactionManager = new TransactionManager();
     private final EventSystem eventSystem = new EventSystem();
@@ -67,10 +66,10 @@ public class TestClient extends Client {
     }
 
     @Override
-    public void onPacketSend(ChannelHandlerContext ctx, Packet packet, State state) {
-        logger.info("sending: " + packet.getClass().getSimpleName() + " - " + state);
+    public void onPacketSend(ChannelHandlerContext ctx, Packet packet, boolean pre) {
+        logger.info("sending: " + packet.getClass().getSimpleName() + " - " + (pre ? "pre" : "post"));
 
-        if (state != State.PRE) return;
+        if (!pre) return;
 
         if (packet instanceof TextPacket t) {
             PacketBuffer b = t.buffer();

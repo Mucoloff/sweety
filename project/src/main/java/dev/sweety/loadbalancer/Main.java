@@ -1,18 +1,18 @@
 package dev.sweety.loadbalancer;
 
-import dev.sweety.core.logger.EcstacyLogger;
+import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.core.time.TimeUtils;
 import dev.sweety.packet.file.FilePacket;
-import dev.sweety.network.cloud.impl.loadbalancer.ForwardPacket;
-import dev.sweety.network.cloud.impl.loadbalancer.MetricsUpdatePacket;
-import dev.sweety.network.cloud.impl.loadbalancer.WrappedPacket;
+import dev.sweety.cloud.loadbalancer.packets.ForwardPacket;
+import dev.sweety.cloud.loadbalancer.packets.MetricsUpdatePacket;
+import dev.sweety.cloud.loadbalancer.packets.WrappedPacket;
 import dev.sweety.packet.text.TextPacket;
-import dev.sweety.network.cloud.loadbalancer.LoadBalancerServer;
-import dev.sweety.network.cloud.loadbalancer.backend.BackendNode;
-import dev.sweety.network.cloud.loadbalancer.backend.pool.BackendPool;
-import dev.sweety.network.cloud.loadbalancer.backend.pool.balancer.Balancers;
-import dev.sweety.network.cloud.packet.registry.IPacketRegistry;
-import dev.sweety.network.cloud.packet.registry.OptimizedPacketRegistry;
+import dev.sweety.cloud.loadbalancer.LoadBalancerServer;
+import dev.sweety.cloud.loadbalancer.backend.BackendNode;
+import dev.sweety.cloud.loadbalancer.backend.pool.BackendPool;
+import dev.sweety.cloud.loadbalancer.backend.pool.balancer.Balancers;
+import dev.sweety.cloud.packet.registry.IPacketRegistry;
+import dev.sweety.cloud.packet.registry.OptimizedPacketRegistry;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -80,7 +80,7 @@ public class Main {
                 String backendList = args[3];
                 List<BackendNode> backends = parseBackendList(backendList);
                 LoadBalancerServer loadBalancer = new LoadBalancerServer(lbPort, lbHost,
-                        new BackendPool(new EcstacyLogger("pool").fallback(), backends, new ACBalancer(balancerSystem)), packetRegistry);
+                        new BackendPool(new SimpleLogger("pool").fallback(), backends, new ACBalancer(balancerSystem)), packetRegistry);
                 loadBalancer.start();
 
 
@@ -130,7 +130,7 @@ public class Main {
         // 2. Configura e avvia il Load Balancer
         List<BackendNode> backends = Arrays.stream(BACKENDS).mapToObj(port -> new BackendNode(HOST, port, packetRegistry)).toList();
 
-        LoadBalancerServer loadBalancer = new LoadBalancerServer(LB_PORT, HOST, new BackendPool(new EcstacyLogger("pool").fallback(), backends, new ACBalancer(balancerSystem)), packetRegistry);
+        LoadBalancerServer loadBalancer = new LoadBalancerServer(LB_PORT, HOST, new BackendPool(new SimpleLogger("pool").fallback(), backends, new ACBalancer(balancerSystem)), packetRegistry);
         new Thread(loadBalancer::start).start();
         System.out.println("Load Balancer in avvio sulla porta " + LB_PORT);
 

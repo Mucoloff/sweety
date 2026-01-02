@@ -2,7 +2,7 @@ package dev.sweety.event.processor;
 
 import com.google.auto.service.AutoService;
 import com.squareup.javapoet.*;
-import dev.sweety.core.event.Event;
+import dev.sweety.event.Event;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Set;
 
 @SupportedAnnotationTypes("dev.sweety.event.processor.GenerateEvent")
-@SupportedSourceVersion(SourceVersion.RELEASE_8)
+@SupportedSourceVersion(SourceVersion.RELEASE_21)
 @AutoService(Processor.class)
 public class EventProcessor extends AbstractProcessor {
 

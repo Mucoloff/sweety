@@ -1,7 +1,8 @@
-
 dependencies {
-    implementation project(":")
+    implementation project(":core")
+    implementation project(":event")
+    implementation project(":netty")
+    implementation project(":module")
     implementation project(":event-processor")
     annotationProcessor project(":event-processor")
 }
-

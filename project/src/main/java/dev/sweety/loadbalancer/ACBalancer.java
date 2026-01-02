@@ -1,11 +1,11 @@
 package dev.sweety.loadbalancer;
 
-import dev.sweety.core.logger.EcstacyLogger;
+import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.core.math.RandomUtils;
-import dev.sweety.network.cloud.loadbalancer.backend.BackendNode;
-import dev.sweety.network.cloud.loadbalancer.backend.pool.balancer.BalancerSystem;
-import dev.sweety.network.cloud.loadbalancer.backend.pool.balancer.Balancers;
-import dev.sweety.network.cloud.packet.model.Packet;
+import dev.sweety.cloud.loadbalancer.backend.BackendNode;
+import dev.sweety.cloud.loadbalancer.backend.pool.balancer.BalancerSystem;
+import dev.sweety.cloud.loadbalancer.backend.pool.balancer.Balancers;
+import dev.sweety.cloud.packet.model.Packet;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.List;
@@ -25,7 +25,7 @@ public class ACBalancer implements BalancerSystem {
     }
 
     @Override
-    public BackendNode nextBackend(List<BackendNode> pool, EcstacyLogger logger, Packet packet, ChannelHandlerContext ctx) {
+    public BackendNode nextBackend(List<BackendNode> pool, SimpleLogger logger, Packet packet, ChannelHandlerContext ctx) {
 
         if (!(packet instanceof PlayerPacket playerPacket)) return baseSystem.nextBackend(pool, logger, packet, ctx);
 

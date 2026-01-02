@@ -1,3 +1,9 @@
 rootProject.name = 'sweety'
 include 'project'
 include 'event-processor'
+
+include 'core'
+include 'event'
+include 'spotify'
+include 'netty'
+include 'module'
