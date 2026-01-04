@@ -88,9 +88,18 @@ public class PacketProcessor extends AbstractProcessor {
 
             writeConstructorBuilder.addParameter(returnTypeName, fieldName);
 
+            FieldBuffer fieldBuffer = method.getAnnotation(FieldBuffer.class);
+
+            if (fieldBuffer != null) {
+                TypeName encoderType = getEncoderTypeName(fieldBuffer);
+                TypeName decoderType = getDecoderTypeName(fieldBuffer);
+                writeConstructorBuilder.addStatement("this.buffer().writeObject($N, $T.encoder($T.class))", fieldName, TypeName.get(BufferUtils.class), encoderType);
+                readConstructorBuilder.addStatement("this.$N = this.buffer().readObject($T.decoder($T.class))", fieldName, TypeName.get(BufferUtils.class), decoderType);
+                continue;
+            }
+
             generateBuffer(fieldName, returnType, writeConstructorBuilder, readConstructorBuilder, method);
         }
-
 
         TypeSpec.Builder eventClassBuilder = TypeSpec.classBuilder(packetName)
                 .addModifiers(Modifier.PUBLIC)
@@ -167,8 +176,6 @@ public class PacketProcessor extends AbstractProcessor {
                 }
             }
 
-            //todo enum
-
             case ARRAY -> {
                 ArrayType arrayType = (ArrayType) returnType;
                 TypeMirror componentType = arrayType.getComponentType();
@@ -235,5 +242,22 @@ public class PacketProcessor extends AbstractProcessor {
             messager.printMessage(Diagnostic.Kind.ERROR, "Unsupported types in " + method.getSimpleName() + ":\n" + sb, method);
         }
     }
-}
 
+    private TypeName getEncoderTypeName(FieldBuffer fieldBuffer) {
+        try {
+            return TypeName.get(fieldBuffer.encoder());
+        } catch (javax.lang.model.type.MirroredTypeException e) {
+            TypeMirror tm = e.getTypeMirror();
+            return TypeName.get(tm);
+        }
+    }
+
+    private TypeName getDecoderTypeName(FieldBuffer fieldBuffer) {
+        try {
+            return TypeName.get(fieldBuffer.decoder());
+        } catch (javax.lang.model.type.MirroredTypeException e) {
+            TypeMirror tm = e.getTypeMirror();
+            return TypeName.get(tm);
+        }
+    }
+}

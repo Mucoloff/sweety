@@ -2,6 +2,7 @@ package dev.sweety.project.netty.packet;
 
 import dev.sweety.event.info.State;
 import dev.sweety.packet.processor.BuildPacket;
+import dev.sweety.packet.processor.FieldBuffer;
 
 import java.util.UUID;
 
@@ -25,5 +26,11 @@ public interface Example {
     UUID[] players();
 
     State version();
+
+    @FieldBuffer(
+            encoder = ExampleEncoder.class,
+            decoder = ExampleDecoder.class
+    )
+    ExampleObj obj();
 
 }

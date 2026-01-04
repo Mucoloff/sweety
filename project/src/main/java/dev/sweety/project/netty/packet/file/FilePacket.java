@@ -23,7 +23,6 @@ public class FilePacket extends Packet {
 
     public FilePacket(short _id, long _timestamp, byte[] _data) {
         super(_id, _timestamp, _data);
-
         this.size = buffer().readableBytes();
         this._fileBuffer = FileBuffer.read(buffer());
     }

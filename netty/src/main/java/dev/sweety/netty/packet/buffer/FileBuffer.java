@@ -1,6 +1,8 @@
 package dev.sweety.netty.packet.buffer;
 
 import dev.sweety.core.file.ZipUtils;
+import dev.sweety.netty.packet.buffer.io.CallableDecoder;
+import dev.sweety.netty.packet.buffer.io.Encoder;
 import lombok.SneakyThrows;
 
 import java.io.BufferedOutputStream;
@@ -9,7 +11,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 
-public record FileBuffer(String fileName, boolean isDir, byte[] bytes) {
+public record FileBuffer(String fileName, boolean isDir, byte[] bytes) implements Encoder {
 
     private static final int ZIP_THRESHOLD = 64 * 1024; // 64 KB
     private static final String EXTENSION = ".buff.zip";
@@ -32,14 +34,18 @@ public record FileBuffer(String fileName, boolean isDir, byte[] bytes) {
     }
 
     // --- LETTURA DA PACKETBUFFER ---
-    public static FileBuffer read(PacketBuffer buffer) {
+    public static CallableDecoder<FileBuffer> DECODER = (buffer -> {
         String name = buffer.readString();
         boolean dir = buffer.readBoolean();
         byte[] data = buffer.readByteArray();
         return new FileBuffer(name, dir, data);
+    });
+
+    public static FileBuffer read(PacketBuffer buffer) {
+        return DECODER.read(buffer);
     }
 
-    // --- SCRITTURA SU PACKETBUFFER ---
+    @Override
     public void write(PacketBuffer buffer) {
         buffer.writeString(fileName);
         buffer.writeBoolean(isDir);
