@@ -3,6 +3,7 @@ package dev.sweety.packet.processor;
 
 import com.google.auto.service.AutoService;
 import com.squareup.javapoet.*;
+import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.Packet;
 
 import javax.annotation.processing.*;
@@ -96,9 +97,6 @@ public class PacketProcessor extends AbstractProcessor {
                 .superclass(ClassName.get(Packet.class))
                 .addSuperinterface(packetClassName)
                 .addFields(fields)
-                .addStaticBlock(CodeBlock.builder()
-                        .add("$T.class.getName();\n", ClassName.get("dev.sweety.netty.packet.buffer", "PacketBuffer"))
-                        .build())
                 .addMethod(writeConstructorBuilder.build())
                 .addMethod(readConstructorBuilder.build());
 
@@ -127,20 +125,20 @@ public class PacketProcessor extends AbstractProcessor {
                 String name = kind.name().toLowerCase();
                 name = name.substring(0, 1).toUpperCase() + name.substring(1);
                 writeConstructorBuilder.addStatement("this.buffer().write$N($N)", name, fieldName);
-                readConstructorBuilder.addStatement("this.$N = $N.read$N()", fieldName, "this.buffer()", name);
+                readConstructorBuilder.addStatement("this.$N = this.buffer().read$N()", fieldName, name);
             }
             case INT -> {
                 writeConstructorBuilder.addStatement("this.buffer().writeVarInt($N)", fieldName);
-                readConstructorBuilder.addStatement("this.$N = $N.readVarInt()", fieldName, "this.buffer()");
+                readConstructorBuilder.addStatement("this.$N = this.buffer().readVarInt()", fieldName);
             }
             case DECLARED -> {
                 String typeString = returnType.toString();
                 if (typeString.equals("java.lang.String")) {
                     writeConstructorBuilder.addStatement("this.buffer().writeString($N)", fieldName);
-                    readConstructorBuilder.addStatement("this.$N = $N.readString()", fieldName, "this.buffer()");
+                    readConstructorBuilder.addStatement("this.$N = this.buffer().readString()", fieldName);
                 } else if (typeString.equals("java.util.UUID")) {
                     writeConstructorBuilder.addStatement("this.buffer().writeUuid($N)", fieldName);
-                    readConstructorBuilder.addStatement("this.$N = $N.readUuid()", fieldName, "this.buffer()");
+                    readConstructorBuilder.addStatement("this.$N = this.buffer().readUuid()", fieldName);
                 } else {
                     TypeName typeName = TypeName.get(returnType);
                     if (typeName.isBoxedPrimitive()) {
@@ -150,20 +148,26 @@ public class PacketProcessor extends AbstractProcessor {
                         switch (primitiveName) {
                             case "int" -> {
                                 writeConstructorBuilder.addStatement("this.buffer().writeVarInt($N)", fieldName);
-                                readConstructorBuilder.addStatement("this.$N = $N.readVarInt()", fieldName, "this.buffer()");
+                                readConstructorBuilder.addStatement("this.$N = this.buffer().readVarInt()", fieldName);
                             }
                             case "boolean", "float", "char", "long", "short", "byte", "double" -> {
                                 String capitalized = primitiveName.substring(0, 1).toUpperCase() + primitiveName.substring(1);
                                 writeConstructorBuilder.addStatement("this.buffer().write$N($N)", capitalized, fieldName);
-                                readConstructorBuilder.addStatement("this.$N = $N.read$N()", fieldName, "this.buffer()", capitalized);
+                                readConstructorBuilder.addStatement("this.$N = this.buffer().read$N()", fieldName, capitalized);
                             }
                             default -> unsupported.add("Unsupported boxed primitive type: " + typeString);
                         }
                     } else {
-                        unsupported.add("Unsupported declared type: " + typeString);
+
+                        if (typeUtils.asElement(returnType).getKind() == ElementKind.ENUM) {
+                            writeConstructorBuilder.addStatement("this.buffer().writeEnum($N)", fieldName);
+                            readConstructorBuilder.addStatement("this.$N = this.buffer().readEnum($T.class)", fieldName, TypeName.get(returnType));
+                        } else unsupported.add("Unsupported declared type: " + typeString);
                     }
                 }
             }
+
+            //todo enum
 
             case ARRAY -> {
                 ArrayType arrayType = (ArrayType) returnType;
@@ -175,20 +179,21 @@ public class PacketProcessor extends AbstractProcessor {
                         String name = componentKind.name().toLowerCase();
                         name = name.substring(0, 1).toUpperCase() + name.substring(1);
                         writeConstructorBuilder.addStatement("this.buffer().write$NArray($N)", name, fieldName);
-                        readConstructorBuilder.addStatement("this.$N = $N.read$NArray()", fieldName, "this.buffer()", name);
+                        readConstructorBuilder.addStatement("this.$N = this.buffer().read$NArray()", fieldName, name);
                     }
                     case INT -> {
                         writeConstructorBuilder.addStatement("this.buffer().writeVarIntArray($N)", fieldName);
-                        readConstructorBuilder.addStatement("this.$N = $N.readVarIntArray()", fieldName, "this.buffer()");
+                        readConstructorBuilder.addStatement("this.$N = this.buffer().readVarIntArray()", fieldName);
                     }
                     case DECLARED -> {
                         String typeString = componentType.toString();
                         if (typeString.equals("java.lang.String")) {
-                            writeConstructorBuilder.addStatement("this.buffer().writeArray(PacketBuffer::writeString,$N)", fieldName);
-                            readConstructorBuilder.addStatement("this.$N = $N.readArray(PacketBuffer::readString, String[]::new)", fieldName, "this.buffer()");
+
+                            writeConstructorBuilder.addStatement("this.buffer().writeArray($T::writeString,$N)", TypeName.get(PacketBuffer.class), fieldName);
+                            readConstructorBuilder.addStatement("this.$N = this.buffer().readArray($T::readString, String[]::new)", fieldName, TypeName.get(PacketBuffer.class));
                         } else if (typeString.equals("java.util.UUID")) {
-                            writeConstructorBuilder.addStatement("this.buffer().writeArray(PacketBuffer::writeUuid,$N)", fieldName);
-                            readConstructorBuilder.addStatement("this.$N = $N.readArray(PacketBuffer::readUuid, UUID[]::new)", fieldName, "this.buffer()");
+                            writeConstructorBuilder.addStatement("this.buffer().writeArray($T::writeUuid,$N)", TypeName.get(PacketBuffer.class), fieldName);
+                            readConstructorBuilder.addStatement("this.$N = this.buffer().readArray($T::readUuid, UUID[]::new)", fieldName, TypeName.get(PacketBuffer.class));
                         } else {
                             TypeName typeName = TypeName.get(componentType);
                             if (typeName.isBoxedPrimitive()) {
@@ -198,8 +203,8 @@ public class PacketProcessor extends AbstractProcessor {
                                 switch (primitiveName) {
                                     case "int", "boolean", "float", "char", "long", "short", "byte", "double" -> {
                                         String capitalized = primitiveName.substring(0, 1).toUpperCase() + primitiveName.substring(1);
-                                        writeConstructorBuilder.addStatement("this.buffer().writeArray(PacketBuffer::write$N,$N)", capitalized, fieldName);
-                                        readConstructorBuilder.addStatement("this.$N = $N.readArray(PacketBuffer::read$N, $N[]::new)", fieldName, "this.buffer()", capitalized, typeName.toString());
+                                        writeConstructorBuilder.addStatement("this.buffer().writeArray($T::write$N,$N)", TypeName.get(PacketBuffer.class), capitalized, fieldName);
+                                        readConstructorBuilder.addStatement("this.$N = this.buffer().readArray($T::read$N, $T[]::new)", fieldName, TypeName.get(PacketBuffer.class), capitalized, typeName);
                                     }
                                     default -> unsupported.add("Unsupported boxed primitive type: " + typeString);
                                 }

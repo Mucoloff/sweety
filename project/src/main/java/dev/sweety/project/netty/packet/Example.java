@@ -1,5 +1,6 @@
 package dev.sweety.project.netty.packet;
 
+import dev.sweety.event.info.State;
 import dev.sweety.packet.processor.BuildPacket;
 
 import java.util.UUID;
@@ -22,5 +23,7 @@ public interface Example {
     UUID uuid();
 
     UUID[] players();
+
+    State version();
 
 }
