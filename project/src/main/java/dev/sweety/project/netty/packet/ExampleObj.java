@@ -5,7 +5,7 @@ import lombok.Getter;
 
 @AllArgsConstructor
 @Getter
-public class ExampleObj {
+public class ExampleObj implements IExampleObj {
 
     private int value;
     private String text;

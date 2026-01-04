@@ -3,10 +3,10 @@ package dev.sweety.project.netty.packet;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.buffer.io.CallableDecoder;
 
-public class ExampleDecoder implements CallableDecoder<ExampleObj> {
+public class ExampleDecoder implements CallableDecoder<IExampleObj> {
 
     @Override
-    public ExampleObj read(PacketBuffer buffer) {
+    public IExampleObj read(PacketBuffer buffer) {
         return new ExampleObj(buffer.readVarInt(), buffer.readString());
     }
 }
