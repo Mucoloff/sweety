@@ -118,6 +118,14 @@ public class PacketBuffer {
         return ((_mask >> (_maskIndex++ % 8)) & 1) != 0;
     }
 
+    public void writeChar(char value) {
+        this.nettyBuffer.writeChar(value);
+    }
+
+    public char readChar() {
+        return this.nettyBuffer.readChar();
+    }
+
     public void writeFloat(float value) {
         this.nettyBuffer.writeFloat(value);
     }
@@ -132,6 +140,31 @@ public class PacketBuffer {
 
     public long readLong() {
         return this.nettyBuffer.readLong();
+    }
+
+    // VarLong support
+    public void writeVarLong(long value) {
+        while ((value & 0xFFFFFFFFFFFFFF80L) != 0L) {
+            writeByte((byte) ((value & 0x7F) | 0x80));
+            value >>>= 7;
+        }
+        writeByte((byte) (value & 0x7F));
+    }
+
+    public long readVarLong() {
+        int numRead = 0;
+        long result = 0L;
+        byte read;
+        do {
+            read = readByte();
+            long value = (read & 0x7FL);
+            result |= (value << (7 * numRead));
+
+            numRead++;
+            if (numRead > 10) throw new PacketDecodeException("VarLong too big").toRuntime();
+        } while ((read & 0x80) != 0);
+
+        return result;
     }
 
     public short readUnsignedByte() {
@@ -184,14 +217,14 @@ public class PacketBuffer {
     }
 
     public void writeUuid(UUID uuid) {
-        writeLong(uuid.getMostSignificantBits());
-        writeLong(uuid.getLeastSignificantBits());
+        writeVarLong(uuid.getMostSignificantBits());
+        writeVarLong(uuid.getLeastSignificantBits());
     }
 
     public UUID readUuid() {
         if (this.nettyBuffer.readableBytes() < 16)
             throw new PacketDecodeException("Not enough readableBytes to read UUID: " + readableBytes() + " / 16").toRuntime();
-        return new UUID(readLong(), readLong());
+        return new UUID(readVarLong(), readVarLong());
     }
 
     public void writeByteArray(byte[] bytes) {
@@ -215,6 +248,18 @@ public class PacketBuffer {
         int len = readVarInt();
         boolean[] arr = new boolean[len];
         for (int i = 0; i < len; i++) arr[i] = readBoolean();
+        return arr;
+    }
+
+    public void writeCharArray(char[] array) {
+        writeVarInt(array.length);
+        for (char i : array) writeChar(i);
+    }
+
+    public char[] readCharArray() {
+        int len = readVarInt();
+        char[] arr = new char[len];
+        for (int i = 0; i < len; i++) arr[i] = readChar();
         return arr;
     }
 
@@ -263,6 +308,30 @@ public class PacketBuffer {
         int len = readVarInt();
         float[] arr = new float[len];
         for (int i = 0; i < len; i++) arr[i] = readFloat();
+        return arr;
+    }
+
+    public void writeDoubleArray(double[] array) {
+        writeVarInt(array.length);
+        for (double i : array) writeDouble(i);
+    }
+
+    public double[] readDoubleArray() {
+        int len = readVarInt();
+        double[] arr = new double[len];
+        for (int i = 0; i < len; i++) arr[i] = readDouble();
+        return arr;
+    }
+
+    public void writeVarLongArray(long[] array) {
+        writeVarInt(array.length);
+        for (long i : array) writeVarLong(i);
+    }
+
+    public long[] readVarLongArray() {
+        int len = readVarInt();
+        long[] arr = new long[len];
+        for (int i = 0; i < len; i++) arr[i] = readVarLong();
         return arr;
     }
 
@@ -448,5 +517,5 @@ public class PacketBuffer {
         return this.nettyBuffer;
     }
 
-}
 
+}

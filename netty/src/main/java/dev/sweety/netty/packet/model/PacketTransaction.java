@@ -19,21 +19,21 @@ public abstract class PacketTransaction<R extends PacketTransaction.Transaction,
 
     public PacketTransaction(R request) {
         super();
-        this.buffer().writeLong(this.requestId = ThreadLocalRandom.current().nextLong());
+        this.buffer().writeVarLong(this.requestId = ThreadLocalRandom.current().nextLong());
         this.buffer().writeObject(this.request = request);
         this.buffer().writeObject(this.response = null);
     }
 
     public PacketTransaction(long id, S response) {
         super();
-        this.buffer().writeLong(this.requestId = id);
+        this.buffer().writeVarLong(this.requestId = id);
         this.buffer().writeObject(this.request = null);
         this.buffer().writeObject(this.response = response);
     }
 
     public PacketTransaction(short _id, long _timestamp, byte[] _data) {
         super(_id, _timestamp, _data);
-        this.requestId = this.buffer().readLong();
+        this.requestId = this.buffer().readVarLong();
         this.request = this.buffer().readObject(this::readRequest);
         this.response = this.buffer().readObject(this::readResponse);
     }

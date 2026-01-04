@@ -13,19 +13,19 @@ public class ForwardPacket extends Packet {
     private byte[] originalData;
 
     public ForwardPacket(long correlationId, Packet original) {
-        buffer().writeLong(correlationId);
+        buffer().writeVarLong(correlationId);
 
         buffer().writeShort(original.id());
-        buffer().writeLong(original.timestamp());
+        buffer().writeVarLong(original.timestamp());
         buffer().writeByteArray(original.buffer().getBytes());
     }
 
     public ForwardPacket(short _id, long _timestamp, byte[] _data) {
         super(_id, _timestamp, _data);
-        this.correlationId = this.buffer().readLong();
+        this.correlationId = this.buffer().readVarLong();
 
         this.originalId = this.buffer().readShort();
-        this.originalTimestamp = this.buffer().readLong();
+        this.originalTimestamp = this.buffer().readVarLong();
         this.originalData = this.buffer().readByteArray();
     }
 

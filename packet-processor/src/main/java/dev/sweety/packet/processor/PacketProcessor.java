@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 @SupportedAnnotationTypes("dev.sweety.packet.processor.BuildPacket")
 @SupportedSourceVersion(SourceVersion.RELEASE_21)
@@ -45,7 +46,7 @@ public class PacketProcessor extends AbstractProcessor {
                 return true;
             }
 
-            TypeElement typeElement = (TypeElement) element;
+            final TypeElement typeElement = (TypeElement) element;
             try {
                 generatePacketClass(typeElement);
             } catch (IOException e) {
@@ -56,32 +57,32 @@ public class PacketProcessor extends AbstractProcessor {
     }
 
     private void generatePacketClass(TypeElement interfaceElement) throws IOException {
-        String interfaceName = interfaceElement.getSimpleName().toString();
-        String packetName = interfaceName + "Packet";
-        String packetPackage = elementUtils.getPackageOf(interfaceElement).getQualifiedName().toString();
+        final String interfaceName = interfaceElement.getSimpleName().toString();
+        final String packetName = interfaceName + "Packet";
+        final String packetPackage = elementUtils.getPackageOf(interfaceElement).getQualifiedName().toString();
 
-        ClassName packetClassName = ClassName.get(packetPackage, interfaceName);
+        final ClassName packetClassName = ClassName.get(packetPackage, interfaceName);
 
-        List<FieldSpec> fields = new ArrayList<>();
-        MethodSpec.Builder writeConstructorBuilder = MethodSpec.constructorBuilder()
+        final List<FieldSpec> fields = new ArrayList<>();
+        final MethodSpec.Builder writeConstructorBuilder = MethodSpec.constructorBuilder()
                 .addModifiers(Modifier.PUBLIC);
 
-        MethodSpec.Builder readConstructorBuilder = MethodSpec.constructorBuilder()
+        final MethodSpec.Builder readConstructorBuilder = MethodSpec.constructorBuilder()
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(short.class, "_id")
                 .addParameter(long.class, "_timestamp")
                 .addParameter(byte[].class, "_data")
                 .addStatement("super(_id, _timestamp, _data)");
 
-        List<? extends Element> enclosedElements = interfaceElement.getEnclosedElements();
+        final List<? extends Element> enclosedElements = interfaceElement.getEnclosedElements();
 
         for (Element enclosedElement : enclosedElements) {
             if (enclosedElement.getKind() != ElementKind.METHOD) continue;
 
-            ExecutableElement method = (ExecutableElement) enclosedElement;
-            String fieldName = method.getSimpleName().toString();
-            TypeMirror returnType = method.getReturnType();
-            TypeName returnTypeName = TypeName.get(returnType);
+            final ExecutableElement method = (ExecutableElement) enclosedElement;
+            final String fieldName = method.getSimpleName().toString();
+            final TypeMirror returnType = method.getReturnType();
+            final TypeName returnTypeName = TypeName.get(returnType);
 
             FieldSpec field = FieldSpec.builder(returnTypeName, fieldName, Modifier.PRIVATE).build();
             fields.add(field);
@@ -130,15 +131,16 @@ public class PacketProcessor extends AbstractProcessor {
         List<String> unsupported = new ArrayList<>();
         TypeKind kind = returnType.getKind();
         switch (kind) {
-            case BOOLEAN, FLOAT, CHAR, LONG, SHORT, BYTE, DOUBLE -> {
-                String name = kind.name().toLowerCase();
-                name = name.substring(0, 1).toUpperCase() + name.substring(1);
+            case BOOLEAN, FLOAT, SHORT, BYTE, DOUBLE, CHAR -> {
+                String name = capitalize(kind.name().toLowerCase());
                 writeConstructorBuilder.addStatement("this.buffer().write$N($N)", name, fieldName);
                 readConstructorBuilder.addStatement("this.$N = this.buffer().read$N()", fieldName, name);
             }
-            case INT -> {
-                writeConstructorBuilder.addStatement("this.buffer().writeVarInt($N)", fieldName);
-                readConstructorBuilder.addStatement("this.$N = this.buffer().readVarInt()", fieldName);
+
+            case INT, LONG -> {
+                String name = capitalize(kind.name().toLowerCase());
+                writeConstructorBuilder.addStatement("this.buffer().writeVar$N($N)", name, fieldName);
+                readConstructorBuilder.addStatement("this.$N = this.buffer().readVar$N()", fieldName, name);
             }
             case DECLARED -> {
                 String typeString = returnType.toString();
@@ -148,6 +150,9 @@ public class PacketProcessor extends AbstractProcessor {
                 } else if (typeString.equals("java.util.UUID")) {
                     writeConstructorBuilder.addStatement("this.buffer().writeUuid($N)", fieldName);
                     readConstructorBuilder.addStatement("this.$N = this.buffer().readUuid()", fieldName);
+                } else if (typeUtils.asElement(returnType).getKind() == ElementKind.ENUM) {
+                    writeConstructorBuilder.addStatement("this.buffer().writeEnum($N)", fieldName);
+                    readConstructorBuilder.addStatement("this.$N = this.buffer().readEnum($T.class)", fieldName, TypeName.get(returnType));
                 } else {
                     TypeName typeName = TypeName.get(returnType);
                     if (typeName.isBoxedPrimitive()) {
@@ -159,20 +164,18 @@ public class PacketProcessor extends AbstractProcessor {
                                 writeConstructorBuilder.addStatement("this.buffer().writeVarInt($N)", fieldName);
                                 readConstructorBuilder.addStatement("this.$N = this.buffer().readVarInt()", fieldName);
                             }
-                            case "boolean", "float", "char", "long", "short", "byte", "double" -> {
-                                String capitalized = primitiveName.substring(0, 1).toUpperCase() + primitiveName.substring(1);
+                            case "char" -> {
+                                writeConstructorBuilder.addStatement("this.buffer().writeString(new $T(new char[]{$N}))", TypeName.get(String.class), fieldName);
+                                readConstructorBuilder.addStatement("this.$N = this.buffer().readString().toCharArray()[0]", fieldName);
+                            }
+                            case "boolean", "float", "long", "short", "byte", "double" -> {
+                                String capitalized = capitalize(primitiveName);
                                 writeConstructorBuilder.addStatement("this.buffer().write$N($N)", capitalized, fieldName);
                                 readConstructorBuilder.addStatement("this.$N = this.buffer().read$N()", fieldName, capitalized);
                             }
                             default -> unsupported.add("Unsupported boxed primitive type: " + typeString);
                         }
-                    } else {
-
-                        if (typeUtils.asElement(returnType).getKind() == ElementKind.ENUM) {
-                            writeConstructorBuilder.addStatement("this.buffer().writeEnum($N)", fieldName);
-                            readConstructorBuilder.addStatement("this.$N = this.buffer().readEnum($T.class)", fieldName, TypeName.get(returnType));
-                        } else unsupported.add("Unsupported declared type: " + typeString);
-                    }
+                    } else unsupported.add("Unsupported declared type: " + typeString);
                 }
             }
 
@@ -182,25 +185,29 @@ public class PacketProcessor extends AbstractProcessor {
                 TypeKind componentKind = componentType.getKind();
 
                 switch (componentKind) {
-                    case BOOLEAN, FLOAT, CHAR, LONG, SHORT, BYTE, DOUBLE -> {
-                        String name = componentKind.name().toLowerCase();
-                        name = name.substring(0, 1).toUpperCase() + name.substring(1);
+                    case BOOLEAN, FLOAT, SHORT, BYTE, DOUBLE, CHAR -> {
+                        String name = capitalize(componentKind.name().toLowerCase());
                         writeConstructorBuilder.addStatement("this.buffer().write$NArray($N)", name, fieldName);
                         readConstructorBuilder.addStatement("this.$N = this.buffer().read$NArray()", fieldName, name);
                     }
-                    case INT -> {
-                        writeConstructorBuilder.addStatement("this.buffer().writeVarIntArray($N)", fieldName);
-                        readConstructorBuilder.addStatement("this.$N = this.buffer().readVarIntArray()", fieldName);
+                    case INT, LONG -> {
+                        String name = capitalize(componentKind.name().toLowerCase());
+                        writeConstructorBuilder.addStatement("this.buffer().writeVar$NArray($N)", name, fieldName);
+                        readConstructorBuilder.addStatement("this.$N = this.buffer().readVar$NArray()", fieldName, name);
                     }
+
                     case DECLARED -> {
                         String typeString = componentType.toString();
                         if (typeString.equals("java.lang.String")) {
-
                             writeConstructorBuilder.addStatement("this.buffer().writeArray($T::writeString,$N)", TypeName.get(PacketBuffer.class), fieldName);
-                            readConstructorBuilder.addStatement("this.$N = this.buffer().readArray($T::readString, String[]::new)", fieldName, TypeName.get(PacketBuffer.class));
+                            readConstructorBuilder.addStatement("this.$N = this.buffer().readArray($T::readString, $T[]::new)", fieldName, TypeName.get(PacketBuffer.class), TypeName.get(String.class));
                         } else if (typeString.equals("java.util.UUID")) {
                             writeConstructorBuilder.addStatement("this.buffer().writeArray($T::writeUuid,$N)", TypeName.get(PacketBuffer.class), fieldName);
-                            readConstructorBuilder.addStatement("this.$N = this.buffer().readArray($T::readUuid, UUID[]::new)", fieldName, TypeName.get(PacketBuffer.class));
+                            readConstructorBuilder.addStatement("this.$N = this.buffer().readArray($T::readUuid, $T[]::new)", fieldName, TypeName.get(PacketBuffer.class), TypeName.get(UUID.class));
+                        } else if (typeUtils.asElement(componentType).getKind() == ElementKind.ENUM) {
+                            writeConstructorBuilder.addStatement("this.buffer().writeArray($T::writeEnum,$N)", TypeName.get(PacketBuffer.class), fieldName);
+                            // Usa una lambda per passare la classe dell'enum al decoder
+                            readConstructorBuilder.addStatement("this.$N = this.buffer().readArray(buffer -> buffer.readEnum($T.class), $T[]::new)", fieldName, TypeName.get(componentType), TypeName.get(componentType));
                         } else {
                             TypeName typeName = TypeName.get(componentType);
                             if (typeName.isBoxedPrimitive()) {
@@ -208,11 +215,17 @@ public class PacketProcessor extends AbstractProcessor {
                                 String primitiveName = unboxed.toString();
 
                                 switch (primitiveName) {
-                                    case "int", "boolean", "float", "char", "long", "short", "byte", "double" -> {
-                                        String capitalized = primitiveName.substring(0, 1).toUpperCase() + primitiveName.substring(1);
+                                    case "int", "boolean", "float", "long", "short", "byte", "double" -> {
+                                        String capitalized = capitalize(primitiveName);
                                         writeConstructorBuilder.addStatement("this.buffer().writeArray($T::write$N,$N)", TypeName.get(PacketBuffer.class), capitalized, fieldName);
                                         readConstructorBuilder.addStatement("this.$N = this.buffer().readArray($T::read$N, $T[]::new)", fieldName, TypeName.get(PacketBuffer.class), capitalized, typeName);
                                     }
+
+                                    case "char" -> {
+                                        writeConstructorBuilder.addStatement("this.buffer().writeString(new $T(new char[]{$N}))", TypeName.get(String.class), fieldName);
+                                        readConstructorBuilder.addStatement("this.$N = this.buffer().readString().toCharArray()", fieldName);
+                                    }
+
                                     default -> unsupported.add("Unsupported boxed primitive type: " + typeString);
                                 }
                             } else {
@@ -221,25 +234,16 @@ public class PacketProcessor extends AbstractProcessor {
                         }
 
                     }
-                    default -> {
-                        unsupported.add("Unsupported return type: " + componentType + " -> " + componentKind);
-                    }
+                    default -> unsupported.add("Unsupported return type: " + componentType + " -> " + componentKind);
                 }
             }
-            case WILDCARD -> {
-                unsupported.add("Unsupported wildcard type: " + returnType);
-            }
-            default -> {
-                unsupported.add("Unsupported return type: " + returnType + " -> " + kind);
-            }
+            case WILDCARD -> unsupported.add("Unsupported wildcard type: " + returnType);
+            default -> unsupported.add("Unsupported return type: " + returnType + " -> " + kind);
         }
 
         if (!unsupported.isEmpty()) {
-            StringBuilder sb = new StringBuilder();
-            for (String s : unsupported) {
-                sb.append(s).append("\n");
-            }
-            messager.printMessage(Diagnostic.Kind.ERROR, "Unsupported types in " + method.getSimpleName() + ":\n" + sb, method);
+            String msg = String.join("\n", unsupported);
+            messager.printMessage(Diagnostic.Kind.ERROR, "Unsupported types in " + method.getSimpleName() + ":\n" + msg, method);
         }
     }
 
@@ -259,5 +263,13 @@ public class PacketProcessor extends AbstractProcessor {
             TypeMirror tm = e.getTypeMirror();
             return TypeName.get(tm);
         }
+    }
+
+    // Helper per capitalizzare il nome di un tipo primitivo (es. "int" -> "Int")
+    private static String capitalize(String name) {
+        if (name == null || name.isEmpty()) return name;
+        char first = name.charAt(0);
+        if (Character.isUpperCase(first)) return name;
+        return Character.toUpperCase(first) + name.substring(1);
     }
 }
