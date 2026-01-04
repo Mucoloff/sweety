@@ -3,7 +3,9 @@ package dev.sweety.project.getters;
 import dev.sweety.record.annotations.RecordData;
 
 @RecordData(includeStatic = true)
-public class ExampleClass implements ExampleClassAccessors {
+public class ExampleClass
+        //implements ExampleClassAccessors todo
+{
 
     private int id;
     String name;

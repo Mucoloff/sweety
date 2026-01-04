@@ -1,7 +1,10 @@
 package dev.sweety.netty.packet.buffer;
 
-import dev.sweety.netty.messaging.exception.*;
-import dev.sweety.netty.packet.buffer.io.*;
+import dev.sweety.netty.messaging.exception.PacketDecodeException;
+import dev.sweety.netty.packet.buffer.io.CallableDecoder;
+import dev.sweety.netty.packet.buffer.io.CallableEncoder;
+import dev.sweety.netty.packet.buffer.io.Decoder;
+import dev.sweety.netty.packet.buffer.io.Encoder;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.Pair;
@@ -13,7 +16,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
-import java.util.zip.CRC32;
 
 public class PacketBuffer {
 
@@ -91,16 +93,6 @@ public class PacketBuffer {
         return this.nettyBuffer.readByte();
     }
 
-    /*
-    public void writeBoolean(boolean value) {
-        this.nettyBuffer.writeByte(value ? 1 : 0);
-    }
-
-    public boolean readBoolean() {
-        return this.nettyBuffer.readByte() == 1;
-    }
-     */
-
     private byte _mask = 0, _maskIndex = 0;
     private int _posIndex = 0;
 
@@ -163,8 +155,7 @@ public class PacketBuffer {
 
         if (length < 0) throw new PacketDecodeException("Invalid string length: " + length).toRuntime();
         if (nettyBuffer.readableBytes() < length)
-            throw new IndexOutOfBoundsException(
-                    "Not enough bytes to read string: requested " + length + ", available " + nettyBuffer.readableBytes());
+            throw new IndexOutOfBoundsException("Not enough bytes to read string: requested " + length + ", available " + nettyBuffer.readableBytes());
 
         byte[] bytes = new byte[length];
         nettyBuffer.readBytes(bytes);
@@ -203,12 +194,12 @@ public class PacketBuffer {
         return new UUID(readLong(), readLong());
     }
 
-    public void writeBytesArray(byte[] bytes) {
+    public void writeByteArray(byte[] bytes) {
         writeVarInt(bytes.length);
         writeBytes(bytes);
     }
 
-    public byte[] readBytesArray() {
+    public byte[] readByteArray() {
         int len = readVarInt();
         byte[] bytes = new byte[len];
         this.nettyBuffer.readBytes(bytes);
@@ -275,7 +266,6 @@ public class PacketBuffer {
         return arr;
     }
 
-
     private <T> boolean writeNullCheck(T object) {
         boolean notNull = object != null;
         writeBoolean(notNull);
@@ -308,11 +298,7 @@ public class PacketBuffer {
         });
     }
 
-    private <T> void writeIterable(
-            Iterable<T> iterable,
-            int size,
-            CallableEncoder<? super T> encoder
-    ) {
+    private <T> void writeIterable(Iterable<T> iterable, int size, CallableEncoder<? super T> encoder) {
         if (writeNullCheck(iterable)) return;
         writeVarInt(size);
         for (T entry : iterable) {
@@ -347,10 +333,7 @@ public class PacketBuffer {
         return list;
     }
 
-    public <T, C extends Collection<T>> C readCollection(
-            CallableDecoder<? extends T> decoder,
-            Supplier<C> collectionFactory) {
-
+    public <T, C extends Collection<T>> C readCollection(CallableDecoder<? extends T> decoder, Supplier<C> collectionFactory) {
         if (!readBoolean()) return null;
         int size = readVarInt();
         C collection = collectionFactory.get();
@@ -374,8 +357,7 @@ public class PacketBuffer {
         return readCollection(buffer -> buffer.readObject(factory));
     }
 
-    public <K, V> void writeMap(Map<K, V> map,
-                                CallableEncoder<Pair<K, V>> encoder) {
+    public <K, V> void writeMap(Map<K, V> map, CallableEncoder<Pair<K, V>> encoder) {
         if (writeNullCheck(map)) return;
         writeVarInt(map.size());
         for (Map.Entry<K, V> entry : map.entrySet()) {
@@ -383,8 +365,7 @@ public class PacketBuffer {
         }
     }
 
-    public <K, V> Map<K, V> readMap(CallableDecoder<Pair<K, V>> decoder,
-                                    Supplier<Map<K, V>> mapFactory) {
+    public <K, V> Map<K, V> readMap(CallableDecoder<Pair<K, V>> decoder, Supplier<Map<K, V>> mapFactory) {
         if (!readBoolean()) return null;
 
         int size = readVarInt();
@@ -396,19 +377,14 @@ public class PacketBuffer {
         return map;
     }
 
-    public <K, V> void writeMap(Map<K, V> map,
-                                CallableEncoder<? super K> kEncoder,
-                                CallableEncoder<? super V> vEncoder) {
+    public <K, V> void writeMap(Map<K, V> map, CallableEncoder<? super K> kEncoder, CallableEncoder<? super V> vEncoder) {
         writeMap(map, (buffer, data) -> {
             kEncoder.write(buffer, data.key());
             vEncoder.write(buffer, data.value());
         });
     }
 
-    public <K, V> Map<K, V> readMap(CallableDecoder<K> kDecoder,
-                                    CallableDecoder<V> vDecoder,
-                                    Supplier<Map<K, V>> mapFactory) {
-
+    public <K, V> Map<K, V> readMap(CallableDecoder<K> kDecoder, CallableDecoder<V> vDecoder, Supplier<Map<K, V>> mapFactory) {
         return readMap(buffer -> Pair.of(kDecoder.read(buffer), vDecoder.read(buffer)), mapFactory);
     }
 
@@ -465,28 +441,12 @@ public class PacketBuffer {
     }
 
     public PacketBuffer readSlice(int length) {
-        ByteBuf slice = nettyBuffer.readSlice(length);
-        return new PacketBuffer(slice);
+        return new PacketBuffer(nettyBuffer.readSlice(length));
     }
 
     public ByteBuf nettyBuffer() {
         return this.nettyBuffer;
     }
-
-    public void writeCRC32(byte[] data) {
-        CRC32 crc = new CRC32();
-        crc.update(data, 0, data.length);
-        writeLong(crc.getValue());
-    }
-
-    public boolean verifyCRC32(byte[] data) {
-        if (readableBytes() < 8) return false;
-        long expected = readLong();
-        CRC32 crc = new CRC32();
-        crc.update(data, 0, data.length);
-        return expected == crc.getValue();
-    }
-
 
 }
 

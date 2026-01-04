@@ -19,7 +19,7 @@ public class WrappedPacket extends Packet {
 
         buffer().writeShort(originalId);
         buffer().writeLong(original.timestamp());
-        buffer().writeBytesArray(original.buffer().getBytes());
+        buffer().writeByteArray(original.buffer().getBytes());
     }
 
     public WrappedPacket(short _id, long _timestamp, byte[] _data) {
@@ -29,7 +29,7 @@ public class WrappedPacket extends Packet {
 
         this.originalId = this.buffer().readShort();
         this.originalTimestamp = this.buffer().readLong();
-        this.originalData = this.buffer().readBytesArray();
+        this.originalData = this.buffer().readByteArray();
     }
 
 }

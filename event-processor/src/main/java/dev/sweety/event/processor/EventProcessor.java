@@ -65,8 +65,7 @@ public class EventProcessor extends AbstractProcessor {
         List<FieldSpec> fields = new ArrayList<>();
         MethodSpec.Builder constructorBuilder = MethodSpec.constructorBuilder()
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(packetClassName, "p")
-                ;
+                .addParameter(packetClassName, "p");
 
         List<? extends Element> enclosedElements = packetElement.getEnclosedElements();
 
@@ -82,10 +81,14 @@ public class EventProcessor extends AbstractProcessor {
 
             for (int i = 0; i < enclosedElements.size() && !hasGetter; i++) {
                 Element member = enclosedElements.get(i);
-                if (member.getKind() == ElementKind.METHOD && member.getSimpleName().toString().equals(getterName)) {
+                String methodName = member.getSimpleName().toString();
+                if (member.getKind() == ElementKind.METHOD &&
+                        (methodName.equals(getterName) || methodName.equals("is" + fieldName) || methodName.equals("has" + fieldName) || methodName.equals(fieldName))
+                ) {
                     ExecutableElement method = (ExecutableElement) member;
                     if (method.getParameters().isEmpty()) {
                         hasGetter = true;
+                        getterName = methodName;
                     }
                 }
             }

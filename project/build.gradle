@@ -10,4 +10,7 @@ dependencies {
 
     implementation project(":record-getter-processor")
     annotationProcessor project(":record-getter-processor")
+
+    implementation project(":packet-processor")
+    annotationProcessor project(":packet-processor")
 }

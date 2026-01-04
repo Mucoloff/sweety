@@ -35,7 +35,7 @@ public record FileBuffer(String fileName, boolean isDir, byte[] bytes) {
     public static FileBuffer read(PacketBuffer buffer) {
         String name = buffer.readString();
         boolean dir = buffer.readBoolean();
-        byte[] data = buffer.readBytesArray();
+        byte[] data = buffer.readByteArray();
         return new FileBuffer(name, dir, data);
     }
 
@@ -43,7 +43,7 @@ public record FileBuffer(String fileName, boolean isDir, byte[] bytes) {
     public void write(PacketBuffer buffer) {
         buffer.writeString(fileName);
         buffer.writeBoolean(isDir);
-        buffer.writeBytesArray(bytes);
+        buffer.writeByteArray(bytes);
     }
 
     // --- UNZIP SICURO ---
