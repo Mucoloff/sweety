@@ -63,7 +63,7 @@ public class PacketBuffer {
             result |= (value << (7 * numRead));
 
             numRead++;
-            if (numRead > 5) throw new PacketDecodeException("VarInt too big").toRuntime();
+            if (numRead > 5) throw new PacketDecodeException("VarInt too big").runtime();
         } while ((read & 0x80) != 0);
 
         return result;
@@ -111,7 +111,7 @@ public class PacketBuffer {
     public boolean readBoolean() {
         if (_maskIndex % 8 == 0) {
             if (!nettyBuffer.isReadable())
-                throw new PacketDecodeException("Unable to read boolean", new EOFException()).toRuntime();
+                throw new PacketDecodeException("Unable to read boolean", new EOFException()).runtime();
             _mask = nettyBuffer.readByte();
         }
 
@@ -161,7 +161,7 @@ public class PacketBuffer {
             result |= (value << (7 * numRead));
 
             numRead++;
-            if (numRead > 10) throw new PacketDecodeException("VarLong too big").toRuntime();
+            if (numRead > 10) throw new PacketDecodeException("VarLong too big").runtime();
         } while ((read & 0x80) != 0);
 
         return result;
@@ -186,7 +186,7 @@ public class PacketBuffer {
     public String readString(Charset charset) {
         int length = readVarInt();
 
-        if (length < 0) throw new PacketDecodeException("Invalid string length: " + length).toRuntime();
+        if (length < 0) throw new PacketDecodeException("Invalid string length: " + length).runtime();
         if (nettyBuffer.readableBytes() < length)
             throw new IndexOutOfBoundsException("Not enough bytes to read string: requested " + length + ", available " + nettyBuffer.readableBytes());
 
@@ -213,7 +213,7 @@ public class PacketBuffer {
         T[] constants = clazz.getEnumConstants();
         int ordinal = this.readVarInt();
         if (ordinal >= 0 && ordinal < constants.length) return constants[ordinal];
-        else throw new PacketDecodeException("Invalid enum ordinal: " + ordinal).toRuntime();
+        else throw new PacketDecodeException("Invalid enum ordinal: " + ordinal).runtime();
     }
 
     public void writeUuid(UUID uuid) {
@@ -223,7 +223,7 @@ public class PacketBuffer {
 
     public UUID readUuid() {
         if (this.nettyBuffer.readableBytes() < 16)
-            throw new PacketDecodeException("Not enough readableBytes to read UUID: " + readableBytes() + " / 16").toRuntime();
+            throw new PacketDecodeException("Not enough readableBytes to read UUID: " + readableBytes() + " / 16").runtime();
         return new UUID(readVarLong(), readVarLong());
     }
 

@@ -120,11 +120,18 @@ public class TestClient extends Client {
         client.sendPacket(new TextPacket("Ciao dal client!"));
         //client.sendPacket(new TextPacket(buff.toString()));
 
-        PingTransaction ping = new PingTransaction(new PingTransaction.Ping());
+        PingTransaction ping = new PingTransaction(new PingTransaction.Ping("ping da client"));
 
-        BiConsumer<PacketTransaction.Transaction, Throwable> completedTransaction = (PacketTransaction.Transaction t, Throwable ex) -> {
+        BiConsumer<PacketTransaction.Transaction, Throwable> completedTransaction = (PacketTransaction.Transaction response, Throwable ex) -> {
             client.logger.info("completed transaction");
-            if (t != null) client.logger.info("received transaction " + t.getClass().getSimpleName());
+            if (response != null) {
+                client.logger.info("received transaction " + response.getClass().getSimpleName());
+
+                if (response instanceof PingTransaction.Pong pong) {
+                    client.logger.info("received pong: " + pong.getText());
+                }
+
+            }
             if (ex != null) client.logger.warn(ex);
         };
 

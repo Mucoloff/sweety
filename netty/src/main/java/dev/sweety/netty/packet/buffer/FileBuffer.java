@@ -41,12 +41,12 @@ public record FileBuffer(String fileName, boolean isDir, byte[] bytes) implement
         return new FileBuffer(name, dir, data);
     });
 
-    public static FileBuffer read(PacketBuffer buffer) {
+    public static FileBuffer read(final PacketBuffer buffer) {
         return DECODER.read(buffer);
     }
 
     @Override
-    public void write(PacketBuffer buffer) {
+    public void write(final PacketBuffer buffer) {
         buffer.writeString(fileName);
         buffer.writeBoolean(isDir);
         buffer.writeByteArray(bytes);

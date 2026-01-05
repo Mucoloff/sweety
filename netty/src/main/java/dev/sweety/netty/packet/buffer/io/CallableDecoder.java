@@ -7,10 +7,10 @@ import java.util.function.Function;
 @FunctionalInterface
 public interface CallableDecoder<T> extends Function<PacketBuffer, T> {
 
-    T read(PacketBuffer buffer);
+    T read(final PacketBuffer buffer);
 
     @Override
-    default T apply(PacketBuffer buffer){
+    default T apply(final PacketBuffer buffer){
         return read(buffer);
     }
 }

@@ -6,10 +6,10 @@ import java.util.function.Consumer;
 
 public interface Decoder extends Consumer<PacketBuffer> {
 
-    void read(PacketBuffer buffer);
+    void read(final PacketBuffer buffer);
 
     @Override
-    default void accept(PacketBuffer buffer){
+    default void accept(final PacketBuffer buffer){
         read(buffer);
     }
 

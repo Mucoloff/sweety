@@ -13,7 +13,7 @@ public abstract class Except extends Exception {
         super(cause);
     }
 
-    public RuntimeException toRuntime() {
+    public RuntimeException runtime() {
         return new RuntimeException(this);
     }
 

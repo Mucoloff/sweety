@@ -27,7 +27,7 @@ public enum MinecraftVersion {
     V_1_20_5(766), V_1_20_6(766),
     V_1_21(767), V_1_21_1(767), V_1_21_2(768), V_1_21_3(768),
     V_1_21_4(769), V_1_21_5(770), V_1_21_6(771),
-    V_1_21_7(772), V_1_21_8(772), V_1_21_9(773), V_1_21_10(773),
+    V_1_21_7(772), V_1_21_8(772), V_1_21_9(773), V_1_21_10(773), V_1_21_11(774),
 
     ERROR(-1, true);
 
@@ -50,20 +50,8 @@ public enum MinecraftVersion {
 
     private static final List<MinecraftVersion> EMPTY = Collections.emptyList();
 
-    /**
-     * -- GETTER --
-     * Get this version's protocol version.
-     *
-     * @return Protocol version.
-     */
+
     private final short protocolVersion;
-    /**
-     * -- GETTER --
-     * Get the release name of this version.
-     * For example, for the V_1_18 enum constant, it would return "1.18".
-     *
-     * @return Release name
-     */
     private final String releaseName;
 
     MinecraftVersion(int protocolVersion) {

@@ -34,8 +34,8 @@ public abstract class PacketTransaction<R extends PacketTransaction.Transaction,
     public PacketTransaction(short _id, long _timestamp, byte[] _data) {
         super(_id, _timestamp, _data);
         this.requestId = this.buffer().readVarLong();
-        this.request = this.buffer().readObject(this::readRequest);
-        this.response = this.buffer().readObject(this::readResponse);
+        this.request = this.buffer().readObject(this::constructRequest);
+        this.response = this.buffer().readObject(this::constructResponse);
     }
 
     public boolean hasRequest() {
@@ -50,21 +50,21 @@ public abstract class PacketTransaction<R extends PacketTransaction.Transaction,
         return this.requestId == id;
     }
 
-    protected abstract R readRequest();
+    protected abstract R constructRequest();
 
-    protected abstract S readResponse();
+    protected abstract S constructResponse();
 
     @Data
     @NoArgsConstructor
     public abstract static class Transaction implements Encoder, Decoder {
 
         @Override
-        public void read(PacketBuffer buffer) {
+        public void write(final PacketBuffer buffer) {
 
         }
 
         @Override
-        public void write(PacketBuffer buffer) {
+        public void read(final PacketBuffer buffer) {
 
         }
     }

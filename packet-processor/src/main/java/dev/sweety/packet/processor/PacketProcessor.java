@@ -5,6 +5,7 @@ import com.google.auto.service.AutoService;
 import com.squareup.javapoet.*;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.Packet;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
@@ -16,6 +17,7 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -42,7 +44,8 @@ public class PacketProcessor extends AbstractProcessor {
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         for (Element element : roundEnv.getElementsAnnotatedWith(BuildPacket.class)) {
             if (element.getKind() != ElementKind.INTERFACE) {
-                messager.printMessage(Diagnostic.Kind.ERROR, "Can only be applied to interfaces", element);
+                if (element.getKind() != ElementKind.METHOD)
+                    messager.printMessage(Diagnostic.Kind.ERROR, "Can only be applied to interfaces", element);
                 return true;
             }
 
@@ -57,13 +60,14 @@ public class PacketProcessor extends AbstractProcessor {
     }
 
     private void generatePacketClass(TypeElement interfaceElement) throws IOException {
-        final String interfaceName = interfaceElement.getSimpleName().toString();
-        final String packetName = interfaceName + "Packet";
-        final String packetPackage = elementUtils.getPackageOf(interfaceElement).getQualifiedName().toString();
+        BuildPacket buildPacket = interfaceElement.getAnnotation(BuildPacket.class);
 
+        final String interfaceName = interfaceElement.getSimpleName().toString();
+        final String packetPackage = elementUtils.getPackageOf(interfaceElement).getQualifiedName().toString();
+        final String packetName = (buildPacket == null || buildPacket.name() == null || buildPacket.name().isEmpty()) ? (interfaceName + "Packet") : buildPacket.name();
         final ClassName packetClassName = ClassName.get(packetPackage, interfaceName);
 
-        final List<FieldSpec> fields = new ArrayList<>();
+        final ArrayList<AnnotationSpec> annotations = getAnnotations(buildPacket);
         final MethodSpec.Builder writeConstructorBuilder = MethodSpec.constructorBuilder()
                 .addModifiers(Modifier.PUBLIC);
 
@@ -76,16 +80,60 @@ public class PacketProcessor extends AbstractProcessor {
 
         final List<? extends Element> enclosedElements = interfaceElement.getEnclosedElements();
 
+        TypeSpec.Builder eventClassBuilder = TypeSpec.classBuilder(packetName)
+                .addModifiers(Modifier.PUBLIC)
+                .superclass(ClassName.get(Packet.class))
+                .addSuperinterface(packetClassName);
+
+
         for (Element enclosedElement : enclosedElements) {
             if (enclosedElement.getKind() != ElementKind.METHOD) continue;
+            BuildPacket fieldBuildPacket = enclosedElement.getAnnotation(BuildPacket.class);
 
             final ExecutableElement method = (ExecutableElement) enclosedElement;
-            final String fieldName = method.getSimpleName().toString();
+            final String originalFieldName = method.getSimpleName().toString();
+
+
+            final String fieldName;
+            final boolean replace;
+            if (fieldBuildPacket == null || fieldBuildPacket.name() == null || fieldBuildPacket.name().isEmpty()) {
+                fieldName = originalFieldName;
+                replace = false;
+            }
+            else {
+                fieldName = fieldBuildPacket.name();
+                replace = fieldBuildPacket.addMethod();
+            }
+
             final TypeMirror returnType = method.getReturnType();
             final TypeName returnTypeName = TypeName.get(returnType);
 
-            FieldSpec field = FieldSpec.builder(returnTypeName, fieldName, Modifier.PRIVATE).build();
-            fields.add(field);
+
+            ArrayList<AnnotationSpec> fieldAnnotations = getAnnotations(fieldBuildPacket);
+
+            FieldSpec.Builder field = FieldSpec.builder(returnTypeName, fieldName, Modifier.PRIVATE);
+
+            if (!fieldAnnotations.isEmpty()) for (AnnotationSpec annotation : fieldAnnotations)
+                field.addAnnotation(annotation);
+
+            eventClassBuilder.addField(field.build());
+            eventClassBuilder.addMethod(
+                    MethodSpec.methodBuilder(originalFieldName)
+                            .addModifiers(Modifier.PUBLIC)
+                            .addAnnotation(Override.class)
+                            .returns(returnTypeName)
+                            .addStatement("return this.$N", fieldName)
+                            .build()
+            );
+
+            if (!originalFieldName.equals(fieldName) && replace)
+                eventClassBuilder.addMethod(
+                        MethodSpec.methodBuilder(fieldName)
+                                .addModifiers(Modifier.PUBLIC)
+                                .returns(returnTypeName)
+                                .addStatement("return this.$N", fieldName)
+                                .build()
+                );
 
             writeConstructorBuilder.addParameter(returnTypeName, fieldName);
 
@@ -102,29 +150,46 @@ public class PacketProcessor extends AbstractProcessor {
             generateBuffer(fieldName, returnType, writeConstructorBuilder, readConstructorBuilder, method);
         }
 
-        TypeSpec.Builder eventClassBuilder = TypeSpec.classBuilder(packetName)
-                .addModifiers(Modifier.PUBLIC)
-                .superclass(ClassName.get(Packet.class))
-                .addSuperinterface(packetClassName)
-                .addFields(fields)
-                .addMethod(writeConstructorBuilder.build())
+
+        eventClassBuilder.addMethod(writeConstructorBuilder.build())
                 .addMethod(readConstructorBuilder.build());
 
-        // add getter methods implementing the interface
-        for (FieldSpec f : fields) {
-            MethodSpec getter = MethodSpec.methodBuilder(f.name)
-                    .addModifiers(Modifier.PUBLIC)
-                    .addAnnotation(Override.class)
-                    .returns(f.type)
-                    .addStatement("return this.$N", f.name)
-                    .build();
-            eventClassBuilder.addMethod(getter);
+        if (!annotations.isEmpty()) for (AnnotationSpec annotation : annotations) {
+            eventClassBuilder.addAnnotation(annotation);
         }
+
+        // add getter methods implementing the interface
+
 
         JavaFile javaFile = JavaFile.builder(packetPackage, eventClassBuilder.build())
                 .build();
 
         javaFile.writeTo(processingEnv.getFiler());
+    }
+
+    private @NotNull ArrayList<AnnotationSpec> getAnnotations(BuildPacket buildPacket) {
+
+        ArrayList<AnnotationSpec> annotations = new ArrayList<>();
+
+        if (buildPacket != null) {
+            try {
+                Class<? extends Annotation>[] onType = buildPacket.annotations();
+                annotations.ensureCapacity(onType.length);
+                for (Class<? extends Annotation> annotation : onType) {
+                    annotations.add(AnnotationSpec.builder(ClassName.get(annotation)).build());
+                }
+            } catch (javax.lang.model.type.MirroredTypesException e) {
+                List<? extends TypeMirror> mirrors = e.getTypeMirrors();
+                annotations.ensureCapacity(mirrors.size());
+                for (TypeMirror tm : mirrors) {
+                    Element el = typeUtils.asElement(tm);
+                    if (el instanceof TypeElement te) {
+                        annotations.add(AnnotationSpec.builder(ClassName.get(te)).build());
+                    }
+                }
+            }
+        }
+        return annotations;
     }
 
     private void generateBuffer(String fieldName, TypeMirror returnType, MethodSpec.Builder writeConstructorBuilder, MethodSpec.Builder readConstructorBuilder, ExecutableElement method) {

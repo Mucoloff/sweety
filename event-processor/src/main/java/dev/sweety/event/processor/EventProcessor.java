@@ -75,15 +75,21 @@ public class EventProcessor extends AbstractProcessor {
             VariableElement variableElement = (VariableElement) enclosedElement;
             String fieldName = variableElement.getSimpleName().toString();
 
-            String getterName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
 
+            String getterName = "get" + capitalize(fieldName);
             boolean hasGetter = variableElement.getAnnotation(Getter.class) != null;
+
+            TypeMirror fieldType = variableElement.asType();
+
+            if (hasGetter && fieldType.toString().equalsIgnoreCase("boolean")){
+                getterName = "is" + capitalize(fieldName);
+            }
 
             for (int i = 0; i < enclosedElements.size() && !hasGetter; i++) {
                 Element member = enclosedElements.get(i);
                 String methodName = member.getSimpleName().toString();
                 if (member.getKind() == ElementKind.METHOD &&
-                        (methodName.equals(getterName) || methodName.equals("is" + fieldName) || methodName.equals("has" + fieldName) || methodName.equals(fieldName))
+                        (methodName.equalsIgnoreCase(getterName) || methodName.equalsIgnoreCase("is" + fieldName) || methodName.equalsIgnoreCase("has" + fieldName) || methodName.equalsIgnoreCase(fieldName))
                 ) {
                     ExecutableElement method = (ExecutableElement) member;
                     if (method.getParameters().isEmpty()) {
@@ -95,7 +101,6 @@ public class EventProcessor extends AbstractProcessor {
 
 
             if (hasGetter) {
-                TypeMirror fieldType = variableElement.asType();
                 fields.add(FieldSpec.builder(TypeName.get(fieldType), fieldName, Modifier.PRIVATE, Modifier.FINAL).addAnnotation(Getter.class).build());
                 constructorBuilder.addStatement("this.$N = p.$N()", fieldName, getterName);
             } else {
@@ -117,6 +122,13 @@ public class EventProcessor extends AbstractProcessor {
                 .build();
 
         javaFile.writeTo(processingEnv.getFiler());
+    }
+
+    private static String capitalize(String name) {
+        if (name == null || name.isEmpty()) return name;
+        char first = name.charAt(0);
+        if (Character.isUpperCase(first)) return name;
+        return Character.toUpperCase(first) + name.substring(1);
     }
 }
 
