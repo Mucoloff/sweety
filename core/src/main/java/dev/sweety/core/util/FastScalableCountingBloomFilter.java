@@ -34,7 +34,6 @@ public class FastScalableCountingBloomFilter {
         return hashes;
     }
 
-
     public synchronized void add(byte[] data) {
         int[] hashes = getHashes(data);
         for (int h : hashes) {

@@ -8,6 +8,8 @@ import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.buffer.ByteBuf;
 
+import java.util.zip.CRC32;
+
 public class PacketEncoder {
     static final int ZIP_THRESHOLD = 256;
     final IPacketRegistry packetRegistry;
@@ -42,8 +44,13 @@ public class PacketEncoder {
             }
         }
 
+        CRC32 crc32 = ChecksumUtils.crc32(true);
+        crc32.update(Messenger.SEED);
+        crc32.update(data);
+        long check = crc32.getValue();
+
         out.writeBoolean(compressed);
-        out.writeInt(ChecksumUtils.crc32Int(data, Messenger.SEED));
+        out.writeLong(check);
         out.writeInt(data.length);
         out.writeBytes(data);
     }

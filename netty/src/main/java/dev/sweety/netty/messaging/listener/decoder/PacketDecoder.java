@@ -9,6 +9,7 @@ import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.buffer.ByteBuf;
 
 import java.util.List;
+import java.util.zip.CRC32;
 
 public class PacketDecoder {
 
@@ -47,7 +48,7 @@ public class PacketDecoder {
             in.resetReaderIndex();
             return; // incomplete: wait for more data
         }
-        int checksum = in.readInt();
+        long checksum = in.readLong();
 
         // need 4 bytes for the data length int
         if (in.readableBytes() < 4) {
@@ -69,7 +70,10 @@ public class PacketDecoder {
         byte[] data = new byte[length];
         in.readBytes(data);
 
-        int check = ChecksumUtils.crc32Int(data, Messenger.SEED);
+        CRC32 crc32 = ChecksumUtils.crc32(true);
+        crc32.update(Messenger.SEED);
+        crc32.update(data);
+        long check = crc32.getValue();
 
         if (check != checksum) {
             throw new PacketDecodeException("Invalid packet checksum for packet (" + id + "): expected " + checksum + ", got " + check);

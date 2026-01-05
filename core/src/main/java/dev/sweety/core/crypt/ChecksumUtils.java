@@ -27,16 +27,16 @@ public class ChecksumUtils {
         return crc32;
     }
 
-    public int crc32cInt(byte[] data, int seed) {
+    public int crc32cInt(byte[] data, long seed) {
         crc32c.reset();
-        crc32c.update(ByteBuffer.allocate(4).putInt(seed).array());
+        crc32c.update(ByteBuffer.allocate(8).putLong(seed).array());
         crc32c.update(data);
         return (int) crc32c.getValue();
     }
 
-    public int crc32Int(byte[] data, int seed) {
+    public int crc32Int(byte[] data, long seed) {
         crc32.reset();
-        crc32.update(ByteBuffer.allocate(4).putInt(seed).array());
+        crc32.update(ByteBuffer.allocate(8).putLong(seed).array());
         crc32.update(data);
         return (int) crc32.getValue();
     }
