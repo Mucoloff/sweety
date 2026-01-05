@@ -90,7 +90,7 @@ public class BackendNode extends Client {
         Packet original;
         try {
             original = getPacketRegistry().constructPacket(wrapped.getOriginalId(), wrapped.getOriginalTimestamp(), wrapped.getOriginalData());
-            original.buffer().resetReaderIndex();
+            original.rewind();
         } catch (Exception e) {
             return;
         }
@@ -114,7 +114,7 @@ public class BackendNode extends Client {
         // registra il timestamp di invio (nanoTime per misure di latenza)
         pendingRequestTimestamps.put(correlationId, System.nanoTime());
 
-        packet.buffer().resetReaderIndex();
+        packet.rewind();
 
         ForwardPacket forward = new ForwardPacket(correlationId, packet);
 

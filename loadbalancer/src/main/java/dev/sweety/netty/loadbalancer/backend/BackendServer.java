@@ -23,10 +23,13 @@ public abstract class BackendServer extends Server {
 
     public BackendServer(String host, int port, IPacketRegistry packetRegistry, Packet... packets) {
         super(host, port, packetRegistry, packets);
-        this.metricsScheduler.scheduleAtFixedRate(this::sendMetrics, 1, 1, TimeUnit.SECONDS);
+        final int delay = 5;
+        this.metricsScheduler.scheduleAtFixedRate(this::sendMetrics, delay, delay, TimeUnit.SECONDS);
     }
 
     private void sendMetrics() {
+        if (!channel.isActive() || !channel.isOpen() || !channel.isRegistered() || getClients().isEmpty()) return;
+
         float cpuLoad = getCpuLoad();
         float ramUsage = getRamUsage();
 
@@ -51,7 +54,7 @@ public abstract class BackendServer extends Server {
         if (!ctx.channel().isActive()) return;
 
         if (!(packet instanceof ForwardPacket forward)) return;
-        forward.buffer().resetReaderIndex();
+        forward.rewind();
 
         // 1. Leggi il correlationId, che è sempre all'inizio.
         long correlationId = forward.getCorrelationId();

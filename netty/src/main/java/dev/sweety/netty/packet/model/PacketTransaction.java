@@ -38,6 +38,10 @@ public abstract class PacketTransaction<R extends PacketTransaction.Transaction,
         this.response = this.buffer().readObject(this::constructResponse);
     }
 
+    public String requestCode(){
+        return Long.toHexString(requestId);
+    }
+
     public boolean hasRequest() {
         return this.request != null;
     }

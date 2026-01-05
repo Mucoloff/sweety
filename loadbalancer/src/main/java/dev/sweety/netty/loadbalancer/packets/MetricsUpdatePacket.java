@@ -10,13 +10,13 @@ public class MetricsUpdatePacket extends Packet {
     private float ramUsage;
 
     public MetricsUpdatePacket(float cpuLoad, float ramUsage) {
-        this.buffer().writeFloat(cpuLoad);
-        this.buffer().writeFloat(ramUsage);
+        this.buffer().writeVarInt((int) cpuLoad * 100);
+        this.buffer().writeVarInt((int) ramUsage * 100);
     }
 
     public MetricsUpdatePacket(short _id, long _timestamp, byte[] _data) {
         super(_id, _timestamp, _data);
-        this.cpuLoad = this.buffer().readFloat();
-        this.ramUsage = this.buffer().readFloat();
+        this.cpuLoad = this.buffer().readVarInt() * 0.01f;
+        this.ramUsage = this.buffer().readVarInt() * 0.01f;
     }
 }

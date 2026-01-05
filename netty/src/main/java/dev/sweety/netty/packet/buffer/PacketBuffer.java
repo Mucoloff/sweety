@@ -37,20 +37,22 @@ public class PacketBuffer {
         this.nettyBuffer.clear();
     }
 
-    public void writeInt(int value) {
+    public PacketBuffer writeInt(int value) {
         this.nettyBuffer.writeInt(value);
+        return this;
     }
 
     public int readInt() {
         return this.nettyBuffer.readInt();
     }
 
-    public void writeVarInt(int value) {
+    public PacketBuffer writeVarInt(int value) {
         while ((value & 0xFFFFFF80) != 0L) {
             writeByte((byte) ((value & 0x7F) | 0x80));
             value >>>= 7;
         }
         writeByte((byte) (value & 0x7F));
+        return this;
     }
 
     public int readVarInt() {
@@ -69,24 +71,27 @@ public class PacketBuffer {
         return result;
     }
 
-    public void writeDouble(double value) {
+    public PacketBuffer writeDouble(double value) {
         this.nettyBuffer.writeDouble(value);
+        return this;
     }
 
     public double readDouble() {
         return this.nettyBuffer.readDouble();
     }
 
-    public void writeShort(short value) {
+    public PacketBuffer writeShort(short value) {
         this.nettyBuffer.writeShort(value);
+        return this;
     }
 
     public short readShort() {
         return this.nettyBuffer.readShort();
     }
 
-    public void writeByte(byte value) {
+    public PacketBuffer writeByte(byte value) {
         this.nettyBuffer.writeByte(value);
+        return this;
     }
 
     public byte readByte() {
@@ -96,7 +101,7 @@ public class PacketBuffer {
     private byte _mask = 0, _maskIndex = 0;
     private int _posIndex = 0;
 
-    public void writeBoolean(boolean value) {
+    public PacketBuffer writeBoolean(boolean value) {
         if (_maskIndex % 8 == 0) {
             _posIndex = nettyBuffer.writerIndex();
             nettyBuffer.writeByte(_mask = 0);
@@ -106,6 +111,7 @@ public class PacketBuffer {
 
         nettyBuffer.setByte(_posIndex, _mask);
         _maskIndex++;
+        return this;
     }
 
     public boolean readBoolean() {
@@ -118,24 +124,27 @@ public class PacketBuffer {
         return ((_mask >> (_maskIndex++ % 8)) & 1) != 0;
     }
 
-    public void writeChar(char value) {
+    public PacketBuffer writeChar(char value) {
         this.nettyBuffer.writeChar(value);
+        return this;
     }
 
     public char readChar() {
         return this.nettyBuffer.readChar();
     }
 
-    public void writeFloat(float value) {
+    public PacketBuffer writeFloat(float value) {
         this.nettyBuffer.writeFloat(value);
+        return this;
     }
 
     public float readFloat() {
         return this.nettyBuffer.readFloat();
     }
 
-    public void writeLong(long value) {
+    public PacketBuffer writeLong(long value) {
         this.nettyBuffer.writeLong(value);
+        return this;
     }
 
     public long readLong() {
@@ -143,12 +152,13 @@ public class PacketBuffer {
     }
 
     // VarLong support
-    public void writeVarLong(long value) {
+    public PacketBuffer writeVarLong(long value) {
         while ((value & 0xFFFFFFFFFFFFFF80L) != 0L) {
             writeByte((byte) ((value & 0x7F) | 0x80));
             value >>>= 7;
         }
         writeByte((byte) (value & 0x7F));
+        return this;
     }
 
     public long readVarLong() {
@@ -171,15 +181,14 @@ public class PacketBuffer {
         return this.nettyBuffer.readUnsignedByte();
     }
 
-    public void writeString(String data, Charset charset) {
+    public PacketBuffer writeString(String data, Charset charset) {
         if (data == null) {
-            writeVarInt(0);
-            return;
+            return writeVarInt(0);
         }
 
         byte[] bytes = data.getBytes(charset);
         writeVarInt(bytes.length);
-        nettyBuffer.writeBytes(bytes);
+        return writeBytes(bytes);
     }
 
 
@@ -195,8 +204,8 @@ public class PacketBuffer {
         return new String(bytes, charset);
     }
 
-    public void writeString(String data) {
-        writeString(data, StandardCharsets.UTF_8);
+    public PacketBuffer writeString(String data) {
+        return writeString(data, StandardCharsets.UTF_8);
     }
 
 
@@ -205,8 +214,8 @@ public class PacketBuffer {
     }
 
 
-    public void writeEnum(Enum<?> value) {
-        writeVarInt(value.ordinal());
+    public PacketBuffer writeEnum(Enum<?> value) {
+        return writeVarInt(value.ordinal());
     }
 
     public <T extends Enum<T>> T readEnum(Class<T> clazz) {
@@ -216,9 +225,9 @@ public class PacketBuffer {
         else throw new PacketDecodeException("Invalid enum ordinal: " + ordinal).runtime();
     }
 
-    public void writeUuid(UUID uuid) {
+    public PacketBuffer writeUuid(UUID uuid) {
         writeVarLong(uuid.getMostSignificantBits());
-        writeVarLong(uuid.getLeastSignificantBits());
+        return writeVarLong(uuid.getLeastSignificantBits());
     }
 
     public UUID readUuid() {
@@ -227,9 +236,9 @@ public class PacketBuffer {
         return new UUID(readVarLong(), readVarLong());
     }
 
-    public void writeByteArray(byte[] bytes) {
+    public PacketBuffer writeByteArray(byte[] bytes) {
         writeVarInt(bytes.length);
-        writeBytes(bytes);
+        return writeBytes(bytes);
     }
 
     public byte[] readByteArray() {
@@ -239,9 +248,10 @@ public class PacketBuffer {
         return bytes;
     }
 
-    public void writeBooleanArray(boolean[] array) {
+    public PacketBuffer writeBooleanArray(boolean[] array) {
         writeVarInt(array.length);
         for (boolean i : array) writeBoolean(i);
+        return this;
     }
 
     public boolean[] readBooleanArray() {
@@ -251,9 +261,10 @@ public class PacketBuffer {
         return arr;
     }
 
-    public void writeCharArray(char[] array) {
+    public PacketBuffer writeCharArray(char[] array) {
         writeVarInt(array.length);
         for (char i : array) writeChar(i);
+        return this;
     }
 
     public char[] readCharArray() {
@@ -263,9 +274,10 @@ public class PacketBuffer {
         return arr;
     }
 
-    public void writeIntArray(int[] array) {
+    public PacketBuffer writeIntArray(int[] array) {
         writeVarInt(array.length);
         for (int i : array) writeInt(i);
+        return this;
     }
 
     public int[] readIntArray() {
@@ -275,9 +287,10 @@ public class PacketBuffer {
         return arr;
     }
 
-    public void writeVarIntArray(int[] array) {
+    public PacketBuffer writeVarIntArray(int[] array) {
         writeVarInt(array.length);
         for (int i : array) writeVarInt(i);
+        return this;
     }
 
     public int[] readVarIntArray() {
@@ -287,9 +300,10 @@ public class PacketBuffer {
         return arr;
     }
 
-    public void writeShortArray(short[] array) {
+    public PacketBuffer writeShortArray(short[] array) {
         writeVarInt(array.length);
         for (short i : array) writeShort(i);
+        return this;
     }
 
     public short[] readShortArray() {
@@ -299,9 +313,10 @@ public class PacketBuffer {
         return arr;
     }
 
-    public void writeFloatArray(float[] array) {
+    public PacketBuffer writeFloatArray(float[] array) {
         writeVarInt(array.length);
         for (float i : array) writeFloat(i);
+        return this;
     }
 
     public float[] readFloatArray() {
@@ -311,9 +326,10 @@ public class PacketBuffer {
         return arr;
     }
 
-    public void writeDoubleArray(double[] array) {
+    public PacketBuffer writeDoubleArray(double[] array) {
         writeVarInt(array.length);
         for (double i : array) writeDouble(i);
+        return this;
     }
 
     public double[] readDoubleArray() {
@@ -323,9 +339,10 @@ public class PacketBuffer {
         return arr;
     }
 
-    public void writeVarLongArray(long[] array) {
+    public PacketBuffer writeVarLongArray(long[] array) {
         writeVarInt(array.length);
         for (long i : array) writeVarLong(i);
+        return this;
     }
 
     public long[] readVarLongArray() {
@@ -341,9 +358,10 @@ public class PacketBuffer {
         return !notNull;
     }
 
-    public <T> void writeObject(@Nullable T object, CallableEncoder<? super T> encoder) {
-        if (writeNullCheck(object)) return;
+    public <T> PacketBuffer writeObject(@Nullable T object, CallableEncoder<? super T> encoder) {
+        if (writeNullCheck(object)) return this;
         encoder.write(this, object);
+        return this;
     }
 
     public <T> T readObject(CallableDecoder<? extends T> decoder) {
@@ -355,8 +373,8 @@ public class PacketBuffer {
         return Optional.ofNullable(readObject(decoder));
     }
 
-    public <T extends Encoder> void writeObject(T object) {
-        writeObject(object, (buffer, t) -> t.write(buffer));
+    public <T extends Encoder> PacketBuffer writeObject(T object) {
+        return writeObject(object, (buffer, t) -> t.write(buffer));
     }
 
     public <T extends Decoder> T readObject(Supplier<T> factory) {
@@ -367,29 +385,29 @@ public class PacketBuffer {
         });
     }
 
-    private <T> void writeIterable(Iterable<T> iterable, int size, CallableEncoder<? super T> encoder) {
-        if (writeNullCheck(iterable)) return;
+    private <T> PacketBuffer writeIterable(Iterable<T> iterable, int size, CallableEncoder<? super T> encoder) {
+        if (writeNullCheck(iterable)) return this;
         writeVarInt(size);
         for (T entry : iterable) {
             writeObject(entry, encoder);
         }
+        return this;
     }
 
     @SafeVarargs
-    public final <T> void writeArray(CallableEncoder<? super T> encoder, T... array) {
-        if (writeNullCheck(array)) return;
+    public final <T> PacketBuffer writeArray(CallableEncoder<? super T> encoder, T... array) {
+        if (writeNullCheck(array)) return this;
         writeVarInt(array.length);
-        for (T entry : array) {
-            writeObject(entry, encoder);
-        }
+        for (T entry : array) writeObject(entry, encoder);
+        return this;
     }
 
-    public <T> void writeCollection(Collection<T> collection, CallableEncoder<? super T> encoder) {
-        writeIterable(collection, collection.size(), encoder);
+    public <T> PacketBuffer writeCollection(Collection<T> collection, CallableEncoder<? super T> encoder) {
+        return writeIterable(collection, collection.size(), encoder);
     }
 
-    public <T extends Encoder> void writeCollection(Collection<T> collection) {
-        writeCollection(collection, (buffer, t) -> t.write(buffer));
+    public <T extends Encoder> PacketBuffer writeCollection(Collection<T> collection) {
+        return writeCollection(collection, (buffer, t) -> t.write(buffer));
     }
 
     public <T> List<T> readCollection(CallableDecoder<? extends T> decoder) {
@@ -426,12 +444,13 @@ public class PacketBuffer {
         return readCollection(buffer -> buffer.readObject(factory));
     }
 
-    public <K, V> void writeMap(Map<K, V> map, CallableEncoder<Pair<K, V>> encoder) {
-        if (writeNullCheck(map)) return;
+    public <K, V> PacketBuffer writeMap(Map<K, V> map, CallableEncoder<Pair<K, V>> encoder) {
+        if (writeNullCheck(map)) return this;
         writeVarInt(map.size());
         for (Map.Entry<K, V> entry : map.entrySet()) {
             writeObject(Pair.of(entry.getKey(), entry.getValue()), encoder);
         }
+        return this;
     }
 
     public <K, V> Map<K, V> readMap(CallableDecoder<Pair<K, V>> decoder, Supplier<Map<K, V>> mapFactory) {
@@ -446,8 +465,8 @@ public class PacketBuffer {
         return map;
     }
 
-    public <K, V> void writeMap(Map<K, V> map, CallableEncoder<? super K> kEncoder, CallableEncoder<? super V> vEncoder) {
-        writeMap(map, (buffer, data) -> {
+    public <K, V> PacketBuffer writeMap(Map<K, V> map, CallableEncoder<? super K> kEncoder, CallableEncoder<? super V> vEncoder) {
+        return writeMap(map, (buffer, data) -> {
             kEncoder.write(buffer, data.key());
             vEncoder.write(buffer, data.value());
         });
@@ -457,11 +476,31 @@ public class PacketBuffer {
         return readMap(buffer -> Pair.of(kDecoder.read(buffer), vDecoder.read(buffer)), mapFactory);
     }
 
-    public void release() {
-        this.nettyBuffer.release();
+    public boolean release() {
+        return this.nettyBuffer.release();
+    }
+
+    public PacketBuffer retain(int increment) {
+        this.nettyBuffer.retain(increment);
+        return this;
+    }
+
+    public PacketBuffer retain() {
+        this.nettyBuffer.retain();
+        return this;
+    }
+
+    public int refCnt() {
+        return this.nettyBuffer.refCnt();
     }
 
     public byte[] getBytes() {
+        byte[] bytes = new byte[readableBytes()];
+        this.nettyBuffer.getBytes(this.nettyBuffer.readerIndex(), bytes);
+        return bytes;
+    }
+
+    public byte[] readAllBytes() {
         byte[] bytes = new byte[readableBytes()];
         readBytes(bytes);
         return bytes;
@@ -471,42 +510,67 @@ public class PacketBuffer {
         return this.nettyBuffer.readableBytes();
     }
 
-    public void resetReaderIndex() {
+    public PacketBuffer resetReaderIndex() {
         this.nettyBuffer.resetReaderIndex();
+        return this;
     }
 
-    public void markReaderIndex() {
+    public PacketBuffer markReaderIndex() {
         this.nettyBuffer.markReaderIndex();
+        return this;
     }
 
-    public void resetWriterIndex() {
+    public int readerIndex() {
+        return this.nettyBuffer.readerIndex();
+    }
+
+    public PacketBuffer readerIndex(int readerIndex) {
+        this.nettyBuffer.readerIndex(readerIndex);
+        return this;
+    }
+
+    public PacketBuffer resetWriterIndex() {
         this.nettyBuffer.resetWriterIndex();
+        return this;
     }
 
-    public void markWriterIndex() {
+    public PacketBuffer markWriterIndex() {
         this.nettyBuffer.markWriterIndex();
+        return this;
     }
 
-    public void readBytes(byte[] data) {
+    public int writerIndex() {
+        return this.nettyBuffer.writerIndex();
+    }
+
+    public PacketBuffer writerIndex(int writerIndex) {
+        this.nettyBuffer.writerIndex(writerIndex);
+        return this;
+    }
+
+    public PacketBuffer readBytes(byte[] data) {
         this.nettyBuffer.readBytes(data);
+        return this;
     }
 
-    public void writeBytes(byte[] data) {
+    public PacketBuffer writeBytes(byte[] data) {
         this.nettyBuffer.writeBytes(data);
+        return this;
     }
 
-    public void writeBytes(byte[] data, int offset, int length) {
+    public PacketBuffer writeBytes(byte[] data, int offset, int length) {
         this.nettyBuffer.writeBytes(data, offset, length);
+        return this;
     }
 
-    public void wrapData(Encoder encoder) {
-        byte[] bytes = getBytes();
+    public PacketBuffer wrapData(Encoder encoder) {
+        byte[] bytes = readAllBytes();
         encoder.write(this);
-        writeBytes(bytes);
+        return writeBytes(bytes);
     }
 
-    public void writeBuffer(PacketBuffer other) {
-        writeBytes(other.getBytes());
+    public PacketBuffer writeBuffer(PacketBuffer other) {
+        return writeBytes(other.getBytes());
     }
 
     public PacketBuffer readSlice(int length) {

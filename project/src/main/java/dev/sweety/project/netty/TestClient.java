@@ -47,7 +47,7 @@ public class TestClient extends Client {
             logger.info("messaggio: " + text.getText());
         } else if (packet instanceof PingTransaction transaction) {
             if (transaction.hasResponse()) {
-                logger.info("Ricevuto pong con ID: " + transaction.getRequestId());
+                logger.info("Ricevuto pong con ID: " + transaction.requestCode());
                 boolean b = transactionManager.completeResponse(transaction.getRequestId(), transaction.getResponse());
                 logger.info("passed: " + b);
             }
@@ -123,7 +123,7 @@ public class TestClient extends Client {
         PingTransaction ping = new PingTransaction(new PingTransaction.Ping("ping da client"));
 
         BiConsumer<PacketTransaction.Transaction, Throwable> completedTransaction = (PacketTransaction.Transaction response, Throwable ex) -> {
-            client.logger.info("completed transaction");
+            client.logger.info("completed transaction ");
             if (response != null) {
                 client.logger.info("received transaction " + response.getClass().getSimpleName());
 

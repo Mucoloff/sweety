@@ -16,14 +16,14 @@ public class TransactionManager {
         //noinspection unchecked
         CompletableFuture<PacketTransaction.Transaction> prev = pending.putIfAbsent(requestId, (CompletableFuture<PacketTransaction.Transaction>) future);
         if (prev != null) {
-            future.completeExceptionally(new IllegalStateException("Request id already registered: " + requestId));
+            future.completeExceptionally(new IllegalStateException("Request id already registered: " + Long.toHexString(requestId)));
             return future;
         }
 
         ScheduledFuture<?> timeoutHandle = scheduler.schedule(() -> {
             CompletableFuture<PacketTransaction.Transaction> f = pending.remove(requestId);
             if (f != null && !f.isDone()) {
-                TimeoutException ex = new TimeoutException("Transaction timed out: " + requestId);
+                TimeoutException ex = new TimeoutException("Transaction timed out: " + Long.toHexString(requestId));
                 ex.setStackTrace(new StackTraceElement[0]);
                 f.completeExceptionally(ex);
             }

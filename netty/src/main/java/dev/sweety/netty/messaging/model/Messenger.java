@@ -46,6 +46,7 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
     @Getter
     private final IPacketRegistry packetRegistry;
 
+
     public Messenger(B bootstrap, String host, int port, IPacketRegistry packetRegistry, Packet... packets) {
         this.bootstrap = bootstrap;
         this.boss = new NioEventLoopGroup();
@@ -60,13 +61,15 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
         this.packets = packets;
         this.packetRegistry = packetRegistry;
 
+
         final Consumer<SocketChannel> initChannelConsumer = (ch) -> {
-            ChannelPipeline pipeline = ch.pipeline();
-            pipeline.addLast(
+            ChannelPipeline p = ch.pipeline();
+            p.addLast(
                     new NettyDecoder(this.packetRegistry),
                     new NettyWatcher(this),
                     new NettyEncoder(this.packetRegistry)
             );
+
         };
 
         // Configura bootstrap UNA volta sola
@@ -149,11 +152,16 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
         }
         onPacketSend(ctx, packet, true);
         ctx.channel().write(packet).addListener(f -> {
-            if (f.isSuccess()) {
-                onPacketSend(ctx, packet, false);
-                future.complete(null);
-            } else {
-                future.completeExceptionally(f.cause());
+            try {
+                if (f.isSuccess()) {
+                    onPacketSend(ctx, packet, false);
+                    future.complete(null);
+                } else {
+                    future.completeExceptionally(f.cause());
+                }
+            } finally {
+                // Always release the packet's internal buffer to avoid leaks
+                try { packet.buffer().release(); } catch (Throwable ignored) {}
             }
         });
         return future;

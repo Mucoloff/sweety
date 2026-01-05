@@ -8,6 +8,7 @@ import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.buffer.ByteBuf;
 
+import java.nio.ByteBuffer;
 import java.util.zip.CRC32;
 
 public class PacketEncoder {
@@ -18,23 +19,22 @@ public class PacketEncoder {
         this.packetRegistry = packetRegistry;
     }
 
-    protected void encode(Packet packet, ByteBuf out) throws Exception {
+    public void encode(Packet packet, ByteBuf out) throws PacketEncodeException {
         short packetId = packetRegistry.getPacketId(packet.getClass());
         if (packetId < 0)
             throw new PacketEncodeException("Returned PacketId by registry is < 0");
 
         out.writeShort(packetId);
-        boolean hasTimestamp = packet.timestamp() <= 0L;
+        // hasTimestamp should be true when timestamp is actually present (> 0)
+        boolean hasTimestamp = packet.timestamp() > 0L;
         out.writeBoolean(hasTimestamp);
 
         if (hasTimestamp) out.writeLong(packet.timestamp());
-
 
         byte[] bufferData = packet.buffer().getBytes();
 
         byte[] data = bufferData != null ? bufferData : new byte[0];
         boolean compressed = false;
-
 
         if (data.length >= ZIP_THRESHOLD) {
             byte[] zipped = ResourceUtils.zipBytes(data, "zipped-buffer");
@@ -45,7 +45,7 @@ public class PacketEncoder {
         }
 
         CRC32 crc32 = ChecksumUtils.crc32(true);
-        crc32.update(Messenger.SEED);
+        crc32.update(ByteBuffer.allocate(4).putInt(Messenger.SEED).array());
         crc32.update(data);
         long check = crc32.getValue();
 
