@@ -4,7 +4,6 @@ import lombok.Getter;
 
 import java.util.Objects;
 
-
 /**
  * 2D int Vector.
  * This vector can represent coordinates, angles, or anything you want.
@@ -33,7 +32,6 @@ public class Vector2i {
 
     public final int y;
 
-
     /**
      * Default constructor setting all coordinates/angles/values to their default values (=0).
      */
@@ -42,7 +40,6 @@ public class Vector2i {
         this.x = 0;
         this.y = 0;
     }
-
 
     /**
      * Constructor allowing you to set the values.
@@ -55,7 +52,6 @@ public class Vector2i {
         this.x = x;
         this.y = y;
     }
-
 
     /**
      * Constructor allowing you to specify an array.
@@ -80,7 +76,6 @@ public class Vector2i {
             y = 0;
         }
     }
-
 
     /**
      * Is the object we are comparing to equal to us?

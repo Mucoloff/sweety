@@ -90,7 +90,6 @@ public class LoadBalancerServer extends Server {
             return;
         }
 
-
         logger.info("Inoltro pacchetto (" + packet + ") response #" + Long.toHexString(correlationId) + " al client");
 
         clientCtx.channel().writeAndFlush(packet);

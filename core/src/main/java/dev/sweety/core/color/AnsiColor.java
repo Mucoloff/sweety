@@ -86,8 +86,6 @@ public enum AnsiColor {
 
     final String color;
 
-
-
     public static String clear(String text) {
         for (AnsiColor value : values()) {
             if (text.contains(value.color)) text = text.replace(value.color, "");

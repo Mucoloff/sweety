@@ -14,7 +14,7 @@ public class TextPacket extends Packet {
         this.buffer().writeString(text);
     }
 
-    public TextPacket(short _id, long _timestamp, byte[] _data) {
+    public TextPacket(int _id, long _timestamp, byte[] _data) {
         super(_id, _timestamp, _data);
         this.text = this.buffer().readString();
     }

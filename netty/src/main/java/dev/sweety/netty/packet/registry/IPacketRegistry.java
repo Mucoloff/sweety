@@ -9,25 +9,25 @@ import java.util.Set;
 
 public interface IPacketRegistry {
 
-    default void registerPacket(short packetId, Packet packet) throws PacketRegistrationException {
+    default void registerPacket(int packetId, Packet packet) throws PacketRegistrationException {
         registerPacket(packetId, packet.getClass());
     }
 
-    void registerPacket(short packetId, Class<? extends Packet> packet) throws PacketRegistrationException;
+    void registerPacket(int packetId, Class<? extends Packet> packet) throws PacketRegistrationException;
 
-    short getPacketId(Class<? extends Packet> packetClass);
+    int getPacketId(Class<? extends Packet> packetClass);
 
-    <T extends Packet> T constructPacket(short packetId, long timestamp, byte[] data) throws InvocationTargetException, InstantiationException, IllegalAccessException;
+    <T extends Packet> T constructPacket(int packetId, long timestamp, byte[] data) throws InvocationTargetException, InstantiationException, IllegalAccessException;
 
-    boolean containsPacketId(short id);
+    boolean containsPacketId(int id);
 
-    default void registerPackets(Map<Short, Class<? extends Packet>> packets) throws PacketRegistrationException{
-        for (Map.Entry<Short, Class<? extends Packet>> entry : packets.entrySet())
+    default void registerPackets(Map<Integer, Class<? extends Packet>> packets) throws PacketRegistrationException{
+        for (Map.Entry<Integer, Class<? extends Packet>> entry : packets.entrySet())
             registerPacket(entry.getKey(), entry.getValue());
     }
 
     default void registerPackets(Class<? extends Packet>... packets) throws PacketRegistrationException {
-        for (short id = 0; id < packets.length; id++) registerPacket(id, packets[id]);
+        for (int id = 0; id < packets.length; id++) registerPacket(id, packets[id]);
     }
 
     Set<Class<? extends Packet>> packets();

@@ -117,5 +117,4 @@ public class SimpleLogger implements LogHelper {
         }).getColor();
     }
 
-
 }

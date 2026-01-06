@@ -16,7 +16,7 @@ public class PingTransaction extends PacketTransaction<PingTransaction.Ping, Pin
         super(id, response);
     }
 
-    public PingTransaction(short _id, long _timestamp, byte[] _data) {
+    public PingTransaction(int _id, long _timestamp, byte[] _data) {
         super(_id, _timestamp, _data);
     }
 
@@ -66,6 +66,5 @@ public class PingTransaction extends PacketTransaction<PingTransaction.Ping, Pin
         }
 
     }
-
 
 }

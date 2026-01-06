@@ -42,7 +42,6 @@ public class SpotifyManager {
     @Getter
     private String refreshToken;
 
-
     private int expire = 5 * 60 * 1000;
 
     public SpotifyClient client() {

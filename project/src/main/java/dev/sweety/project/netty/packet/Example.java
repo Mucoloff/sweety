@@ -8,7 +8,7 @@ import lombok.Getter;
 
 import java.util.UUID;
 
-@BuildPacket(annotations = {GenerateEvent.class}, name = "ExamplePacketTest")
+@BuildPacket(annotations = {GenerateEvent.class}, name = "ExamplePacketTest", path = "")
 public interface Example {
 
     int value();

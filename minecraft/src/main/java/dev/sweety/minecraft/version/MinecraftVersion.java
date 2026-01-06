@@ -32,7 +32,7 @@ public enum MinecraftVersion {
     ERROR(-1, true);
 
     private static final MinecraftVersion[] VALUES = values();
-    private static final Map<Short, List<MinecraftVersion>> BY_PROTOCOL =
+    private static final Map<Integer, List<MinecraftVersion>> BY_PROTOCOL =
             Arrays.stream(VALUES)
                     .collect(Collectors.groupingBy(MinecraftVersion::getProtocolVersion));
 
@@ -50,21 +50,20 @@ public enum MinecraftVersion {
 
     private static final List<MinecraftVersion> EMPTY = Collections.emptyList();
 
-
-    private final short protocolVersion;
+    private final int protocolVersion;
     private final String releaseName;
 
     MinecraftVersion(int protocolVersion) {
-        this.protocolVersion = (short) protocolVersion;
+        this.protocolVersion = protocolVersion;
         this.releaseName = name().substring(2).replace("_", ".");
     }
 
     MinecraftVersion(int protocolVersion, boolean isNotRelease) {
-        this.protocolVersion = (short) protocolVersion;
+        this.protocolVersion = protocolVersion;
         this.releaseName = isNotRelease ? name() : name().substring(2).replace("_", ".");
     }
 
-    public static List<MinecraftVersion> get(short protocolVersion) {
+    public static List<MinecraftVersion> get(int protocolVersion) {
         return BY_PROTOCOL.getOrDefault(protocolVersion, EMPTY);
     }
 

@@ -98,7 +98,6 @@ public class BackendNode extends Client {
         loadBalancer.forwardResponseToClient(correlationId, original, isClosing);
     }
 
-
     /**
      * Inoltra un pacchetto a questo backend, anteponendo l'ID di correlazione.
      */

@@ -14,7 +14,7 @@ public class MetricsUpdatePacket extends Packet {
         this.buffer().writeVarInt((int) ramUsage * 100);
     }
 
-    public MetricsUpdatePacket(short _id, long _timestamp, byte[] _data) {
+    public MetricsUpdatePacket(int _id, long _timestamp, byte[] _data) {
         super(_id, _timestamp, _data);
         this.cpuLoad = this.buffer().readVarInt() * 0.01f;
         this.ramUsage = this.buffer().readVarInt() * 0.01f;

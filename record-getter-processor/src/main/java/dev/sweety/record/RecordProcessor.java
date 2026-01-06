@@ -113,7 +113,6 @@ public class RecordProcessor extends AbstractProcessor {
                     .filter(e -> e.getKind() == ElementKind.FIELD)
                     .collect(Collectors.toList());
 
-
             for (Element field : fields) {
                 String fieldName = field.getSimpleName().toString();
                 String fieldType = field.asType().toString();

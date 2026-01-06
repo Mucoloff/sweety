@@ -17,7 +17,6 @@ public class ExampleClass
     public static void main(String[] args) {
         ExampleClass c = new ExampleClass();
 
-
     }
 
 }

@@ -27,7 +27,6 @@ public class Vector2f {
      */
     public final float y;
 
-
     /**
      * Default constructor setting all coordinates/angles/values to their default values (=0).
      */
@@ -70,8 +69,6 @@ public class Vector2f {
             y = 0;
         }
     }
-
-
 
     /**
      * Is the object we are comparing to equal to us?

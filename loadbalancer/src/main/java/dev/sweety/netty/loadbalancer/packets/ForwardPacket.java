@@ -8,26 +8,25 @@ public class ForwardPacket extends Packet {
 
     private long correlationId;
 
-    private short originalId;
+    private int originalId;
     private long originalTimestamp;
     private byte[] originalData;
 
     public ForwardPacket(long correlationId, Packet original) {
         buffer().writeVarLong(correlationId);
 
-        buffer().writeShort(original.id());
+        buffer().writeVarInt(original.id());
         buffer().writeVarLong(original.timestamp());
         buffer().writeByteArray(original.buffer().getBytes());
     }
 
-    public ForwardPacket(short _id, long _timestamp, byte[] _data) {
+    public ForwardPacket(int _id, long _timestamp, byte[] _data) {
         super(_id, _timestamp, _data);
         this.correlationId = this.buffer().readVarLong();
 
-        this.originalId = this.buffer().readShort();
+        this.originalId = this.buffer().readVarInt();
         this.originalTimestamp = this.buffer().readVarLong();
         this.originalData = this.buffer().readByteArray();
     }
-
 
 }

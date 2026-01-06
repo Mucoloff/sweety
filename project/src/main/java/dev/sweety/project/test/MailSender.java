@@ -7,10 +7,8 @@ import javax.mail.internet.*;
 import java.util.Arrays;
 import java.util.Properties;
 
-
 public enum MailSender {
     INSTANCE;
-
 
     private final Properties properties = new Properties();
     boolean skip = true;
@@ -48,7 +46,6 @@ public enum MailSender {
 
             message.setRecipients(Message.RecipientType.TO, recipients);
             message.setSubject(object);
-
 
             MimeBodyPart htmlPart = new MimeBodyPart();
             htmlPart.setContent(content, "text/html; charset=utf-8");

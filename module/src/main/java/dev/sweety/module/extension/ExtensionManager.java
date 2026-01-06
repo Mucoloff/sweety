@@ -1,6 +1,5 @@
 package dev.sweety.module.extension;
 
-
 import dev.sweety.module.loader.ExtensionClassLoader;
 import dev.sweety.core.persistence.config.FileContainer;
 import dev.sweety.event.EventSystem;
@@ -51,7 +50,6 @@ public class ExtensionManager extends FileContainer {
         return DownloadFile.downloadFromURL(url, localFile.getAbsolutePath(), true)
                 .thenApply(this::loadExtension);
     }
-
 
     /**
      * Carica una singola estensione da un file JAR.

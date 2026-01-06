@@ -1,6 +1,5 @@
 package dev.sweety.spotify.auth;
 
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -12,7 +11,6 @@ import java.util.Base64;
 import java.util.concurrent.CompletableFuture;
 
 import static dev.sweety.spotify.client.SpotifyClient.GSON;
-
 
 public class SpotifyOAuth {
 

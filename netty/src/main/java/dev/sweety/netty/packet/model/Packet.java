@@ -6,7 +6,7 @@ import org.jetbrains.annotations.NotNull;
 
 public abstract class Packet {
 
-    private final short _id;
+    private final int _id;
     private final long _timestamp;
     private @NotNull
     final PacketBuffer _buffer;
@@ -23,7 +23,7 @@ public abstract class Packet {
 
     // (decoder)
     private int _readerIndex;
-    public Packet(short _id, long _timestamp, byte[] _data) {
+    public Packet(int _id, long _timestamp, byte[] _data) {
         this._id = _id;
         this._timestamp = _timestamp;
         this._buffer = new PacketBuffer(_data);
@@ -39,7 +39,7 @@ public abstract class Packet {
         return this.getClass().getSimpleName();
     }
 
-    public short id() {
+    public int id() {
         return this._id;
     }
 

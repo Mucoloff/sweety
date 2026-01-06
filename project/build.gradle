@@ -5,12 +5,13 @@ dependencies {
     implementation project(":loadbalancer")
     implementation project(":module")
 
-    implementation project(":event-processor")
-    annotationProcessor project(":event-processor")
 
     implementation project(":record-getter-processor")
     annotationProcessor project(":record-getter-processor")
 
     implementation project(":packet-processor")
     annotationProcessor project(":packet-processor")
+
+    implementation project(":event-processor")
+    annotationProcessor project(":event-processor")
 }

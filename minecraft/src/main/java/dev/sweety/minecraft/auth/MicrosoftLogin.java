@@ -131,12 +131,10 @@ public class MicrosoftLogin {
     @SneakyThrows
     private static void startServer(BiConsumer<HttpServer, String> codeCallback) {
 
-
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", PORT), 0);
         server.createContext("/", new Handler(server, codeCallback));
         server.start();
     }
-
 
     @ToString
     public static class LoginData {

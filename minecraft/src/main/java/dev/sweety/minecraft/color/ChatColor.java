@@ -32,5 +32,4 @@ public enum ChatColor {
         this.hex = hex;
     }
 
-
 }

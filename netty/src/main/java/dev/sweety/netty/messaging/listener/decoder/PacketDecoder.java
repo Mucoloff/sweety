@@ -4,6 +4,7 @@ import dev.sweety.core.crypt.ChecksumUtils;
 import dev.sweety.core.file.ResourceUtils;
 import dev.sweety.netty.messaging.exception.PacketDecodeException;
 import dev.sweety.netty.messaging.model.Messenger;
+import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.buffer.ByteBuf;
@@ -15,69 +16,63 @@ import java.util.zip.CRC32;
 public class PacketDecoder {
 
     private final IPacketRegistry packetRegistry;
+
     public PacketDecoder(IPacketRegistry packetRegistry) {
         this.packetRegistry = packetRegistry;
     }
 
-    public void decode(ByteBuf in, List<Packet> out) throws PacketDecodeException {
-        // minimum possible: 2 (id) + 1 (boolean ts compressed) + 8 (checksum long) + 4 (data length) = 15
-        // if timestamp present add 8 more bytes
-        if (in.readableBytes() < 15) return; // buffer incomplete: wait for more data
+    public void decode(ByteBuf buf, List<Packet> out) throws PacketDecodeException {
+        if (buf.readableBytes() < 2) return; // id + flags
 
+        final PacketBuffer in = new PacketBuffer(buf);
         in.markReaderIndex();
-        short id = in.readShort();
-        boolean hasTimestamp = in.readBoolean();
-        long timestamp;
-        if (hasTimestamp) {
-            // need 8 bytes for timestamp
-            if (in.readableBytes() < 8) {
-                in.resetReaderIndex();
-                return; // incomplete timestamp: wait for more data
-            }
 
-            timestamp = in.readLong();
-        } else timestamp = System.currentTimeMillis();
+        final int id = in.readVarInt();
 
-        // read compressed flag
         if (in.readableBytes() < 1) {
             in.resetReaderIndex();
-            return; // incomplete: wait for more data
-        }
-        boolean compressed = in.readBoolean();
-
-        // need 8 bytes for the checksum long
-        if (in.readableBytes() < 8) {
-            in.resetReaderIndex();
-            return; // incomplete: wait for more data
-        }
-        long checksum = in.readLong();
-
-        // need 4 bytes for the data length int
-        if (in.readableBytes() < 4) {
-            in.resetReaderIndex();
-            return; // incomplete: wait for more data
-        }
-        int length = in.readInt();
-
-        // validate length
-        if (length < 0) {
-            // invalid or too large - close the connection to avoid abuse
-            throw new PacketDecodeException("Invalid packet length: " + length + ", closing connection.");
+            return;
         }
 
-        if (in.readableBytes() < length) {
-            in.resetReaderIndex();
-            return; // incomplete payload: wait for more data
-        }
-        byte[] data = new byte[length];
-        in.readBytes(data);
+        final boolean hasTimestamp = in.readBoolean();
+        final boolean hasPayload = in.readBoolean();
 
-        CRC32 crc32 = ChecksumUtils.crc32(true);
-        crc32.update(ByteBuffer.allocate(4).putInt(Messenger.SEED).array());
-        crc32.update(data);
-        long check = crc32.getValue();
+        final long timestamp;
+        if (hasTimestamp) {
+            if (in.readableBytes() < 1) {
+                in.resetReaderIndex();
+                return;
+            }
+            timestamp = in.readVarLong();
+        } else timestamp = System.currentTimeMillis();
 
-        byte[] bytes = compressed ? ResourceUtils.unzipBytes(data) : data;
+        final byte[] bytes;
+
+        if (hasPayload) {
+            final boolean compressed = in.readBoolean();
+            if (in.readableBytes() < 1) {
+                in.resetReaderIndex();
+                return;
+            }
+            final int checksum = in.readVarInt();
+
+            if (in.readableBytes() < 1) {
+                in.resetReaderIndex();
+                return;
+            }
+
+            final byte[] data = in.readByteArray();
+
+            final CRC32 crc32 = ChecksumUtils.crc32(true);
+            crc32.update(ByteBuffer.allocate(4).putInt(Messenger.SEED).array());
+            crc32.update(data);
+            final int check = (int) crc32.getValue();
+
+            if (check != checksum)
+                throw new PacketDecodeException("Invalid checksum for packetId " + id);
+
+            bytes = compressed ? ResourceUtils.unzipBytes(data) : data;
+        } else bytes = new byte[0];
 
         final Packet packet;
 
@@ -87,16 +82,7 @@ public class PacketDecoder {
             throw new PacketDecodeException("Failed to decode packet (" + id + ")", e);
         }
 
-        // Diagnostics for MetricsUpdatePacket
-        if (packet.getClass().getSimpleName().equals("MetricsUpdatePacket")) {
-            System.out.println("[DEC] Metrics packet: len=" + length + ", compressed=" + compressed + ", checksum(read)=" + checksum + ", checksum(calc)=" + check + " valid: " + (check == checksum));
-        }
-
-        if (check != checksum && false) {
-            throw new PacketDecodeException("Invalid packet checksum for packet (" + packet + "): expected " + checksum + ", got " + check);
-        }
-
-        if (compressed) System.out.println("unzipped packet with size " + packet.buffer().readableBytes());
         out.add(packet);
     }
+
 }

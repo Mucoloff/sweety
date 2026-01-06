@@ -1,6 +1,5 @@
 package dev.sweety.core.math.vector.d3;
 
-
 import java.util.Objects;
 
 /**

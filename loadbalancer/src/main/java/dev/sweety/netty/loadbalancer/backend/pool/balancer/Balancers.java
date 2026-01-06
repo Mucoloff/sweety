@@ -86,7 +86,6 @@ public enum Balancers {
 
             // Sottoinsieme dei candidati (es. 3)
 
-
             List<BackendNode> candidates =
 
             size > 10 ?

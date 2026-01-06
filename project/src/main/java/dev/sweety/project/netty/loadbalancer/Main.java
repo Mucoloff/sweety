@@ -83,7 +83,6 @@ public class Main {
                         new BackendPool(new SimpleLogger("pool").fallback(), backends, new ACBalancer(balancerSystem)), packetRegistry);
                 loadBalancer.start();
 
-
                 break;
 
             case "client":
@@ -125,7 +124,6 @@ public class Main {
         System.out.println("Backend avviati sulle porte " + Arrays.toString(BACKENDS));
 
         TimeUnit.SECONDS.sleep(2);
-
 
         // 2. Configura e avvia il Load Balancer
         List<BackendNode> backends = Arrays.stream(BACKENDS).mapToObj(port -> new BackendNode(HOST, port, packetRegistry)).toList();

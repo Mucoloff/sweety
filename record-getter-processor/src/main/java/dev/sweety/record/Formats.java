@@ -7,7 +7,6 @@ public enum Formats {
             }
             """),
 
-
     SETTER("""
             default void %field-name%(%field-type% %field-name%){
                 ((%class%) this).%field-name% = %field-name%;

@@ -67,8 +67,6 @@ public class Vector2d {
 
     }
 
-
-
     /**
      * Is the object we are comparing to equal to us?
      * It must be of type Vector2d or Vector2i and all values must be equal to the values in this class.

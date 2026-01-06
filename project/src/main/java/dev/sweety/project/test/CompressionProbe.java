@@ -26,8 +26,6 @@ public final class CompressionProbe {
     public static void main(String[] args) throws Exception {
         System.out.println("pattern,size,rawBytes,compressedBytes,ratio,compressTimeMicros");
 
-
-
         // patterns: random, repeated single byte, repeated text, low-entropy (zeros)
         byte[] random = generateRandom(SIZES[SIZES.length - 1]);
         byte[] repeated = generateRepeated(SIZES[SIZES.length - 1], (byte) 'A', (byte) 0xFF, (byte) 0x7E);

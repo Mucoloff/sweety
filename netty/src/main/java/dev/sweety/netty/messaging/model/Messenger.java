@@ -46,7 +46,6 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
     @Getter
     private final IPacketRegistry packetRegistry;
 
-
     public Messenger(B bootstrap, String host, int port, IPacketRegistry packetRegistry, Packet... packets) {
         this.bootstrap = bootstrap;
         this.boss = new NioEventLoopGroup();
@@ -60,7 +59,6 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
         this.host = host;
         this.packets = packets;
         this.packetRegistry = packetRegistry;
-
 
         final Consumer<SocketChannel> initChannelConsumer = (ch) -> {
             ChannelPipeline p = ch.pipeline();
@@ -104,6 +102,9 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
         return this.connect().join();
     }
 
+    @Setter
+    private Consumer<Channel> onConnect;
+
     public CompletableFuture<Channel> connect() {
         final CompletableFuture<Channel> future = new CompletableFuture<>();
 
@@ -112,6 +113,7 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
             running(success);
             if (success) {
                 future.complete(this.channel = f.channel());
+                if (this.onConnect != null) onConnect.accept(this.channel);
             } else {
                 future.completeExceptionally(f.cause());
             }

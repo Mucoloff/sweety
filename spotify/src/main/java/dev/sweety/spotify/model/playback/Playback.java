@@ -40,5 +40,4 @@ public class Playback {
     @SerializedName("smart_shuffle")
     private boolean smartShuffle;
 
-
 }

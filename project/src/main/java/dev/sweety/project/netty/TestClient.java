@@ -5,8 +5,9 @@ import dev.sweety.event.Event;
 import dev.sweety.event.EventSystem;
 import dev.sweety.event.processor.EventMapping;
 import dev.sweety.event.processor.GenerateEvent;
+import dev.sweety.netty.feature.AutoReconnect;
+import dev.sweety.netty.feature.TransactionManager;
 import dev.sweety.netty.messaging.Client;
-import dev.sweety.netty.packet.TransactionManager;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.model.PacketTransaction;
@@ -15,18 +16,22 @@ import dev.sweety.netty.packet.registry.OptimizedPacketRegistry;
 import dev.sweety.project.netty.packet.file.FilePacket;
 import dev.sweety.project.netty.packet.text.TextPacket;
 import dev.sweety.project.netty.ping.PingTransaction;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 
 public class TestClient extends Client {
 
     SimpleLogger logger = new SimpleLogger("Client").fallback();
 
-    private final TransactionManager transactionManager = new TransactionManager();
+    private final TransactionManager transactionManager = new TransactionManager(this);
     private final EventSystem eventSystem = new EventSystem();
     private final EventMapping eventMapping = new EventMapping(eventSystem);
+
+    private final AutoReconnect autoReconnect = new AutoReconnect(2500L, TimeUnit.MILLISECONDS, this::start);
 
     public TestClient(String host, int port, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
@@ -37,6 +42,27 @@ public class TestClient extends Client {
             Listener<TextPacketEvent> onText = event -> logger.info("Evento TextPacketEvent ricevuto con testo: " + event.getText());
             todo
             */
+        });
+
+        sendPacket(new TextPacket("Ciao dal client!"));
+
+        PingTransaction ping = new PingTransaction(new PingTransaction.Ping("ping da client"));
+
+        BiConsumer<PacketTransaction.Transaction, Throwable> completedTransaction = (PacketTransaction.Transaction response, Throwable ex) -> {
+            if (response != null) {
+                logger.info("completed transaction " + response.getClass().getSimpleName());
+
+                if (response instanceof PingTransaction.Pong pong) {
+                    logger.info("\treceived pong: " + pong.getText());
+                }
+
+            }
+            if (ex != null) logger.warn(ex);
+        };
+
+
+        setOnConnect(c -> {
+            transactionManager.sendTransaction(c.pipeline().firstContext(), ping, 10000L).whenComplete(completedTransaction);
         });
 
     }
@@ -64,20 +90,32 @@ public class TestClient extends Client {
 
         if (packet instanceof TextPacket t) {
             PacketBuffer b = t.buffer();
-            b.writeString("[messaggio editato]" + b.readString());
+            //b.writeString("[messaggio editato]" + b.readString());
         }
 
+    }
+
+
+
+    @Override
+    public Channel start() {
+        return super.connect().exceptionally(t -> {
+            autoReconnect.onException(t);
+            return null;
+        }).join();
     }
 
     @Override
     public void stop() {
         transactionManager.shutdown();
+        autoReconnect.shutdown();
         super.stop();
     }
 
     @Override
     public void exception(ChannelHandlerContext ctx, Throwable throwable) {
         logger.error("Errore nel client: ", throwable);
+        autoReconnect.onException(throwable);
     }
 
     @Override
@@ -90,6 +128,7 @@ public class TestClient extends Client {
     public void quit(ChannelHandlerContext ctx, ChannelPromise promise) {
         logger.warn("Client disconnesso dal Server.");
         promise.setSuccess();
+        autoReconnect.onQuit();
     }
 
     public static void main(String[] args) throws Throwable {
@@ -111,35 +150,6 @@ public class TestClient extends Client {
 
         Runtime.getRuntime().addShutdownHook(new Thread(client::stop));
 
-        StringBuilder buff = new StringBuilder();
-
-        for (int i = 0; i < 10; i++) {
-            buff.append("Questo è un messaggio di test numero ").append(i).append(". ");
-        }
-
-        client.sendPacket(new TextPacket("Ciao dal client!"));
-        //client.sendPacket(new TextPacket(buff.toString()));
-
-        PingTransaction ping = new PingTransaction(new PingTransaction.Ping("ping da client"));
-
-        BiConsumer<PacketTransaction.Transaction, Throwable> completedTransaction = (PacketTransaction.Transaction response, Throwable ex) -> {
-            client.logger.info("completed transaction ");
-            if (response != null) {
-                client.logger.info("received transaction " + response.getClass().getSimpleName());
-
-                if (response instanceof PingTransaction.Pong pong) {
-                    client.logger.info("received pong: " + pong.getText());
-                }
-
-            }
-            if (ex != null) client.logger.warn(ex);
-        };
-
-        client.transactionManager.registerRequest(ping.getRequestId(), 10000L).whenComplete(completedTransaction);
-        //client.transactionManager.registerRequest(-1L, 1000L).whenComplete(completedTransaction);
-
-        client.writePacket(ping);
-        client.flush();
 
 
         while (true) {

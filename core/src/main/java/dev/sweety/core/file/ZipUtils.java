@@ -69,7 +69,6 @@ public class ZipUtils {
         return baos.toByteArray();
     }
 
-
     public byte[] zipByteArray(byte[] data, String entryName)throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(baos))) {

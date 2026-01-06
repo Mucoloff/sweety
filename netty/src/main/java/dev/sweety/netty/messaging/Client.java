@@ -15,7 +15,6 @@ public abstract class Client extends Messenger<Bootstrap> {
         super(new Bootstrap(), host, port, packetRegistry, packets);
     }
 
-
     public CompletableFuture<Void> sendPacket(Packet packet) {
         return super.sendPacket(channelContext(), packet);
     }

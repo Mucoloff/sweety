@@ -11,7 +11,7 @@ public enum VersionComparison {
     /*
      * The version equals the compared version.
      */
-    EQUALS(Short::equals),
+    EQUALS(Integer::equals),
 
     /*
      * The version is newer than the compared version.
@@ -35,9 +35,9 @@ public enum VersionComparison {
 
     public static final VersionComparison[] VALUES = values();
 
-    private final BiPredicate<Short, Short> comparator;
+    private final BiPredicate<Integer, Integer> comparator;
 
-    VersionComparison(BiPredicate<Short, Short> comparator) {
+    VersionComparison(BiPredicate<Integer, Integer> comparator) {
         this.comparator = comparator;
     }
 
@@ -46,7 +46,7 @@ public enum VersionComparison {
     }
 
     public boolean compareByOrdinal(@NotNull MinecraftVersion a, @NotNull MinecraftVersion b) {
-        return comparator.test(((short) a.ordinal()), ((short) b.ordinal()));
+        return comparator.test(a.ordinal(), b.ordinal());
     }
 }
 

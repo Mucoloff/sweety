@@ -67,14 +67,12 @@ public abstract class BackendServer extends Server {
             return;
         }
 
-
         // 3. Chiama la logica di business dell'utente.
         Packet[] responses = handlePackets(ctx, original);
 
         if (responses != null && responses.length != 0) {// 4. Invia le risposte wrappate.
             for (int i = 0; i < responses.length; i++) {
                 responses[i] = new WrappedPacket(correlationId, i == responses.length - 1, getPacketRegistry().getPacketId(responses[i].getClass()), responses[i]);
-
 
             }
 
@@ -104,7 +102,6 @@ public abstract class BackendServer extends Server {
         return (float) Math.max(0.0, Math.min(1.0, cpuUsage));
     }
 
-
     private float getRamUsage() {
         long totalPhysical = osBean.getTotalMemorySize();
 
@@ -118,17 +115,14 @@ public abstract class BackendServer extends Server {
                 .mapToLong(pool -> pool.getUsage().getUsed())
                 .sum();
 
-
         long processUsed = heapUsed + metaspaceUsed;
         return (float) processUsed / totalPhysical;
     }
-
 
     @Override
     public void stop() {
         super.stop();
         metricsScheduler.shutdown();
     }
-
 
 }

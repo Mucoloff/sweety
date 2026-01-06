@@ -7,7 +7,6 @@ import java.io.InputStreamReader;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
-
 public record ExtensionInfo(String name, String version, String main) {
 
     static final ExtensionInfo BASE = new ExtensionInfo("name", "version", "mainClass");
@@ -23,6 +22,5 @@ public record ExtensionInfo(String name, String version, String main) {
             }
         }
     }
-
 
 }

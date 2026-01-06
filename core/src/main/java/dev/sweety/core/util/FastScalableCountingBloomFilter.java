@@ -1,6 +1,5 @@
 package dev.sweety.core.util;
 
-
 import dev.sweety.core.crypt.ChecksumUtils;
 import lombok.Getter;
 
@@ -88,6 +87,5 @@ public class FastScalableCountingBloomFilter {
     public String toString() {
         return "FastSCBF{size=" + filter.length + ", elements=" + elements + ", FPP=" + getEstimatedFPP() + "}";
     }
-
 
 }

@@ -1,6 +1,8 @@
 
 package dev.sweety.netty.packet.model;
 
+import dev.sweety.core.crypt.ChecksumUtils;
+import dev.sweety.core.math.RandomUtils;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.buffer.io.Decoder;
 import dev.sweety.netty.packet.buffer.io.Encoder;
@@ -8,7 +10,7 @@ import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.zip.CRC32;
 
 @Getter
 public abstract class PacketTransaction<R extends PacketTransaction.Transaction, S extends PacketTransaction.Transaction> extends Packet {
@@ -19,7 +21,7 @@ public abstract class PacketTransaction<R extends PacketTransaction.Transaction,
 
     public PacketTransaction(R request) {
         super();
-        this.buffer().writeVarLong(this.requestId = ThreadLocalRandom.current().nextLong());
+        this.buffer().writeVarLong(this.requestId = generateId());
         this.buffer().writeObject(this.request = request);
         this.buffer().writeObject(this.response = null);
     }
@@ -31,15 +33,23 @@ public abstract class PacketTransaction<R extends PacketTransaction.Transaction,
         this.buffer().writeObject(this.response = response);
     }
 
-    public PacketTransaction(short _id, long _timestamp, byte[] _data) {
+    public PacketTransaction(int _id, long _timestamp, byte[] _data) {
         super(_id, _timestamp, _data);
         this.requestId = this.buffer().readVarLong();
         this.request = this.buffer().readObject(this::constructRequest);
         this.response = this.buffer().readObject(this::constructResponse);
     }
 
-    public String requestCode(){
-        return Long.toHexString(requestId);
+    private static long generateId() {
+        CRC32 crc = ChecksumUtils.crc32(true);
+        byte[] randomBytes = new byte[RandomUtils.range(8, 32)];
+        RandomUtils.RANDOM.nextBytes(randomBytes);
+        crc.update(randomBytes);
+        return crc.getValue();
+    }
+
+    public String requestCode() {
+        return "#" + Long.toHexString(requestId);
     }
 
     public boolean hasRequest() {

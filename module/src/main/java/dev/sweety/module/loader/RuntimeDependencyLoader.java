@@ -98,7 +98,6 @@ public class RuntimeDependencyLoader {
         Class<?> gsonClass = Class.forName("com.google.gson.Gson", true, Thread.currentThread().getContextClassLoader());
         System.out.println("✅ Caricata: " + gsonClass);
 
-
         for (URL loadedJar : loader.getLoadedJars()) {
             System.out.println("Jar caricato: " + loadedJar);
         }

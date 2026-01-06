@@ -53,5 +53,4 @@ public class ProfileThread {
         return this;
     }
 
-
 }

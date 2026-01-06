@@ -18,7 +18,7 @@ public class PlayerPacket extends Packet {
         this.buffer().writeString(this.text = text);
     }
 
-    public PlayerPacket(short _id, long _timestamp, byte[] _data) {
+    public PlayerPacket(int _id, long _timestamp, byte[] _data) {
         super(_id, _timestamp, _data);
         this.uuid = this.buffer().readUuid();
         this.text = this.buffer().readString();

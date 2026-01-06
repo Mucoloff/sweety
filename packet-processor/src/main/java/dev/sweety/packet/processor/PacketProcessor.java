@@ -1,6 +1,5 @@
 package dev.sweety.packet.processor;
 
-
 import com.google.auto.service.AutoService;
 import com.squareup.javapoet.*;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
@@ -65,6 +64,7 @@ public class PacketProcessor extends AbstractProcessor {
         final String interfaceName = interfaceElement.getSimpleName().toString();
         final String packetPackage = elementUtils.getPackageOf(interfaceElement).getQualifiedName().toString();
         final String packetName = (buildPacket == null || buildPacket.name() == null || buildPacket.name().isEmpty()) ? (interfaceName + "Packet") : buildPacket.name();
+        final String packetBuildPackage = packetPackage + ((buildPacket == null || buildPacket.path() == null) ? ("") : buildPacket.path());
         final ClassName packetClassName = ClassName.get(packetPackage, interfaceName);
 
         final ArrayList<AnnotationSpec> annotations = getAnnotations(buildPacket);
@@ -73,7 +73,7 @@ public class PacketProcessor extends AbstractProcessor {
 
         final MethodSpec.Builder readConstructorBuilder = MethodSpec.constructorBuilder()
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(short.class, "_id")
+                .addParameter(int.class, "_id")
                 .addParameter(long.class, "_timestamp")
                 .addParameter(byte[].class, "_data")
                 .addStatement("super(_id, _timestamp, _data)");
@@ -85,7 +85,6 @@ public class PacketProcessor extends AbstractProcessor {
                 .superclass(ClassName.get(Packet.class))
                 .addSuperinterface(packetClassName);
 
-
         for (Element enclosedElement : enclosedElements) {
             if (enclosedElement.getKind() != ElementKind.METHOD) continue;
             BuildPacket fieldBuildPacket = enclosedElement.getAnnotation(BuildPacket.class);
@@ -93,21 +92,18 @@ public class PacketProcessor extends AbstractProcessor {
             final ExecutableElement method = (ExecutableElement) enclosedElement;
             final String originalFieldName = method.getSimpleName().toString();
 
-
             final String fieldName;
             final boolean replace;
             if (fieldBuildPacket == null || fieldBuildPacket.name() == null || fieldBuildPacket.name().isEmpty()) {
                 fieldName = originalFieldName;
                 replace = false;
-            }
-            else {
+            } else {
                 fieldName = fieldBuildPacket.name();
                 replace = fieldBuildPacket.addMethod();
             }
 
             final TypeMirror returnType = method.getReturnType();
             final TypeName returnTypeName = TypeName.get(returnType);
-
 
             ArrayList<AnnotationSpec> fieldAnnotations = getAnnotations(fieldBuildPacket);
 
@@ -150,7 +146,6 @@ public class PacketProcessor extends AbstractProcessor {
             generateBuffer(fieldName, returnType, writeConstructorBuilder, readConstructorBuilder, method);
         }
 
-
         eventClassBuilder.addMethod(writeConstructorBuilder.build())
                 .addMethod(readConstructorBuilder.build());
 
@@ -158,10 +153,7 @@ public class PacketProcessor extends AbstractProcessor {
             eventClassBuilder.addAnnotation(annotation);
         }
 
-        // add getter methods implementing the interface
-
-
-        JavaFile javaFile = JavaFile.builder(packetPackage, eventClassBuilder.build())
+        JavaFile javaFile = JavaFile.builder(packetBuildPackage, eventClassBuilder.build())
                 .build();
 
         javaFile.writeTo(processingEnv.getFiler());

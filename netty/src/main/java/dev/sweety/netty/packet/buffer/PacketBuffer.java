@@ -46,29 +46,48 @@ public class PacketBuffer {
         return this.nettyBuffer.readInt();
     }
 
-    public PacketBuffer writeVarInt(int value) {
-        while ((value & 0xFFFFFF80) != 0L) {
+    private void writeVarUnsigned(long value) {
+        while ((value & ~0x7FL) != 0) {
             writeByte((byte) ((value & 0x7F) | 0x80));
             value >>>= 7;
         }
-        writeByte((byte) (value & 0x7F));
+        writeByte((byte) value);
+    }
+
+    private long readVarUnsigned(int maxBytes) {
+        int numRead = 0;
+        long result = 0;
+        byte read;
+
+        do {
+            read = readByte();
+            long value = read & 0x7FL;
+            result |= value << (7 * numRead);
+
+            numRead++;
+            if (numRead > maxBytes)
+                throw new PacketDecodeException("VarInt/VarLong too big").runtime();
+        } while ((read & 0x80) != 0);
+
+        return result;
+    }
+
+    public PacketBuffer writeVarInt(int value) {
+        writeVarUnsigned(value & 0xFFFFFFFFL);
         return this;
     }
 
     public int readVarInt() {
-        int numRead = 0;
-        int result = 0;
-        byte read;
-        do {
-            read = readByte();
-            int value = (read & 0x7F);
-            result |= (value << (7 * numRead));
+        return (int) readVarUnsigned(5);
+    }
 
-            numRead++;
-            if (numRead > 5) throw new PacketDecodeException("VarInt too big").runtime();
-        } while ((read & 0x80) != 0);
+    public PacketBuffer writeVarLong(long value) {
+        writeVarUnsigned(value);
+        return this;
+    }
 
-        return result;
+    public long readVarLong() {
+        return readVarUnsigned(10);
     }
 
     public PacketBuffer writeDouble(double value) {
@@ -151,32 +170,6 @@ public class PacketBuffer {
         return this.nettyBuffer.readLong();
     }
 
-    // VarLong support
-    public PacketBuffer writeVarLong(long value) {
-        while ((value & 0xFFFFFFFFFFFFFF80L) != 0L) {
-            writeByte((byte) ((value & 0x7F) | 0x80));
-            value >>>= 7;
-        }
-        writeByte((byte) (value & 0x7F));
-        return this;
-    }
-
-    public long readVarLong() {
-        int numRead = 0;
-        long result = 0L;
-        byte read;
-        do {
-            read = readByte();
-            long value = (read & 0x7FL);
-            result |= (value << (7 * numRead));
-
-            numRead++;
-            if (numRead > 10) throw new PacketDecodeException("VarLong too big").runtime();
-        } while ((read & 0x80) != 0);
-
-        return result;
-    }
-
     public short readUnsignedByte() {
         return this.nettyBuffer.readUnsignedByte();
     }
@@ -190,7 +183,6 @@ public class PacketBuffer {
         writeVarInt(bytes.length);
         return writeBytes(bytes);
     }
-
 
     public String readString(Charset charset) {
         int length = readVarInt();
@@ -208,11 +200,9 @@ public class PacketBuffer {
         return writeString(data, StandardCharsets.UTF_8);
     }
 
-
     public String readString() {
         return readString(StandardCharsets.UTF_8);
     }
-
 
     public PacketBuffer writeEnum(Enum<?> value) {
         return writeVarInt(value.ordinal());
@@ -580,6 +570,5 @@ public class PacketBuffer {
     public ByteBuf nettyBuffer() {
         return this.nettyBuffer;
     }
-
 
 }

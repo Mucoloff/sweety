@@ -18,7 +18,6 @@ public class LinkedStackUtils {
         return new LinkedStack<>();
     }
 
-
     public static <F, R> R run(F initialFrame, Function<StackContext<F, R>, R> step) {
         return run(initialFrame, step, LinkedStackUtils::newDequeStack);
     }
@@ -36,7 +35,6 @@ public class LinkedStackUtils {
         }
         return result;
     }
-
 
     public static <F, R> R runWithStack(F initialFrame, Function<F, R> step) {
         return runWithStack(initialFrame, step, LinkedStackUtils::newDequeStack);

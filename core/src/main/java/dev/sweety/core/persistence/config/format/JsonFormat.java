@@ -4,7 +4,6 @@ import dev.sweety.core.persistence.config.GsonUtils;
 
 import java.io.Reader;
 
-
 public class JsonFormat extends ConfigFormat {
 
     public JsonFormat() {

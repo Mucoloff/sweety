@@ -27,10 +27,9 @@ public class TestServer extends Server {
             sendPacket(ctx, new TextPacket("Ricevuto il tuo messaggio: " + text.getText()));
         } else if (packet instanceof PingTransaction transaction) {
             if (transaction.hasRequest()) {
-                long requestId = transaction.getRequestId();
-                logger.info("Ricevuto ping con ID: " + requestId);
+                logger.info("Ricevuto ping con ID: " + transaction.requestCode());
                 logger.info("Contenuto del messaggio: " + transaction.getRequest().getText());
-                sendPacket(ctx, new PingTransaction(requestId, new PingTransaction.Pong("pong da server")));
+                sendPacket(ctx, new PingTransaction(transaction.getRequestId(), new PingTransaction.Pong("pong da server")));
             }
         }
 

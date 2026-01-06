@@ -26,7 +26,6 @@ public class TrackItem {
     @SerializedName("uri")
     private String uri;
 
-
     public Image[] getImages() {
         if (album != null) {
             return album.getImages();

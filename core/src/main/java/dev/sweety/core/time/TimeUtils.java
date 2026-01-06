@@ -21,8 +21,6 @@ public class TimeUtils {
         return time(days, hours, minutes, seconds);
     }
 
-
-
     private String time(long days, long hours, long minutes, long seconds) {
         StringBuilder sb = new StringBuilder();
         if (days > 0) sb.append(String.format("%02dd ", days));

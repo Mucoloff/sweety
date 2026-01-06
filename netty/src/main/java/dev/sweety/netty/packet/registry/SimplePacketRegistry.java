@@ -1,6 +1,5 @@
 package dev.sweety.netty.packet.registry;
 
-
 import dev.sweety.netty.messaging.exception.PacketRegistrationException;
 import dev.sweety.netty.packet.model.Packet;
 
@@ -12,29 +11,29 @@ import java.util.stream.Collectors;
 
 public class SimplePacketRegistry implements IPacketRegistry {
 
-    private final Map<Short, RegisteredPacket> packets;
+    private final Map<Integer, RegisteredPacket> packets;
 
     public SimplePacketRegistry() {
         this.packets = new ConcurrentHashMap<>();
     }
 
-    public SimplePacketRegistry(final short size) {
+    public SimplePacketRegistry(final int size) {
         this.packets = new ConcurrentHashMap<>(size);
     }
 
     @SafeVarargs
     public SimplePacketRegistry(Class<? extends Packet>... packets) throws PacketRegistrationException {
-        this((short) packets.length);
+        this(packets.length);
         registerPackets(packets);
     }
 
-    public SimplePacketRegistry(Map<Short, Class<? extends Packet>> packets) throws PacketRegistrationException {
-        this((short) packets.size());
+    public SimplePacketRegistry(Map<Integer, Class<? extends Packet>> packets) throws PacketRegistrationException {
+        this(packets.size());
         registerPackets(packets);
     }
 
     @Override
-    public void registerPacket(short packetId, Class<? extends Packet> packet) throws PacketRegistrationException {
+    public void registerPacket(int packetId, Class<? extends Packet> packet) throws PacketRegistrationException {
         if (containsPacketId(packetId)) throw new PacketRegistrationException("PacketID is already in use");
 
         try {
@@ -46,18 +45,18 @@ public class SimplePacketRegistry implements IPacketRegistry {
     }
 
     @Override
-    public short getPacketId(Class<? extends Packet> packetClass) {
-        return packets.entrySet().stream().filter(entry -> entry.getValue().getPacketClass().equals(packetClass)).findFirst().map(Map.Entry::getKey).orElse((short) -1);
+    public int getPacketId(Class<? extends Packet> packetClass) {
+        return packets.entrySet().stream().filter(entry -> entry.getValue().getPacketClass().equals(packetClass)).findFirst().map(Map.Entry::getKey).orElse(-1);
     }
 
     @Override
-    public <T extends Packet> T constructPacket(short packetId, long timestamp, byte[] data) throws InvocationTargetException, InstantiationException, IllegalAccessException {
+    public <T extends Packet> T constructPacket(int packetId, long timestamp, byte[] data) throws InvocationTargetException, InstantiationException, IllegalAccessException {
         if (!containsPacketId(packetId)) throw new IllegalArgumentException("Packet " + packetId + " not found");
         return packets.get(packetId).create(packetId, timestamp, data);
     }
 
     @Override
-    public boolean containsPacketId(short id) {
+    public boolean containsPacketId(int id) {
         return packets.containsKey(id);
     }
 

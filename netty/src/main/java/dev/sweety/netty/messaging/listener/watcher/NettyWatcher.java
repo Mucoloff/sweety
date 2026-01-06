@@ -31,7 +31,6 @@ public class NettyWatcher extends ChannelHandlerAdapter {
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         this.messenger.join(ctx, ctx.newPromise());
 
-
         Packet[] initial = this.messenger.getPackets();
         if (initial != null && initial.length > 0) {
             this.messenger.sendPacket(ctx, initial).exceptionally(ex -> {
@@ -42,7 +41,6 @@ public class NettyWatcher extends ChannelHandlerAdapter {
 
         super.channelActive(ctx);
     }
-
 
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         this.messenger.quit(ctx, ctx.newPromise());

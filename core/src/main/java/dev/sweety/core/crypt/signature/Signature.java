@@ -128,7 +128,6 @@ public class Signature {
         return base + suffix + ext;
     }
 
-
     // watermarkSignature + nameBytes.length + data.length + crc
     private static final int MIN_SIZE = 4 + 4 + 4 + 8;
 

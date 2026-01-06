@@ -19,7 +19,6 @@ public abstract class Server extends Messenger<ServerBootstrap> {
         super(new ServerBootstrap(), host, port, packetRegistry, packets);
     }
 
-
     public void broadcastPacket(final Packet msg) {
         if (clients.isEmpty()) return;
         this.clients.values().forEach((ctx) -> sendPacket(ctx, msg));
@@ -39,5 +38,4 @@ public abstract class Server extends Messenger<ServerBootstrap> {
     }
 
 }
-
 

@@ -63,9 +63,13 @@ public class EventProcessor extends AbstractProcessor {
         ClassName packetClassName = ClassName.get(packetPackage, packetName);
 
         List<FieldSpec> fields = new ArrayList<>();
+
         MethodSpec.Builder constructorBuilder = MethodSpec.constructorBuilder()
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(packetClassName, "p");
+                .addParameter(packetClassName, "packet")
+                .addStatement("this.packet = packet");
+
+        fields.add(FieldSpec.builder(packetClassName, "packet", Modifier.PRIVATE, Modifier.FINAL).build());
 
         List<? extends Element> enclosedElements = packetElement.getEnclosedElements();
 
@@ -74,7 +78,6 @@ public class EventProcessor extends AbstractProcessor {
 
             VariableElement variableElement = (VariableElement) enclosedElement;
             String fieldName = variableElement.getSimpleName().toString();
-
 
             String getterName = "get" + capitalize(fieldName);
             boolean hasGetter = variableElement.getAnnotation(Getter.class) != null;
@@ -99,15 +102,13 @@ public class EventProcessor extends AbstractProcessor {
                 }
             }
 
-
             if (hasGetter) {
                 fields.add(FieldSpec.builder(TypeName.get(fieldType), fieldName, Modifier.PRIVATE, Modifier.FINAL).addAnnotation(Getter.class).build());
-                constructorBuilder.addStatement("this.$N = p.$N()", fieldName, getterName);
+                constructorBuilder.addStatement("this.$N = packet.$N()", fieldName, getterName);
             } else {
                 //messager.printMessage(Diagnostic.Kind.NOTE, "Skipping field without getter: " + fieldName, variableElement);
             }
         }
-
 
         TypeSpec.Builder eventClassBuilder = TypeSpec.classBuilder(eventName)
                 .addModifiers(Modifier.PUBLIC)
