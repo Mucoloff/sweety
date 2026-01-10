@@ -17,8 +17,9 @@ public class NettyEncoder extends MessageToByteEncoder<Packet> {
 
     @Override
     protected void encode(ChannelHandlerContext ctx, Packet packet, ByteBuf out) throws Exception {
-        PacketBuffer buf = new PacketBuffer();
+        PacketBuffer buf = new PacketBuffer().retain();
         packetEncoder.encode(packet, buf);
         out.writeBytes(buf.getBytes());
+        buf.release();
     }
 }

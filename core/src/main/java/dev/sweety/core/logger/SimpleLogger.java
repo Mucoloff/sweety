@@ -2,60 +2,96 @@ package dev.sweety.core.logger;
 
 import dev.sweety.core.color.AnsiColor;
 import dev.sweety.core.exception.ExceptionUtils;
-import lombok.Setter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.event.Level;
+import dev.sweety.core.logger.backend.ConsoleBackend;
+import dev.sweety.core.logger.backend.LoggerBackend;
+import dev.sweety.core.logger.profile.ProfileScope;
+import dev.sweety.core.math.vector.stack.LinkedStack;
+import dev.sweety.core.math.vector.stack.Stack;
+import lombok.Getter;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.StringJoiner;
+import java.util.function.BiConsumer;
 
 public class SimpleLogger implements LogHelper {
     protected final String name;
-    private final Logger logger;
 
-    @Setter
-    private boolean useFallback = false;
+    private final ThreadLocal<Stack<String>> profiles = ThreadLocal.withInitial(LinkedStack::new);
+    // Pluggable backend support
+    @Getter
+    private volatile LoggerBackend backend = new ConsoleBackend();
 
     public SimpleLogger fallback() {
-        this.useFallback = true;
         return this;
     }
 
     public SimpleLogger(String name) {
-        this.logger = LoggerFactory.getLogger(this.name = name);
+        this.name = name;
     }
 
     public SimpleLogger(Class<?> clazz) {
         this.name = clazz.getSimpleName();
-        this.logger = LoggerFactory.getLogger(clazz);
     }
 
-    public static void log(Level level, Logger logger, Object... input) {
-        final String color = getColor(level);
+    // Allow setting a custom backend (e.g., SLF4J, Log4j, java.util.logging, etc.)
+    public SimpleLogger setBackend(LoggerBackend backend) {
+        this.backend = (backend != null) ? backend : new ConsoleBackend();
+        return this;
+    }
+
+    public static void log(LogLevel level, BiConsumer<LogLevel, String> logger, Object... input) {
+        final String color = level.color().getColor();
         final String message = parseMessage(input) + AnsiColor.RESET.getColor();
 
-        logger.makeLoggingEventBuilder(level).log(color + message);
+        logger.accept(level, color + message);
     }
 
-    public static void log(Level level, String name, Object... input) {
-        final String color = getColor(level);
+    public static void log(LogLevel level, String name, Object... input) {
+        final String color = level.color().getColor();
         final String message = parseMessage(input) + AnsiColor.RESET.getColor();
 
         System.out.printf("%s(!)%s [%s] %s\n", AnsiColor.RED.getColor(), color, name, message);
     }
 
-    public void log(Level level, Object... input) {
-        //String message = "%s[%s] %s: %s".formatted(time(), level, name, );
-
-        final String color = getColor(level);
+    public void log(LogLevel level, Object... input) {
+        final String prefix = formatPrefix(level);
+        final String color = level.color().getColor();
         final String message = parseMessage(input) + AnsiColor.RESET.getColor();
+        final String line = color + prefix + " " + message;
 
-        this.logger.makeLoggingEventBuilder(level).log(color + message);
+        backend.log(level, name, profiles.get().top(), line);
+    }
 
-        if (this.useFallback) {
-            System.out.printf("%s(!)%s [%s] %s\n", AnsiColor.RED.getColor(), color, this.name, message);
-        }
+    private String formatPrefix(LogLevel level) {
+        final String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+        final String top = profiles.get().top();
+        final String suffix = (top != null && !top.isEmpty()) ? ("@" + top) : "";
+        return "[" + time + "][" + level + "][" + name + suffix + "]";
+    }
+
+    // Profile management (thread-local) with hierarchical composition
+    public void pushProfile(String profile) {
+        final Stack<String> stack = profiles.get();
+        final String suffix = (stack.top() != null && !stack.top().isEmpty()) ? (stack.top() + "@") : "";
+        stack.push(suffix + profile);
+    }
+
+    public String popProfile() {
+        return profiles.get().pop();
+    }
+
+    public String switchProfile(String profile) {
+        final Stack<String> stack = profiles.get();
+        String old = stack.pop();
+        stack.push(profile);
+        return old;
+    }
+
+    public ProfileScope withProfile(String profile) {
+        pushProfile(profile);
+        return new ProfileScope(this);
     }
 
     @Override
@@ -88,33 +124,23 @@ public class SimpleLogger implements LogHelper {
     }
 
     public void info(Object... input) {
-        log(Level.INFO, input);
+        log(LogLevel.INFO, input);
     }
 
     public void warn(Object... input) {
-        log(Level.WARN, input);
+        log(LogLevel.WARN, input);
     }
 
     public void error(Object... input) {
-        log(Level.ERROR, input);
+        log(LogLevel.ERROR, input);
     }
 
     public void debug(Object... input) {
-        log(Level.DEBUG, input);
+        log(LogLevel.DEBUG, input);
     }
 
     public void trace(Object... input) {
-        log(Level.TRACE, input);
-    }
-
-    private static String getColor(Level level) {
-        return (switch (level) {
-            case INFO -> AnsiColor.WHITE_BRIGHT;
-            case WARN -> AnsiColor.YELLOW_BRIGHT;
-            case ERROR -> AnsiColor.RED_BRIGHT;
-            case DEBUG -> AnsiColor.PURPLE_BRIGHT;
-            case TRACE -> AnsiColor.RESET;
-        }).getColor();
+        log(LogLevel.TRACE, input);
     }
 
 }

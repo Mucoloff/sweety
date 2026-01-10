@@ -21,7 +21,7 @@ public class NettyWatcher extends ChannelHandlerAdapter {
             } finally {
                 // Release inbound packet buffer to prevent leaks
                 try {
-                    packet.release();
+                    //packet.release();
                 } catch (Throwable ignored) {
                 }
             }

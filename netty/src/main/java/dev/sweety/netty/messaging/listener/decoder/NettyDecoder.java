@@ -1,5 +1,6 @@
 package dev.sweety.netty.messaging.listener.decoder;
 
+import dev.sweety.core.logger.LogLevel;
 import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.netty.messaging.exception.PacketDecodeException;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
@@ -8,7 +9,6 @@ import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
-import org.slf4j.event.Level;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,9 +25,11 @@ public class NettyDecoder extends ByteToMessageDecoder {
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
         List<Packet> packets = new ArrayList<>(1);
         try {
-            packetDecoder.decode(new PacketBuffer(in), packets);
+            PacketBuffer buf = new PacketBuffer(in).retain();
+            packetDecoder.decode(buf, packets);
+            buf.release();
         } catch (PacketDecodeException e) {
-            SimpleLogger.log(Level.DEBUG, "exception from context: " + ctx.channel().remoteAddress());
+            SimpleLogger.log(LogLevel.DEBUG, "exception from context: " + ctx.channel().remoteAddress());
             throw new RuntimeException(e);
         }
         out.addAll(packets);

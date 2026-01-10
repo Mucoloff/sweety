@@ -22,6 +22,11 @@ public class DequeStack<F> implements Stack<F> {
     }
 
     @Override
+    public F top() {
+        return deque.element();
+    }
+
+    @Override
     public boolean isEmpty() {
         return deque.isEmpty();
     }

@@ -89,8 +89,7 @@ public class BackendNode extends Client {
 
         Packet original;
         try {
-            original = getPacketRegistry().constructPacket(wrapped.getOriginalId(), wrapped.getOriginalTimestamp(), wrapped.getOriginalData());
-            original.rewind();
+            original = getPacketRegistry().constructPacket(wrapped.getOriginalId(), wrapped.getOriginalTimestamp(), wrapped.getOriginalData()).rewind();
         } catch (Exception e) {
             return;
         }

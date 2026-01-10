@@ -63,6 +63,7 @@ public class TestClient extends Client {
 
         setOnConnect(c -> {
             transactionManager.sendTransaction(c.pipeline().firstContext(), ping, 10000L).whenComplete(completedTransaction);
+            sendPacket(new TextPacket("ciao"));
         });
 
     }

@@ -17,10 +17,16 @@ public class LinkedStack<F> implements Stack<F> {
 
     @Override
     public F pop() {
-        if (top == null) return null;
-        F f = top.value();
-        top = top.next();
+        if (this.top == null) return null;
+        final F f = this.top.value();
+        this.top = top.next();
         return f;
+    }
+
+    @Override
+    public F top() {
+        if (this.top == null) return null;
+        return top.value();
     }
 
     @Override

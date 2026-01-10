@@ -11,6 +11,7 @@ import it.unimi.dsi.fastutil.Pair;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.EOFException;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -553,22 +554,69 @@ public class PacketBuffer {
         return this;
     }
 
+    // Write bytes from another ByteBuf without converting to byte[] externally
+    public PacketBuffer writeBytes(ByteBuf src) {
+        this.nettyBuffer.writeBytes(src);
+        return this;
+    }
+
     public PacketBuffer wrapData(Encoder encoder) {
         byte[] bytes = readAllBytes();
         encoder.write(this);
         return writeBytes(bytes);
     }
 
+    // Prefer zero-copy when possible
     public PacketBuffer writeBuffer(PacketBuffer other) {
-        return writeBytes(other.getBytes());
+        // Avoid other.getBytes(); write directly from underlying ByteBuf
+        this.nettyBuffer.writeBytes(other.nettyBuffer);
+        return this;
     }
 
     public PacketBuffer readSlice(int length) {
         return new PacketBuffer(nettyBuffer.readSlice(length));
     }
 
+    // Return a retained slice to safely pass across components without immediate copy
+    public PacketBuffer readRetainedSlice(int length) {
+        ByteBuf slice = nettyBuffer.readSlice(length);
+        slice.retain();
+        return new PacketBuffer(slice);
+    }
+
+    public PacketBuffer slice() {
+        return new PacketBuffer(this.nettyBuffer.slice());
+    }
+
+    // Create a slice view from current readerIndex with specified length
+    public PacketBuffer slice(int index, int length) {
+        return new PacketBuffer(this.nettyBuffer.slice(index, length));
+    }
+
+    // Retained slice for longer-lived sharing
+    public PacketBuffer retainedSlice(int index, int length) {
+        ByteBuf slice = this.nettyBuffer.slice(index, length);
+        slice.retain();
+        return new PacketBuffer(slice);
+    }
+
     public ByteBuf nettyBuffer() {
         return this.nettyBuffer;
+    }
+
+    // Compute CRC32 directly on the ByteBuf content without altering readerIndex
+    public int computeCrc32(int seed) {
+        java.util.zip.CRC32 crc32 = new java.util.zip.CRC32();
+        // Seed via 4 bytes
+        ByteBuffer seedBuf = ByteBuffer.allocate(4).putInt(seed);
+        seedBuf.flip();
+        crc32.update(seedBuf);
+        // If heap-backed, use nioBuffer for zero-copy
+        int idx = this.nettyBuffer.readerIndex();
+        int len = this.nettyBuffer.readableBytes();
+        ByteBuffer nio = this.nettyBuffer.nioBuffer(idx, len);
+        crc32.update(nio);
+        return (int) crc32.getValue();
     }
 
 }

@@ -7,9 +7,11 @@ import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 
 import java.nio.ByteBuffer;
-import java.util.zip.CRC32;
+import java.util.zip.CRC32C;
 
 public class PacketEncoder {
     static final int ZIP_THRESHOLD = 256;
@@ -24,32 +26,50 @@ public class PacketEncoder {
         if (packetId < 0)
             throw new PacketEncodeException("Returned PacketId by registry is < 0");
 
-
         final boolean hasTimestamp = packet.timestamp() > 0L;
-        byte[] data = packet.buffer().getBytes();
-
-        final boolean hasPayload = data != null && data.length > 0;
+        final PacketBuffer payloadBuf = packet.buffer();
+        final ByteBuf payloadNetty = payloadBuf.nettyBuffer();
+        final boolean hasPayload = payloadNetty.readableBytes() > 0;
 
         out.writeVarInt(packetId).writeBoolean(hasTimestamp).writeBoolean(hasPayload);
         if (hasTimestamp) out.writeVarLong(packet.timestamp());
 
+        // Compute checksum directly on ByteBuf
+        CRC32C crc32 = ChecksumUtils.crc32(true);
+        ByteBuffer seedBuf = ByteBuffer.allocate(4).putInt(Messenger.SEED);
+        seedBuf.flip();
+        crc32.update(seedBuf);
         if (hasPayload) {
+            final int readable = payloadNetty.readableBytes();
             final boolean compressed;
-            if (data.length >= ZIP_THRESHOLD) {
-                byte[] zipped = ResourceUtils.zipBytes(data, "zipped-buffer");
-                if (zipped.length < data.length) {
-                    data = zipped;
+            ByteBuf toWrite = payloadNetty.slice(payloadNetty.readerIndex(), readable);
+            toWrite.retain();
+            if (readable < ZIP_THRESHOLD) {
+                compressed = false;
+            } else {
+                // Attempt compression; only accept if beneficial
+                byte[] src = new byte[readable];
+                payloadNetty.getBytes(payloadNetty.readerIndex(), src);
+                byte[] zipped = ResourceUtils.zipBytes(src, "zipped-buffer");
+                if (zipped.length >= src.length) {
+                    compressed = false;
+                } else {
+                    toWrite.release();
+                    toWrite = Unpooled.wrappedBuffer(zipped); // Netty ByteBuf from compressed data
                     compressed = true;
-                } else compressed = false;
-            } else compressed = false;
+                }
+            }
 
-            CRC32 crc32 = ChecksumUtils.crc32(true);
-            crc32.update(ByteBuffer.allocate(4).putInt(Messenger.SEED).array());
-            crc32.update(data);
-            int check = (int) crc32.getValue();
-            out.writeBoolean(compressed).writeVarInt(check).writeByteArray(data);
+            ByteBuffer nio = toWrite.nioBuffer(0, toWrite.readableBytes());
+            crc32.update(nio);
+
+            out.writeBoolean(compressed).writeVarInt(toWrite.readableBytes());
+            // Write payload bytes zero-copy where possible
+            out.nettyBuffer().writeBytes(toWrite, toWrite.readableBytes());
+            toWrite.release();
         }
 
-
+        int check = (int) crc32.getValue();
+        out.writeVarInt(check);
     }
 }

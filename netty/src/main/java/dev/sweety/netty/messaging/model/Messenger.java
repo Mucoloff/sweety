@@ -154,16 +154,11 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
         }
         onPacketSend(ctx, packet, true);
         ctx.channel().write(packet).addListener(f -> {
-            try {
-                if (f.isSuccess()) {
-                    onPacketSend(ctx, packet, false);
-                    future.complete(null);
-                } else {
-                    future.completeExceptionally(f.cause());
-                }
-            } finally {
-                // Always release the packet's internal buffer to avoid leaks
-                try { packet.buffer().release(); } catch (Throwable ignored) {}
+            if (f.isSuccess()) {
+                onPacketSend(ctx, packet, false);
+                future.complete(null);
+            } else {
+                future.completeExceptionally(f.cause());
             }
         });
         return future;

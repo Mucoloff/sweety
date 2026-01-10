@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.zip.CRC32;
+import java.util.zip.CRC32C;
 
 /**
  * Il server del Load Balancer. Estende 'Server' per gestire le connessioni dei client.
@@ -120,7 +120,7 @@ public class LoadBalancerServer extends Server {
     }
 
     private long generateCorrelation() {
-        CRC32 crc = ChecksumUtils.crc32(true);
+        CRC32C crc = ChecksumUtils.crc32(true);
         byte[] randomBytes = new byte[RandomUtils.range(8, 16)];
         RandomUtils.RANDOM.nextBytes(randomBytes);
         crc.update(randomBytes);

@@ -10,7 +10,7 @@ import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.util.zip.CRC32;
+import java.util.zip.CRC32C;
 
 @Getter
 public abstract class PacketTransaction<R extends PacketTransaction.Transaction, S extends PacketTransaction.Transaction> extends Packet {
@@ -41,7 +41,7 @@ public abstract class PacketTransaction<R extends PacketTransaction.Transaction,
     }
 
     private static long generateId() {
-        CRC32 crc = ChecksumUtils.crc32(true);
+        CRC32C crc = ChecksumUtils.crc32(true);
         byte[] randomBytes = new byte[RandomUtils.range(8, 32)];
         RandomUtils.RANDOM.nextBytes(randomBytes);
         crc.update(randomBytes);

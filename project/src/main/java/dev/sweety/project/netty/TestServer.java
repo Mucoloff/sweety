@@ -21,6 +21,8 @@ public class TestServer extends Server {
 
     @Override
     public void onPacketReceive(ChannelHandlerContext ctx, Packet packet) {
+        logger.pushProfile("receive");
+        logger.pushProfile(packet.name());
 
         if (packet instanceof TextPacket text) {
             logger.info("messaggio: " + text.getText());
@@ -32,7 +34,9 @@ public class TestServer extends Server {
                 sendPacket(ctx, new PingTransaction(transaction.getRequestId(), new PingTransaction.Pong("pong da server")));
             }
         }
-
+        logger.popProfile();
+        logger.info("Processed packet: " + packet.name());
+        logger.popProfile();
     }
 
     @Override

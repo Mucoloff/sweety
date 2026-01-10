@@ -22,13 +22,12 @@ public class FastScalableCountingBloomFilter {
         int[] hashes = new int[hashFunctions];
 
         int h1 = ChecksumUtils.murmurHash3(data, 12345);
-        int h2 = ChecksumUtils.crc32cInt(data, 54321);
+        int h2 = ChecksumUtils.crc32Int(data, 54321);
         int h3 = ChecksumUtils.sha256Int(data, 12345);
-        int h4 = ChecksumUtils.crc32Int(data, 54321);
 
         for (int i = 0; i < hashFunctions; i++) {
             // Combiniamo i tre hash diversi per generare k hash
-            hashes[i] = Math.abs((h1 + i * h2 + i*i * h3 + i*i*i * h4) % filter.length);
+            hashes[i] = Math.abs((h1 + i * h2 + i*i * h3) % filter.length);
         }
         return hashes;
     }

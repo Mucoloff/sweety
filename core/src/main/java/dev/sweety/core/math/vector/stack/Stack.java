@@ -7,6 +7,8 @@ public interface Stack<F> {
 
     F pop();
 
+    F top();
+
     boolean isEmpty();
 
     void clear();

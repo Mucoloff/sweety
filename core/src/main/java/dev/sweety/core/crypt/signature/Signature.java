@@ -14,7 +14,7 @@ import java.util.function.Consumer;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
-import java.util.zip.CRC32;
+import java.util.zip.CRC32C;
 
 public class Signature {
 
@@ -53,7 +53,7 @@ public class Signature {
                 byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
                 byte[] data = watermark.data();
 
-                final CRC32 crc32 = ChecksumUtils.crc32(true);
+                final CRC32C crc32 = ChecksumUtils.crc32(true);
                 crc32.update(watermarkSignature);
                 crc32.update(nameBytes);
                 crc32.update(data);
@@ -168,7 +168,7 @@ public class Signature {
                     if (buffer.remaining() < 8) continue;
                     long crc = buffer.getLong();
 
-                    CRC32 crc32 = ChecksumUtils.crc32(true);
+                    CRC32C crc32 = ChecksumUtils.crc32(true);
                     crc32.update(watermarkSignature);
                     crc32.update(nameBytes);
                     crc32.update(data);
