@@ -3,21 +3,26 @@ package dev.sweety.project.test;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Arrays;
 
 public class ListFiles {
 
-    static PrintStream out;
+    final PrintStream out;
+
+    ListFiles(final File o) throws FileNotFoundException {
+        this.out = new PrintStream(o);
+    }
 
     @NotNull
-    private static File[] list(File file) {
+    private File[] list(File file) {
         File[] files = file.listFiles();
         return files != null ? files : new File[0];
     }
 
-    private static void printFiles(File file, String indent) {
+    private void printFiles(File file, String indent) {
         File[] children = list(file);
         Arrays.sort(children, java.util.Comparator.comparing(File::getName));
         for (int i = 0; i < children.length; i++) {
@@ -39,10 +44,11 @@ public class ListFiles {
             o.createNewFile();
         }
 
-        out = new PrintStream(o);
+        ListFiles listFiles = new ListFiles(o);
 
-        for (String s : new String[]{"core", "event","event-processor","module","netty","project","spotify"}) {
-            printFiles(new File("/home/sweety/projects/java/sweety/" + s + "/src/main/java/dev/sweety/"), "  ");
+
+        for (String s : new String[]{"core", "event", "event-processor", "loadbalancer", "minecraft", "module", "netty", "packet-processor", "project", "record-getter-processor", "spotify"}) {
+            listFiles.printFiles(new File("/home/sweety/projects/java/sweety/" + s + "/src/main/java/dev/sweety/"), "  ");
         }
 
     }

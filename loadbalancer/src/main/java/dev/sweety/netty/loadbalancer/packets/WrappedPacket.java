@@ -22,7 +22,7 @@ public class WrappedPacket extends Packet {
         buffer().writeByteArray(original.buffer().getBytes());
     }
 
-    public WrappedPacket(int _id, long _timestamp, byte[] _data) {
+    public WrappedPacket(final int _id,final long _timestamp,final byte[] _data) {
         super(_id, _timestamp, _data);
         this.correlationId = this.buffer().readVarLong();
         this.closing = this.buffer().readBoolean();

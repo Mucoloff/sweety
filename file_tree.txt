@@ -4,7 +4,11 @@
       │   └── 📄 EColor.java
       ├── 📁 crypt/
       │   ├── 📄 ByteCrypt.java
-      │   └── 📄 ChecksumUtils.java
+      │   ├── 📄 ChecksumUtils.java
+      │   └── 📁 signature/
+      │       ├── 📄 FieldInjector.java
+      │       ├── 📄 Signature.java
+      │       └── 📄 Watermark.java
       ├── 📁 easing/
       │   ├── 📄 Animation.java
       │   └── 📄 Easing.java
@@ -112,8 +116,52 @@
           └── 📄 Listener.java
   └── 📁 event/
       └── 📁 processor/
+          ├── 📄 EventMapping.java
           ├── 📄 EventProcessor.java
           └── 📄 GenerateEvent.java
+  └── 📁 netty/
+      └── 📁 loadbalancer/
+          ├── 📄 LoadBalancerServer.java
+          ├── 📄 PacketQueue.java
+          ├── 📁 backend/
+          │   ├── 📄 BackendNode.java
+          │   ├── 📄 BackendServer.java
+          │   └── 📁 pool/
+          │       ├── 📄 BackendPool.java
+          │       ├── 📄 IBackendPool.java
+          │       └── 📁 balancer/
+          │           ├── 📄 BalancerSystem.java
+          │           └── 📄 Balancers.java
+          └── 📁 packets/
+              ├── 📄 ForwardPacket.java
+              ├── 📄 MetricsUpdatePacket.java
+              └── 📄 WrappedPacket.java
+  └── 📁 minecraft/
+      ├── 📁 auth/
+      │   ├── 📄 AccountType.java
+      │   ├── 📄 AltStorage.java
+      │   ├── 📄 HttpUtils.java
+      │   └── 📄 MicrosoftLogin.java
+      ├── 📁 color/
+      │   └── 📄 ChatColor.java
+      ├── 📁 ping/
+      │   ├── 📄 MinecraftPing.java
+      │   ├── 📄 PingUtils.java
+      │   ├── 📁 exception/
+      │   │   ├── 📄 EndOfStreamException.java
+      │   │   ├── 📄 InvalidPacketDataException.java
+      │   │   └── 📄 NetworkException.java
+      │   ├── 📁 io/
+      │   │   ├── 📄 PacketInputStream.java
+      │   │   ├── 📄 PacketOutputStream.java
+      │   │   ├── 📄 PacketReader.java
+      │   │   └── 📄 PacketWriter.java
+      │   └── 📁 packet/
+      │       ├── 📄 C2SPacket.java
+      │       └── 📄 S2CPacket.java
+      └── 📁 version/
+          ├── 📄 MinecraftVersion.java
+          └── 📄 VersionComparison.java
   └── 📁 module/
       ├── 📁 extension/
       │   ├── 📄 Extension.java
@@ -130,23 +178,10 @@
           ├── 📄 InMemoryJarURLHandler.java
           ├── 📄 RuntimeDependencyLoader.java
           └── 📄 SingleClassLoader.java
-  └── 📁 cloud/
-      ├── 📁 loadbalancer/
-      │   ├── 📄 LoadBalancerServer.java
-      │   ├── 📄 PacketQueue.java
-      │   ├── 📁 backend/
-      │   │   ├── 📄 BackendNode.java
-      │   │   ├── 📄 BackendServer.java
-      │   │   └── 📁 pool/
-      │   │       ├── 📄 BackendPool.java
-      │   │       ├── 📄 IBackendPool.java
-      │   │       └── 📁 balancer/
-      │   │           ├── 📄 BalancerSystem.java
-      │   │           └── 📄 Balancers.java
-      │   └── 📁 packets/
-      │       ├── 📄 ForwardPacket.java
-      │       ├── 📄 MetricsUpdatePacket.java
-      │       └── 📄 WrappedPacket.java
+  └── 📁 netty/
+      ├── 📁 feature/
+      │   ├── 📄 AutoReconnect.java
+      │   └── 📄 TransactionManager.java
       ├── 📁 messaging/
       │   ├── 📄 Client.java
       │   ├── 📄 Server.java
@@ -168,7 +203,6 @@
       │   └── 📁 model/
       │       └── 📄 Messenger.java
       └── 📁 packet/
-          ├── 📄 TransactionManager.java
           ├── 📁 buffer/
           │   ├── 📄 FileBuffer.java
           │   ├── 📄 PacketBuffer.java
@@ -185,65 +219,63 @@
               ├── 📄 OptimizedPacketRegistry.java
               ├── 📄 RegisteredPacket.java
               └── 📄 SimplePacketRegistry.java
-  ├── 📁 loadbalancer/
-  │   ├── 📄 ACBalancer.java
-  │   ├── 📄 DummyBackend.java
-  │   ├── 📄 DummyClient.java
-  │   ├── 📄 Main.java
-  │   ├── 📄 PlayerPacket.java
-  │   └── 📁 test/
-  │       ├── 📄 RunBackend1.java
-  │       ├── 📄 RunBackend2.java
-  │       ├── 📄 RunBackend3.java
-  │       ├── 📄 RunClient.java
-  │       └── 📄 RunLb.java
-  ├── 📁 minecraft/
-  │   ├── 📁 auth/
-  │   │   ├── 📄 AccountType.java
-  │   │   ├── 📄 AltStorage.java
-  │   │   ├── 📄 HttpUtils.java
-  │   │   └── 📄 MicrosoftLogin.java
-  │   ├── 📁 color/
-  │   │   └── 📄 ChatColor.java
-  │   ├── 📁 ping/
-  │   │   ├── 📄 MinecraftPing.java
-  │   │   ├── 📄 PingUtils.java
-  │   │   ├── 📁 exception/
-  │   │   │   ├── 📄 EndOfStreamException.java
-  │   │   │   ├── 📄 InvalidPacketDataException.java
-  │   │   │   └── 📄 NetworkException.java
-  │   │   ├── 📁 io/
-  │   │   │   ├── 📄 PacketInputStream.java
-  │   │   │   ├── 📄 PacketOutputStream.java
-  │   │   │   ├── 📄 PacketReader.java
-  │   │   │   └── 📄 PacketWriter.java
-  │   │   └── 📁 packet/
-  │   │       ├── 📄 C2SPacket.java
-  │   │       └── 📄 S2CPacket.java
-  │   └── 📁 version/
-  │       ├── 📄 MinecraftVersion.java
-  │       └── 📄 VersionComparison.java
-  ├── 📁 packet/
-  │   ├── 📁 file/
-  │   │   └── 📄 FilePacket.java
-  │   └── 📁 text/
-  │       └── 📄 TextPacket.java
-  ├── 📁 test/
-  │   ├── 📄 BloomFilterTest.java
-  │   ├── 📄 CompressionProbe.java
-  │   ├── 📄 ListFiles.java
-  │   ├── 📄 MailSender.java
-  │   ├── 📄 TestBuffer.java
-  │   ├── 📄 TestMail.java
-  │   └── 📁 feature/
-  │       ├── 📄 SimpleFileServer.java
-  │       ├── 📄 TestFeature.java
-  │       └── 📄 TestFeatureMain.java
-  └── 📁 testzipnet/
-      ├── 📄 TestClient.java
-      ├── 📄 TestServer.java
-      └── 📁 ping/
-          └── 📄 PingTransaction.java
+  └── 📁 packet/
+      └── 📁 processor/
+          ├── 📄 BufferUtils.java
+          ├── 📄 BuildPacket.java
+          ├── 📄 FieldBuffer.java
+          └── 📄 PacketProcessor.java
+  └── 📁 project/
+      ├── 📁 getters/
+      │   └── 📄 ExampleClass.java
+      ├── 📁 minecraft/
+      ├── 📁 netty/
+      │   ├── 📄 TestClient.java
+      │   ├── 📄 TestServer.java
+      │   ├── 📁 loadbalancer/
+      │   │   ├── 📄 ACBalancer.java
+      │   │   ├── 📄 DummyBackend.java
+      │   │   ├── 📄 DummyClient.java
+      │   │   ├── 📄 Main.java
+      │   │   ├── 📄 PlayerPacket.java
+      │   │   └── 📁 test/
+      │   │       ├── 📄 RunBackend1.java
+      │   │       ├── 📄 RunBackend2.java
+      │   │       ├── 📄 RunBackend3.java
+      │   │       ├── 📄 RunClient.java
+      │   │       └── 📄 RunLb.java
+      │   ├── 📁 packet/
+      │   │   ├── 📄 Example.java
+      │   │   ├── 📄 ExampleDecoder.java
+      │   │   ├── 📄 ExampleEncoder.java
+      │   │   ├── 📄 ExampleObj.java
+      │   │   ├── 📄 IExampleObj.java
+      │   │   ├── 📄 TestPacketMain.java
+      │   │   ├── 📁 file/
+      │   │   │   └── 📄 FilePacket.java
+      │   │   └── 📁 text/
+      │   │       └── 📄 TextPacket.java
+      │   └── 📁 ping/
+      │       └── 📄 PingTransaction.java
+      └── 📁 test/
+          ├── 📄 BloomFilterTest.java
+          ├── 📄 CompressionProbe.java
+          ├── 📄 ListFiles.java
+          ├── 📄 MailSender.java
+          ├── 📄 TestBuffer.java
+          ├── 📄 TestMail.java
+          └── 📁 feature/
+              ├── 📄 SimpleFileServer.java
+              ├── 📄 TestFeature.java
+              └── 📄 TestFeatureMain.java
+  └── 📁 record/
+      ├── 📄 DataUtils.java
+      ├── 📄 Formats.java
+      ├── 📄 RecordProcessor.java
+      └── 📁 annotations/
+          ├── 📄 RecordData.java
+          ├── 📄 RecordGetter.java
+          └── 📄 RecordSetter.java
   └── 📁 spotify/
       ├── 📄 SpotifyManager.java
       ├── 📁 api/

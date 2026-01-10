@@ -7,7 +7,6 @@ import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
-import io.netty.buffer.ByteBuf;
 
 import java.nio.ByteBuffer;
 import java.util.zip.CRC32;
@@ -20,20 +19,19 @@ public class PacketEncoder {
         this.packetRegistry = packetRegistry;
     }
 
-    public void encode(Packet packet, ByteBuf out) throws PacketEncodeException {
+    public void encode(final Packet packet, final PacketBuffer out) throws PacketEncodeException {
         int packetId = packetRegistry.getPacketId(packet.getClass());
         if (packetId < 0)
             throw new PacketEncodeException("Returned PacketId by registry is < 0");
 
-        final PacketBuffer buf = new PacketBuffer();
 
         final boolean hasTimestamp = packet.timestamp() > 0L;
         byte[] data = packet.buffer().getBytes();
 
         final boolean hasPayload = data != null && data.length > 0;
 
-        buf.writeVarInt(packetId).writeBoolean(hasTimestamp).writeBoolean(hasPayload);
-        if (hasTimestamp) buf.writeVarLong(packet.timestamp());
+        out.writeVarInt(packetId).writeBoolean(hasTimestamp).writeBoolean(hasPayload);
+        if (hasTimestamp) out.writeVarLong(packet.timestamp());
 
         if (hasPayload) {
             final boolean compressed;
@@ -49,9 +47,9 @@ public class PacketEncoder {
             crc32.update(ByteBuffer.allocate(4).putInt(Messenger.SEED).array());
             crc32.update(data);
             int check = (int) crc32.getValue();
-            buf.writeBoolean(compressed).writeVarInt(check).writeByteArray(data);
+            out.writeBoolean(compressed).writeVarInt(check).writeByteArray(data);
         }
 
-        out.writeBytes(buf.nettyBuffer());
+
     }
 }

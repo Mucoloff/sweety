@@ -19,21 +19,21 @@ public abstract class PacketTransaction<R extends PacketTransaction.Transaction,
     private final R request;
     private final S response;
 
-    public PacketTransaction(R request) {
+    public PacketTransaction(final R request) {
         super();
         this.buffer().writeVarLong(this.requestId = generateId());
         this.buffer().writeObject(this.request = request);
         this.buffer().writeObject(this.response = null);
     }
 
-    public PacketTransaction(long id, S response) {
+    public PacketTransaction(final long id, final S response) {
         super();
         this.buffer().writeVarLong(this.requestId = id);
         this.buffer().writeObject(this.request = null);
         this.buffer().writeObject(this.response = response);
     }
 
-    public PacketTransaction(int _id, long _timestamp, byte[] _data) {
+    public PacketTransaction(final int _id, final long _timestamp, final byte[] _data) {
         super(_id, _timestamp, _data);
         this.requestId = this.buffer().readVarLong();
         this.request = this.buffer().readObject(this::constructRequest);
@@ -60,10 +60,6 @@ public abstract class PacketTransaction<R extends PacketTransaction.Transaction,
         return this.response != null;
     }
 
-    public boolean verifyResponse(long id) {
-        return this.requestId == id;
-    }
-
     protected abstract R constructRequest();
 
     protected abstract S constructResponse();
@@ -81,6 +77,7 @@ public abstract class PacketTransaction<R extends PacketTransaction.Transaction,
         public void read(final PacketBuffer buffer) {
 
         }
+
     }
 
 }

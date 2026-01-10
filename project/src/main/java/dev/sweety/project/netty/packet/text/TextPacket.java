@@ -10,11 +10,11 @@ public class TextPacket extends Packet {
     @Getter
     private String text;
 
-    public TextPacket(String text) {
+    public TextPacket(final String text) {
         this.buffer().writeString(text);
     }
 
-    public TextPacket(int _id, long _timestamp, byte[] _data) {
+    public TextPacket(final int _id,final long _timestamp,final byte[] _data) {
         super(_id, _timestamp, _data);
         this.text = this.buffer().readString();
     }

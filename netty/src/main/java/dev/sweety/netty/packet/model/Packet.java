@@ -15,7 +15,7 @@ public abstract class Packet {
         this(-1L);
     }
 
-    public Packet(long timestamp) {
+    public Packet(final long timestamp) {
         this._id = -1;
         this._timestamp = timestamp;
         this._buffer = new PacketBuffer();
@@ -23,7 +23,7 @@ public abstract class Packet {
 
     // (decoder)
     private int _readerIndex;
-    public Packet(int _id, long _timestamp, byte[] _data) {
+    public Packet(final int _id,final long _timestamp,final byte[] _data) {
         this._id = _id;
         this._timestamp = _timestamp;
         this._buffer = new PacketBuffer(_data);

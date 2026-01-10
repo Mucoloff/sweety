@@ -53,7 +53,7 @@ public class Signature {
                 byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
                 byte[] data = watermark.data();
 
-                CRC32 crc32 = ChecksumUtils.crc32(true);
+                final CRC32 crc32 = ChecksumUtils.crc32(true);
                 crc32.update(watermarkSignature);
                 crc32.update(nameBytes);
                 crc32.update(data);

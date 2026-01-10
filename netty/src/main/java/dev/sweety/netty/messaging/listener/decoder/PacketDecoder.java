@@ -7,7 +7,6 @@ import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
-import io.netty.buffer.ByteBuf;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -16,15 +15,12 @@ import java.util.zip.CRC32;
 public class PacketDecoder {
 
     private final IPacketRegistry packetRegistry;
-
-    public PacketDecoder(IPacketRegistry packetRegistry) {
+    public PacketDecoder(final IPacketRegistry packetRegistry) {
         this.packetRegistry = packetRegistry;
     }
 
-    public void decode(ByteBuf buf, List<Packet> out) throws PacketDecodeException {
-        if (buf.readableBytes() < 2) return; // id + flags
-
-        final PacketBuffer in = new PacketBuffer(buf);
+    public void decode(final PacketBuffer in,final  List<Packet> out) throws PacketDecodeException {
+        if (in.readableBytes() < 2) return; // id + flags
         in.markReaderIndex();
 
         final int id = in.readVarInt();

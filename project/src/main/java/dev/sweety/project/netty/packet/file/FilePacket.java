@@ -21,7 +21,7 @@ public class FilePacket extends Packet {
         FileBuffer.fromFile(file).write(buffer());
     }
 
-    public FilePacket(int _id, long _timestamp, byte[] _data) {
+    public FilePacket(final int _id,final long _timestamp,final byte[] _data) {
         super(_id, _timestamp, _data);
         this.size = buffer().readableBytes();
         this._fileBuffer = FileBuffer.read(buffer());

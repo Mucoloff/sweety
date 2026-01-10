@@ -12,7 +12,7 @@ public class ForwardPacket extends Packet {
     private long originalTimestamp;
     private byte[] originalData;
 
-    public ForwardPacket(long correlationId, Packet original) {
+    public ForwardPacket(final long correlationId,final  Packet original) {
         buffer().writeVarLong(correlationId);
 
         buffer().writeVarInt(original.id());
@@ -20,7 +20,7 @@ public class ForwardPacket extends Packet {
         buffer().writeByteArray(original.buffer().getBytes());
     }
 
-    public ForwardPacket(int _id, long _timestamp, byte[] _data) {
+    public ForwardPacket(final int _id,final long _timestamp,final byte[] _data) {
         super(_id, _timestamp, _data);
         this.correlationId = this.buffer().readVarLong();
 

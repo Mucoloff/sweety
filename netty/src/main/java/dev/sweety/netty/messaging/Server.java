@@ -31,6 +31,7 @@ public abstract class Server extends Messenger<ServerBootstrap> {
 
     public void addClient(ChannelHandlerContext ctx, SocketAddress address) {
         this.clients.put(address, ctx);
+        ctx.channel().closeFuture().addListener(f -> removeClient(address));
     }
 
     public void removeClient(SocketAddress address) {

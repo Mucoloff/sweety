@@ -73,9 +73,9 @@ public class PacketProcessor extends AbstractProcessor {
 
         final MethodSpec.Builder readConstructorBuilder = MethodSpec.constructorBuilder()
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(int.class, "_id")
-                .addParameter(long.class, "_timestamp")
-                .addParameter(byte[].class, "_data")
+                .addParameter(int.class, "_id", Modifier.FINAL)
+                .addParameter(long.class, "_timestamp", Modifier.FINAL)
+                .addParameter(byte[].class, "_data", Modifier.FINAL)
                 .addStatement("super(_id, _timestamp, _data)");
 
         final List<? extends Element> enclosedElements = interfaceElement.getEnclosedElements();
@@ -131,7 +131,7 @@ public class PacketProcessor extends AbstractProcessor {
                                 .build()
                 );
 
-            writeConstructorBuilder.addParameter(returnTypeName, fieldName);
+            writeConstructorBuilder.addParameter(returnTypeName, fieldName, Modifier.FINAL);
 
             FieldBuffer fieldBuffer = method.getAnnotation(FieldBuffer.class);
 

@@ -8,15 +8,15 @@ import lombok.NoArgsConstructor;
 
 public class PingTransaction extends PacketTransaction<PingTransaction.Ping, PingTransaction.Pong> {
 
-    public PingTransaction(Ping request) {
+    public PingTransaction(final Ping request) {
         super(request);
     }
 
-    public PingTransaction(long id, Pong response) {
+    public PingTransaction(final long id, final Pong response) {
         super(id, response);
     }
 
-    public PingTransaction(int _id, long _timestamp, byte[] _data) {
+    public PingTransaction(final int _id, final long _timestamp, final byte[] _data) {
         super(_id, _timestamp, _data);
     }
 
