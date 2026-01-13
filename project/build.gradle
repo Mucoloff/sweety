@@ -2,9 +2,9 @@ dependencies {
     implementation project(":core")
     implementation project(":event")
     implementation project(":netty")
-    implementation project(":loadbalancer")
+    implementation project(":netty-loadbalancer")
     implementation project(":module")
-
+    implementation project(":sql4j")
 
     implementation project(":record-getter-processor")
     annotationProcessor project(":record-getter-processor")
@@ -14,4 +14,6 @@ dependencies {
 
     implementation project(":event-processor")
     annotationProcessor project(":event-processor")
+
+
 }

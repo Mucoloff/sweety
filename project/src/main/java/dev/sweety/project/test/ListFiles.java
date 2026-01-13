@@ -47,7 +47,7 @@ public class ListFiles {
         ListFiles listFiles = new ListFiles(o);
 
 
-        for (String s : new String[]{"core", "event", "event-processor", "loadbalancer", "minecraft", "module", "netty", "packet-processor", "project", "record-getter-processor", "spotify"}) {
+        for (String s : new String[]{"core", "event", "event-processor", "minecraft", "module", "netty", "netty-loadbalancer","ormlite-util", "packet-processor", "project", "record-getter-processor", "spotify"}) {
             listFiles.printFiles(new File("/home/sweety/projects/java/sweety/" + s + "/src/main/java/dev/sweety/"), "  ");
         }
 

@@ -1,6 +1,6 @@
 package dev.sweety.module.extension;
 
-import dev.sweety.core.persistence.config.GsonUtils;
+import dev.sweety.core.config.GsonUtils;
 
 import java.io.File;
 import java.io.InputStreamReader;

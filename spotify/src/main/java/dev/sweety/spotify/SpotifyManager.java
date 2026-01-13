@@ -135,7 +135,7 @@ public class SpotifyManager {
         try {
             OperatingSystem.detectOS().open(new URL(url));
         } catch (Exception e) {
-            e.printStackTrace();
+            e.printStackTrace(System.err);
         }
 
         return future;

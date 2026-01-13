@@ -41,7 +41,7 @@ public final class FieldInjector {
             //noinspection unchecked
             return ((T) field.get(null));
         } catch (Exception e) {
-            e.printStackTrace();
+            e.printStackTrace(System.err);
         }
         return null;
     }

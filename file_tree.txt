@@ -22,7 +22,16 @@
       │   └── 📄 ZipUtils.java
       ├── 📁 logger/
       │   ├── 📄 LogHelper.java
-      │   └── 📄 SimpleLogger.java
+      │   ├── 📄 LogLevel.java
+      │   ├── 📄 SimpleLogger.java
+      │   ├── 📁 backend/
+      │   │   ├── 📄 ConsoleBackend.java
+      │   │   ├── 📄 JulBackend.java
+      │   │   ├── 📄 LoggerBackend.java
+      │   │   ├── 📄 NoOpBackend.java
+      │   │   └── 📄 SLF4JBackend.java
+      │   └── 📁 profile/
+      │       └── 📄 ProfileScope.java
       ├── 📁 math/
       │   ├── 📄 Mask.java
       │   ├── 📄 MathUtils.java
@@ -228,7 +237,6 @@
   └── 📁 project/
       ├── 📁 getters/
       │   └── 📄 ExampleClass.java
-      ├── 📁 minecraft/
       ├── 📁 netty/
       │   ├── 📄 TestClient.java
       │   ├── 📄 TestServer.java

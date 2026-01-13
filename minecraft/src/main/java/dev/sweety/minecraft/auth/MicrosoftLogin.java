@@ -5,7 +5,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import dev.sweety.core.file.ResourceUtils;
-import dev.sweety.core.persistence.config.GsonUtils;
+import dev.sweety.core.config.GsonUtils;
 import dev.sweety.core.system.OperatingSystem;
 import lombok.SneakyThrows;
 import lombok.ToString;

@@ -11,6 +11,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.zip.CRC32C;
 
 public class PacketEncoder {
@@ -19,6 +20,14 @@ public class PacketEncoder {
 
     public PacketEncoder(final IPacketRegistry packetRegistry) {
         this.packetRegistry = packetRegistry;
+    }
+
+    public void sneakyEncode(final PacketBuffer out,final Packet packet) {
+        try {
+            encode(packet, out);
+        } catch (PacketEncodeException e) {
+            e.printStackTrace(System.err);
+        }
     }
 
     public void encode(final Packet packet, final PacketBuffer out) throws PacketEncodeException {
@@ -36,8 +45,7 @@ public class PacketEncoder {
 
         // Compute checksum directly on ByteBuf
         CRC32C crc32 = ChecksumUtils.crc32(true);
-        ByteBuffer seedBuf = ByteBuffer.allocate(4).putInt(Messenger.SEED);
-        seedBuf.flip();
+        final ByteBuffer seedBuf = ByteBuffer.allocate(4).putInt(Messenger.SEED).order(ByteOrder.BIG_ENDIAN).flip();
         crc32.update(seedBuf);
         if (hasPayload) {
             final int readable = payloadNetty.readableBytes();

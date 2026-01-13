@@ -1,7 +1,7 @@
 package dev.sweety.module.extension;
 
 import dev.sweety.module.loader.ExtensionClassLoader;
-import dev.sweety.core.persistence.config.FileContainer;
+import dev.sweety.core.config.FileContainer;
 import dev.sweety.event.EventSystem;
 import dev.sweety.module.loader.DownloadFile;
 import dev.sweety.core.logger.SimpleLogger;
@@ -27,7 +27,7 @@ public class ExtensionManager extends FileContainer {
 
     private final Map<String, Extension> extensions = new HashMap<>();
     private final Map<Extension, ExtensionInfo> infos = new HashMap<>();
-    private final SimpleLogger logger = new SimpleLogger(ExtensionManager.class).fallback();
+    private final SimpleLogger logger = new SimpleLogger(ExtensionManager.class);
     private final EventSystem eventSystem;
 
     public ExtensionManager(File parent, EventSystem eventSystem) {

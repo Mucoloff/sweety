@@ -50,7 +50,7 @@ public class MinecraftPing {
             pis.close();
             pos.close();
         } catch (Exception e) {
-            e.printStackTrace();
+            e.printStackTrace(System.err);
         }
     }
 

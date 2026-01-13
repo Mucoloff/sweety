@@ -20,7 +20,7 @@ public class DummyBackend extends BackendServer {
 
     public DummyBackend(String host, int port, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
-        this.logger = new SimpleLogger("ServerBackend - " + port).fallback();
+        this.logger = new SimpleLogger("ServerBackend - " + port);
     }
 
     @Override

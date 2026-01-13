@@ -30,11 +30,19 @@ public class EventSystem {
             if (!changed.canAccess(event)) changed.setAccessible(true);
             changed.setBoolean(event, state);
         } catch (IllegalAccessException | NoSuchFieldException e) {
-            e.printStackTrace();
+            e.printStackTrace(System.err);
         }
     };
 
-    private final Map<Type, List<EventCallback>> callSiteMap = new ConcurrentHashMap<>();
+    private final Map<Type, List<EventCallback<?>>> callSiteMap = new ConcurrentHashMap<>();
+
+    private static final Object DUMMY_CONTAINER = new Object();
+
+    public <T extends IEvent> void subscribe(final Class<T> eventType, final Listener<T> listener, int priority, State state) {
+        final List<EventCallback<?>> callSites = this.callSiteMap.computeIfAbsent(eventType, k -> new CopyOnWriteArrayList<>());
+        callSites.add(new EventCallback<>(DUMMY_CONTAINER, listener, priority, state));
+        callSites.sort(priorityFilter);
+    }
 
     public void subscribe(Object container) {
         for (final Field field : container.getClass().getDeclaredFields()) {
@@ -58,30 +66,31 @@ public class EventSystem {
                 continue;
             }
 
-            final List<EventCallback> callSites = this.callSiteMap.computeIfAbsent(eventType, k -> new CopyOnWriteArrayList<>());
-            callSites.add(new EventCallback(container, listener, annotation.priority() == -1 ? annotation.level().getValue() : annotation.priority(), annotation.state()));
+            final List<EventCallback<?>> callSites = this.callSiteMap.computeIfAbsent(eventType, k -> new CopyOnWriteArrayList<>());
+            callSites.add(new EventCallback<>(container, listener, annotation.priority() == -1 ? annotation.level().getValue() : annotation.priority(), annotation.state()));
             callSites.sort(priorityFilter);
         }
     }
 
     public void unsubscribe(final Object container) {
-        for (Map.Entry<Type, List<EventCallback>> entry : callSiteMap.entrySet()) {
-            final List<EventCallback> callSites = entry.getValue();
+        for (Map.Entry<Type, List<EventCallback<?>>> entry : callSiteMap.entrySet()) {
+            final List<EventCallback<?>> callSites = entry.getValue();
             callSites.removeIf(cb -> cb.event() == container);
         }
     }
 
     @SuppressWarnings("ForLoopReplaceableByForEach")
-    public <T extends Event> T dispatch(T event) {
+    public <T extends IEvent> T dispatch(T event) {
         event.setCancelled(false);
         CHANGED.accept(event, false);
 
         final int hash = event.hashCode();
-        final List<EventCallback> callbacks = this.callSiteMap.get(event.getClass());
+        final List<EventCallback<?>> callbacks = this.callSiteMap.get(event.getClass());
         if (callbacks == null || callbacks.isEmpty()) return event;
 
-        for (Iterator<EventCallback> iterator = callbacks.iterator(); iterator.hasNext(); ) {
-            EventCallback cb = iterator.next();
+        for (Iterator<EventCallback<?>> iterator = callbacks.iterator(); iterator.hasNext(); ) {
+            //noinspection unchecked
+            EventCallback<T> cb = (EventCallback<T>) iterator.next();
 
             if (cb.state() == State.BOTH ||
                     (cb.state() == State.PRE && !event.isPost()) ||
@@ -95,7 +104,7 @@ public class EventSystem {
         return event;
     }
 
-    public <T extends Event, R> Pair<T, R> dispatchWrapped(
+    public <T extends IEvent, R> Pair<T, R> dispatchWrapped(
             T event,
             Operation<R> original,
             Function<T, Object[]> changedArgsMapper,
@@ -107,11 +116,12 @@ public class EventSystem {
 
         R call = original.call(e.isChanged() ? changedArgsMapper.apply(e) : args);
 
-        final T post = dispatch(e.post());
+        //noinspection unchecked
+        final T post = (T) dispatch(e.post());
 
         return Pair.of(post, call);
     }
 
-    private record EventCallback(Object event, Listener<IEvent> listener, int priority, State state) {
+    private record EventCallback<T extends IEvent>(Object event, Listener<T> listener, int priority, State state) {
     }
 }

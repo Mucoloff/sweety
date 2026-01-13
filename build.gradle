@@ -36,9 +36,6 @@ allprojects {
         implementation 'it.unimi.dsi:fastutil:8.5.13'
         implementation 'io.netty:netty-all:5.0.0.Alpha2'
 
-        implementation 'com.j256.ormlite:ormlite-core:5.1'
-        implementation 'com.j256.ormlite:ormlite-jdbc:5.1'
-
         annotationProcessor "systems.manifold:manifold-preprocessor:2025.1.27"
         implementation "systems.manifold:manifold-all:2025.1.27"
 
@@ -95,7 +92,5 @@ tasks.register('build-and-publish') {
 subprojects {
 
     group = 'dev.sweety.' + project.name
-
-    println(group)
 
 }

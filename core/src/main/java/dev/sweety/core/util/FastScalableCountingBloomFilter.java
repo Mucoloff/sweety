@@ -84,7 +84,7 @@ public class FastScalableCountingBloomFilter {
     // debug rapido
     @Override
     public String toString() {
-        return "FastSCBF{size=" + filter.length + ", elements=" + elements + ", FPP=" + getEstimatedFPP() + "}";
+        return "FastSCBF{size=" + filter.length + ", elements=" + elements + ", FalsePositiveProb=" + getEstimatedFPP() + "}";
     }
 
 }

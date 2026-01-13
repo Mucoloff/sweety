@@ -11,6 +11,8 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.CRC32C;
 
@@ -22,14 +24,26 @@ public class PacketDecoder {
         this.packetRegistry = packetRegistry;
     }
 
-    private boolean cantRead(final PacketBuffer in, int len){
+    public List<Packet> sneakyDecode(final PacketBuffer in) {
+        final List<Packet> out = new ArrayList<>(1);
+        try {
+            decode(in, out);
+        } catch (PacketDecodeException e) {
+            e.printStackTrace(System.err);
+        }
+        return out;
+    }
+
+    private boolean cantRead(final PacketBuffer in, int len) {
         if (in.readableBytes() >= len) return false;
         in.resetReaderIndex();
         return true;
     }
 
     public void decode(final PacketBuffer in, final List<Packet> out) throws PacketDecodeException {
-        if (in.readableBytes() < 2) return; // minimal header
+        final ByteBuffer seedBuf = ByteBuffer.allocate(4).putInt(Messenger.SEED).order(ByteOrder.BIG_ENDIAN).flip();
+
+        if (in.readableBytes() - seedBuf.remaining() < 2) return; // minimal header
         in.markReaderIndex();
 
         final int id = in.readVarInt();
@@ -46,8 +60,6 @@ public class PacketDecoder {
 
         // Validate checksum
         final CRC32C crc32 = ChecksumUtils.crc32(true);
-        final ByteBuffer seedBuf = ByteBuffer.allocate(4).putInt(Messenger.SEED);
-        seedBuf.flip();
         crc32.update(seedBuf);
 
         final ByteBuf payloadBuf;

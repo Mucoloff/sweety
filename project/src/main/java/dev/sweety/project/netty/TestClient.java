@@ -3,18 +3,23 @@ package dev.sweety.project.netty;
 import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.event.Event;
 import dev.sweety.event.EventSystem;
+import dev.sweety.event.interfaces.LinkEvent;
+import dev.sweety.event.interfaces.Listener;
 import dev.sweety.event.processor.EventMapping;
 import dev.sweety.event.processor.GenerateEvent;
 import dev.sweety.netty.feature.AutoReconnect;
 import dev.sweety.netty.feature.TransactionManager;
 import dev.sweety.netty.messaging.Client;
+import dev.sweety.netty.messaging.listener.encoder.PacketEncoder;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.model.PacketTransaction;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import dev.sweety.netty.packet.registry.OptimizedPacketRegistry;
+import dev.sweety.project.netty.packet.batch.PacketBatch;
 import dev.sweety.project.netty.packet.file.FilePacket;
 import dev.sweety.project.netty.packet.text.TextPacket;
+import dev.sweety.project.netty.packet.text.event.TextPacketEvent;
 import dev.sweety.project.netty.ping.PingTransaction;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -33,15 +38,17 @@ public class TestClient extends Client {
 
     private final AutoReconnect autoReconnect = new AutoReconnect(2500L, TimeUnit.MILLISECONDS, this::start);
 
+    private final PacketEncoder encoder;
+
     public TestClient(String host, int port, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
+        encoder = new PacketEncoder(packetRegistry);
 
         eventSystem.subscribe(new Object() {
 
-            /*@LinkEvent
+            @LinkEvent
             Listener<TextPacketEvent> onText = event -> logger.info("Evento TextPacketEvent ricevuto con testo: " + event.getText());
-            todo
-            */
+
         });
 
         sendPacket(new TextPacket("Ciao dal client!"));
@@ -60,10 +67,11 @@ public class TestClient extends Client {
             if (ex != null) logger.warn(ex);
         };
 
-
         setOnConnect(c -> {
             transactionManager.sendTransaction(c.pipeline().firstContext(), ping, 10000L).whenComplete(completedTransaction);
             sendPacket(new TextPacket("ciao"));
+
+            sendPacket(new PacketBatch(encoder::sneakyEncode, new TextPacket("aaa"), new TextPacket("bbb")));
         });
 
     }
@@ -91,7 +99,7 @@ public class TestClient extends Client {
 
         if (packet instanceof TextPacket t) {
             PacketBuffer b = t.buffer();
-            //b.writeString("[messaggio editato]" + b.readString());
+            b.writeString("[messaggio editato] " + b.readString());
         }
 
     }
@@ -134,7 +142,7 @@ public class TestClient extends Client {
 
     public static void main(String[] args) throws Throwable {
 
-        IPacketRegistry packetRegistry = new OptimizedPacketRegistry(TextPacket.class, FilePacket.class, PingTransaction.class);
+        IPacketRegistry packetRegistry = new OptimizedPacketRegistry(TextPacket.class, FilePacket.class, PingTransaction.class, PacketBatch.class);
 
         TestClient client = new TestClient("localhost", 8080, packetRegistry);
 

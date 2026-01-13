@@ -61,7 +61,7 @@ public enum MailSender {
             Transport.send(message);
 
         } catch (MessagingException e) {
-            e.printStackTrace();
+            e.printStackTrace(System.err);
             throw new RuntimeException(e);
         }
     }

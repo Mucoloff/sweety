@@ -29,7 +29,7 @@ public class AutoReconnect {
     public AutoReconnect(long timeout, TimeUnit timeUnit, Supplier<Channel> start) {
         this.timeout = timeout;
         this.timeUnit = timeUnit;
-        this.start = start::get;
+        this.start = start;
     }
 
     public void onQuit() {

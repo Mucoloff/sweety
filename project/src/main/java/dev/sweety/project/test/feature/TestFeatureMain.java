@@ -31,7 +31,7 @@ public class TestFeatureMain {
                     }
                 })
                 .exceptionally(e -> {
-                    e.printStackTrace();
+                    e.printStackTrace(System.err);
                     return null;
                 })
                 .join(); // aspetta il completamento per esempio CLI
