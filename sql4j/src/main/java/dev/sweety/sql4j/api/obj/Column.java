@@ -44,6 +44,10 @@ public record Column(String name, Field field, Info info) {
         return info.autoIncrement();
     }
 
+    public boolean isForeignKey (){
+        return info.foreingKey();
+    }
+
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
@@ -53,5 +57,7 @@ public record Column(String name, Field field, Info info) {
         boolean primaryKey() default false;
 
         boolean autoIncrement() default false;
+
+        boolean foreingKey() default false;
     }
 }

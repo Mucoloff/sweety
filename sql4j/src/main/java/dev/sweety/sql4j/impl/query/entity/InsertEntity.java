@@ -1,17 +1,17 @@
-package dev.sweety.sql4j.impl.query;
+package dev.sweety.sql4j.impl.query.entity;
 
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
+import it.unimi.dsi.fastutil.Pair;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public final class InsertQuery<T> extends AbstractQuery<Integer> {
+public final class InsertEntity<T> extends AbstractQuery<Integer> {
 
     private final Table<T> table;
     private final T[] instances;
@@ -22,32 +22,20 @@ public final class InsertQuery<T> extends AbstractQuery<Integer> {
     private final String sql;
 
     @SafeVarargs
-    public InsertQuery(Table<T> table, T... instances) {
+    public InsertEntity(Table<T> table, T... instances) {
         if (instances == null || instances.length == 0)
             throw new IllegalArgumentException("At least one instance is required");
 
         this.table = table;
         this.instances = instances;
 
-        List<Column> cols = new ArrayList<>();
-        Column auto = null;
-
-        for (Column c : table.columns()) {
-            if (c.info().autoIncrement()) {
-                if (auto != null)
-                    throw new IllegalStateException("Multiple autoIncrement columns not supported");
-                auto = c;
-                continue;
-            }
-            cols.add(c);
-        }
-
+        final Pair<List<Column>, Column> listColumnPair = table.insertableColumns();
+        final Column auto = listColumnPair.value();
         if (instances.length > 1 && auto != null)
             throw new IllegalStateException(
-                    "Batch insert with generated keys is not supported");
+                    "Multiple insert with generated keys is not supported");
 
-
-        this.insertColumns = List.copyOf(cols);
+        this.insertColumns = listColumnPair.key();
         this.generatedColumn = auto;
         this.fieldsPerRow = insertColumns.size();
         this.sql = buildSqlInternal();

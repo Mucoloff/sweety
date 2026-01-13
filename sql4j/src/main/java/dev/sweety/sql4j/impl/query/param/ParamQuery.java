@@ -1,4 +1,4 @@
-package dev.sweety.sql4j.impl.query;
+package dev.sweety.sql4j.impl.query.param;
 
 import dev.sweety.sql4j.api.query.AbstractQuery;
 import dev.sweety.sql4j.api.query.functions.QueryBinder;
@@ -41,4 +41,7 @@ public final class ParamQuery<T> extends AbstractQuery<T> {
     public boolean returnGeneratedKeys() {
         return returnGeneratedKeys;
     }
+
+
+
 }

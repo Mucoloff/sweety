@@ -1,9 +1,9 @@
 package dev.sweety.sql4j.impl;
 
 import dev.sweety.sql4j.api.connection.SqlConnection;
-import dev.sweety.sql4j.impl.connection.MariaDBConnection;
-import dev.sweety.sql4j.impl.connection.MySQLConnection;
-import dev.sweety.sql4j.impl.connection.SQLiteConnection;
+import dev.sweety.sql4j.impl.connection.mysql.MySQLConnection;
+import dev.sweety.sql4j.impl.connection.mysql.maria.MariaDBConnection;
+import dev.sweety.sql4j.impl.connection.sqlite.SQLiteConnection;
 import lombok.Getter;
 
 import java.sql.SQLException;

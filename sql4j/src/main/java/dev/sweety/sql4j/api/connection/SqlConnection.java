@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public abstract class SqlConnection {
@@ -16,24 +17,40 @@ public abstract class SqlConnection {
     private static Executor EXECUTOR = Executors.newSingleThreadExecutor();
 
     private final String database, user, password;
+    private final Dialect dialect;
     private Connection connection;
 
-    public SqlConnection(final String database, final String user, final String password) {
+    private volatile boolean initialized = false;
+
+    public SqlConnection(final String database, final String user, final String password, Dialect dialect) {
         this.database = database;
         this.user = user;
         this.password = password;
+        this.dialect = dialect;
     }
 
     public abstract String url();
 
+    private void init() {
+        if (this.initialized) return;
+        Runtime.getRuntime().addShutdownHook(new Thread(SqlConnection::shutdownExecutor));
+        this.initialized = true;
+    }
+
     public Connection connection() throws SQLException {
-        if (connection == null || connection.isClosed())
+        if (connection == null || connection.isClosed()) {
+            init();
             this.connection = DriverManager.getConnection(url(), this.user, this.password);
+        }
         return connection;
     }
 
     public String database() {
         return this.database;
+    }
+
+    public Dialect dialect() {
+        return dialect;
     }
 
     public void close() throws SQLException {
@@ -61,7 +78,7 @@ public abstract class SqlConnection {
     }
 
     public static void shutdownExecutor() {
-        if (EXECUTOR instanceof java.util.concurrent.ExecutorService service) {
+        if (EXECUTOR instanceof ExecutorService service) {
             service.shutdown();
             EXECUTOR = null;
         }

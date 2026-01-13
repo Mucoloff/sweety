@@ -1,7 +1,10 @@
 package dev.sweety.sql4j.api.query;
 
+import dev.sweety.sql4j.api.connection.SqlConnection;
+
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.concurrent.CompletableFuture;
 
 public sealed interface Query<T> permits AbstractQuery, UnsafeQuery {
 
@@ -13,5 +16,9 @@ public sealed interface Query<T> permits AbstractQuery, UnsafeQuery {
 
     default boolean returnGeneratedKeys() {
         return false;
+    }
+
+    default CompletableFuture<T> execute(final SqlConnection connection) {
+        return connection.executeAsync(this);
     }
 }
