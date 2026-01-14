@@ -18,6 +18,7 @@ public final class QueryExecutor {
                         ? PreparedStatement.RETURN_GENERATED_KEYS
                         : PreparedStatement.NO_GENERATED_KEYS)) {
 
+            System.out.println("[SQL4J] Executing SQL: " + sql);
             query.bind(ps);
             return query.execute(ps);
         }

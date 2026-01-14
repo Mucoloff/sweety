@@ -51,7 +51,7 @@ public final class CreateTable extends AbstractQuery<Void> {
 
             if (c.isPrimaryKey() && c.isAutoIncrement() && isSinglePK) {
                 // solo PK singola e tipo INTEGER
-                col = new StringBuilder(c.name() + " INTEGER PRIMARY KEY AUTOINCREMENT");
+                col = new StringBuilder(c.name() + " INTEGER PRIMARY KEY " + dialect.autoIncrement());
             } else {
                 // normale colonna
                 if (c.isPrimaryKey() && !c.isAutoIncrement() && isSinglePK) {

@@ -33,7 +33,6 @@ public final class SelectJoin extends AbstractQuery<List<Map<String, Object>>> {
     private String buildSql(List<Table<?>> tables, List<String> onClauses, String whereClause) {
         StringBuilder sb = new StringBuilder("SELECT ");
 
-        // colonne con alias
         List<String> cols = new ArrayList<>();
         for (Table<?> t : tables) {
             for (Column c : t.columns()) {
@@ -121,13 +120,6 @@ public final class SelectJoin extends AbstractQuery<List<Map<String, Object>>> {
         }
 
         public SelectJoin build() {
-            if (tablesList.isEmpty()) throw new IllegalStateException("Deve essere specificata almeno una tabella");
-            if (onClausesList.isEmpty()) throw new IllegalStateException("Deve essere specificata almeno una clausola ON");
-            if (whereClause == null || whereClause.isEmpty())
-                throw new IllegalStateException("Deve essere specificata una clausola WHERE");
-            if (params.isEmpty())
-                throw new IllegalStateException("Devono essere specificati i parametri della clausola WHERE");
-
             return new SelectJoin(tablesList, onClausesList, whereClause, params.toArray());
         }
     }

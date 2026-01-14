@@ -8,11 +8,11 @@ import java.util.function.Function;
 public interface ChainableQuery<I, O> {
     Query<O> build(I previous);
 
-    default <T> ChainableQuery<Object, T> ignore(Query<T> q) {
+    static <T> ChainableQuery<Object, T> ignore(Query<T> q) {
         return __ -> q;
     }
 
-    default ChainableQuery<I, O> step(
+    static <I, O> ChainableQuery<I, O> step(
             Function<I, Query<O>> fn
     ) {
         return fn::apply;

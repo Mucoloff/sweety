@@ -36,38 +36,24 @@ public record Repository<Entity>(Table<Entity> table) {
         this(new Table<>(table, name(table)));
     }
 
-    public static <T> Query<T> cached(
-            String key,
-            Supplier<Query<T>> supplier
-    ) {
-        return QueryCache.get(key, supplier);
+    public InsertEntity<Entity> insert(Entity entity) {
+        return new InsertEntity<>(table, entity);
     }
 
+    public UpdateEntity<Entity> update(Entity entity) {
+        return new UpdateEntity<>(table, entity);
+    }
+
+    public DeleteEntity<Entity> delete(Entity entity) {
+        return new DeleteEntity<>(table, entity);
+    }
 
     public SelectEntity<Entity> selectAll() {
-        return new SelectEntity<>(this.table);
+        return new SelectEntity<>(table);
     }
 
-    public SelectEntity<Entity> selectWhere(final String whereClause, final Object... params) {
-        return new SelectEntity<>(this.table, whereClause, params);
-    }
-
-    public static SelectJoin.Builder join(Table<?>... tables) {
-        return new SelectJoin.Builder().join(tables);
-    }
-
-    @SafeVarargs
-    public final InsertEntity<Entity> insert(Entity... instances) {
-        return new InsertEntity<>(table, instances);
-    }
-
-    public UpdateEntity<Entity> update(Entity instance) {
-        return new UpdateEntity<>(table, instance);
-    }
-
-    @SafeVarargs
-    public final DeleteEntity<Entity> delete(Entity... instances) {
-        return new DeleteEntity<>(table, instances);
+    public SelectEntity<Entity> selectWhere(String where, Object... params) {
+        return new SelectEntity<>(table, where, params);
     }
 
     public CreateTable create(Dialect dialect, boolean ifNotExists) {
@@ -78,6 +64,13 @@ public record Repository<Entity>(Table<Entity> table) {
         return new DropTable(this.table);
     }
 
+    public static <T> Query<T> cached(String key, Supplier<Query<T>> supplier) {
+        return QueryCache.get(key, supplier);
+    }
+
+    public static SelectJoin.Builder join(Table<?>... tables) {
+        return new SelectJoin.Builder().join(tables);
+    }
 
     public static <T> CompletableFuture<T> execute(final SqlConnection connection, final String query, final QueryBinder bind, final QueryExecutor<T> execute) {
         return generate(query, bind, execute).execute(connection);
@@ -87,3 +80,4 @@ public record Repository<Entity>(Table<Entity> table) {
         return ParamQuery.<T>builder().sql(query).bind(bind).execute(execute).build();
     }
 }
+

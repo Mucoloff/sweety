@@ -10,23 +10,24 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.function.Supplier;
 
 public final class SimpleQueryChain<T> implements QueryChain<T> {
 
-    private final List<Query<?>> queries = new ArrayList<>();
+    private final List<Supplier<? extends Query<?>>> querySuppliers = new ArrayList<>();
 
-    private SimpleQueryChain(final Query<?> first) {
-        queries.add(first);
+    public static <T> SimpleQueryChain<T> start(Supplier<? extends Query<T>> first) {
+        SimpleQueryChain<T> chain = new SimpleQueryChain<>();
+        chain.querySuppliers.add(first);
+        return chain;
     }
 
-    public static <T> SimpleQueryChain<T> start(final Query<?> first) {
-        return new SimpleQueryChain<>(first);
+    public <N> SimpleQueryChain<N> then(Supplier<? extends Query<N>> next) {
+        querySuppliers.add(next);
+        //noinspection unchecked
+        return (SimpleQueryChain<N>) this;
     }
 
-    public SimpleQueryChain<T> then(final Query<?> next) {
-        queries.add(next);
-        return this;
-    }
 
     public CompletableFuture<T> execute(final SqlConnection connection) {
         return CompletableFuture.supplyAsync(() -> {
@@ -41,9 +42,9 @@ public final class SimpleQueryChain<T> implements QueryChain<T> {
     @Override
     public T execute(final Connection con) throws SQLException {
         T t = null;
-        for (final Query<?> q : queries) {
+        for (final Supplier<? extends Query<?>> q : querySuppliers) {
             //noinspection unchecked
-            t = (T) QueryExecutor.execute(con, q);
+            t = (T) QueryExecutor.execute(con, q.get());
         }
         return t;
     }
