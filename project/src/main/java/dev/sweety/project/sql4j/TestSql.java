@@ -2,6 +2,7 @@ package dev.sweety.project.sql4j;
 
 import dev.sweety.sql4j.api.connection.Dialect;
 import dev.sweety.sql4j.api.connection.SqlConnection;
+import dev.sweety.sql4j.api.query.chain.DependentQueryChain;
 import dev.sweety.sql4j.impl.Repository;
 import dev.sweety.sql4j.impl.connection.ConnectionType;
 import dev.sweety.sql4j.impl.query.SelectJoin;
@@ -83,6 +84,15 @@ public class TestSql {
                     System.err.println("Rollback eseguito: " + ex.getMessage());
                     return null;
                 }).join();
+
+
+        DependentQueryChain.start(
+                userRepository.insert(alice) // ritorna userId
+        ).then(userId ->
+                orderRepository.insert(new Order(userId, "pending"))
+        ).then(orderId ->
+                orderDetailRepository.insert(new OrderDetail(orderId, 1, 2))
+        ).execute(connection);
 
 
         //for (Repository<?> repository : repositories.reversed()) repository.dropTable().execute(connection).join();

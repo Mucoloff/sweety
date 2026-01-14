@@ -1,10 +1,11 @@
 package dev.sweety.sql4j.impl.transaction;
 
+import dev.sweety.sql4j.api.connection.QueryExecutor;
 import dev.sweety.sql4j.api.connection.SqlConnection;
 import dev.sweety.sql4j.api.query.Query;
+import dev.sweety.sql4j.api.query.chain.QueryChain;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -36,21 +37,30 @@ public class TransactionManager {
         }
 
         public <T> T execute(Query<T> query) throws SQLException {
-            final String sql = query.sql();
-            try (PreparedStatement ps = con.prepareStatement(sql,
-                    query.returnGeneratedKeys() ? PreparedStatement.RETURN_GENERATED_KEYS : PreparedStatement.NO_GENERATED_KEYS)) {
-
-                query.bind(ps);
-                System.out.println("Executing Query in Transaction: " + sql);
-                return query.execute(ps);
-            }
+            return QueryExecutor.execute(con, query);
         }
     }
 
-    /**
-     * Esegue un blocco di transazione in modalità async
-     */
-    public CompletableFuture<Void> transaction(TransactionBlock block) {
+    public <T> CompletableFuture<T> transaction(final QueryChain<T> chain) {
+        return CompletableFuture.supplyAsync(() -> {
+            try (final Connection con = sqlConnection.connection()) {
+                con.setAutoCommit(false);
+                try {
+                    T result = chain.execute(con);
+                    con.commit();
+                    return result;
+                } catch (final Exception e) {
+                    con.rollback();
+                    throw new CompletionException(e);
+                }
+            } catch (final SQLException e) {
+                throw new CompletionException(e);
+            }
+        }, SqlConnection.executor(sqlConnection.dialectType()));
+    }
+
+
+    public CompletableFuture<Void> transaction(final TransactionBlock block) {
         return CompletableFuture.runAsync(() -> {
             try (Connection con = sqlConnection.connection()) {
                 con.setAutoCommit(false);

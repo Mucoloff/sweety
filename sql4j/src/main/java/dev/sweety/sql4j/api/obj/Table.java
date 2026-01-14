@@ -16,70 +16,66 @@ import java.util.List;
 import java.util.Map;
 
 public final class Table<T> {
-    private final Class<T> clazz;
     private final String name;
+    private final Class<T> clazz;
 
+    private final List<Column> columnsList;
     private final Map<String, Column> columnsMap = new LinkedHashMap<>();
-    private final List<Column> columnsList = new ArrayList<>();
-    private final List<Column> primaryKeys = new ArrayList<>();
-    private final List<ForeignKey> foreignKeys = new ArrayList<>();
+    private final List<Column> primaryKeys;
+    private final List<ForeignKey> foreignKeys;
+    private final List<Column> updatableColumns;
+    private final Pair<List<Column>, Column> insertableColumns;
 
     public Table(Class<T> clazz, String name) {
         this.clazz = clazz;
         this.name = name;
 
-        for (final Field field : clazz.getDeclaredFields()) {
-            final Column.Info columnInfo = field.getAnnotation(Column.Info.class);
-            if (columnInfo == null) continue;
+        List<Column> cols = new ArrayList<>();
+        List<Column> pks = new ArrayList<>();
+        List<ForeignKey> fks = new ArrayList<>();
 
-            final String columnName = !columnInfo.name().isEmpty() ? columnInfo.name() : field.getName();
-            final Column column = new Column(columnName, field, columnInfo);
-            this.addColumn(column);
+        for (Field field : clazz.getDeclaredFields()) {
+            Column.Info colInfo = field.getAnnotation(Column.Info.class);
+            if (colInfo == null) continue;
 
-            final ForeignKey.Info fk = field.getAnnotation(ForeignKey.Info.class);
-            if (fk != null) {
-                Table<?> refTable = TableRegistry.get(fk.table());
-                Column refCol = refTable.getColumn(fk.column());
+            Column col = new Column(colInfo.name().isEmpty() ? field.getName() : colInfo.name(), field, colInfo);
+            cols.add(col);
+            this.columnsMap.put(col.name(), col);
+            if (col.isPrimaryKey()) pks.add(col);
 
-                this.addForeignKey(new ForeignKey(
-                        column,
-                        refTable,
-                        refCol,
-                        true,
-                        fk.onDelete(),
-                        fk.onUpdate()
-                ));
+            ForeignKey.Info fkInfo = field.getAnnotation(ForeignKey.Info.class);
+            if (fkInfo != null) {
+                Table<?> refTable = TableRegistry.get(fkInfo.table());
+                Column refCol = refTable.column(fkInfo.column());
+                fks.add(new ForeignKey(col, refTable, refCol, true, fkInfo.onDelete(), fkInfo.onUpdate()));
             }
         }
+
+        List<Column> updatable = new ArrayList<>();
+        Column autoInc = null;
+        for (Column c : cols) {
+            if (!c.isPrimaryKey()) updatable.add(c);
+            if (c.isAutoIncrement()) {
+                if (autoInc != null) throw new IllegalStateException("Multiple autoIncrement columns not supported");
+                autoInc = c;
+            }
+        }
+
+        this.columnsList = List.copyOf(cols);
+        this.primaryKeys = List.copyOf(pks);
+        this.foreignKeys = List.copyOf(fks);
+        this.updatableColumns = List.copyOf(updatable);
+        this.insertableColumns = Pair.of(
+                cols.stream().filter(c -> !c.isAutoIncrement()).toList(),
+                autoInc
+        );
+
     }
 
-    public void addColumn(Column column) {
-        columnsMap.put(column.name(), column);
-        columnsMap.put(name + "." + column.name(), column);
-        columnsList.add(column);
-        if (column.isPrimaryKey()) primaryKeys.add(column);
-    }
-
-    public void addForeignKey(ForeignKey fk) {
-        foreignKeys.add(fk);
-    }
-
-    public List<Column> columns() {
-        return List.copyOf(columnsList);
-    }
-
-    public Column getColumn(String name) {
-        return columnsMap.get(name);
-    }
-
-    public List<Column> primaryKeys() {
-        if (primaryKeys.isEmpty())
-            throw new IllegalStateException("Primary key required for table " + name);
-        return List.copyOf(primaryKeys);
-    }
-
-    public List<ForeignKey> foreignKeys() {
-        return List.copyOf(foreignKeys);
+    public int bindColumns(PreparedStatement ps, List<Column> cols, Object instance, int startIdx) throws SQLException {
+        int idx = startIdx;
+        for (Column c : cols) c.set(ps, idx++, instance);
+        return idx;
     }
 
     public String name() {
@@ -90,30 +86,28 @@ public final class Table<T> {
         return clazz;
     }
 
+    public List<Column> columns() {
+        return columnsList;
+    }
+
+    public List<Column> primaryKeys() {
+        return primaryKeys;
+    }
+
+    public List<ForeignKey> foreignKeys() {
+        return foreignKeys;
+    }
+
     public List<Column> updatableColumns() {
-        List<Column> cols = new ArrayList<>();
-        for (Column c : columnsList) if (!c.isPrimaryKey()) cols.add(c);
-        return cols;
+        return updatableColumns;
     }
 
     public Pair<List<Column>, Column> insertableColumns() {
-        Column auto = null;
-        List<Column> cols = new ArrayList<>();
-        for (Column c : columnsList) {
-            if (c.isAutoIncrement()) {
-                if (auto != null) throw new IllegalStateException("Multiple autoIncrement columns not supported");
-                auto = c;
-                continue;
-            }
-            cols.add(c);
-        }
-        return Pair.of(cols, auto);
+        return insertableColumns;
     }
 
-    public int bindColumns(PreparedStatement ps, List<Column> cols, Object instance, int startIdx) throws SQLException {
-        int idx = startIdx;
-        for (Column c : cols) c.set(ps, idx++, instance);
-        return idx;
+    public Column column(String name) {
+        return columnsMap.get(name);
     }
 
     @Retention(RetentionPolicy.RUNTIME)

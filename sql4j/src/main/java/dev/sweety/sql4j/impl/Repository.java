@@ -7,13 +7,18 @@ import dev.sweety.sql4j.api.obj.table.TableRegistry;
 import dev.sweety.sql4j.api.query.Query;
 import dev.sweety.sql4j.api.query.functions.QueryBinder;
 import dev.sweety.sql4j.api.query.functions.QueryExecutor;
+import dev.sweety.sql4j.impl.query.QueryCache;
 import dev.sweety.sql4j.impl.query.SelectJoin;
-import dev.sweety.sql4j.impl.query.entity.*;
+import dev.sweety.sql4j.impl.query.entity.DeleteEntity;
+import dev.sweety.sql4j.impl.query.entity.InsertEntity;
+import dev.sweety.sql4j.impl.query.entity.SelectEntity;
+import dev.sweety.sql4j.impl.query.entity.UpdateEntity;
 import dev.sweety.sql4j.impl.query.param.ParamQuery;
 import dev.sweety.sql4j.impl.query.table.CreateTable;
 import dev.sweety.sql4j.impl.query.table.DropTable;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 public record Repository<Entity>(Table<Entity> table) {
 
@@ -30,6 +35,14 @@ public record Repository<Entity>(Table<Entity> table) {
     public Repository(final Class<Entity> table) {
         this(new Table<>(table, name(table)));
     }
+
+    public static <T> Query<T> cached(
+            String key,
+            Supplier<Query<T>> supplier
+    ) {
+        return QueryCache.get(key, supplier);
+    }
+
 
     public SelectEntity<Entity> selectAll() {
         return new SelectEntity<>(this.table);
@@ -71,6 +84,6 @@ public record Repository<Entity>(Table<Entity> table) {
     }
 
     public static <T> Query<T> generate(final String query, final QueryBinder bind, final QueryExecutor<T> execute) {
-        return ParamQuery.<T>builder().sql(query).binder(bind).executor(execute).build();
+        return ParamQuery.<T>builder().sql(query).bind(bind).execute(execute).build();
     }
 }

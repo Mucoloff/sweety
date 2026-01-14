@@ -5,7 +5,6 @@ import dev.sweety.sql4j.impl.connection.DialectType;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.concurrent.*;
 
@@ -53,16 +52,9 @@ public abstract class SqlConnection {
     public <T> CompletableFuture<T> executeAsync(Query<T> query) {
         try {
             return CompletableFuture.supplyAsync(() -> {
-                final String sql = query.sql();
-                try (final Connection con = connection();
-                     final PreparedStatement ps = con.prepareStatement(sql, query.returnGeneratedKeys() ? PreparedStatement.RETURN_GENERATED_KEYS : PreparedStatement.NO_GENERATED_KEYS)) {
-
-                    System.out.println("Executing Query: " + sql);
-
-                    query.bind(ps);
-                    return query.execute(ps);
+                try (final Connection con = connection()) {
+                    return QueryExecutor.execute(con, query);
                 } catch (SQLException e) {
-                    System.err.println("SQL Exception while executing query: " + sql);
                     throw new CompletionException(e);
                 }
             }, executor(this.dialectType));

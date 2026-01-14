@@ -8,47 +8,59 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 public final class ParamQuery<T> extends AbstractQuery<T> {
+
     private final String sql;
     private final QueryBinder binder;
     private final QueryExecutor<T> executor;
     private final boolean returnGeneratedKeys;
 
-    private ParamQuery(String sql, QueryBinder binder, QueryExecutor<T> executor, boolean returnGeneratedKeys) {
-        this.sql = sql;
-        this.binder = binder;
-        this.executor = executor;
-        this.returnGeneratedKeys = returnGeneratedKeys;
+    private ParamQuery(Builder<T> b) {
+        this.sql = b.sql;
+        this.binder = b.binder;
+        this.executor = b.executor;
+        this.returnGeneratedKeys = b.returnGeneratedKeys;
     }
 
-    public static <T> Builder<T> builder() { return new Builder<>(); }
+    public static <T> Builder<T> builder() {
+        return new Builder<>();
+    }
 
     public static final class Builder<T> {
         private String sql;
-        private QueryBinder binder;
+        private QueryBinder binder = ps -> {};
         private QueryExecutor<T> executor;
-        private boolean returnGeneratedKeys = false;
+        private boolean returnGeneratedKeys;
 
-        public Builder<T> sql(String sql) { this.sql = sql; return this; }
-        public Builder<T> binder(QueryBinder binder) { this.binder = binder; return this; }
-        public Builder<T> executor(QueryExecutor<T> executor) { this.executor = executor; return this; }
-        public Builder<T> returnGeneratedKeys(boolean b) { this.returnGeneratedKeys = b; return this; }
+        public Builder<T> sql(String sql) {
+            this.sql = sql;
+            return this;
+        }
+
+        public Builder<T> bind(QueryBinder binder) {
+            this.binder = binder;
+            return this;
+        }
+
+        public Builder<T> execute(QueryExecutor<T> executor) {
+            this.executor = executor;
+            return this;
+        }
+
+        public Builder<T> returnGeneratedKeys() {
+            this.returnGeneratedKeys = true;
+            return this;
+        }
 
         public ParamQuery<T> build() {
-            if (sql == null || binder == null || executor == null)
-                throw new IllegalStateException("SQL, binder e executor devono essere specificati");
-            return new ParamQuery<>(sql, binder, executor, returnGeneratedKeys);
+            if (sql == null || executor == null)
+                throw new IllegalStateException("sql and executor required");
+            return new ParamQuery<>(this);
         }
     }
 
-    @Override
-    protected String buildSql() { return sql; }
-
-    @Override
-    public void bind(PreparedStatement ps) throws SQLException { binder.bind(ps); }
-
-    @Override
-    public T execute(PreparedStatement ps) throws SQLException { return executor.execute(ps); }
-
-    @Override
-    public boolean returnGeneratedKeys() { return returnGeneratedKeys; }
+    @Override protected String buildSql() { return sql; }
+    @Override public void bind(PreparedStatement ps) throws SQLException { binder.bind(ps); }
+    @Override public T execute(PreparedStatement ps) throws SQLException { return executor.execute(ps); }
+    @Override public boolean returnGeneratedKeys() { return returnGeneratedKeys; }
 }
+
