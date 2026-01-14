@@ -1,104 +1,98 @@
 package dev.sweety.project.sql4j;
 
+import dev.sweety.sql4j.api.connection.Dialect;
 import dev.sweety.sql4j.api.connection.SqlConnection;
-import dev.sweety.sql4j.impl.ConnectionType;
-import dev.sweety.sql4j.impl.query.param.QueryResult;
-import dev.sweety.sql4j.impl.query.util.QueryBuilder;
+import dev.sweety.sql4j.impl.Repository;
+import dev.sweety.sql4j.impl.connection.ConnectionType;
+import dev.sweety.sql4j.impl.query.SelectJoin;
+import dev.sweety.sql4j.impl.transaction.TransactionManager;
 
+import java.util.List;
 import java.util.Map;
 
 public class TestSql {
 
     final SqlConnection connection = ConnectionType.SQLITE.getConnection("test.db");
-    final QueryBuilder<User> queryBuilder = new QueryBuilder<>(User.class);
-
-    /* todo
-    * foreign key support
-    *   relationships (one-to-one, one-to-many, many-to-many)
-    * partial keys (ppk, pfk)
-    *
-    * table-joins
-    * */
+    final Repository<User> userRepository = new Repository<>(User.class);
+    final Repository<Order> orderRepository = new Repository<>(Order.class);
+    final Repository<Product> productRepository = new Repository<>(Product.class);
+    final Repository<OrderDetail> orderDetailRepository = new Repository<>(OrderDetail.class);
 
     void run() throws Throwable {
+        Dialect dialect = connection.dialect();
 
-        queryBuilder.create(connection.dialect(), true).execute(connection)
+        List<Repository<?>> repositories = List.of(
+                userRepository,
+                productRepository,
+                orderRepository,
+                orderDetailRepository
+        );
 
-                /*
-                QueryBuilder.execute(connection, "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT)",
-                        QueryExecutor.EMPTY,
-                        ps -> {
-                            ps.execute();
-                            return "affected rows: " + ps.getUpdateCount();
-                        })
-                */
+        for (Repository<?> repository : repositories) repository.create(dialect, true).execute(connection).join();
 
-        .thenAccept(b -> System.out.println("Table created successfully: " + b))
+        User alice = new User("alice", "alice.alice@gmail.com");
+        User giacomo = new User("giacomo", "giacomo.giacomo@gmail.com");
+
+        //userRepository.insert(alice).execute(connection).join();
+        userRepository.insert(giacomo).execute(connection).join();
+        printAll(userRepository);
+
+        Product iphone15 = new Product("iPhone 15", 599.99f, 100);
+        Product macbookPro = new Product("MacBook Pro", 1999.99f, 50);
+        productRepository.insert(iphone15).execute(connection).join();
+        //productRepository.insert(macbookPro).execute(connection).join();
+        printAll(productRepository);
+
+        Order order1 = new Order(alice.getId(), "pending");
+        Order order2 = new Order(giacomo.getId(), "shipped");
+        //orderRepository.insert(order1).execute(connection).join();
+        orderRepository.insert(order2).execute(connection).join();
+        printAll(orderRepository);
+
+        OrderDetail detail1 = new OrderDetail(order1.getId(), iphone15.getId(), 2);
+        OrderDetail detail2 = new OrderDetail(order2.getId(), macbookPro.getId(), 1);
+        //orderDetailRepository.insert(detail1).execute(connection).join();
+        orderDetailRepository.insert(detail2).execute(connection).join();
+        printAll(orderDetailRepository);
+
+
+        SelectJoin joinQuery = Repository.join(orderRepository.table(), orderDetailRepository.table(), productRepository.table())
+                .on("orders.id = order_details.order_id",
+                        "order_details.product_id = products.id")
+                .where("orders.user_id = ?",
+                        1)
+                .build();
+
+        joinQuery.execute(connection).thenAccept(rows -> {
+            System.out.println("Joined data for order id 1:");
+            for (Map<String, Object> row : rows) {
+                System.out.println(row);
+            }
+        });
+
+
+        TransactionManager tm = new TransactionManager(connection);
+
+        tm.transaction(tx -> {
+                    tx.execute(userRepository.insert(alice));
+                    tx.execute(orderRepository.insert(order1));
+                    tx.execute(productRepository.insert(macbookPro));
+                    tx.execute(orderDetailRepository.insert(detail1));
+                }).thenRun(() -> System.out.println("Transazione completata"))
                 .exceptionally(ex -> {
-                    ex.printStackTrace(System.err);
+                    System.err.println("Rollback eseguito: " + ex.getMessage());
                     return null;
                 }).join();
 
-        User u1 = new User("a", "b");
-        User u2 = new User("c", "d");
 
-        queryBuilder.insert(u1).execute(connection).thenAccept(r -> System.out.println("inserting user completed: " + r)).exceptionally(ex -> {
-            ex.printStackTrace(System.err);
-            return null;
-        }).join();
+        //for (Repository<?> repository : repositories.reversed()) repository.dropTable().execute(connection).join();
 
-        System.out.println("u1: " + u1);
-
-        queryBuilder.insert(u2).execute(connection).join();
-
-        System.out.println("u2: " + u2);
-        System.out.println("-------------------");
-
-        queryBuilder.selectWhere("id = ?", u1.getId())
-                .execute(connection)
-                .thenAccept(user -> System.out.println("Selected user: " + user))
-                .join();
-
-        printAll();
-
-        queryBuilder.delete(u2).execute(connection).join();
-
-        printAll();
-
-        QueryBuilder.execute(connection, "SELECT * FROM users WHERE id = ?",
-                        ps -> ps.setObject(1, u1.getId()),
-                QueryResult::fromStatement).thenAccept(r -> {
-            boolean b = r.hasResultSet();
-            boolean b1 = r.hasGeneratedKeys();
-            System.out.println("hasResultSet: " + b);
-
-            if (b){
-                System.out.println("resultset");
-                for (Map<String, Object> map : r.result()) {
-                    for (Map.Entry<String, Object> entry : map.entrySet()) {
-                        System.out.println(entry.getKey() + ": " + entry.getValue());
-                    }
-                }
-            }
-
-            System.out.println("hasGeneratedKeys: " + b1);
-            if (b1){
-                System.out.print("generatedKeys: [");
-                for (Integer generatedKey : r.generatedKeys()) {
-                    System.out.printf("%d ", generatedKey);
-                }
-                System.out.println("]");
-            }
-
-        }).join();
-
-        connection.close();
         SqlConnection.shutdownExecutor();
     }
 
-    void printAll() {
-        queryBuilder.selectAll().execute(connection).thenAccept(users -> {
-            System.out.println("Users in database:");
+    void printAll(Repository<?> repository) {
+        repository.selectAll().execute(connection).thenAccept(users -> {
+            System.out.println(repository.table().name() + " in database:");
             users.forEach(System.out::println);
         }).join();
     }

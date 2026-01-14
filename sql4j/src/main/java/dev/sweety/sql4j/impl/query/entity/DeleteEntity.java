@@ -1,16 +1,20 @@
 package dev.sweety.sql4j.impl.query.entity;
 
+import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public final class DeleteEntity<T> extends AbstractQuery<Integer> {
 
     private final Table<T> table;
     private final T[] instances;
 
+    private final List<Column> primaryKeys;
     private final String sql;
 
     @SafeVarargs
@@ -19,7 +23,7 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> {
             throw new IllegalArgumentException("At least one instance is required");
         this.table = table;
         this.instances = instances;
-        // build sql once
+        this.primaryKeys = table.primaryKeys();
         this.sql = buildSqlInternal();
     }
 
@@ -29,16 +33,35 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> {
     }
 
     private String buildSqlInternal() {
-        final StringBuilder b = new StringBuilder();
-        b.append("?, ".repeat(instances.length));
-        b.setLength(b.length() - 2);
-        return "DELETE FROM " + table.name() + " WHERE " + table.primaryKey().name() + " IN (" + b + ")";
+        StringBuilder sb = new StringBuilder("DELETE FROM ").append(table.name()).append(" WHERE ");
+        if (primaryKeys.size() == 1) {
+            sb.append(primaryKeys.getFirst().name()).append(" IN (");
+            sb.append("?, ".repeat(instances.length));
+            sb.setLength(sb.length() - 2);
+            sb.append(")");
+        } else {
+            sb.append("(");
+            sb.append(primaryKeys.stream().map(Column::name).collect(Collectors.joining(", ")));
+            sb.append(") IN (");
+            sb.append(
+                    instances.length > 0
+                            ? String.join(", ",
+                            java.util.Collections.nCopies(instances.length,
+                                    "(" + "?, ".repeat(primaryKeys.size()).replaceAll(", $", "") + ")"))
+                            : ""
+            );
+            sb.append(")");
+        }
+        return sb.toString();
     }
 
     @Override
     public void bind(final PreparedStatement ps) throws SQLException {
-        for (int i = 0; i < instances.length; i++) {
-            ps.setObject(i + 1, table.primaryKey().get(instances[i]));
+        int idx = 1;
+        for (T instance : instances) {
+            for (Column pk : primaryKeys) {
+                ps.setObject(idx++, pk.get(instance));
+            }
         }
     }
 

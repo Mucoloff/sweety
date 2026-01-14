@@ -30,11 +30,23 @@ public record Column(String name, Field field, Info info) {
 
     public void set(Object instance, Object value) {
         try {
-            field.set(instance, value);
+            Class<?> type = field.getType();
+            if (value instanceof Number n) {
+                if (type == byte.class) field.set(instance, n.byteValue());
+                else if (type == short.class) field.set(instance, n.shortValue());
+                else if (type == int.class) field.set(instance, n.intValue());
+                else if (type == long.class) field.set(instance, n.longValue());
+                else if (type == float.class) field.set(instance, n.floatValue());
+                else if (type == double.class) field.set(instance, n.doubleValue());
+                else field.set(instance, value); // leave Number as is for wrappers
+            } else if (type == boolean.class && value instanceof Boolean b) {
+                field.set(instance, b);
+            } else field.set(instance, value);
         } catch (IllegalAccessException e) {
             throw new IllegalStateException(e);
         }
     }
+
 
     public boolean isPrimaryKey() {
         return info.primaryKey();
@@ -44,11 +56,6 @@ public record Column(String name, Field field, Info info) {
         return info.autoIncrement();
     }
 
-    public boolean isForeignKey (){
-        return info.foreingKey();
-    }
-
-
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
     public @interface Info {
@@ -57,7 +64,5 @@ public record Column(String name, Field field, Info info) {
         boolean primaryKey() default false;
 
         boolean autoIncrement() default false;
-
-        boolean foreingKey() default false;
     }
 }

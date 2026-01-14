@@ -1,4 +1,4 @@
-package dev.sweety.sql4j.impl;
+package dev.sweety.sql4j.impl.connection;
 
 import dev.sweety.sql4j.api.connection.SqlConnection;
 import dev.sweety.sql4j.impl.connection.mysql.MySQLConnection;

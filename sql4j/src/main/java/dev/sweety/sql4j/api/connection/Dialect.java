@@ -1,5 +1,7 @@
 package dev.sweety.sql4j.api.connection;
 
+import dev.sweety.sql4j.api.obj.ForeignKey;
+
 public interface Dialect {
 
     String name();
@@ -7,6 +9,8 @@ public interface Dialect {
     String sqlType(Class<?> javaType);
 
     String autoIncrement();
+
+    String foreignKeyAction(ForeignKey.Action action);
 
     default boolean supportsIfNotExists() {
         return true;
@@ -18,6 +22,10 @@ public interface Dialect {
 
     default boolean inlinePrimaryKeyForAutoIncrement() {
         return false;
+    }
+
+    default boolean supportsForeignKeys() {
+        return true;
     }
 }
 

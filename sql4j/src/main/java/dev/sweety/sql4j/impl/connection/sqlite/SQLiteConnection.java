@@ -1,12 +1,12 @@
 package dev.sweety.sql4j.impl.connection.sqlite;
 
 import dev.sweety.sql4j.api.connection.SqlConnection;
-import dev.sweety.sql4j.impl.DialectType;
+import dev.sweety.sql4j.impl.connection.DialectType;
 
 public class SQLiteConnection extends SqlConnection {
 
     public SQLiteConnection(final String database) {
-        super(database, null, null, DialectType.SQLITE.getDialect());
+        super(database, null, null, DialectType.SQLITE);
     }
 
     @Override

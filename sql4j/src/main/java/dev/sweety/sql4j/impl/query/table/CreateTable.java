@@ -2,12 +2,14 @@ package dev.sweety.sql4j.impl.query.table;
 
 import dev.sweety.sql4j.api.connection.Dialect;
 import dev.sweety.sql4j.api.obj.Column;
+import dev.sweety.sql4j.api.obj.ForeignKey;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.StringJoiner;
+import java.util.stream.Collectors;
 
 public final class CreateTable extends AbstractQuery<Void> {
 
@@ -15,7 +17,6 @@ public final class CreateTable extends AbstractQuery<Void> {
 
     public CreateTable(Table<?> table, Dialect dialect, boolean ifNotExists) {
         this.sql = build(table, dialect, ifNotExists);
-        System.out.println("create table sql: " + this.sql);
     }
 
     @Override
@@ -36,36 +37,29 @@ public final class CreateTable extends AbstractQuery<Void> {
 
     private static String build(Table<?> table, Dialect dialect, boolean ifNotExists) {
         StringBuilder sb = new StringBuilder("CREATE TABLE ");
-
-        if (ifNotExists && dialect.supportsIfNotExists())
-            sb.append("IF NOT EXISTS ");
-
+        if (ifNotExists && dialect.supportsIfNotExists()) sb.append("IF NOT EXISTS ");
         sb.append(table.name()).append(" (");
 
         StringJoiner cols = new StringJoiner(", ");
-        Column pk = null;
+        boolean compositePK = table.primaryKeys().size() > 1;
 
         for (Column c : table.columns()) {
             StringBuilder col = new StringBuilder();
-            col.append(c.name()).append(" ");
-            col.append(dialect.sqlType(c.field().getType()));
+            col.append(c.name()).append(" ").append(dialect.sqlType(c.field().getType()));
 
-            boolean inlinePk =
-                    c.isPrimaryKey()
-                            && c.isAutoIncrement()
-                            && dialect.inlinePrimaryKeyForAutoIncrement();
+            boolean isSinglePK = table.primaryKeys().size() == 1;
 
-            if (inlinePk) {
-                col.append(" PRIMARY KEY ");
-                col.append(dialect.autoIncrement());
+            if (c.isPrimaryKey() && c.isAutoIncrement() && isSinglePK) {
+                // solo PK singola e tipo INTEGER
+                col = new StringBuilder(c.name() + " INTEGER PRIMARY KEY AUTOINCREMENT");
             } else {
-                if (c.isAutoIncrement())
-                    col.append(" ").append(dialect.autoIncrement());
-
-                if (c.isPrimaryKey()) {
-                    if (pk != null)
-                        throw new IllegalStateException("Multiple primary keys not supported");
-                    pk = c;
+                // normale colonna
+                if (c.isPrimaryKey() && !c.isAutoIncrement() && isSinglePK) {
+                    col.append(" PRIMARY KEY");
+                }
+                if (c.isAutoIncrement()) {
+                    // errore se non è INTEGER PK
+                    throw new IllegalStateException("AUTOINCREMENT can only be used on a single INTEGER PRIMARY KEY: " + c.name()+ "\n: sql: " + sb.append(cols.add(col)) + " //interrupted");
                 }
             }
 
@@ -74,13 +68,25 @@ public final class CreateTable extends AbstractQuery<Void> {
 
         sb.append(cols);
 
-        // PK separata solo se NON già inline
-        if (pk != null && !dialect.inlinePrimaryKeyForAutoIncrement()) {
-            sb.append(", PRIMARY KEY (").append(pk.name()).append(")");
+        // PK separata
+        if (compositePK || (table.primaryKeys().size() == 1 && !table.primaryKeys().getFirst().isAutoIncrement())) {
+            sb.append(", PRIMARY KEY (")
+                    .append(table.primaryKeys().stream().map(Column::name).collect(Collectors.joining(", ")))
+                    .append(")");
+        }
+
+        // FK
+        for (ForeignKey fk : table.foreignKeys()) {
+            sb.append(", FOREIGN KEY (").append(fk.local().name()).append(")")
+                    .append(" REFERENCES ").append(fk.referencedTable().name())
+                    .append("(").append(fk.referencedColumn().name()).append(")")
+                    .append(" ON DELETE ").append(dialect.foreignKeyAction(fk.onDelete()))
+                    .append(" ON UPDATE ").append(dialect.foreignKeyAction(fk.onUpdate()));
         }
 
         sb.append(")");
         return sb.toString();
     }
+
 
 }

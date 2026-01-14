@@ -1,6 +1,7 @@
 package dev.sweety.sql4j.impl.connection.mysql;
 
 import dev.sweety.sql4j.api.connection.Dialect;
+import dev.sweety.sql4j.api.obj.ForeignKey;
 
 public class MySqlDialect implements Dialect {
 
@@ -35,5 +36,14 @@ public class MySqlDialect implements Dialect {
     @Override
     public String autoIncrement() {
         return "AUTO_INCREMENT";
+    }
+
+    @Override
+    public String foreignKeyAction(ForeignKey.Action action) {
+        return switch (action) {
+            case CASCADE -> "CASCADE";
+            case SET_NULL -> "SET NULL";
+            case RESTRICT, NO_ACTION -> "RESTRICT";
+        };
     }
 }

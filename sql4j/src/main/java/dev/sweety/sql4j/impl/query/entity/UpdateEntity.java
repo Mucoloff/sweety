@@ -15,14 +15,14 @@ public final class UpdateEntity<T> extends AbstractQuery<Integer> {
     private final T instance;
 
     private final List<Column> updateColumns;
-    private final Column primaryKey;
+    private final List<Column> primaryKeys;
     private final String sql;
 
     public UpdateEntity(final Table<T> table, final T instance) {
         this.table = table;
         this.instance = instance;
 
-        this.primaryKey = table.primaryKey();
+        this.primaryKeys = table.primaryKeys();
         this.updateColumns = table.updatableColumns();
         this.sql = buildSqlInternal();
     }
@@ -32,18 +32,25 @@ public final class UpdateEntity<T> extends AbstractQuery<Integer> {
         return sql;
     }
 
+
     private String buildSqlInternal() {
         String setClause = updateColumns.stream()
                 .map(Column::name)
                 .map(n -> n + "=?")
                 .collect(Collectors.joining(", "));
-        return "UPDATE " + table.name() + " SET " + setClause + " WHERE " + primaryKey.name() + "=?";
+
+        String whereClause = primaryKeys.stream()
+                .map(Column::name)
+                .map(n -> n + "=?")
+                .collect(Collectors.joining(" AND "));
+
+        return "UPDATE " + table.name() + " SET " + setClause + " WHERE " + whereClause;
     }
 
     @Override
     public void bind(final PreparedStatement ps) throws SQLException {
         int idx = table.bindColumns(ps, updateColumns, instance, 1);
-        ps.setObject(idx, primaryKey.get(instance));
+        for (Column pk : primaryKeys) ps.setObject(idx++, pk.get(instance));
     }
 
     @Override
