@@ -1,6 +1,8 @@
 package dev.sweety.netty.loadbalancer.v2;
 
+import dev.sweety.core.color.AnsiColor;
 import dev.sweety.core.logger.SimpleLogger;
+import dev.sweety.core.math.TriFunction;
 import dev.sweety.core.math.vector.queue.LinkedQueue;
 import dev.sweety.netty.feature.TransactionManager;
 import dev.sweety.netty.loadbalancer.PacketQueue;
@@ -12,6 +14,11 @@ import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
+
+import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class LBServer extends Server {
 
@@ -39,40 +46,82 @@ public class LBServer extends Server {
 
     @Override
     public void onPacketReceive(ChannelHandlerContext ctx, Packet packet) {
-        logger.push("receive").info("packet", packet);
-        final Node backend = backendPool.nextBackend(packet, ctx);
-
-        if (backend == null) {
-            pendingPackets.enqueue(new PacketQueue(packet, ctx));
-            logger.warn("No backend available. Packet queued: pending packets = " + pendingPackets.size()).pop();
-            return;
-        }
-
-        final InternalPacket internal = new InternalPacket(new InternalPacket.Forward(encoder, packet.rewind()));
-
-        transactionManager.registerRequest(internal, REQUEST_TIMEOUT_SECONDS * 500L).whenComplete(((forward, throwable) -> {
-            if (throwable != null) {
-                logger.push("transaction").error(throwable).pop();
-                return;
-            }
-
-            Packet[] responses = forward.decode(decoder);
-
-            for (int i = 0; i < responses.length; i++) {
-                responses[i] = responses[i].rewind();
-            }
-
-            sendPacket(ctx, responses);
-        }));
-
-        backend.forward(internal);
-
+        logger.push("receive", AnsiColor.CYAN_BRIGHT).info("packet", packet);
+        pendingPackets.enqueue(new PacketQueue(packet.rewind(), ctx));
+        drainPending();
         logger.pop();
     }
 
-    public void forward(InternalPacket internal) {
-        if (transactionManager.completeResponse(internal))
-            logger.push(internal.requestCode()).info("completed transaction").pop();
+    private final Map<Long, ChannelHandlerContext> contexts = new ConcurrentHashMap<>();
+
+    private void drainPending() {
+        if (this.pendingPackets.isEmpty()) return;
+
+        PacketQueue pq;
+        while ((pq = pendingPackets.dequeue()) != null) {
+            final Packet packet = pq.packet();
+            final ChannelHandlerContext ctx = pq.ctx();
+
+            Node backend = backendPool.nextBackend(packet, ctx);
+            if (backend == null) {
+                pendingPackets.enqueueFirst(pq);
+                logger.push("queue").warn("No backend available. pending packets = " + pendingPackets.size()).pop();
+                break;
+            }
+
+            final InternalPacket internal = new InternalPacket(new InternalPacket.Forward(getPacketRegistry()::getPacketId, packet));
+            final long requestId = internal.getRequestId();
+
+            transactionManager.registerRequest(internal, REQUEST_TIMEOUT_SECONDS * 500L).whenComplete(((response, throwable) -> {
+                if (throwable != null) {
+                    logger.push("transaction", AnsiColor.RED_BRIGHT).error(throwable).pop();
+                    return;
+                }
+
+                TriFunction<Packet, Integer, Long, byte[]> constructor = (id, ts, data) -> {
+                    try {
+                        return getPacketRegistry().constructPacket(id, ts, data);
+                    } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
+                        logger.error(e);
+                        throw new RuntimeException(e);
+                    }
+                };
+
+                Packet[] responses = response.decode(constructor);
+
+                Arrays.stream(responses).forEach(Packet::rewind);
+
+                logger.push("transaction", AnsiColor.GREEN_BRIGHT).info("forwarded packet responses", responses).pop();
+
+                sendPacket(ctx, responses).whenComplete((_void, t) -> {
+                    if (t != null) {
+                        logger.push("send", AnsiColor.RED_BRIGHT).error(t).pop();
+                    } else {
+                        logger.push("send", AnsiColor.GREEN_BRIGHT).info("responses sent successfully").pop();
+                    }
+                });
+
+            }));
+
+            backend.forward(internal);
+            contexts.put(requestId, ctx);
+        }
+    }
+
+    @Override
+    public void onPacketSend(ChannelHandlerContext ctx, Packet packet, boolean pre) {
+        logger.push("sniffing", AnsiColor.PURPLE)
+                .push(ctx.channel().remoteAddress() + "")
+                .info(AnsiColor.PURPLE_BRIGHT, "packet", packet, " | ", (pre ? "pre" : "post"))
+                .pop().pop();
+    }
+
+    public void complete(InternalPacket internal) {
+        if (transactionManager.completeResponse(internal)) {
+            logger.push(internal.requestCode(), AnsiColor.GREEN_BRIGHT).info("completed").pop();
+        } else {
+            logger.push(internal.requestCode(), AnsiColor.RED_BRIGHT).warn("no matching transaction found").pop();
+        }
     }
 
     @Override

@@ -1,12 +1,11 @@
 package dev.sweety.netty.loadbalancer.packets;
 
-import dev.sweety.netty.feature.batch.Batch;
-import dev.sweety.netty.messaging.listener.decoder.PacketDecoder;
-import dev.sweety.netty.messaging.listener.encoder.PacketEncoder;
+import dev.sweety.core.math.TriFunction;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
-import dev.sweety.netty.packet.buffer.io.CallableEncoder;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.model.PacketTransaction;
+
+import java.util.function.Function;
 
 public class InternalPacket extends PacketTransaction<InternalPacket.Forward, InternalPacket.Forward> {
 
@@ -32,35 +31,67 @@ public class InternalPacket extends PacketTransaction<InternalPacket.Forward, In
         return new Forward();
     }
 
-
     public static class Forward extends PacketTransaction.Transaction {
 
-        //write
-        private CallableEncoder<Packet> encode;
-        private Packet[] packets;
+        int packetCount;
+        int[] packetIds;
+        long[] packetTimestamps;
+        byte[][] packetData;
 
-        public Forward(final PacketEncoder encoder, Packet... packets) {
-            this.encode = encoder::sneakyEncode;
-            this.packets = packets;
+        public Forward(Function<Class<? extends Packet>, Integer> idMap, Packet... packets) {
+            if (packets == null || packets.length == 0) {
+                this.packetCount = 0;
+                this.packetIds = new int[0];
+                this.packetTimestamps = new long[0];
+                this.packetData = new byte[0][0];
+                return;
+            }
+
+            this.packetCount = packets.length;
+            this.packetIds = new int[this.packetCount];
+            this.packetTimestamps = new long[this.packetCount];
+            this.packetData = new byte[this.packetCount][];
+            for (int i = 0; i < packetCount; i++) {
+                Packet pkt = packets[i];
+                packetIds[i] = idMap.apply(pkt.getClass());
+                packetTimestamps[i] = pkt.timestamp();
+                packetData[i] = pkt.buffer().getBytes();
+            }
         }
 
         @Override
         public void write(PacketBuffer buffer) {
-            new Batch(buffer).encode(this.encode, this.packets);
+            buffer.writeVarInt(packetCount);
+            for (int i = 0; i < packetCount; i++) {
+                buffer.writeVarInt(packetIds[i]);
+                buffer.writeVarLong(packetTimestamps[i]);
+                buffer.writeByteArray(packetData[i]);
+            }
         }
-
-        //read
-        private Batch batch;
 
         public Forward() {
+
         }
 
+        @Override
         public void read(PacketBuffer buffer) {
-            this.batch = new Batch(buffer);
+            this.packetCount = buffer.readVarInt();
+            this.packetIds = new int[packetCount];
+            this.packetTimestamps = new long[packetCount];
+            this.packetData = new byte[packetCount][];
+            for (int i = 0; i < packetCount; i++) {
+                this.packetIds[i] = buffer.readVarInt();
+                this.packetTimestamps[i] = buffer.readVarLong();
+                this.packetData[i] = buffer.readByteArray();
+            }
         }
 
-        public Packet[] decode(PacketDecoder decoder) {
-            return this.batch.decode(decoder::sneakyDecode);
+        public Packet[] decode(TriFunction<Packet, Integer, Long, byte[]> constructor) {
+            Packet[] packets = new Packet[packetCount];
+            for (int i = 0; i < packetCount; i++) {
+                packets[i] = constructor.apply(packetIds[i], packetTimestamps[i], packetData[i]);
+            }
+            return packets;
         }
     }
 

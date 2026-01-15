@@ -37,6 +37,7 @@ public class OptimizedPacketRegistry implements IPacketRegistry {
 
     @Override
     public void registerPacket(int packetId, Class<? extends Packet> packet) throws PacketRegistrationException {
+        if (packetId == -1) throw new PacketRegistrationException("PacketID cannot be -1");
         if (idToPacket.containsKey(packetId))
             throw new PacketRegistrationException("PacketID already in use");
 

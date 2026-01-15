@@ -1,4 +1,4 @@
-package dev.sweety.project.netty.lb;
+package dev.sweety.project.netty.lb.impl;
 
 import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.netty.loadbalancer.v2.Backend;
@@ -18,16 +18,15 @@ public class BackendTest extends Backend {
     }
 
     @Override
-    public Packet[] handlePackets(Packet[] packets) {
-        logger.push("handlePackets").info("packets received: " + packets.length).pop();
+    public Packet[] handlePackets(Packet packet) {
+        logger.push("handlePackets").info("packets received: " + packet).pop();
 
-        for (int i = 0; i < packets.length; i++) {
-            String text = (packets[i] instanceof TextPacket packet) ? packet.getText() : "Unknown Packet Type";
-            logger.info("Contenuto:", text);
-            packets[i] = new TextPacket(port + "/" + text);
-        }
+        String text = (packet instanceof TextPacket t) ? t.getText() : "Unknown Packet Type";
+        logger.info("Contenuto:", text);
 
-        return packets;
+        return new Packet[]{
+                new TextPacket(port + "/" + text)
+        };
     }
 
     @Override

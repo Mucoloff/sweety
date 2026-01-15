@@ -12,6 +12,7 @@ import dev.sweety.netty.feature.TransactionManager;
 import dev.sweety.netty.messaging.Client;
 import dev.sweety.netty.messaging.listener.encoder.PacketEncoder;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
+import dev.sweety.netty.packet.model.BatchPacket;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.model.PacketTransaction;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
@@ -70,7 +71,15 @@ public class TestClient extends Client {
             transactionManager.sendTransaction(c.pipeline().firstContext(), ping, 10000L).whenComplete(completedTransaction);
             sendPacket(new TextPacket("ciao"));
 
-            sendPacket(new dev.sweety.netty.packet.model.BatchPacket(encoder::sneakyEncode, new TextPacket("aaa"), new TextPacket("bbb")));
+            PingTransaction p2 = new PingTransaction(new PingTransaction.Ping("ping in batch from client"));
+
+            sendPacket(new BatchPacket(encoder::sneakyEncode,
+                    new TextPacket("aaa"),
+                    new TextPacket("bbb"),
+                    p2
+            ));
+
+            transactionManager.registerRequest(p2, 10000L).whenComplete((pong,ex) -> System.out.println("Received response in batch:")).whenComplete(completedTransaction);
         });
 
     }
@@ -96,7 +105,7 @@ public class TestClient extends Client {
 
         if (!pre) return;
 
-        if (packet instanceof TextPacket t) {
+        if (packet instanceof TextPacket t && false) {
             PacketBuffer b = t.buffer();
             b.writeString("[messaggio editato] " + b.readString());
         }
@@ -141,7 +150,7 @@ public class TestClient extends Client {
 
     public static void main(String[] args) throws Throwable {
 
-        IPacketRegistry packetRegistry = new OptimizedPacketRegistry(TextPacket.class, FilePacket.class, PingTransaction.class, dev.sweety.netty.packet.model.BatchPacket.class);
+        IPacketRegistry packetRegistry = new OptimizedPacketRegistry(TextPacket.class, FilePacket.class, PingTransaction.class, BatchPacket.class);
 
         TestClient client = new TestClient("localhost", 8080, packetRegistry);
 

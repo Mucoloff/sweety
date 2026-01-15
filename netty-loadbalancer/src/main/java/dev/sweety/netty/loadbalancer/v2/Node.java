@@ -1,5 +1,6 @@
 package dev.sweety.netty.loadbalancer.v2;
 
+import dev.sweety.core.color.AnsiColor;
 import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.netty.feature.AutoReconnect;
 import dev.sweety.netty.loadbalancer.packets.InternalPacket;
@@ -43,17 +44,17 @@ public class Node extends Client {
 
     @Override
     public void onPacketReceive(ChannelHandlerContext ctx, Packet packet) {
-        logger.push("receive").info("packet", packet);
+        logger.push("receive", AnsiColor.YELLOW_BRIGHT).info("packet", packet);
         if (loadBalancer != null && packet instanceof InternalPacket internal) {
             logger.push(internal.requestCode()).info("forwarding to load balancer").pop();
-            loadBalancer.forward(internal);
+            loadBalancer.complete(internal);
         }
 
         logger.pop();
     }
 
     public void forward(InternalPacket internal) {
-        logger.push("forward" + internal.requestCode()).info("packet:", internal).pop();
+        logger.push("forward" + internal.requestCode(), AnsiColor.PURPLE_BRIGHT).info("packet:", internal).pop();
         sendPacket(internal);
     }
 

@@ -1,4 +1,4 @@
-package dev.sweety.project.netty.lb;
+package dev.sweety.project.netty.lb.impl;
 
 import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.netty.feature.AutoReconnect;

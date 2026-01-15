@@ -3,14 +3,17 @@ package dev.sweety.core.util;
 import lombok.experimental.UtilityClass;
 
 import java.util.Arrays;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 @UtilityClass
 public class ObjectUtils {
 
-    public <T> boolean isNull(T t) {
+    @SafeVarargs
+    public <T> boolean isNull(T t, Predicate<T>... predicates) {
         if (t == null) return true;
         if (t instanceof CharSequence c && c.isEmpty()) return true;
+        for (Predicate<T> predicate : predicates) if (predicate.test(t)) return true;
         return false;
     }
 
@@ -18,10 +21,20 @@ public class ObjectUtils {
         return isNull(t) ? fallback : t;
     }
 
+    @SafeVarargs
+    public <E> E getByOrdinalMod(int ordinal, E... values) {
+        return values[Math.abs(ordinal) % values.length];
+    }
+
+    public <E extends Enum<E>> E getByOrdinalMod(int ordinal, Class<E> clazz) {
+        return getByOrdinalMod(ordinal, clazz.getEnumConstants());
+
+    }
+
     public <E extends Enum<E>> E getByName(String name, Class<E> clazz) {
         return Arrays.stream(clazz.getEnumConstants())
-                     .filter(e -> e.name().equalsIgnoreCase(name))
-                     .findFirst().orElse(null);
+                .filter(e -> e.name().equalsIgnoreCase(name))
+                .findFirst().orElse(null);
     }
 
     public static <T> T make(Supplier<T> factory) {

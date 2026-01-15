@@ -34,6 +34,7 @@ public class SimplePacketRegistry implements IPacketRegistry {
 
     @Override
     public void registerPacket(int packetId, Class<? extends Packet> packet) throws PacketRegistrationException {
+        if (packetId == -1) throw new PacketRegistrationException("PacketID cannot be -1");
         if (containsPacketId(packetId)) throw new PacketRegistrationException("PacketID is already in use");
 
         try {

@@ -3,6 +3,8 @@ package dev.sweety.core.color;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.awt.*;
+
 @Getter
 @AllArgsConstructor
 public enum AnsiColor {
@@ -91,6 +93,21 @@ public enum AnsiColor {
             if (text.contains(value.color)) text = text.replace(value.color, "");
         }
         return text;
+    }
+
+    public static String fromColor(EColor color) {
+        return String.format("\u001B[38;2;%d;%d;%dm", color.getR(), color.getG(), color.getB());
+    }
+
+    public static String fromColor(Color color) {
+        return String.format("\u001B[38;2;%d;%d;%dm", color.getRed(), color.getGreen(), color.getBlue());
+    }
+
+    public static String fromColor(int rgb) {
+        int red = (rgb >> 16) & 0xFF;
+        int green = (rgb >> 8) & 0xFF;
+        int blue = rgb & 0xFF;
+        return String.format("\u001B[38;2;%d;%d;%dm", red, green, blue);
     }
 
 }

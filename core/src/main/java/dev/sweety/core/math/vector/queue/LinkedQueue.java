@@ -15,19 +15,26 @@ public class LinkedQueue<E> implements Queue<E> {
     public synchronized void enqueue(E element) {
         Objects.requireNonNull(element);
         Node<E> node = new Node<>(element);
-        if (tail != null) {
-            tail.next = node;
-        } else {
-            head = node;
-        }
+        if (tail != null) tail.next = node;
+        else head = node;
         tail = node;
         size++;
-        notifyAll(); // sveglia eventuali thread in attesa su dequeue
+        notifyAll();
     }
 
     @Override
     public synchronized E dequeue() {
-        while (head == null) {
+        if (head == null) return null;
+        final E value = head.value;
+        head = head.next;
+        if (head == null) tail = null; // coda vuota
+        size--;
+        return value;
+    }
+
+    public synchronized E lockingDequeue() {
+        E val;
+        while ((val = dequeue()) == null) {
             try {
                 wait(); // attende finché non c'è un elemento
             } catch (InterruptedException e) {
@@ -35,11 +42,20 @@ public class LinkedQueue<E> implements Queue<E> {
                 return null;
             }
         }
-        E value = head.value;
-        head = head.next;
-        if (head == null) tail = null; // coda vuota
-        size--;
-        return value;
+        return val;
+    }
+
+
+    public synchronized void enqueueFirst(E element) {
+        Objects.requireNonNull(element);
+        Node<E> node = new Node<>(element);
+        node.next = head;
+        head = node;
+        if (tail == null) {
+            tail = node;
+        }
+        size++;
+        notifyAll();
     }
 
     @Override

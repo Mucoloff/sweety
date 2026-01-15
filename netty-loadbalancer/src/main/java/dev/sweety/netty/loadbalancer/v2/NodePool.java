@@ -36,7 +36,10 @@ public record NodePool(SimpleLogger logger, List<Node> pool,
         if (pool.isEmpty()) return null;
         final List<Node> activeNodes = this.pool.stream().filter(Node::isActive).toList();
         if (activeNodes.isEmpty()) return null;
-        return RandomUtils.randomElement(activeNodes);
+        logger.info("Active nodes: " + activeNodes.stream().map(n -> n.getPort()+"").toList());
+        final Node node = RandomUtils.randomElement(activeNodes);
+        logger.info("Selected node: " + node.getPort());
+        return node;
         //return balancerSystem.nextBackend(pool, logger, packet, ctx);
     }
 }

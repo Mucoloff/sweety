@@ -21,7 +21,7 @@ public class PacketEncoder {
     private boolean checksumEnabled = true;
 
     public PacketEncoder noChecksum() {
-        //this.checksumEnabled = false;
+        this.checksumEnabled = false;
         return this;
     }
 
@@ -39,8 +39,8 @@ public class PacketEncoder {
 
     public void encode(final Packet packet, final PacketBuffer out) throws PacketEncodeException {
         int packetId = packetRegistry.getPacketId(packet.getClass());
-        if (packetId < 0)
-            throw new PacketEncodeException("Returned PacketId by registry is < 0");
+        if (packetId == -1)
+            throw new PacketEncodeException("Returned PacketId by registry is invalid (-1)");
 
         final boolean hasTimestamp = packet.timestamp() > 0L;
         final PacketBuffer payloadBuf = packet.buffer();
