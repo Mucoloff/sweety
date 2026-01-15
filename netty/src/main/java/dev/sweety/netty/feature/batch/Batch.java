@@ -1,5 +1,6 @@
-package dev.sweety.project.netty.packet.batch;
+package dev.sweety.netty.feature.batch;
 
+import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.buffer.io.CallableDecoder;
 import dev.sweety.netty.packet.buffer.io.CallableEncoder;
 import dev.sweety.netty.packet.model.Packet;
@@ -8,26 +9,21 @@ import lombok.SneakyThrows;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PacketBatch extends Packet {
+public record Batch(PacketBuffer buffer) {
 
-    public PacketBatch(CallableEncoder<Packet> encode, Packet... packets) {
-        super();
-
+    public void encode(CallableEncoder<Packet> encode, Packet[] packets) {
         this.buffer().writeVarInt(packets.length);
         for (Packet packet : packets) encode.accept(packet, this.buffer());
     }
 
-    public PacketBatch(int _id, long _timestamp, byte[] _data) {
-        super(_id, _timestamp, _data);
-    }
-
     @SneakyThrows
-    public List<Packet> decode(CallableDecoder<List<Packet>> decoder){
-        List<Packet> read = new ArrayList<>();
+    public Packet[] decode(CallableDecoder<List<Packet>> decoder) {
         int len = this.buffer().readVarInt();
+        List<Packet> read = new ArrayList<>(len);
         for (int i = 0; i < len; i++) {
             read.addAll(decoder.read(this.buffer()));
         }
-        return read;
+        return read.toArray(Packet[]::new);
     }
+
 }

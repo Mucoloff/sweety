@@ -13,7 +13,7 @@ public class ProfileScope implements AutoCloseable {
     @Override
     public void close() {
         if (!closed) {
-            logger.popProfile();
+            logger.pop();
             closed = true;
         }
     }

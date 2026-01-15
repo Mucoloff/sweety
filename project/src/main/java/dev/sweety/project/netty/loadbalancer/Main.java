@@ -80,7 +80,7 @@ public class Main {
                 String backendList = args[3];
                 List<BackendNode> backends = parseBackendList(backendList);
                 LoadBalancerServer loadBalancer = new LoadBalancerServer(lbPort, lbHost,
-                        new BackendPool(new SimpleLogger("pool").fallback(), backends, new ACBalancer(balancerSystem)), packetRegistry);
+                        new BackendPool(new SimpleLogger("pool"), backends, new ACBalancer(balancerSystem)), packetRegistry);
                 loadBalancer.start();
 
                 break;
@@ -128,7 +128,7 @@ public class Main {
         // 2. Configura e avvia il Load Balancer
         List<BackendNode> backends = Arrays.stream(BACKENDS).mapToObj(port -> new BackendNode(HOST, port, packetRegistry)).toList();
 
-        LoadBalancerServer loadBalancer = new LoadBalancerServer(LB_PORT, HOST, new BackendPool(new SimpleLogger("pool").fallback(), backends, new ACBalancer(balancerSystem)), packetRegistry);
+        LoadBalancerServer loadBalancer = new LoadBalancerServer(LB_PORT, HOST, new BackendPool(new SimpleLogger("pool"), backends, new ACBalancer(balancerSystem)), packetRegistry);
         new Thread(loadBalancer::start).start();
         System.out.println("Load Balancer in avvio sulla porta " + LB_PORT);
 

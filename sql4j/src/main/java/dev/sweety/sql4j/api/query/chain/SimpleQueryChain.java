@@ -28,7 +28,6 @@ public final class SimpleQueryChain<T> implements QueryChain<T> {
         return (SimpleQueryChain<N>) this;
     }
 
-
     public CompletableFuture<T> execute(final SqlConnection connection) {
         return CompletableFuture.supplyAsync(() -> {
             try (final Connection con = connection.connection()) {

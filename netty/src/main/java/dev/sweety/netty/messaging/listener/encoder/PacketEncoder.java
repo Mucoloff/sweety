@@ -18,6 +18,13 @@ public class PacketEncoder {
     static final int ZIP_THRESHOLD = 256;
     final IPacketRegistry packetRegistry;
 
+    private boolean checksumEnabled = true;
+
+    public PacketEncoder noChecksum() {
+        //this.checksumEnabled = false;
+        return this;
+    }
+
     public PacketEncoder(final IPacketRegistry packetRegistry) {
         this.packetRegistry = packetRegistry;
     }
@@ -77,7 +84,9 @@ public class PacketEncoder {
             toWrite.release();
         }
 
-        int check = (int) crc32.getValue();
-        out.writeVarInt(check);
+        if (this.checksumEnabled) {
+            int check = (int) crc32.getValue();
+            out.writeVarInt(check);
+        }
     }
 }

@@ -45,7 +45,7 @@ public class ExtensionClassLoader extends URLClassLoader {
 
         declaredConstructor.setAccessible(true);
 
-        this.extension = declaredConstructor.newInstance(info.name(), rootDir, new SimpleLogger(mainClass).fallback());
+        this.extension = declaredConstructor.newInstance(info.name(), rootDir, new SimpleLogger(mainClass));
     }
 
     protected Class<?> findClass(final String name) throws ClassNotFoundException {

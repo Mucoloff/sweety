@@ -23,10 +23,6 @@ public class SimpleLogger implements LogHelper {
     @Getter
     private volatile LoggerBackend backend = new ConsoleBackend();
 
-    public SimpleLogger fallback() {
-        return this;
-    }
-
     public SimpleLogger(String name) {
         this.name = name;
     }
@@ -55,13 +51,14 @@ public class SimpleLogger implements LogHelper {
         System.out.printf("%s(!)%s [%s] %s\n", AnsiColor.RED.getColor(), color, name, message);
     }
 
-    public void log(LogLevel level, Object... input) {
+    public SimpleLogger log(LogLevel level, Object... input) {
         final String prefix = formatPrefix(level);
         final String color = level.color().getColor();
         final String message = parseMessage(input) + AnsiColor.RESET.getColor();
         final String line = color + prefix + " " + message;
 
         backend.log(level, name, profiles.get().top(), line);
+        return this;
     }
 
     private String formatPrefix(LogLevel level) {
@@ -72,10 +69,21 @@ public class SimpleLogger implements LogHelper {
     }
 
     // Profile management (thread-local) with hierarchical composition
-    public void pushProfile(String profile) {
+
+    public SimpleLogger push(String profile, AnsiColor color) {
+        return push(color.getColor() + profile + AnsiColor.RESET.getColor());
+    }
+
+    public SimpleLogger push(String profile) {
         final Stack<String> stack = profiles.get();
         final String suffix = (stack.top() != null && !stack.top().isEmpty()) ? (stack.top() + "@") : "";
         stack.push(suffix + profile);
+        return this;
+    }
+
+    public SimpleLogger pop() {
+        profiles.get().pop();
+        return this;
     }
 
     public String popProfile() {
@@ -90,7 +98,7 @@ public class SimpleLogger implements LogHelper {
     }
 
     public ProfileScope withProfile(String profile) {
-        pushProfile(profile);
+        push(profile);
         return new ProfileScope(this);
     }
 
@@ -123,24 +131,24 @@ public class SimpleLogger implements LogHelper {
         return joiner.toString();
     }
 
-    public void info(Object... input) {
-        log(LogLevel.INFO, input);
+    public SimpleLogger info(Object... input) {
+        return log(LogLevel.INFO, input);
     }
 
-    public void warn(Object... input) {
-        log(LogLevel.WARN, input);
+    public SimpleLogger warn(Object... input) {
+        return log(LogLevel.WARN, input);
     }
 
-    public void error(Object... input) {
-        log(LogLevel.ERROR, input);
+    public SimpleLogger error(Object... input) {
+        return log(LogLevel.ERROR, input);
     }
 
-    public void debug(Object... input) {
-        log(LogLevel.DEBUG, input);
+    public SimpleLogger debug(Object... input) {
+        return log(LogLevel.DEBUG, input);
     }
 
-    public void trace(Object... input) {
-        log(LogLevel.TRACE, input);
+    @Override
+    public SimpleLogger trace(Object... input) {
+        return log(LogLevel.TRACE, input);
     }
-
 }

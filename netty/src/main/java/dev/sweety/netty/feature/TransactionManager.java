@@ -2,7 +2,7 @@ package dev.sweety.netty.feature;
 
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.PacketTransaction;
-import io.netty.bootstrap.Bootstrap;
+import io.netty.bootstrap.AbstractBootstrap;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.Map;
@@ -12,14 +12,18 @@ public class TransactionManager {
 
     private final Map<Long, CompletableFuture<PacketTransaction.Transaction>> pending = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-    private final Messenger<Bootstrap> messenger;
+    private final Messenger<? extends AbstractBootstrap<?, ?>> messenger;
 
-    public TransactionManager(Messenger<Bootstrap> messenger) {
+    public TransactionManager(Messenger<? extends AbstractBootstrap<?, ?>> messenger) {
         this.messenger = messenger;
     }
 
-    public <T extends PacketTransaction.Transaction> CompletableFuture<T> registerRequest(long requestId, long timeoutMillis) {
-        CompletableFuture<T> future = new CompletableFuture<>();
+    public <Request extends PacketTransaction.Transaction, Transaction extends PacketTransaction<?, Request>> CompletableFuture<Request> registerRequest(Transaction packet, long timeoutMillis) {
+        return registerRequest(packet.getRequestId(), timeoutMillis);
+    }
+
+    public <Request extends PacketTransaction.Transaction> CompletableFuture<Request> registerRequest(long requestId, long timeoutMillis) {
+        CompletableFuture<Request> future = new CompletableFuture<>();
 
         //noinspection unchecked
         CompletableFuture<PacketTransaction.Transaction> prev = pending.putIfAbsent(requestId, (CompletableFuture<PacketTransaction.Transaction>) future);
@@ -37,7 +41,7 @@ public class TransactionManager {
             }
         }, timeoutMillis, TimeUnit.MILLISECONDS);
 
-        future.whenComplete((r, ex) -> {
+        future.whenComplete((request, ex) -> {
             pending.remove(requestId);
             timeoutHandle.cancel(false);
         });
@@ -45,8 +49,13 @@ public class TransactionManager {
         return future;
     }
 
-    public boolean completeResponse(long id, PacketTransaction.Transaction response) {
-        CompletableFuture<PacketTransaction.Transaction> future = pending.remove(id);
+    public <R extends PacketTransaction.Transaction, T extends PacketTransaction<?, R>> boolean completeResponse(T packet) {
+        return packet.hasResponse() && completeResponse(packet.getRequestId(), packet.getResponse());
+    }
+
+    public <R extends PacketTransaction.Transaction> boolean completeResponse(long id, R response) {
+        //noinspection unchecked
+        CompletableFuture<R> future = (CompletableFuture<R>) pending.remove(id);
         if (future == null) return false;
         future.complete(response);
         return true;

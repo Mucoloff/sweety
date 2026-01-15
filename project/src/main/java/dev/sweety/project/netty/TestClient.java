@@ -16,7 +16,6 @@ import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.model.PacketTransaction;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import dev.sweety.netty.packet.registry.OptimizedPacketRegistry;
-import dev.sweety.project.netty.packet.batch.PacketBatch;
 import dev.sweety.project.netty.packet.file.FilePacket;
 import dev.sweety.project.netty.packet.text.TextPacket;
 import dev.sweety.project.netty.packet.text.event.TextPacketEvent;
@@ -25,13 +24,13 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 
 public class TestClient extends Client {
 
-    SimpleLogger logger = new SimpleLogger("Client").fallback();
-
+    private final SimpleLogger logger = new SimpleLogger("Client");
     private final TransactionManager transactionManager = new TransactionManager(this);
     private final EventSystem eventSystem = new EventSystem();
     private final EventMapping eventMapping = new EventMapping(eventSystem);
@@ -71,7 +70,7 @@ public class TestClient extends Client {
             transactionManager.sendTransaction(c.pipeline().firstContext(), ping, 10000L).whenComplete(completedTransaction);
             sendPacket(new TextPacket("ciao"));
 
-            sendPacket(new PacketBatch(encoder::sneakyEncode, new TextPacket("aaa"), new TextPacket("bbb")));
+            sendPacket(new dev.sweety.netty.packet.model.BatchPacket(encoder::sneakyEncode, new TextPacket("aaa"), new TextPacket("bbb")));
         });
 
     }
@@ -107,11 +106,11 @@ public class TestClient extends Client {
 
 
     @Override
-    public Channel start() {
+    public CompletableFuture<Channel> connect() {
         return super.connect().exceptionally(t -> {
-            autoReconnect.onException(t);
+            this.autoReconnect.onException(t);
             return null;
-        }).join();
+        });
     }
 
     @Override
@@ -142,7 +141,7 @@ public class TestClient extends Client {
 
     public static void main(String[] args) throws Throwable {
 
-        IPacketRegistry packetRegistry = new OptimizedPacketRegistry(TextPacket.class, FilePacket.class, PingTransaction.class, PacketBatch.class);
+        IPacketRegistry packetRegistry = new OptimizedPacketRegistry(TextPacket.class, FilePacket.class, PingTransaction.class, dev.sweety.netty.packet.model.BatchPacket.class);
 
         TestClient client = new TestClient("localhost", 8080, packetRegistry);
 

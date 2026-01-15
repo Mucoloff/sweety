@@ -13,7 +13,7 @@ import io.netty.channel.ChannelPromise;
  */
 public class DummyClient extends Client {
 
-    SimpleLogger logger = new SimpleLogger("Client").fallback();
+    private final SimpleLogger logger = new SimpleLogger("Client");
 
     public DummyClient(String host, int port, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
