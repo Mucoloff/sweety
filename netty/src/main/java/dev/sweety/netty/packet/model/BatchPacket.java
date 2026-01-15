@@ -4,8 +4,6 @@ import dev.sweety.netty.feature.batch.Batch;
 import dev.sweety.netty.packet.buffer.io.CallableDecoder;
 import dev.sweety.netty.packet.buffer.io.CallableEncoder;
 
-import java.util.List;
-
 public class BatchPacket extends Packet {
 
     private final Batch batch;
@@ -20,7 +18,7 @@ public class BatchPacket extends Packet {
     }
 
 
-    public Packet[] decode(CallableDecoder<List<Packet>> decoder) {
+    public Packet[] decode(CallableDecoder<Packet> decoder) {
         return this.batch.decode(decoder);
     }
 }

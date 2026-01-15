@@ -50,13 +50,17 @@ public class LBServer extends Server {
 
         final InternalPacket internal = new InternalPacket(new InternalPacket.Forward(encoder, packet.rewind()));
 
-        transactionManager.registerRequest(internal, REQUEST_TIMEOUT_SECONDS).whenComplete(((forward, throwable) -> {
+        transactionManager.registerRequest(internal, REQUEST_TIMEOUT_SECONDS * 500L).whenComplete(((forward, throwable) -> {
             if (throwable != null) {
                 logger.push("transaction").error(throwable).pop();
                 return;
             }
 
             Packet[] responses = forward.decode(decoder);
+
+            for (int i = 0; i < responses.length; i++) {
+                responses[i] = responses[i].rewind();
+            }
 
             sendPacket(ctx, responses);
         }));

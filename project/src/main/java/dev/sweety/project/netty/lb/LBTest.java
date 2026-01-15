@@ -49,12 +49,10 @@ public class LBTest {
 
         Packet[] packets = new Packet[]{
                 new TextPacket("Ciao, questo è un messaggio di prova 1"),
-                /*
                 new TextPacket("Ciao, questo è un messaggio di prova 2"),
                 new TextPacket("Ciao, questo è un messaggio di prova 3"),
                 new TextPacket("Ciao, questo è un messaggio di prova 4"),
                 new TextPacket("Ciao, questo è un messaggio di prova 5"),
-                 */
         };
 
         client.sendPacket(packets);

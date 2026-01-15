@@ -31,14 +31,15 @@ public class PacketDecoder {
         this.packetRegistry = packetRegistry;
     }
 
-    public List<Packet> sneakyDecode(final PacketBuffer in) {
+    public Packet sneakyDecode(final PacketBuffer in) {
         final List<Packet> out = new ArrayList<>(1);
         try {
             decode(in, out);
         } catch (PacketDecodeException e) {
             e.printStackTrace(System.err);
+            return null;
         }
-        return out;
+        return out.isEmpty() ? null : out.getFirst();
     }
 
     private boolean cantRead(final PacketBuffer in, int len) {
