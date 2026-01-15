@@ -6,19 +6,19 @@ import dev.sweety.netty.packet.buffer.io.CallableEncoder;
 
 public class BatchPacket extends Packet {
 
-    private final Batch batch;
-
     public BatchPacket(final CallableEncoder<Packet> encode, final Packet... packets) {
-        (this.batch = new Batch(this.buffer())).encode(encode, packets);
+        Batch.encode(this.buffer(), encode, packets);
     }
 
-    public BatchPacket(int _id, long _timestamp, byte[] _data) {
+    int readerIndex;
+
+    public BatchPacket(final int _id, final long _timestamp, final byte[] _data) {
         super(_id, _timestamp, _data);
-        this.batch = new Batch(this.buffer());
+        this.readerIndex = this.buffer().readerIndex();
     }
 
-
-    public Packet[] decode(CallableDecoder<Packet> decoder) {
-        return this.batch.decode(decoder);
+    public Packet[] decode(final CallableDecoder<Packet> decoder) {
+        this.buffer().readerIndex(this.readerIndex);
+        return Batch.decode(this.buffer(), decoder);
     }
 }

@@ -5,6 +5,7 @@ import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.model.PacketTransaction;
 
+import java.util.LinkedList;
 import java.util.function.Function;
 
 public class InternalPacket extends PacketTransaction<InternalPacket.Forward, InternalPacket.Forward> {
@@ -51,12 +52,46 @@ public class InternalPacket extends PacketTransaction<InternalPacket.Forward, In
             this.packetIds = new int[this.packetCount];
             this.packetTimestamps = new long[this.packetCount];
             this.packetData = new byte[this.packetCount][];
+
+            LinkedList<Integer> toRemove = new LinkedList<>();
             for (int i = 0; i < packetCount; i++) {
                 Packet pkt = packets[i];
-                packetIds[i] = idMap.apply(pkt.getClass());
-                packetTimestamps[i] = pkt.timestamp();
-                packetData[i] = pkt.buffer().getBytes();
+                int id;
+                if ((!(pkt instanceof InternalPacket)) && (id = idMap.apply(pkt.getClass())) != -1) {
+                    packetIds[i] = id;
+                    packetTimestamps[i] = pkt.timestamp();
+                    packetData[i] = pkt.buffer().getBytes();
+                } else {
+                    packetIds[i] = -1;
+                    packetTimestamps[i] = 0L;
+                    packetData[i] = new byte[0];
+                    toRemove.add(i);
+                }
             }
+
+            // Remove invalid packets
+            if (!toRemove.isEmpty()) {
+                int newCount = packetCount - toRemove.size();
+                int[] newIds = new int[newCount];
+                long[] newTimestamps = new long[newCount];
+                byte[][] newData = new byte[newCount][];
+
+                int index = 0;
+                for (int i = 0; i < packetCount; i++) {
+                    if (!toRemove.contains(i)) {
+                        newIds[index] = packetIds[i];
+                        newTimestamps[index] = packetTimestamps[i];
+                        newData[index] = packetData[i];
+                        index++;
+                    }
+                }
+
+                this.packetCount = newCount;
+                this.packetIds = newIds;
+                this.packetTimestamps = newTimestamps;
+                this.packetData = newData;
+            }
+
         }
 
         @Override

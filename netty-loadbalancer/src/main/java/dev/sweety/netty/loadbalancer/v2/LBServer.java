@@ -8,8 +8,6 @@ import dev.sweety.netty.feature.TransactionManager;
 import dev.sweety.netty.loadbalancer.PacketQueue;
 import dev.sweety.netty.loadbalancer.packets.InternalPacket;
 import dev.sweety.netty.messaging.Server;
-import dev.sweety.netty.messaging.listener.decoder.PacketDecoder;
-import dev.sweety.netty.messaging.listener.encoder.PacketEncoder;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
@@ -17,8 +15,6 @@ import io.netty.channel.ChannelPromise;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class LBServer extends Server {
 
@@ -28,8 +24,7 @@ public class LBServer extends Server {
 
     private final TransactionManager transactionManager = new TransactionManager(this);
 
-    private final PacketEncoder encoder;
-    private final PacketDecoder decoder;
+    private final TriFunction<Packet, Integer, Long, byte[]> constructor;
 
     private static final long REQUEST_TIMEOUT_SECONDS = 30L;
 
@@ -40,23 +35,26 @@ public class LBServer extends Server {
         this.backendPool.pool().forEach(node -> node.setLoadBalancer(this));
         this.backendPool.initialize();
 
-        this.encoder = new PacketEncoder(packetRegistry).noChecksum();
-        this.decoder = new PacketDecoder(packetRegistry).noChecksum();
+        constructor = (id, ts, data) -> {
+            try {
+                return getPacketRegistry().constructPacket(id, ts, data);
+            } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
+                logger.error(e);
+                throw new RuntimeException(e);
+            }
+        };
     }
 
     @Override
     public void onPacketReceive(ChannelHandlerContext ctx, Packet packet) {
+        if (packet instanceof InternalPacket) return;
         logger.push("receive", AnsiColor.CYAN_BRIGHT).info("packet", packet);
         pendingPackets.enqueue(new PacketQueue(packet.rewind(), ctx));
         drainPending();
         logger.pop();
     }
 
-    private final Map<Long, ChannelHandlerContext> contexts = new ConcurrentHashMap<>();
-
     private void drainPending() {
-        if (this.pendingPackets.isEmpty()) return;
-
         PacketQueue pq;
         while ((pq = pendingPackets.dequeue()) != null) {
             final Packet packet = pq.packet();
@@ -70,22 +68,12 @@ public class LBServer extends Server {
             }
 
             final InternalPacket internal = new InternalPacket(new InternalPacket.Forward(getPacketRegistry()::getPacketId, packet));
-            final long requestId = internal.getRequestId();
 
             transactionManager.registerRequest(internal, REQUEST_TIMEOUT_SECONDS * 500L).whenComplete(((response, throwable) -> {
                 if (throwable != null) {
                     logger.push("transaction", AnsiColor.RED_BRIGHT).error(throwable).pop();
                     return;
                 }
-
-                TriFunction<Packet, Integer, Long, byte[]> constructor = (id, ts, data) -> {
-                    try {
-                        return getPacketRegistry().constructPacket(id, ts, data);
-                    } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
-                        logger.error(e);
-                        throw new RuntimeException(e);
-                    }
-                };
 
                 Packet[] responses = response.decode(constructor);
 
@@ -104,7 +92,6 @@ public class LBServer extends Server {
             }));
 
             backend.forward(internal);
-            contexts.put(requestId, ctx);
         }
     }
 

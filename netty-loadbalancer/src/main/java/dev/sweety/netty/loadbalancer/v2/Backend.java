@@ -5,28 +5,32 @@ import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.core.math.TriFunction;
 import dev.sweety.netty.loadbalancer.packets.InternalPacket;
 import dev.sweety.netty.messaging.Server;
-import dev.sweety.netty.messaging.listener.decoder.PacketDecoder;
-import dev.sweety.netty.messaging.listener.encoder.PacketEncoder;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public abstract class Backend extends Server {
 
-    private final PacketEncoder encoder;
-    private final PacketDecoder decoder;
-
     private final SimpleLogger log = new SimpleLogger(Backend.class);
+
+    private final TriFunction<Packet, Integer, Long, byte[]> constructor;
 
     public Backend(String host, int port, IPacketRegistry packetRegistry, Packet... packets) {
         super(host, port, packetRegistry, packets);
-        this.encoder = new PacketEncoder(packetRegistry).noChecksum();
-        this.decoder = new PacketDecoder(packetRegistry).noChecksum();
         log.push("internal", AnsiColor.RED_BRIGHT);
+
+        constructor = (id, ts, data) -> {
+            try {
+                return getPacketRegistry().constructPacket(id, ts, data);
+            } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
+                log.error(e);
+                throw new RuntimeException(e);
+            }
+        };
     }
 
     public abstract Packet[] handlePackets(Packet packet);
@@ -40,23 +44,17 @@ public abstract class Backend extends Server {
         final InternalPacket.Forward request = internal.getRequest();
         log.push("process", AnsiColor.YELLOW_BRIGHT).info("processing forwarded packets", request);
 
-        TriFunction<Packet, Integer, Long, byte[]> constructor = (id, ts, data) -> {
-            try {
-                return getPacketRegistry().constructPacket(id, ts, data);
-            } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
-                log.error(e);
-                throw new RuntimeException(e);
-            }
-        };
 
-        Packet[] receivedPackets = request.decode(constructor);
+        final List<Packet> handledPackets = Arrays.stream(request.decode(constructor))
+                .flatMap(packets -> Arrays.stream(handlePackets(packets)))
+                .collect(Collectors.toList());
 
-        List<Packet> handledPackets = new java.util.ArrayList<>();
-        for (Packet receivedPacket : receivedPackets) {
-            Collections.addAll(handledPackets, handlePackets(receivedPacket));
-        }
+        handledPackets.removeIf(Objects::isNull);
+        handledPackets.removeIf(p -> p instanceof InternalPacket);
 
-        final InternalPacket.Forward response = new InternalPacket.Forward(getPacketRegistry()::getPacketId, handledPackets.toArray(handledPackets.toArray(Packet[]::new)));
+        final Packet[] packets = handledPackets.toArray(handledPackets.toArray(Packet[]::new));
+
+        final InternalPacket.Forward response = new InternalPacket.Forward(getPacketRegistry()::getPacketId, packets);
 
         log.push("forward", AnsiColor.GREEN_BRIGHT).info("sending response");
         sendPacket(ctx, new InternalPacket(internal.getRequestId(), response));
