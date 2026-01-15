@@ -1,12 +1,12 @@
 package dev.sweety.project.netty;
 
+import dev.sweety.core.logger.SimpleLogger;
+import dev.sweety.core.math.function.TriFunction;
 import dev.sweety.netty.messaging.Server;
-import dev.sweety.netty.messaging.listener.decoder.PacketDecoder;
 import dev.sweety.netty.packet.model.BatchPacket;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import dev.sweety.netty.packet.registry.OptimizedPacketRegistry;
-import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.project.netty.packet.file.FilePacket;
 import dev.sweety.project.netty.packet.text.TextPacket;
 import dev.sweety.project.netty.ping.PingTransaction;
@@ -16,12 +16,11 @@ import io.netty.channel.ChannelPromise;
 public class TestServer extends Server {
 
     final SimpleLogger logger = new SimpleLogger("Server");
-
-    private final PacketDecoder decoder;
+    final TriFunction<Packet, Integer, Long, byte[]> constructor;
 
     public TestServer(String host, int port, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
-        decoder = new PacketDecoder(packetRegistry);
+        this.constructor = (id, ts, data) -> packetRegistry.construct(id, ts, data, this.logger);
     }
 
     @Override
@@ -45,7 +44,7 @@ public class TestServer extends Server {
                 String a = logger.popProfile();
                 String b = logger.popProfile();
                 logger.push("batch");
-                for (Packet p : batch.decode(decoder::sneakyDecode)) {
+                for (Packet p : batch.decode(constructor)) {
                     onPacketReceive(ctx, p);
                 }
                 logger.pop();

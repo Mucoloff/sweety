@@ -1,4 +1,4 @@
-package dev.sweety.core.math;
+package dev.sweety.core.math.function;
 
 public interface TriFunction<R, T, U, V> extends Operation<R> {
 

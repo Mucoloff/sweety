@@ -10,7 +10,6 @@ import dev.sweety.event.processor.GenerateEvent;
 import dev.sweety.netty.feature.AutoReconnect;
 import dev.sweety.netty.feature.TransactionManager;
 import dev.sweety.netty.messaging.Client;
-import dev.sweety.netty.messaging.listener.encoder.PacketEncoder;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.BatchPacket;
 import dev.sweety.netty.packet.model.Packet;
@@ -38,12 +37,9 @@ public class TestClient extends Client {
 
     private final AutoReconnect autoReconnect = new AutoReconnect(2500L, TimeUnit.MILLISECONDS, this::start);
 
-    private final PacketEncoder encoder;
 
     public TestClient(String host, int port, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
-        encoder = new PacketEncoder(packetRegistry);
-
         eventSystem.subscribe(new Object() {
 
             @LinkEvent
@@ -73,13 +69,13 @@ public class TestClient extends Client {
 
             PingTransaction p2 = new PingTransaction(new PingTransaction.Ping("ping in batch from client"));
 
-            sendPacket(new BatchPacket(encoder::sneakyEncode,
+            sendPacket(new BatchPacket(getPacketRegistry()::getPacketId,
                     new TextPacket("aaa"),
                     new TextPacket("bbb"),
                     p2
             ));
 
-            transactionManager.registerRequest(p2, 10000L).whenComplete((pong,ex) -> System.out.println("Received response in batch:")).whenComplete(completedTransaction);
+            transactionManager.registerRequest(p2, 10000L).whenComplete((pong, ex) -> System.out.println("Received response in batch:")).whenComplete(completedTransaction);
         });
 
     }
@@ -111,7 +107,6 @@ public class TestClient extends Client {
         }
 
     }
-
 
 
     @Override
@@ -166,7 +161,6 @@ public class TestClient extends Client {
         client.start();
 
         Runtime.getRuntime().addShutdownHook(new Thread(client::stop));
-
 
 
         while (true) {

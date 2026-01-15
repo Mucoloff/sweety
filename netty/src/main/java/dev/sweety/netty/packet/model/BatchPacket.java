@@ -1,6 +1,6 @@
 package dev.sweety.netty.packet.model;
 
-import dev.sweety.core.math.TriFunction;
+import dev.sweety.core.math.function.TriFunction;
 import dev.sweety.netty.feature.batch.Batch;
 
 import java.util.function.Function;

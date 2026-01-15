@@ -2,7 +2,7 @@ package dev.sweety.netty.loadbalancer.v2;
 
 import dev.sweety.core.color.AnsiColor;
 import dev.sweety.core.logger.SimpleLogger;
-import dev.sweety.core.math.TriFunction;
+import dev.sweety.core.math.function.TriFunction;
 import dev.sweety.core.math.vector.queue.LinkedQueue;
 import dev.sweety.netty.feature.TransactionManager;
 import dev.sweety.netty.loadbalancer.PacketQueue;
@@ -13,7 +13,6 @@ import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 
 public class LBServer extends Server {
@@ -35,14 +34,7 @@ public class LBServer extends Server {
         this.backendPool.pool().forEach(node -> node.setLoadBalancer(this));
         this.backendPool.initialize();
 
-        constructor = (id, ts, data) -> {
-            try {
-                return getPacketRegistry().constructPacket(id, ts, data);
-            } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
-                logger.error(e);
-                throw new RuntimeException(e);
-            }
-        };
+        this.constructor = (id, ts, data) -> packetRegistry.construct(id, ts, data, this.logger);
     }
 
     @Override

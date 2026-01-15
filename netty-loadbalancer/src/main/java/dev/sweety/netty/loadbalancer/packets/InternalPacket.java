@@ -1,6 +1,6 @@
 package dev.sweety.netty.loadbalancer.packets;
 
-import dev.sweety.core.math.TriFunction;
+import dev.sweety.core.math.function.TriFunction;
 import dev.sweety.netty.feature.batch.Batch;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.Packet;

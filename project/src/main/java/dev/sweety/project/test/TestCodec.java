@@ -1,6 +1,7 @@
 package dev.sweety.project.test;
 
-import dev.sweety.core.math.TriFunction;
+import dev.sweety.core.logger.SimpleLogger;
+import dev.sweety.core.math.function.TriFunction;
 import dev.sweety.netty.messaging.listener.decoder.PacketDecoder;
 import dev.sweety.netty.messaging.listener.encoder.PacketEncoder;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
@@ -10,7 +11,6 @@ import dev.sweety.netty.packet.registry.IPacketRegistry;
 import dev.sweety.netty.packet.registry.OptimizedPacketRegistry;
 import dev.sweety.project.netty.packet.text.TextPacket;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
 import java.util.List;
 
@@ -31,14 +31,9 @@ public class TestCodec {
         List<Packet> packets = new java.util.ArrayList<>();
         decoder.decode(in, packets);
 
-        final TriFunction<Packet, Integer, Long, byte[]> constructor = (id, ts, data) -> {
-            try {
-                return registry.constructPacket(id, ts, data);
-            } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
-                e.printStackTrace(System.err);
-                throw new RuntimeException(e);
-            }
-        };
+        SimpleLogger logger = new SimpleLogger("TestCodec");
+
+        final TriFunction<Packet, Integer, Long, byte[]> constructor = (id, ts, data) -> registry.construct(id,ts, data, logger);
 
         // Ricostruzione dei singoli pacchetti dal batch
         List<Packet> reconstructed = new java.util.ArrayList<>();

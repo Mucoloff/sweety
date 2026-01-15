@@ -2,7 +2,7 @@ package dev.sweety.event;
 
 import dev.sweety.event.interfaces.LinkEvent;
 import dev.sweety.event.interfaces.Listener;
-import dev.sweety.core.math.Operation;
+import dev.sweety.core.math.function.Operation;
 import dev.sweety.event.info.State;
 import it.unimi.dsi.fastutil.Pair;
 

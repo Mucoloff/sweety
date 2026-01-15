@@ -1,4 +1,4 @@
-package dev.sweety.core.math;
+package dev.sweety.core.math.function;
 
 import java.util.function.Function;
 
