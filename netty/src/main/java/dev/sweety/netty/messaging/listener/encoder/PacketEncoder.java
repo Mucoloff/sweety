@@ -18,24 +18,10 @@ public class PacketEncoder {
     static final int ZIP_THRESHOLD = 256;
     final IPacketRegistry packetRegistry;
 
-    private boolean checksumEnabled = true;
-
-    public PacketEncoder noChecksum() {
-        this.checksumEnabled = false;
-        return this;
-    }
-
     public PacketEncoder(final IPacketRegistry packetRegistry) {
         this.packetRegistry = packetRegistry;
     }
 
-    public void sneakyEncode(final PacketBuffer out,final Packet packet) {
-        try {
-            encode(packet, out);
-        } catch (PacketEncodeException e) {
-            e.printStackTrace(System.err);
-        }
-    }
 
     public void encode(final Packet packet, final PacketBuffer out) throws PacketEncodeException {
         int packetId = packetRegistry.getPacketId(packet.getClass());
@@ -84,9 +70,7 @@ public class PacketEncoder {
             toWrite.release();
         }
 
-        if (this.checksumEnabled) {
-            int check = (int) crc32.getValue();
-            out.writeVarInt(check);
-        }
+        int check = (int) crc32.getValue();
+        out.writeVarInt(check);
     }
 }

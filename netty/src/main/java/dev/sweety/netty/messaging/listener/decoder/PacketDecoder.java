@@ -12,7 +12,6 @@ import io.netty.buffer.Unpooled;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.CRC32C;
 
@@ -20,26 +19,8 @@ public class PacketDecoder {
 
     private final IPacketRegistry packetRegistry;
 
-    private boolean checksumEnabled = true;
-
-    public PacketDecoder noChecksum() {
-        this.checksumEnabled = false;
-        return this;
-    }
-
     public PacketDecoder(final IPacketRegistry packetRegistry) {
         this.packetRegistry = packetRegistry;
-    }
-
-    public Packet sneakyDecode(final PacketBuffer in) {
-        final List<Packet> out = new ArrayList<>(1);
-        try {
-            decode(in, out);
-        } catch (PacketDecodeException e) {
-            e.printStackTrace(System.err);
-            return null;
-        }
-        return out.isEmpty() ? null : out.getFirst();
     }
 
     private boolean cantRead(final PacketBuffer in, int len) {
@@ -99,14 +80,13 @@ public class PacketDecoder {
             }
         }
 
-        if (this.checksumEnabled){
-            if (cantRead(in, 1)) return;
-            final int checksum = in.readVarInt();
-            final int check = (int) crc32.getValue();
-            if (check != checksum) {
-                payloadBuf.release();
-                throw new PacketDecodeException("Invalid checksum for packetId " + id);
-            }
+
+        if (cantRead(in, 1)) return;
+        final int checksum = in.readVarInt();
+        final int check = (int) crc32.getValue();
+        if (check != checksum) {
+            payloadBuf.release();
+            throw new PacketDecodeException("Invalid checksum for packetId " + id);
         }
 
         final Packet packet;
