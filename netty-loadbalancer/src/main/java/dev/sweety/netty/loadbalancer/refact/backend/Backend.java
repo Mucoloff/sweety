@@ -36,7 +36,8 @@ public abstract class Backend extends Server {
 
         final int delay = 2500;
         this.metricsScheduler.scheduleAtFixedRate(this::sendMetrics, delay, delay, TimeUnit.MILLISECONDS);
-    }
+        this.metricsScheduler.scheduleAtFixedRate(sampler::sample, delay/4, delay/4, TimeUnit.MILLISECONDS);
+}
 
     private void sendMetrics() {
         if (!channel.isActive() || !channel.isOpen() || !channel.isRegistered() || getClients().isEmpty()) return;
