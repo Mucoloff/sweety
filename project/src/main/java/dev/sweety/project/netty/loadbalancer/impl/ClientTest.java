@@ -46,7 +46,6 @@ public class ClientTest extends Client {
         super.stop();
     }
 
-
     @Override
     public void exception(ChannelHandlerContext ctx, Throwable throwable) {
         logger.push("exception").error(throwable).pop();

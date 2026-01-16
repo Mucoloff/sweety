@@ -56,10 +56,18 @@ public class LoadBalancerServer extends Server {
         drainPending();
     }
 
+    private volatile boolean useThreadManager = true;
+
+    public void disableThreadManager() {
+        this.useThreadManager = false;
+    }
+
     public void drainPending() {
-        final ProfileThread profileThread = queueScheduler.getAvailableProfileThread();
-        profileThread.execute(this::drainPendingInternal);
-        profileThread.decrement();
+        if (useThreadManager) {
+            final ProfileThread profileThread = this.queueScheduler.getAvailableProfileThread();
+            profileThread.execute(this::drainPendingInternal);
+            profileThread.decrement();
+        } else this.drainPendingInternal();
     }
 
     private synchronized void drainPendingInternal() {

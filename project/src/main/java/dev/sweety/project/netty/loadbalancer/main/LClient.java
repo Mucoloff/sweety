@@ -43,7 +43,7 @@ public class LClient {
 
             timer.reset();
 
-            //client.sendPacket(new TextPacket("Ping dal client alle " + System.currentTimeMillis()));
+            client.sendPacket(new TextPacket("Ping dal client alle " + System.currentTimeMillis()));
         }
 
     }
