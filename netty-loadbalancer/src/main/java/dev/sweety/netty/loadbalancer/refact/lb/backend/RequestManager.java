@@ -11,9 +11,9 @@ public class RequestManager {
     private final Map<Long, RequestInfo> pendingRequests = new ConcurrentHashMap<>();
 
     private final AtomicLong currentLoad = new AtomicLong(0L);
-    private final EMA latencyEma = new EMA(0.2f);  // per latency media
-    private final EMA totalLoadEma = new EMA(0.2f);  // per average bandwidth load
-    private final EMA currentLoadEma = new EMA(0.2f); // per current pending load medio
+    private final EMA latencyEma = new EMA(0.75f);  // per latency media
+    private final EMA totalLoadEma = new EMA(0.25f);  // per average bandwidth load
+    private final EMA currentLoadEma = new EMA(0.35f); // per current pending load medio
 
     public void addRequest(long requestId, int load) {
         pendingRequests.put(requestId, new RequestInfo(System.currentTimeMillis(), load));
