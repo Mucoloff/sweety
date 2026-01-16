@@ -36,7 +36,7 @@ public record BackendNodePool(SimpleLogger logger, List<BackendNode> pool,
     @Override
     public BackendNode next(Packet packet, ChannelHandlerContext ctx) {
         if (this.pool.isEmpty()) return null;
-        final List<BackendNode> activeNodes = this.pool.stream().filter(BackendNode::isActive).toList();
+        final List<BackendNode> activeNodes = this.pool.stream().filter(BackendNode::isActive).filter(BackendNode::canAcceptPacket).toList();
         if (activeNodes.isEmpty()) return null;
         return balancer.nextNode(activeNodes, logger, packet, ctx);
     }

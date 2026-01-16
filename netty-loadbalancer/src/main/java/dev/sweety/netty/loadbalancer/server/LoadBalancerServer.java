@@ -5,10 +5,10 @@ import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.core.math.function.TriFunction;
 import dev.sweety.core.math.vector.queue.LinkedQueue;
 import dev.sweety.netty.feature.TransactionManager;
-import dev.sweety.netty.loadbalancer.server.backend.BackendNode;
-import dev.sweety.netty.loadbalancer.server.pool.IBackendNodePool;
-import dev.sweety.netty.loadbalancer.server.packets.PacketQueue;
 import dev.sweety.netty.loadbalancer.common.packet.InternalPacket;
+import dev.sweety.netty.loadbalancer.server.backend.BackendNode;
+import dev.sweety.netty.loadbalancer.server.packets.PacketQueue;
+import dev.sweety.netty.loadbalancer.server.pool.IBackendNodePool;
 import dev.sweety.netty.messaging.Server;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
@@ -52,6 +52,7 @@ public class LoadBalancerServer extends Server {
     }
 
     public void drainPending() {
+        if (pendingPackets.isEmpty()) return;
         PacketQueue pq;
         while ((pq = pendingPackets.dequeue()) != null) {
             final Packet packet = pq.packet();

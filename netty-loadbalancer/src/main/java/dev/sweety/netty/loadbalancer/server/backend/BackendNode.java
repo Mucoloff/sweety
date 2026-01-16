@@ -54,6 +54,8 @@ public class BackendNode extends Client {
         super.stop();
     }
 
+    //todo make a settings class for these
+    private static final int maxInFlight = 50, inFlightAcceptable = 35;
     private static final float maxExpectedLatency = 1000f;
 
     @Getter
@@ -112,8 +114,24 @@ public class BackendNode extends Client {
     public void forward(ChannelHandlerContext ctx, InternalPacket internal) {
         requestManager.addRequest(internal.getRequestId(), internal.buffer().readableBytes());
         logger.push("forward", AnsiColor.PURPLE_BRIGHT).info(internal.requestCode()).pop();
-        Messenger.safeExecute(ctx, c -> sendPacket(internal));
+        incrementInFlight();
+        Messenger.safeExecute(ctx, c -> sendPacket(internal).whenComplete((a, b) -> decrementInFlight()));
+    }
 
+    private volatile int inFlight = 0;
+
+    public synchronized boolean canAcceptPacket() {
+        return this.inFlight < maxInFlight;
+    }
+
+    public synchronized void incrementInFlight() {
+        this.inFlight++;
+    }
+
+    public synchronized void decrementInFlight() {
+        this.inFlight--;
+        if (inFlight < inFlightAcceptable) loadBalancer.drainPending();
+        if (this.inFlight < 0) this.inFlight = 0;
     }
 
     public void timeout(long requestId) {
