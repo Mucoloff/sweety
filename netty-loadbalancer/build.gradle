@@ -3,4 +3,6 @@ group = 'dev.sweety.netty.loadbalancer'
 dependencies {
     implementation project(':core')
     implementation project(':netty')
+
+    implementation 'com.github.oshi:oshi-core:6.6.5'
 }

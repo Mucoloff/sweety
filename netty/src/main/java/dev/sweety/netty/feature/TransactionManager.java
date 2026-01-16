@@ -1,5 +1,6 @@
 package dev.sweety.netty.feature;
 
+import dev.sweety.core.thread.ThreadUtil;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.PacketTransaction;
 import io.netty.bootstrap.AbstractBootstrap;
@@ -11,7 +12,9 @@ import java.util.concurrent.*;
 public class TransactionManager {
 
     private final Map<Long, CompletableFuture<PacketTransaction.Transaction>> pending = new ConcurrentHashMap<>();
-    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+
+    private final ScheduledExecutorService scheduler = ThreadUtil.namedScheduler("transaction-manager-thread");
+
     private final Messenger<? extends AbstractBootstrap<?, ?>> messenger;
 
     public TransactionManager(Messenger<? extends AbstractBootstrap<?, ?>> messenger) {

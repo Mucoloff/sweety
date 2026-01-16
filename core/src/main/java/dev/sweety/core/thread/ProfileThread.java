@@ -7,11 +7,7 @@ public class ProfileThread {
 
     private static final AtomicInteger THREAD_COUNTER = new AtomicInteger();
 
-    private final ScheduledExecutorService thread = Executors.newSingleThreadScheduledExecutor(r -> {
-        Thread t = new Thread(r, "profile-thread-" + THREAD_COUNTER.incrementAndGet());
-        t.setDaemon(true);
-        return t;
-    });
+    private final ScheduledExecutorService thread = ThreadUtil.namedScheduler("profile-thread-" + THREAD_COUNTER.incrementAndGet());
 
     private final AtomicInteger profileCount = new AtomicInteger(0);
 

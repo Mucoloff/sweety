@@ -14,6 +14,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.StringJoiner;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 public class SimpleLogger implements LogHelper {
     protected final String name;
@@ -32,8 +33,12 @@ public class SimpleLogger implements LogHelper {
     }
 
     // Allow setting a custom backend (e.g., SLF4J, Log4j, java.util.logging, etc.)
-    public SimpleLogger setBackend(LoggerBackend backend) {
-        this.backend = (backend != null) ? backend : new ConsoleBackend();
+    public SimpleLogger setBackend(final LoggerBackend backend) {
+        return setBackend(ignored -> backend);
+    }
+
+    public SimpleLogger setBackend(Function<String, LoggerBackend> backend) {
+        this.backend = (backend != null) ? backend.apply(this.name) : new ConsoleBackend();
         return this;
     }
 

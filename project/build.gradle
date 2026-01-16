@@ -15,5 +15,7 @@ dependencies {
     implementation project(":event-processor")
     annotationProcessor project(":event-processor")
 
+    implementation 'com.github.oshi:oshi-core:6.6.5'
+
 
 }

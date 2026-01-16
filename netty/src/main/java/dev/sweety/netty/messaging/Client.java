@@ -42,6 +42,10 @@ public abstract class Client extends Messenger<Bootstrap> {
         return channel;
     }
 
+    public boolean isActive() {
+        return this.channel != null && this.channel.isActive() && this.running();
+    }
+
     private ChannelHandlerContext channelContext() {
         if (channel == null || !channel.isActive()) {
             return null;

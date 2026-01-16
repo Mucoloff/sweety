@@ -619,4 +619,11 @@ public class PacketBuffer {
         return (int) crc32.getValue();
     }
 
+    public PacketBuffer writePercentual(float percent) {
+        return this.writeVarInt((int) (percent * 100));
+    }
+
+    public float readPercentual() {
+        return this.readVarInt() * 0.01f;
+    }
 }
