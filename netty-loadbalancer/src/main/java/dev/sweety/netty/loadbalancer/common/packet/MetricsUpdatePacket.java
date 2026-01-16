@@ -1,8 +1,13 @@
-package dev.sweety.netty.loadbalancer.refact.common.packet;
+package dev.sweety.netty.loadbalancer.common.packet;
 
-import dev.sweety.netty.loadbalancer.refact.common.metrics.SmoothedLoad;
-import dev.sweety.netty.loadbalancer.refact.common.metrics.state.NodeState;
+import dev.sweety.netty.loadbalancer.common.metrics.EMA;
+import dev.sweety.netty.loadbalancer.common.metrics.SmoothedLoad;
+import dev.sweety.netty.loadbalancer.common.metrics.state.NodeState;
+import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.Packet;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class MetricsUpdatePacket extends Packet {
 
@@ -13,14 +18,19 @@ public class MetricsUpdatePacket extends Packet {
     private float cpuTotal;  // system (debug)
     private float ramTotal;  // system (debug)
     private NodeState state; // HEALTHY / DEGRADED
+    private Map<Integer, Float> packetTimings; // packet ID -> EMA latency
 
-    public MetricsUpdatePacket(final SmoothedLoad load) {
+    public MetricsUpdatePacket(final SmoothedLoad load, Map<Integer, EMA> packetTimings) {
         this.buffer()
                 .writeVarInt((int) (clamp(load.cpu()) * SCALE))
                 .writeVarInt((int) (clamp(load.ram()) * SCALE))
                 .writeVarInt((int) (clamp(load.cpuTotal()) * SCALE))
                 .writeVarInt((int) (clamp(load.ramTotal()) * SCALE))
-                .writeEnum(load.state());
+                .writeEnum(load.state())
+                .writeMap(packetTimings, (buf, pair) -> {
+                    final EMA ema = pair.value();
+                    buf.writeVarInt(pair.key()).writeVarInt((int) (clamp(ema.get()) * SCALE));
+                });
     }
 
     public MetricsUpdatePacket(final int _id, final long _timestamp, final byte[] _data) {
@@ -30,6 +40,8 @@ public class MetricsUpdatePacket extends Packet {
         this.cpuTotal = this.buffer().readVarInt() / SCALE;
         this.ramTotal = this.buffer().readVarInt() / SCALE;
         this.state = this.buffer().readEnum(NodeState.class);
+        this.packetTimings = this.buffer().readMap(PacketBuffer::readVarInt, buf -> buf.readVarInt() / SCALE, HashMap::new);
+
     }
 
     public static float clamp(float v) {
@@ -54,5 +66,9 @@ public class MetricsUpdatePacket extends Packet {
 
     public NodeState state() {
         return state;
+    }
+
+    public Map<Integer, Float> packetTimings() {
+        return packetTimings;
     }
 }

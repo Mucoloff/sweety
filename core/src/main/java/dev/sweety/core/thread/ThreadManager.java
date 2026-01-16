@@ -8,18 +8,28 @@ import lombok.SneakyThrows;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-@Getter
+
 public class ThreadManager {
 
     private static final int MAX_THREADS = Runtime.getRuntime().availableProcessors() * 2;
 
+    @Getter
     private final List<ProfileThread> profileThreads = new CopyOnWriteArrayList<>();
+
+    private final String name;
+    public ThreadManager(final String name) {
+        this.name = name;
+    }
+
+    public ThreadManager(){
+        this("profile-thread");
+    }
 
     @SneakyThrows
     public synchronized ProfileThread getAvailableProfileThread() {
         ProfileThread profileThread;
 
-        if (this.profileThreads.size() < MAX_THREADS) this.profileThreads.add(profileThread = new ProfileThread());
+        if (this.profileThreads.size() < MAX_THREADS) this.profileThreads.add(profileThread = new ProfileThread(name));
         else profileThread = MathUtils.findBest(profileThreads, (a, b) -> a.getProfileCount() < b.getProfileCount(), RandomUtils.randomElement(this.profileThreads));
 
         if (profileThread == null)

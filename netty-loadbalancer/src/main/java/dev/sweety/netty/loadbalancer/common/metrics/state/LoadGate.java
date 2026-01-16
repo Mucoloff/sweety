@@ -1,4 +1,4 @@
-package dev.sweety.netty.loadbalancer.refact.common.metrics.state;
+package dev.sweety.netty.loadbalancer.common.metrics.state;
 
 public final class LoadGate {
 

@@ -46,7 +46,7 @@ public class SpotifyManager {
 
     public SpotifyClient client() {
         // If the last update was 5 minutes ago, we renew the token
-        if (lastUpdate.hasPassed(expire) || !authenticated()) this.refreshAuth();
+        if (lastUpdate.hasPassedMillis(expire) || !authenticated()) this.refreshAuth();
         return client;
     }
 

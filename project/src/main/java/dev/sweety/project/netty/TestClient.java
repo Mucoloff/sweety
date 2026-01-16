@@ -87,7 +87,7 @@ public class TestClient extends Client {
         } else if (packet instanceof PingTransaction transaction) {
             if (transaction.hasResponse()) {
                 logger.info("Ricevuto pong con ID: " + transaction.requestCode());
-                boolean b = transactionManager.completeResponse(transaction.getRequestId(), transaction.getResponse());
+                boolean b = transactionManager.completeResponse(transaction.getRequestId(), ctx, transaction.getResponse());
                 logger.info("passed: " + b);
             }
         }

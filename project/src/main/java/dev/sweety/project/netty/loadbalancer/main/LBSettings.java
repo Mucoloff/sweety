@@ -1,6 +1,6 @@
 package dev.sweety.project.netty.loadbalancer.main;
 
-import dev.sweety.netty.loadbalancer.refact.common.packet.InternalPacket;
+import dev.sweety.netty.loadbalancer.common.packet.InternalPacket;
 import dev.sweety.netty.messaging.exception.PacketRegistrationException;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import dev.sweety.netty.packet.registry.OptimizedPacketRegistry;
@@ -17,7 +17,7 @@ public class LBSettings {
 
     static {
         LB_HOST = BK1_HOST = BK2_HOST = "127.0.0.1";
-        LB_PORT = 25565;
+        LB_PORT = 30000;
         BK1_PORT = 30001;
         BK2_PORT = 30002;
         try {

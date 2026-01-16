@@ -4,19 +4,25 @@ import java.util.concurrent.TimeUnit;
 
 public class StopWatch {
 
-    private long startNano = System.nanoTime();
+    private long start = System.nanoTime();
 
     public void reset() {
-        this.startNano = System.nanoTime();
+        this.start = System.nanoTime();
     }
 
-    public boolean hasPassed(long millis) {
-        long elapsedNanos = System.nanoTime() - this.startNano;
-        return elapsedNanos >= TimeUnit.MILLISECONDS.toNanos(millis);
+    public boolean hasPassedNano(long nano) {
+        return nano() >= nano;
     }
 
-    public long getTime() {
-        long elapsedNanos = System.nanoTime() - this.startNano;
-        return TimeUnit.NANOSECONDS.toMillis(elapsedNanos);
+    public long nano() {
+        return System.nanoTime() - this.start;
+    }
+
+    public boolean hasPassedMillis(long millis) {
+        return millis() >= millis;
+    }
+
+    public long millis() {
+        return TimeUnit.NANOSECONDS.toMillis(nano());
     }
 }

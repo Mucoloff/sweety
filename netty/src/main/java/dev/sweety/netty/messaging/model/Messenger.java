@@ -13,6 +13,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.util.concurrent.EventExecutor;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -180,6 +181,14 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
             ctx.channel().flush();
         }
     }
+
+    public static void safeExecute(ChannelHandlerContext ctx, Runnable r) {
+        //noinspection resource
+        final EventExecutor executor = ctx.executor();
+        if (executor.inEventLoop()) r.run();
+        else executor.execute(r);
+    }
+
 
     public void stop() {
         running(false);

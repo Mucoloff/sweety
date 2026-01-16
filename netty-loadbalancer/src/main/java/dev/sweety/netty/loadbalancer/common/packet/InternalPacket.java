@@ -1,4 +1,4 @@
-package dev.sweety.netty.loadbalancer.refact.common.packet;
+package dev.sweety.netty.loadbalancer.common.packet;
 
 import dev.sweety.core.math.function.TriFunction;
 import dev.sweety.netty.feature.batch.Batch;

@@ -1,6 +1,6 @@
-package dev.sweety.netty.loadbalancer.refact.common.metrics;
+package dev.sweety.netty.loadbalancer.common.metrics;
 
-import dev.sweety.netty.loadbalancer.refact.common.metrics.state.NodeState;
+import dev.sweety.netty.loadbalancer.common.metrics.state.NodeState;
 
 public record SmoothedLoad(
             float cpu,        // processo / macchina (EMA)

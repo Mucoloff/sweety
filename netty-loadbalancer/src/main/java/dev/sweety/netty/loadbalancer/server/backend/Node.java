@@ -1,12 +1,12 @@
-package dev.sweety.netty.loadbalancer.refact.lb.backend;
+package dev.sweety.netty.loadbalancer.server.backend;
 
 import dev.sweety.core.color.AnsiColor;
 import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.netty.feature.AutoReconnect;
-import dev.sweety.netty.loadbalancer.refact.common.metrics.state.NodeState;
-import dev.sweety.netty.loadbalancer.refact.common.packet.InternalPacket;
-import dev.sweety.netty.loadbalancer.refact.common.packet.MetricsUpdatePacket;
-import dev.sweety.netty.loadbalancer.refact.lb.LBServer;
+import dev.sweety.netty.loadbalancer.common.metrics.state.NodeState;
+import dev.sweety.netty.loadbalancer.common.packet.InternalPacket;
+import dev.sweety.netty.loadbalancer.common.packet.MetricsUpdatePacket;
+import dev.sweety.netty.loadbalancer.server.LoadBalancerServer;
 import dev.sweety.netty.messaging.Client;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
@@ -16,28 +16,30 @@ import io.netty.channel.ChannelPromise;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 public class Node extends Client {
 
     @Setter
-    private LBServer loadBalancer;
-    private final SimpleLogger logger = new SimpleLogger(Node.class);
+    private LoadBalancerServer loadBalancer;
+    private final SimpleLogger logger;
 
     private final AutoReconnect autoReconnect = new AutoReconnect(2500L, TimeUnit.MILLISECONDS, this::start);
     private final RequestManager requestManager = new RequestManager();
 
     public Node(String host, int port, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
-        this.logger.push("" + port);
+        this.logger = new SimpleLogger("Node-" + port).info("Initialized");
     }
 
     @Override
     public CompletableFuture<Channel> connect() {
         requestManager.reset();
-        usageScore = latencyScore = bandwidthScore = currentBandwidthScore = totalScore = 0f;
-        maxObservedAvgLoad = maxObservedCurrentLoad = 1f;
+        usageScore = latencyScore = bandwidthScore = currentBandwidthScore = packetTimeScore = totalScore = 0f;
+        maxObservedAvgLoad = maxObservedCurrentLoad = maxObservedPacketTime = 1f;
         return super.connect().exceptionally(t -> {
             this.autoReconnect.onException(t);
             return null;
@@ -56,44 +58,60 @@ public class Node extends Client {
     @Getter
     private volatile NodeState state = NodeState.HEALTHY;
     @Getter
-    private volatile float usageScore = 0f, latencyScore = 0f, bandwidthScore = 0f, currentBandwidthScore = 0f, totalScore = 0f;
+    private volatile float usageScore = 0f, latencyScore = 0f, bandwidthScore = 0f, currentBandwidthScore = 0f, packetTimeScore = 0f, totalScore = 0f;
     private volatile float maxObservedAvgLoad = 1f, maxObservedCurrentLoad = 1f;
-    synchronized void updateMaxObserved(float avgLoad, float currentLoad) {
 
+    @Getter
+    private volatile float maxObservedPacketTime = 1f;
+
+    synchronized void updateMaxObserved(float avgLoad, float currentLoad, float currentTime) {
         maxObservedAvgLoad = Math.max(maxObservedAvgLoad, avgLoad);
         maxObservedCurrentLoad = Math.max(maxObservedCurrentLoad, currentLoad);
+        maxObservedPacketTime = Math.max(maxObservedPacketTime, currentTime);
+    }
+
+    @Getter
+    private final Map<Integer, Float> packetTimings = new ConcurrentHashMap<>();
+
+    public final float getAvgPacketTime(int id) {
+        return packetTimings.getOrDefault(id, maxObservedPacketTime);
     }
 
     @Override
     public void onPacketReceive(ChannelHandlerContext ctx, Packet packet) {
-        logger.push("receive", AnsiColor.YELLOW_BRIGHT).info("packet", packet);
-
         if (packet instanceof MetricsUpdatePacket metrics) {
+            //update packet timings
+            packetTimings.putAll(metrics.packetTimings());
 
+            // update max observed scores
             float avgLoad = requestManager.getAverageBandwidthLoad();
             float currentLoad = requestManager.getCurrentAverageBandwidthLoad();
+            float currentTime = (float) packetTimings.values().stream().mapToDouble(Float::doubleValue).average().orElse(0.5f);
+            updateMaxObserved(avgLoad, currentLoad, currentTime);
 
-            updateMaxObserved(avgLoad, currentLoad);
-
-            bandwidthScore = avgLoad / maxObservedAvgLoad;
-            currentBandwidthScore = currentLoad / maxObservedCurrentLoad;
 
             usageScore = (metrics.cpu() + metrics.ram()) * 0.5f * ((state = metrics.state()) == NodeState.DEGRADED ? 0.7f : 1f);
             latencyScore = MetricsUpdatePacket.clamp(requestManager.getAverageLatency() / maxExpectedLatency);
+            bandwidthScore = avgLoad / maxObservedAvgLoad;
+            currentBandwidthScore = currentLoad / maxObservedCurrentLoad;
+            packetTimeScore = currentTime / maxObservedPacketTime;
 
-            totalScore = 0.4f * usageScore + 0.3f * latencyScore + 0.2f * bandwidthScore + 0.1f * currentBandwidthScore;
+            totalScore = 0.35f * usageScore
+                    + 0.25f * latencyScore
+                    + 0.2f * bandwidthScore
+                    + 0.1f * currentBandwidthScore
+                    + 0.1f * packetTimeScore;
+
         } else if (loadBalancer != null && packet instanceof InternalPacket internal) {
-            logger.push(internal.requestCode()).info("forwarding to load balancer").pop();
             requestManager.completeRequest(internal.getRequestId());
-            loadBalancer.complete(internal);
+            loadBalancer.complete(internal, ctx);
         }
-
-        logger.pop();
     }
 
     public void forward(InternalPacket internal) {
         requestManager.addRequest(internal.getRequestId(), internal.buffer().readableBytes());
-        logger.push("forward" + internal.requestCode(), AnsiColor.PURPLE_BRIGHT).info("packet:", internal).pop();
+        logger.push("forward", AnsiColor.PURPLE_BRIGHT).info(AnsiColor.fromColor(((int) internal.getRequestId())), internal.requestCode())
+                .pop();
         sendPacket(internal);
     }
 

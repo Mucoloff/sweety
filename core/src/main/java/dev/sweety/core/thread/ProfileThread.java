@@ -6,47 +6,118 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ProfileThread {
 
     private static final AtomicInteger THREAD_COUNTER = new AtomicInteger();
-
-    private final ScheduledExecutorService thread = ThreadUtil.namedScheduler("profile-thread-" + THREAD_COUNTER.incrementAndGet());
-
     private final AtomicInteger profileCount = new AtomicInteger(0);
+    private final ScheduledExecutorService thread;
+
+    public ProfileThread(final String name) {
+        this.thread = ThreadUtil.namedScheduler(name + "-" + THREAD_COUNTER.incrementAndGet());
+    }
 
     public int getProfileCount() {
-        return this.profileCount.get();
-    }
-
-    public void execute(Runnable runnable) {
-        if (this.thread.isShutdown() || this.thread.isTerminated()) return;
-        this.thread.execute(runnable);
-    }
-
-    public <V> ScheduledFuture<V> executeWithDelay(Callable<V> callable, long delay, TimeUnit unit) {
-        if (this.thread.isShutdown() || this.thread.isTerminated()) return null;
-        return this.thread.schedule(callable, delay, unit);
-    }
-
-    public ScheduledFuture<?> executeWithDelay(Runnable runnable, long delay, TimeUnit unit) {
-        if (this.thread.isShutdown() || this.thread.isTerminated()) return null;
-        return this.thread.schedule(runnable, delay, unit);
-    }
-
-    public ScheduledFuture<?> executeRepeatingTask(Runnable runnable, long initialDelay, long period, TimeUnit unit) {
-        if (this.thread.isShutdown() || this.thread.isTerminated()) return null;
-        return this.thread.scheduleAtFixedRate(runnable, initialDelay, period, unit);
+        return profileCount.get();
     }
 
     public ProfileThread incrementAndGet() {
-        this.profileCount.incrementAndGet();
+        profileCount.incrementAndGet();
         return this;
     }
 
     public void decrement() {
-        this.profileCount.updateAndGet(v -> v > 0 ? v - 1 : 0);
+        profileCount.updateAndGet(v -> v > 0 ? v - 1 : 0);
     }
 
     public ProfileThread shutdown() {
-        this.thread.shutdownNow();
+        thread.shutdownNow();
         return this;
     }
 
+    // ---------------------- Utility generate ----------------------
+    private <V> CompletableFuture<V> wrapFuture(final CompletableFuture<V> future, final Future<?> scheduled) {
+        if (thread.isShutdown() || thread.isTerminated()) {
+            future.completeExceptionally(new RejectedExecutionException("ProfileThread is shutdown or terminated."));
+            if (scheduled != null) scheduled.cancel(false);
+            return future;
+        }
+
+        if (scheduled != null) {
+            future.whenComplete((r, t) -> {
+                if (future.isCancelled()) scheduled.cancel(false);
+            });
+        }
+
+        return future;
+    }
+
+    private static <T> Callable<T> fromRunnable(Runnable runnable) {
+        return () -> {
+            runnable.run();
+            return null;
+        };
+    }
+
+    private static <T> Runnable completeCallable(Callable<T> callable, CompletableFuture<T> future) {
+        return () -> {
+            try {
+                future.complete(callable.call());
+            } catch (Throwable t) {
+                future.completeExceptionally(t);
+            }
+        };
+    }
+
+    // ---------------------- Base execute ----------------------
+    public CompletableFuture<?> execute(Runnable runnable) {
+        return execute(fromRunnable(runnable));
+    }
+
+    public <T> CompletableFuture<T> execute(Callable<T> callable) {
+        CompletableFuture<T> future = new CompletableFuture<>();
+        if (thread.isShutdown() || thread.isTerminated()) {
+            future.completeExceptionally(new RejectedExecutionException("ProfileThread is shutdown or terminated."));
+            return future;
+        }
+
+        thread.execute(completeCallable(callable, future));
+
+        return future;
+    }
+
+    // ---------------------- Schedule single delay ----------------------
+    public <V> CompletableFuture<V> schedule(Callable<V> callable, long delay, TimeUnit unit) {
+        CompletableFuture<V> future = new CompletableFuture<>();
+        //noinspection unchecked
+        ScheduledFuture<V> scheduled = (ScheduledFuture<V>) thread.schedule(completeCallable(callable, future), delay, unit);
+        return wrapFuture(future, scheduled);
+    }
+
+    public CompletableFuture<?> schedule(Runnable runnable, long delay, TimeUnit unit) {
+        return schedule(fromRunnable(runnable), delay, unit);
+    }
+
+    // ---------------------- Schedule with fixed delay ----------------------
+
+    public <V> CompletableFuture<V> scheduleWithFixedDelay(Callable<V> callable, long initialDelay, long delay, TimeUnit unit) {
+        CompletableFuture<V> future = new CompletableFuture<>();
+        //noinspection unchecked
+        ScheduledFuture<V> scheduled = (ScheduledFuture<V>) thread.scheduleWithFixedDelay(completeCallable(callable, future), initialDelay, delay, unit);
+
+        return wrapFuture(future, scheduled);
+    }
+
+    public CompletableFuture<?> scheduleWithFixedDelay(Runnable runnable, long initialDelay, long delay, TimeUnit unit) {
+        return scheduleWithFixedDelay(fromRunnable(runnable), initialDelay, delay, unit);
+    }
+
+    // ---------------------- Schedule at fixed rate ----------------------
+    public <V> CompletableFuture<V> scheduleAtFixedRate(Callable<V> callable, long initialDelay, long period, TimeUnit unit) {
+        CompletableFuture<V> future = new CompletableFuture<>();
+        //noinspection unchecked
+        ScheduledFuture<V> scheduled = (ScheduledFuture<V>) thread.scheduleAtFixedRate(completeCallable(callable, future), initialDelay, period, unit);
+
+        return wrapFuture(future, scheduled);
+    }
+
+    public CompletableFuture<?> scheduleAtFixedRate(Runnable runnable, long initialDelay, long period, TimeUnit unit) {
+        return scheduleAtFixedRate(fromRunnable(runnable), initialDelay, period, unit);
+    }
 }

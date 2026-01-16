@@ -1,8 +1,9 @@
-package dev.sweety.netty.loadbalancer.refact.lb.pool;
+package dev.sweety.netty.loadbalancer.server.pool;
 
+import dev.sweety.core.color.AnsiColor;
 import dev.sweety.core.logger.SimpleLogger;
-import dev.sweety.netty.loadbalancer.refact.lb.backend.Node;
-import dev.sweety.netty.loadbalancer.refact.lb.balancer.Balancer;
+import dev.sweety.netty.loadbalancer.server.backend.Node;
+import dev.sweety.netty.loadbalancer.server.balancer.Balancer;
 import dev.sweety.netty.packet.model.Packet;
 import io.netty.channel.ChannelHandlerContext;
 
@@ -38,9 +39,13 @@ public record NodePool(SimpleLogger logger, List<Node> pool,
         if (this.pool.isEmpty()) return null;
         final List<Node> activeNodes = this.pool.stream().filter(Node::isActive).toList();
         if (activeNodes.isEmpty()) return null;
-        logger.info("Active nodes:", activeNodes.stream().map(n -> n.getPort()+"").toList());
         Node node = balancer.nextNode(activeNodes, logger, packet, ctx);
-        logger.info("Selected node: " + node.getPort());
+        logger.info("Active nodes:", activeNodes.stream().map(n -> {
+            if (n == node) {
+                return "[" + AnsiColor.GREEN_BRIGHT.getColor() + n.getPort() + AnsiColor.RESET.getColor()+ "]";
+            }
+            return n.getPort() + "";
+        }).toList());
         return node;
     }
 }

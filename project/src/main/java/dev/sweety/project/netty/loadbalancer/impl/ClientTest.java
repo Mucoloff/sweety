@@ -27,7 +27,7 @@ public class ClientTest extends Client {
         logger.push("receive").info("packet", packet);
 
         if (packet instanceof TextPacket text)
-            logger.info("messaggio: " + text.getText());
+            logger.push("text").info("content: " + text.getText()).pop();
 
         logger.pop();
     }

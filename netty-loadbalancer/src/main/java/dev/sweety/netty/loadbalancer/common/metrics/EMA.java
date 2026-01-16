@@ -1,4 +1,4 @@
-package dev.sweety.netty.loadbalancer.refact.common.metrics;
+package dev.sweety.netty.loadbalancer.common.metrics;
 
 public final class EMA {
 

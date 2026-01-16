@@ -1,26 +1,28 @@
-package dev.sweety.netty.loadbalancer.refact.lb;
+package dev.sweety.netty.loadbalancer.server;
 
 import dev.sweety.core.color.AnsiColor;
 import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.core.math.function.TriFunction;
 import dev.sweety.core.math.vector.queue.LinkedQueue;
 import dev.sweety.netty.feature.TransactionManager;
-import dev.sweety.netty.loadbalancer.refact.lb.backend.Node;
-import dev.sweety.netty.loadbalancer.refact.lb.pool.INodePool;
-import dev.sweety.netty.loadbalancer.refact.lb.packets.PacketQueue;
-import dev.sweety.netty.loadbalancer.refact.common.packet.InternalPacket;
+import dev.sweety.netty.loadbalancer.server.backend.Node;
+import dev.sweety.netty.loadbalancer.server.pool.INodePool;
+import dev.sweety.netty.loadbalancer.server.packets.PacketQueue;
+import dev.sweety.netty.loadbalancer.common.packet.InternalPacket;
 import dev.sweety.netty.messaging.Server;
+import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
+import java.awt.*;
 import java.util.Arrays;
 
-public class LBServer extends Server {
+public class LoadBalancerServer extends Server {
 
     private final INodePool backendPool;
-    private final SimpleLogger logger = new SimpleLogger(LBServer.class);
+    private final SimpleLogger logger = new SimpleLogger(LoadBalancerServer.class);
     private final LinkedQueue<PacketQueue> pendingPackets = new LinkedQueue<>();
 
     private final TransactionManager transactionManager = new TransactionManager(this);
@@ -29,7 +31,7 @@ public class LBServer extends Server {
 
     private static final long REQUEST_TIMEOUT_SECONDS = 30L;
 
-    public LBServer(String host, int port, INodePool backendPool, IPacketRegistry packetRegistry) {
+    public LoadBalancerServer(String host, int port, INodePool backendPool, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
 
         this.backendPool = backendPool;
@@ -37,6 +39,9 @@ public class LBServer extends Server {
         this.backendPool.initialize();
 
         this.constructor = (id, ts, data) -> packetRegistry.construct(id, ts, data, this.logger);
+
+        this.logger.push("<init>", AnsiColor.fromColor(new Color(148, 186, 76))).info("LoadBalancerServer started on " + host + ":" + port)
+                .info("Waiting for connections...");
     }
 
     @Override
@@ -66,7 +71,7 @@ public class LBServer extends Server {
             transactionManager.registerRequest(internal, REQUEST_TIMEOUT_SECONDS * 500L).whenComplete(((response, throwable) -> {
                 if (throwable != null) {
                     backend.timeout(internal.getRequestId());
-                    logger.push("transaction", AnsiColor.RED_BRIGHT).error(throwable).pop();
+                    logger.push("transaction", AnsiColor.RED_BRIGHT).info(AnsiColor.fromColor(((int) internal.getRequestId())), internal.requestCode()).error(throwable).pop();
                     return;
                 }
 
@@ -74,36 +79,20 @@ public class LBServer extends Server {
 
                 Arrays.stream(responses).forEach(Packet::rewind);
 
-                logger.push("transaction", AnsiColor.GREEN_BRIGHT).info("forwarded packet responses", responses).pop();
+                logger.push("transaction", AnsiColor.GREEN_BRIGHT).info(AnsiColor.fromColor(((int) internal.getRequestId())), internal.requestCode()).pop();
 
-                sendPacket(ctx, responses).whenComplete((_void, t) -> {
-                    if (t != null) {
-                        logger.push("send", AnsiColor.RED_BRIGHT).error(t).pop();
-                    } else {
-                        logger.push("send", AnsiColor.GREEN_BRIGHT).info("responses sent successfully").pop();
-                    }
-                });
-
+                Messenger.safeExecute(ctx, () -> sendPacket(ctx, responses));
             }));
 
             backend.forward(internal);
         }
     }
 
-    @Override
-    public void onPacketSend(ChannelHandlerContext ctx, Packet packet, boolean pre) {
-        logger.push("sniffing", AnsiColor.PURPLE)
-                .push(ctx.channel().remoteAddress() + "")
-                .info(AnsiColor.PURPLE_BRIGHT, "packet", packet, " | ", (pre ? "pre" : "post"))
-                .pop().pop();
-    }
+    public void complete(InternalPacket internal, ChannelHandlerContext ctx) {
+        if (transactionManager.completeResponse(internal, ctx)) logger.push("completed", AnsiColor.GREEN_BRIGHT);
+        else logger.push("expired", AnsiColor.RED_BRIGHT);
 
-    public void complete(InternalPacket internal) {
-        if (transactionManager.completeResponse(internal)) {
-            logger.push(internal.requestCode(), AnsiColor.GREEN_BRIGHT).info("completed").pop();
-        } else {
-            logger.push(internal.requestCode(), AnsiColor.RED_BRIGHT).warn("no matching transaction found").pop();
-        }
+        logger.info(AnsiColor.fromColor(((int) internal.getRequestId())), internal.requestCode()).pop();
     }
 
     @Override
@@ -114,14 +103,14 @@ public class LBServer extends Server {
 
     @Override
     public void join(ChannelHandlerContext ctx, ChannelPromise promise) {
-        logger.push("Join").info(ctx.channel().remoteAddress()).pop();
+        logger.push("connect").info(ctx.channel().remoteAddress()).pop();
         super.addClient(ctx, ctx.channel().remoteAddress());
         promise.setSuccess();
     }
 
     @Override
     public void quit(ChannelHandlerContext ctx, ChannelPromise promise) {
-        this.logger.push("quit").info(ctx.channel().remoteAddress()).pop();
+        this.logger.push("disconnect").info(ctx.channel().remoteAddress()).pop();
         super.removeClient(ctx.channel().remoteAddress());
         promise.setSuccess();
     }

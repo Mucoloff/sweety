@@ -1,8 +1,8 @@
 package dev.sweety.project.usage;
 
 import dev.sweety.core.time.StopWatch;
-import dev.sweety.netty.loadbalancer.refact.backend.MetricSampler;
-import dev.sweety.netty.loadbalancer.refact.common.metrics.SmoothedLoad;
+import dev.sweety.netty.loadbalancer.backend.MetricSampler;
+import dev.sweety.netty.loadbalancer.common.metrics.SmoothedLoad;
 
 public class UsageTest {
 
@@ -16,7 +16,7 @@ public class UsageTest {
         StopWatch timer = new StopWatch();
 
         while (true) {
-            if (!timer.hasPassed(1000L)) {
+            if (!timer.hasPassedMillis(1000L)) {
                 Thread.onSpinWait();
                 continue;
             }

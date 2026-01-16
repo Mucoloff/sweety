@@ -73,12 +73,16 @@ public class SimpleLogger implements LogHelper {
         return "[" + time + "][" + level + "][" + name + suffix + "]";
     }
 
-    // Profile management (thread-local) with hierarchical composition
 
-    public SimpleLogger push(String profile, AnsiColor color) {
-        return push(color.getColor() + profile + AnsiColor.RESET.getColor());
+    public SimpleLogger push(String profile, String color) {
+        return push(color + profile + AnsiColor.RESET.getColor());
     }
 
+    public SimpleLogger push(String profile, AnsiColor color) {
+        return push(profile, color.getColor());
+    }
+
+    // Profile management (thread-local) with hierarchical composition
     public SimpleLogger push(String profile) {
         final Stack<String> stack = profiles.get();
         final String suffix = (stack.top() != null && !stack.top().isEmpty()) ? (stack.top() + "@") : "";

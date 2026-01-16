@@ -1,7 +1,7 @@
 package dev.sweety.project.netty.loadbalancer.impl;
 
 import dev.sweety.core.logger.SimpleLogger;
-import dev.sweety.netty.loadbalancer.refact.backend.Backend;
+import dev.sweety.netty.loadbalancer.backend.Backend;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import dev.sweety.project.netty.packet.text.TextPacket;
@@ -14,7 +14,6 @@ public class BackendTest extends Backend {
 
     public BackendTest(String host, int port, IPacketRegistry packetRegistry, Packet... packets) {
         super(host, port, packetRegistry, packets);
-        logger.push("" + port);
     }
 
     @Override
@@ -37,14 +36,14 @@ public class BackendTest extends Backend {
 
     @Override
     public void join(ChannelHandlerContext ctx, ChannelPromise promise) {
-        logger.push("Join").info(ctx.channel().remoteAddress()).pop();
+        logger.push("connect").info(ctx.channel().remoteAddress()).pop();
         super.addClient(ctx, ctx.channel().remoteAddress());
         promise.setSuccess();
     }
 
     @Override
     public void leave(ChannelHandlerContext ctx, ChannelPromise promise) {
-        this.logger.push("Quit").info(ctx.channel().remoteAddress()).pop();
+        this.logger.push("disconnect").info(ctx.channel().remoteAddress()).pop();
         super.removeClient(ctx.channel().remoteAddress());
         promise.setSuccess();
     }
