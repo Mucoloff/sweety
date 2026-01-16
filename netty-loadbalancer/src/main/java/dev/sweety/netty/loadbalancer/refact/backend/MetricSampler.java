@@ -24,8 +24,10 @@ public class MetricSampler {
     private long[] prevCpuTicks;
 
     // smoothing
-    private final EMA cpuEma = new EMA(0.2f);
-    private final EMA ramEma = new EMA(0.2f);
+    private final EMA cpuEma = new EMA(0.35f);
+    private final EMA ramEma = new EMA(0.25f);
+    private final EMA totCpuEma = new EMA(0.75f);
+    private final EMA totRamEma = new EMA(0.45f);
     private final LoadGate gate = new LoadGate();
 
     public MetricSampler() {
@@ -38,6 +40,8 @@ public class MetricSampler {
         this.prevCpuTicks = cpu.getSystemCpuLoadTicks();
         this.cpuEma.reset();
         this.ramEma.reset();
+        this.totCpuEma.reset();
+        this.totRamEma.reset();
         this.gate.reset();
         lastOverrideTime = 0L;
     }
@@ -75,12 +79,13 @@ public class MetricSampler {
         // ===== EMA =====
         float cpuSmooth = cpuEma.update(cpuProcNorm);
         float ramSmooth = ramEma.update(ramProcNorm);
+        float totCpuSmooth = totCpuEma.update(cpuSystemNorm);
+        float totRamSmooth = totRamEma.update(ramSystemNorm);
 
         NodeState state = gate.update(cpuSmooth, ramSmooth);
 
-
         NodeState finalState;
-        if (cpuSystemNorm > 0.85f || ramSystemNorm > 0.90f) {
+        if (totCpuSmooth > 0.85f || totRamSmooth > 0.90f) {
             if (System.currentTimeMillis() - lastOverrideTime > OVERRIDE_COOLDOWN_MS) {
                 lastOverrideTime = System.currentTimeMillis();
                 finalState = NodeState.DEGRADED;
