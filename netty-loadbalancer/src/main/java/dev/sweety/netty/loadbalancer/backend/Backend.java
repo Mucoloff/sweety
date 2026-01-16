@@ -89,7 +89,7 @@ public abstract class Backend extends Server {
             final Packet[] packets = handledPackets.toArray(handledPackets.toArray(Packet[]::new));
             final InternalPacket.Forward response = new InternalPacket.Forward(getPacketRegistry()::getPacketId, packets);
 
-            Messenger.safeExecute(ctx, () -> sendPacket(ctx, new InternalPacket(internal.getRequestId(), response)));
+            Messenger.safeExecute(ctx, c -> sendPacket(c, new InternalPacket(internal.getRequestId(), response)));
         };
 
         if (useThreadManager){

@@ -60,7 +60,7 @@ public class TransactionManager {
         CompletableFuture<Response> future = (CompletableFuture<Response>) pending.remove(id);
         if (future == null) return false;
 
-        Messenger.safeExecute(ctx, () -> future.complete(response));
+        Messenger.safeExecute(ctx, c -> future.complete(response));
         return true;
     }
 
@@ -75,7 +75,7 @@ public class TransactionManager {
 
         CompletableFuture<R> result = new CompletableFuture<>();
 
-        Messenger.safeExecute(ctx, () -> messenger.sendPacket(ctx, transaction).whenComplete((v, ex) -> {
+        Messenger.safeExecute(ctx, c -> messenger.sendPacket(c, transaction).whenComplete((v, ex) -> {
             if (ex != null) {
                 result.completeExceptionally(ex);
                 return;

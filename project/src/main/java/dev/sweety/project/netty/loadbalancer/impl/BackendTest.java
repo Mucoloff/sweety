@@ -18,8 +18,6 @@ public class BackendTest extends Backend {
 
     @Override
     public Packet[] handlePackets(Packet packet) {
-        logger.push("handlePackets").info("packets received: " + packet).pop();
-
         String text = (packet instanceof TextPacket t) ? t.getText() : "Unknown Packet Type";
         logger.info("Contenuto:", text);
 

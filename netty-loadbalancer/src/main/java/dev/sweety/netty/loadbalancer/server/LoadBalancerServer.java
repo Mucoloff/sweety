@@ -5,8 +5,8 @@ import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.core.math.function.TriFunction;
 import dev.sweety.core.math.vector.queue.LinkedQueue;
 import dev.sweety.netty.feature.TransactionManager;
-import dev.sweety.netty.loadbalancer.server.backend.Node;
-import dev.sweety.netty.loadbalancer.server.pool.INodePool;
+import dev.sweety.netty.loadbalancer.server.backend.BackendNode;
+import dev.sweety.netty.loadbalancer.server.pool.IBackendNodePool;
 import dev.sweety.netty.loadbalancer.server.packets.PacketQueue;
 import dev.sweety.netty.loadbalancer.common.packet.InternalPacket;
 import dev.sweety.netty.messaging.Server;
@@ -21,7 +21,7 @@ import java.util.Arrays;
 
 public class LoadBalancerServer extends Server {
 
-    private final INodePool backendPool;
+    private final IBackendNodePool backendPool;
     private final SimpleLogger logger = new SimpleLogger(LoadBalancerServer.class);
     private final LinkedQueue<PacketQueue> pendingPackets = new LinkedQueue<>();
 
@@ -31,7 +31,7 @@ public class LoadBalancerServer extends Server {
 
     private static final long REQUEST_TIMEOUT_SECONDS = 30L;
 
-    public LoadBalancerServer(String host, int port, INodePool backendPool, IPacketRegistry packetRegistry) {
+    public LoadBalancerServer(String host, int port, IBackendNodePool backendPool, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
 
         this.backendPool = backendPool;
@@ -47,7 +47,6 @@ public class LoadBalancerServer extends Server {
     @Override
     public void onPacketReceive(ChannelHandlerContext ctx, Packet packet) {
         if (packet instanceof InternalPacket) return;
-        logger.push("receive", AnsiColor.CYAN_BRIGHT).info("packet", packet);
         pendingPackets.enqueue(new PacketQueue(packet.rewind(), ctx));
         drainPending();
         logger.pop();
@@ -59,10 +58,10 @@ public class LoadBalancerServer extends Server {
             final Packet packet = pq.packet();
             final ChannelHandlerContext ctx = pq.ctx();
 
-            Node backend = backendPool.next(packet, ctx);
+            BackendNode backend = backendPool.next(packet, ctx);
             if (backend == null) {
                 pendingPackets.enqueueFirst(pq);
-                logger.push("queue").warn("No backend available. pending packets = " + pendingPackets.size()).pop();
+                logger.push("queue",AnsiColor.RED_BRIGHT).warn("No backend available. pending packets = " + pendingPackets.size()).pop();
                 break;
             }
 
@@ -71,7 +70,7 @@ public class LoadBalancerServer extends Server {
             transactionManager.registerRequest(internal, REQUEST_TIMEOUT_SECONDS * 500L).whenComplete(((response, throwable) -> {
                 if (throwable != null) {
                     backend.timeout(internal.getRequestId());
-                    logger.push("transaction", AnsiColor.RED_BRIGHT).info(AnsiColor.fromColor(((int) internal.getRequestId())), internal.requestCode()).error(throwable).pop();
+                    logger.push("transaction", AnsiColor.RED_BRIGHT).error(internal.requestCode()).error(throwable).pop();
                     return;
                 }
 
@@ -79,20 +78,17 @@ public class LoadBalancerServer extends Server {
 
                 Arrays.stream(responses).forEach(Packet::rewind);
 
-                logger.push("transaction", AnsiColor.GREEN_BRIGHT).info(AnsiColor.fromColor(((int) internal.getRequestId())), internal.requestCode()).pop();
-
-                Messenger.safeExecute(ctx, () -> sendPacket(ctx, responses));
+                Messenger.safeExecute(ctx, c -> sendPacket(c, responses));
             }));
 
-            backend.forward(internal);
+            backend.forward(ctx,internal);
         }
     }
 
     public void complete(InternalPacket internal, ChannelHandlerContext ctx) {
-        if (transactionManager.completeResponse(internal, ctx)) logger.push("completed", AnsiColor.GREEN_BRIGHT);
-        else logger.push("expired", AnsiColor.RED_BRIGHT);
-
-        logger.info(AnsiColor.fromColor(((int) internal.getRequestId())), internal.requestCode()).pop();
+        if (!transactionManager.completeResponse(internal, ctx)) {
+            logger.push("expired", AnsiColor.RED_BRIGHT).warn(internal.requestCode()).pop();
+        }
     }
 
     @Override

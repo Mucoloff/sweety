@@ -24,12 +24,11 @@ public class ClientTest extends Client {
 
     @Override
     public void onPacketReceive(ChannelHandlerContext ctx, Packet packet) {
-        logger.push("receive").info("packet", packet);
 
         if (packet instanceof TextPacket text)
             logger.push("text").info("content: " + text.getText()).pop();
 
-        logger.pop();
+
     }
 
     @Override

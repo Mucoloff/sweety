@@ -24,7 +24,7 @@ public class LClient {
             {
                 setOnConnect(c -> {
                             ChannelHandlerContext ctx = c.pipeline().firstContext();
-                            Messenger.safeExecute(ctx, () -> sendPacket(ctx, packets));
+                            Messenger.safeExecute(ctx, ct -> sendPacket(ct, packets));
                         });
             }
 

@@ -182,11 +182,11 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
         }
     }
 
-    public static void safeExecute(ChannelHandlerContext ctx, Runnable r) {
+    public static void safeExecute(ChannelHandlerContext ctx, Consumer<ChannelHandlerContext> r) {
         //noinspection resource
         final EventExecutor executor = ctx.executor();
-        if (executor.inEventLoop()) r.run();
-        else executor.execute(r);
+        if (executor.inEventLoop()) r.accept(ctx);
+        else executor.execute(() -> r.accept(ctx));
     }
 
 

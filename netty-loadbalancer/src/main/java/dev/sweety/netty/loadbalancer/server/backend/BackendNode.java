@@ -8,6 +8,7 @@ import dev.sweety.netty.loadbalancer.common.packet.InternalPacket;
 import dev.sweety.netty.loadbalancer.common.packet.MetricsUpdatePacket;
 import dev.sweety.netty.loadbalancer.server.LoadBalancerServer;
 import dev.sweety.netty.messaging.Client;
+import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.channel.Channel;
@@ -21,7 +22,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-public class Node extends Client {
+public class BackendNode extends Client {
 
     @Setter
     private LoadBalancerServer loadBalancer;
@@ -30,7 +31,7 @@ public class Node extends Client {
     private final AutoReconnect autoReconnect = new AutoReconnect(2500L, TimeUnit.MILLISECONDS, this::start);
     private final RequestManager requestManager = new RequestManager();
 
-    public Node(String host, int port, IPacketRegistry packetRegistry) {
+    public BackendNode(String host, int port, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
         this.logger = new SimpleLogger("Node-" + port).info("Initialized");
     }
@@ -108,11 +109,11 @@ public class Node extends Client {
         }
     }
 
-    public void forward(InternalPacket internal) {
+    public void forward(ChannelHandlerContext ctx, InternalPacket internal) {
         requestManager.addRequest(internal.getRequestId(), internal.buffer().readableBytes());
-        logger.push("forward", AnsiColor.PURPLE_BRIGHT).info(AnsiColor.fromColor(((int) internal.getRequestId())), internal.requestCode())
-                .pop();
-        sendPacket(internal);
+        logger.push("forward", AnsiColor.PURPLE_BRIGHT).info(internal.requestCode()).pop();
+        Messenger.safeExecute(ctx, c -> sendPacket(internal));
+
     }
 
     public void timeout(long requestId) {

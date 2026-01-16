@@ -2,7 +2,7 @@ package dev.sweety.netty.loadbalancer.server.balancer;
 
 import dev.sweety.core.logger.LogHelper;
 import dev.sweety.core.math.RandomUtils;
-import dev.sweety.netty.loadbalancer.server.backend.Node;
+import dev.sweety.netty.loadbalancer.server.backend.BackendNode;
 import dev.sweety.netty.packet.model.Packet;
 import io.netty.channel.ChannelHandlerContext;
 import lombok.AllArgsConstructor;
@@ -21,7 +21,7 @@ public enum Balancers {
         private final AtomicInteger counter = new AtomicInteger();
 
         @Override
-        public Node nextNode(List<Node> activeNodes, LogHelper logger, Packet packet, ChannelHandlerContext ctx) {
+        public BackendNode nextNode(List<BackendNode> activeNodes, LogHelper logger, Packet packet, ChannelHandlerContext ctx) {
             int start = (counter.getAndUpdate(v -> (v + 1) % activeNodes.size()));
             return activeNodes.get(start);
         }
@@ -29,33 +29,33 @@ public enum Balancers {
 
     RANDOM((activeNodes, logger, packet, ctx) -> RandomUtils.randomElement(activeNodes)),
 
-    LOWEST_USAGE(fromParam(Node::getUsageScore)),
-    LOWEST_LATENCY(fromParam(Node::getLatencyScore)),
-    LOWEST_BANDWIDTH(fromParam(Node::getBandwidthScore)),
+    LOWEST_USAGE(fromParam(BackendNode::getUsageScore)),
+    LOWEST_LATENCY(fromParam(BackendNode::getLatencyScore)),
+    LOWEST_BANDWIDTH(fromParam(BackendNode::getBandwidthScore)),
 
     LOWEST_PACKET_CPU_TIME((activeNodes, logger, packet, ctx) -> {
         final int id = packet.id();
-        final Function<Node, Float> nodeFloatFunction = (n) -> n.getAvgPacketTime(id) / n.getMaxObservedPacketTime();
+        final Function<BackendNode, Float> nodeFloatFunction = (n) -> n.getAvgPacketTime(id) / n.getMaxObservedPacketTime();
         return fromParam(activeNodes, nodeFloatFunction);
     }),
 
-    OPTIMIZED_ADAPTIVE(fromParam(Node::getTotalScore)),
+    OPTIMIZED_ADAPTIVE(fromParam(BackendNode::getTotalScore)),
 
     ROUND_OPTIMIZED_PACKET_ADAPTIVE(new Balancer() {
 
         private final AtomicInteger counter = new AtomicInteger();
 
         @Override
-        public Node nextNode(List<Node> activeNodes, LogHelper logger, Packet packet, ChannelHandlerContext ctx) {
+        public BackendNode nextNode(List<BackendNode> activeNodes, LogHelper logger, Packet packet, ChannelHandlerContext ctx) {
             int start = (counter.getAndUpdate(v -> (v + 1) % activeNodes.size()));
-            List<Node> candidates = activeNodes.stream()
+            List<BackendNode> candidates = activeNodes.stream()
                     .skip(start)
                     .limit(Math.min(3, activeNodes.size()))
                     .toList();
 
             final int packetId = packet.id();
             final float factor = 0.35f;
-            final Function<Node, Float> calcScore = (n) -> (factor * n.getTotalScore()) + ((1 - factor) * n.getAvgPacketTime(packetId) / n.getMaxObservedPacketTime());
+            final Function<BackendNode, Float> calcScore = (n) -> (factor * n.getTotalScore()) + ((1 - factor) * n.getAvgPacketTime(packetId) / n.getMaxObservedPacketTime());
 
             return fromParam(candidates, calcScore);
         }
@@ -67,7 +67,7 @@ public enum Balancers {
         return balancer;
     }
 
-    private static Node fromParam(List<Node> activeNodes, Function<Node, Float> score) {
+    private static BackendNode fromParam(List<BackendNode> activeNodes, Function<BackendNode, Float> score) {
         float avgScore = (float) activeNodes.stream()
                 .mapToDouble(score::apply)
                 .average()
@@ -78,7 +78,7 @@ public enum Balancers {
                 .orElse(activeNodes.getFirst());
     }
 
-    private static Balancer fromParam(Function<Node, Float> score) {
+    private static Balancer fromParam(Function<BackendNode, Float> score) {
         return (activeNodes, logger, packet, ctx) -> fromParam(activeNodes, score);
     }
 
