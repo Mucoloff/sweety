@@ -34,7 +34,7 @@ public class BackendNode extends Client {
 
     public BackendNode(String host, int port, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
-        this.logger = new SimpleLogger("Node#" + AnsiColor.fromColor(RandomUtils.RANDOM.nextInt() * port) + port + AnsiColor.RESET.getColor()).info("Initialized");
+        this.logger = new SimpleLogger("Node#" + AnsiColor.fromColor(RandomUtils.RANDOM.nextInt() * port) + port + AnsiColor.RESET.getColor()).info("Waiting for backend...");
     }
 
     @Override
@@ -146,14 +146,14 @@ public class BackendNode extends Client {
 
     @Override
     public void join(ChannelHandlerContext ctx, ChannelPromise promise) {
-        logger.push("connect", AnsiColor.GREEN_BRIGHT).info(ctx.channel().remoteAddress()).pop();
+        logger.push("connect", AnsiColor.GREEN_BRIGHT).info("backend " + port + " connected").pop();
         promise.setSuccess();
         loadBalancer.drainPending();
     }
 
     @Override
     public void quit(ChannelHandlerContext ctx, ChannelPromise promise) {
-        logger.push("disconnect", AnsiColor.RED_BRIGHT).info(ctx.channel().remoteAddress()).pop();
+        logger.push("disconnect", AnsiColor.RED_BRIGHT).info("backend " + port + " disconnected").pop();
         promise.setSuccess();
         autoReconnect.onQuit();
     }

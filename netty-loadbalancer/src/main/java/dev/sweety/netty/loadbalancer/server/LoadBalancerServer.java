@@ -4,10 +4,12 @@ import dev.sweety.core.color.AnsiColor;
 import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.core.math.function.TriFunction;
 import dev.sweety.core.math.vector.queue.LinkedQueue;
+import dev.sweety.core.thread.ProfileThread;
+import dev.sweety.core.thread.ThreadManager;
 import dev.sweety.netty.feature.TransactionManager;
 import dev.sweety.netty.loadbalancer.common.packet.InternalPacket;
 import dev.sweety.netty.loadbalancer.server.backend.BackendNode;
-import dev.sweety.netty.loadbalancer.server.packets.PacketQueue;
+import dev.sweety.netty.loadbalancer.server.packets.PacketContext;
 import dev.sweety.netty.loadbalancer.server.pool.IBackendNodePool;
 import dev.sweety.netty.messaging.Server;
 import dev.sweety.netty.messaging.model.Messenger;
@@ -23,9 +25,11 @@ public class LoadBalancerServer extends Server {
 
     private final IBackendNodePool backendPool;
     private final SimpleLogger logger = new SimpleLogger(LoadBalancerServer.class);
-    private final LinkedQueue<PacketQueue> pendingPackets = new LinkedQueue<>();
+    private final LinkedQueue<PacketContext> pendingPackets = new LinkedQueue<>();
 
     private final TransactionManager transactionManager = new TransactionManager(this);
+
+    private final ThreadManager queueScheduler = new ThreadManager("queue-scheduler");
 
     private final TriFunction<Packet, Integer, Long, byte[]> constructor;
 
@@ -42,25 +46,33 @@ public class LoadBalancerServer extends Server {
 
         this.logger.push("<init>", AnsiColor.fromColor(new Color(148, 186, 76))).info("LoadBalancerServer started on " + host + ":" + port)
                 .info("Waiting for connections...").pop();
+
     }
 
     @Override
     public void onPacketReceive(ChannelHandlerContext ctx, Packet packet) {
         if (packet instanceof InternalPacket) return;
-        pendingPackets.enqueue(new PacketQueue(packet.rewind(), ctx));
+        pendingPackets.enqueue(new PacketContext(packet.rewind(), ctx));
         drainPending();
     }
 
     public void drainPending() {
+        final ProfileThread profileThread = queueScheduler.getAvailableProfileThread();
+        profileThread.execute(this::drainPendingInternal);
+        profileThread.decrement();
+    }
+
+    private synchronized void drainPendingInternal() {
         if (pendingPackets.isEmpty()) return;
-        PacketQueue pq;
+        PacketContext pq;
+
         while ((pq = pendingPackets.dequeue()) != null) {
             final Packet packet = pq.packet();
             final ChannelHandlerContext ctx = pq.ctx();
 
             BackendNode backend = backendPool.next(packet, ctx);
             if (backend == null) {
-                pendingPackets.enqueueFirst(pq);
+                pendingPackets.push(pq);
                 logger.push("queue", AnsiColor.RED_BRIGHT).warn("No backend available. pending packets = " + pendingPackets.size()).pop();
                 break;
             }
@@ -83,6 +95,14 @@ public class LoadBalancerServer extends Server {
 
             backend.forward(ctx, internal);
         }
+    }
+
+    @Override
+    public void stop() {
+        super.stop();
+        transactionManager.shutdown();
+        queueScheduler.shutdown();
+        backendPool.pool().forEach(BackendNode::stop);
     }
 
     public void complete(InternalPacket internal, ChannelHandlerContext ctx) {

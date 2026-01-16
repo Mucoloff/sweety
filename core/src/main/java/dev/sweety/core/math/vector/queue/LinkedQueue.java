@@ -1,15 +1,17 @@
 package dev.sweety.core.math.vector.queue;
 
+import dev.sweety.core.math.vector.stack.Stack;
+
 import java.util.Objects;
 
 /**
- * Thread-safe LinkedQueue FIFO.
+ * Thread-safe LinkedQueue FIFO
  */
-public class LinkedQueue<E> implements Queue<E> {
+public class LinkedQueue<E> implements Queue<E>, Stack<E> {
 
-    private Node<E> head;
-    private Node<E> tail;
-    private int size;
+    private volatile Node<E> head;
+    private volatile Node<E> tail;
+    private volatile int size;
 
     @Override
     public synchronized void enqueue(E element) {
@@ -32,6 +34,11 @@ public class LinkedQueue<E> implements Queue<E> {
         return value;
     }
 
+    @Override
+    public synchronized E pop() {
+        return dequeue();
+    }
+
     public synchronized E lockingDequeue() {
         E val;
         while ((val = dequeue()) == null) {
@@ -46,16 +53,19 @@ public class LinkedQueue<E> implements Queue<E> {
     }
 
 
-    public synchronized void enqueueFirst(E element) {
+    public synchronized void push(E element) {
         Objects.requireNonNull(element);
         Node<E> node = new Node<>(element);
         node.next = head;
         head = node;
-        if (tail == null) {
-            tail = node;
-        }
+        if (tail == null) tail = node;
         size++;
         notifyAll();
+    }
+
+    @Override
+    public synchronized E top() {
+        return head != null ? head.value : null;
     }
 
     @Override
@@ -81,7 +91,7 @@ public class LinkedQueue<E> implements Queue<E> {
 
     private static final class Node<E> {
         final E value;
-        Node<E> next;
+        volatile Node<E> next;
         Node(E value) {
             this.value = value;
         }

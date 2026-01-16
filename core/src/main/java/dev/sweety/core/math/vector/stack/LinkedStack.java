@@ -12,7 +12,7 @@ public class LinkedStack<F> implements Stack<F> {
 
     @Override
     public F peek() {
-        return top != null ? top.value() : null;
+        return null != top ? top.value() : null;
     }
 
     @Override
@@ -25,8 +25,7 @@ public class LinkedStack<F> implements Stack<F> {
 
     @Override
     public F top() {
-        if (this.top == null) return null;
-        return top.value();
+        return this.top == null ? null : top.value();
     }
 
     @Override
