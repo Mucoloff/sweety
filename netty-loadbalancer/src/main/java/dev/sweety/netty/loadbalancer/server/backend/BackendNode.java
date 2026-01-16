@@ -2,6 +2,7 @@ package dev.sweety.netty.loadbalancer.server.backend;
 
 import dev.sweety.core.color.AnsiColor;
 import dev.sweety.core.logger.SimpleLogger;
+import dev.sweety.core.math.RandomUtils;
 import dev.sweety.netty.feature.AutoReconnect;
 import dev.sweety.netty.loadbalancer.common.metrics.state.NodeState;
 import dev.sweety.netty.loadbalancer.common.packet.InternalPacket;
@@ -33,7 +34,7 @@ public class BackendNode extends Client {
 
     public BackendNode(String host, int port, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
-        this.logger = new SimpleLogger("Node-" + port).info("Initialized");
+        this.logger = new SimpleLogger("Node#" + AnsiColor.fromColor(RandomUtils.RANDOM.nextInt() * port) + port + AnsiColor.RESET.getColor()).info("Initialized");
     }
 
     @Override
@@ -52,7 +53,6 @@ public class BackendNode extends Client {
         this.autoReconnect.shutdown();
         super.stop();
     }
-
 
     private static final float maxExpectedLatency = 1000f;
 
@@ -128,13 +128,14 @@ public class BackendNode extends Client {
 
     @Override
     public void join(ChannelHandlerContext ctx, ChannelPromise promise) {
-        logger.push("connect").info(ctx.channel().remoteAddress()).pop();
+        logger.push("connect", AnsiColor.GREEN_BRIGHT).info(ctx.channel().remoteAddress()).pop();
         promise.setSuccess();
+        loadBalancer.drainPending();
     }
 
     @Override
     public void quit(ChannelHandlerContext ctx, ChannelPromise promise) {
-        logger.push("disconnect").info(ctx.channel().remoteAddress()).pop();
+        logger.push("disconnect", AnsiColor.RED_BRIGHT).info(ctx.channel().remoteAddress()).pop();
         promise.setSuccess();
         autoReconnect.onQuit();
     }

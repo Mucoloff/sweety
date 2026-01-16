@@ -1,5 +1,6 @@
 package dev.sweety.project.netty.loadbalancer.impl;
 
+import dev.sweety.core.color.AnsiColor;
 import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.netty.loadbalancer.backend.Backend;
 import dev.sweety.netty.packet.model.Packet;
@@ -34,14 +35,14 @@ public class BackendTest extends Backend {
 
     @Override
     public void join(ChannelHandlerContext ctx, ChannelPromise promise) {
-        logger.push("connect").info(ctx.channel().remoteAddress()).pop();
+        logger.push("connect", AnsiColor.GREEN_BRIGHT).info(ctx.channel().localAddress()).pop();
         super.addClient(ctx, ctx.channel().remoteAddress());
         promise.setSuccess();
     }
 
     @Override
     public void leave(ChannelHandlerContext ctx, ChannelPromise promise) {
-        this.logger.push("disconnect").info(ctx.channel().remoteAddress()).pop();
+        this.logger.push("disconnect",AnsiColor.RED_BRIGHT).info(ctx.channel().localAddress()).pop();
         super.removeClient(ctx.channel().remoteAddress());
         promise.setSuccess();
     }

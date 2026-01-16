@@ -1,5 +1,6 @@
 package dev.sweety.project.netty;
 
+import dev.sweety.core.color.AnsiColor;
 import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.core.math.function.TriFunction;
 import dev.sweety.netty.messaging.Server;
@@ -69,14 +70,14 @@ public class TestServer extends Server {
 
     @Override
     public void join(ChannelHandlerContext ctx, ChannelPromise promise) {
-        logger.info("Client connesso: ", ctx.channel().remoteAddress());
+        logger.push("connect", AnsiColor.GREEN_BRIGHT).info(ctx.channel().remoteAddress()).pop();
         super.addClient(ctx, ctx.channel().remoteAddress());
         promise.setSuccess();
     }
 
     @Override
     public void quit(ChannelHandlerContext ctx, ChannelPromise promise) {
-        logger.warn("Client disconnesso: ", ctx.channel().remoteAddress());
+        logger.push("disconnect", AnsiColor.RED_BRIGHT).info(ctx.channel().remoteAddress()).pop();
         super.removeClient(ctx.channel().remoteAddress());
         promise.setSuccess();
     }

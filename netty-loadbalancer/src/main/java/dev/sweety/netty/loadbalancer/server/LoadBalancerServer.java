@@ -41,7 +41,7 @@ public class LoadBalancerServer extends Server {
         this.constructor = (id, ts, data) -> packetRegistry.construct(id, ts, data, this.logger);
 
         this.logger.push("<init>", AnsiColor.fromColor(new Color(148, 186, 76))).info("LoadBalancerServer started on " + host + ":" + port)
-                .info("Waiting for connections...");
+                .info("Waiting for connections...").pop();
     }
 
     @Override
@@ -49,10 +49,9 @@ public class LoadBalancerServer extends Server {
         if (packet instanceof InternalPacket) return;
         pendingPackets.enqueue(new PacketQueue(packet.rewind(), ctx));
         drainPending();
-        logger.pop();
     }
 
-    private void drainPending() {
+    public void drainPending() {
         PacketQueue pq;
         while ((pq = pendingPackets.dequeue()) != null) {
             final Packet packet = pq.packet();
@@ -61,7 +60,7 @@ public class LoadBalancerServer extends Server {
             BackendNode backend = backendPool.next(packet, ctx);
             if (backend == null) {
                 pendingPackets.enqueueFirst(pq);
-                logger.push("queue",AnsiColor.RED_BRIGHT).warn("No backend available. pending packets = " + pendingPackets.size()).pop();
+                logger.push("queue", AnsiColor.RED_BRIGHT).warn("No backend available. pending packets = " + pendingPackets.size()).pop();
                 break;
             }
 
@@ -70,7 +69,7 @@ public class LoadBalancerServer extends Server {
             transactionManager.registerRequest(internal, REQUEST_TIMEOUT_SECONDS * 500L).whenComplete(((response, throwable) -> {
                 if (throwable != null) {
                     backend.timeout(internal.getRequestId());
-                    logger.push("transaction", AnsiColor.RED_BRIGHT).error(internal.requestCode()).error(throwable).pop();
+                    logger.push("transaction", AnsiColor.RED_BRIGHT).error(internal.requestCode(), throwable).pop();
                     return;
                 }
 
@@ -81,7 +80,7 @@ public class LoadBalancerServer extends Server {
                 Messenger.safeExecute(ctx, c -> sendPacket(c, responses));
             }));
 
-            backend.forward(ctx,internal);
+            backend.forward(ctx, internal);
         }
     }
 
@@ -99,14 +98,14 @@ public class LoadBalancerServer extends Server {
 
     @Override
     public void join(ChannelHandlerContext ctx, ChannelPromise promise) {
-        logger.push("connect").info(ctx.channel().remoteAddress()).pop();
+        logger.push("connect", AnsiColor.GREEN_BRIGHT).info(ctx.channel().remoteAddress()).pop();
         super.addClient(ctx, ctx.channel().remoteAddress());
         promise.setSuccess();
     }
 
     @Override
     public void quit(ChannelHandlerContext ctx, ChannelPromise promise) {
-        this.logger.push("disconnect").info(ctx.channel().remoteAddress()).pop();
+        logger.push("disconnect", AnsiColor.RED_BRIGHT).info(ctx.channel().remoteAddress()).pop();
         super.removeClient(ctx.channel().remoteAddress());
         promise.setSuccess();
     }

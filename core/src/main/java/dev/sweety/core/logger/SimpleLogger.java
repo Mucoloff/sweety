@@ -60,7 +60,7 @@ public class SimpleLogger implements LogHelper {
         final String prefix = formatPrefix(level);
         final String color = level.color().getColor();
         final String message = parseMessage(input) + AnsiColor.RESET.getColor();
-        final String line = color + prefix + " " + message;
+        final String line = color + prefix + " " + color + message;
 
         backend.log(level, name, profiles.get().top(), line);
         return this;
