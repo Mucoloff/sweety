@@ -13,10 +13,12 @@ public class MetricsUpdatePacket extends Packet {
 
     private static final float SCALE = 10_000f;
 
+    //todo array of floats for custom metrics?
     private float cpu;       // EMA process / machine
     private float ram;       // EMA process / machine
     private float cpuTotal;  // system (debug)
     private float ramTotal;  // system (debug)
+
     private NodeState state; // HEALTHY / DEGRADED
     private Map<Integer, Float> packetTimings; // packet ID -> EMA latency
 

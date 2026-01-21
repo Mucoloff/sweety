@@ -45,6 +45,7 @@ public abstract class Backend extends Server {
         this._logger.push("<init>", AnsiColor.fromColor(new Color(148, 186, 76))).info("Waiting for loadbalancer...");
         this.constructor = (id, ts, data) -> packetRegistry.construct(id, ts, data, this._logger);
 
+        //todo make a settings class for these
         final int delay = 2500;
         final int samplingDelay = delay / 4;
 

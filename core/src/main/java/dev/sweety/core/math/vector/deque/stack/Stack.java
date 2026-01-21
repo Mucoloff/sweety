@@ -1,4 +1,4 @@
-package dev.sweety.core.math.vector.stack;
+package dev.sweety.core.math.vector.deque.stack;
 
 public interface Stack<F> {
     void push(F frame);

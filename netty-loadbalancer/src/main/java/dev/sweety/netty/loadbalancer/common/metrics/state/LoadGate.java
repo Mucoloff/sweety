@@ -4,6 +4,7 @@ public final class LoadGate {
 
     private NodeState state = NodeState.HEALTHY;
 
+    //todo make a settings class for these
     private static final float CPU_OUT = 0.70f;
     private static final float CPU_IN  = 0.55f;
 

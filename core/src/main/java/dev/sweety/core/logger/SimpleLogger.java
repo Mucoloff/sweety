@@ -5,8 +5,7 @@ import dev.sweety.core.exception.ExceptionUtils;
 import dev.sweety.core.logger.backend.ConsoleBackend;
 import dev.sweety.core.logger.backend.LoggerBackend;
 import dev.sweety.core.logger.profile.ProfileScope;
-import dev.sweety.core.math.vector.stack.LinkedStack;
-import dev.sweety.core.math.vector.stack.Stack;
+import dev.sweety.core.math.vector.deque.stack.Stack;
 import lombok.Getter;
 
 import java.time.LocalDateTime;

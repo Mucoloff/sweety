@@ -1,20 +1,20 @@
-package dev.sweety.core.math.vector.stack;
+package dev.sweety.core.math.vector.deque.stack;
 
-public class StackContext<F, R> {
+public final class StackContext<F> {
     private final Stack<F> stack;
-    private F current;
+    private F frame;
 
     public StackContext(Stack<F> stack) {
         this.stack = stack;
     }
 
-    public StackContext<F, R> with(F frame) {
-        this.current = frame;
+    public StackContext<F> with(F frame) {
+        this.frame = frame;
         return this;
     }
 
     public F frame() {
-        return current;
+        return frame;
     }
 
     public void push(F frame) {

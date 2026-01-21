@@ -3,7 +3,7 @@ package dev.sweety.netty.loadbalancer.server;
 import dev.sweety.core.color.AnsiColor;
 import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.core.math.function.TriFunction;
-import dev.sweety.core.math.vector.queue.LinkedQueue;
+import dev.sweety.core.math.vector.deque.BlockingDeque;
 import dev.sweety.core.thread.ProfileThread;
 import dev.sweety.core.thread.ThreadManager;
 import dev.sweety.netty.feature.TransactionManager;
@@ -25,15 +25,13 @@ public class LoadBalancerServer extends Server {
 
     private final IBackendNodePool backendPool;
     private final SimpleLogger logger = new SimpleLogger(LoadBalancerServer.class);
-    private final LinkedQueue<PacketContext> pendingPackets = new LinkedQueue<>();
+    private final BlockingDeque<PacketContext> pendingPackets = new BlockingDeque<>();
 
     private final TransactionManager transactionManager = new TransactionManager(this);
 
     private final ThreadManager queueScheduler = new ThreadManager("queue-scheduler");
 
     private final TriFunction<Packet, Integer, Long, byte[]> constructor;
-
-    private static final long REQUEST_TIMEOUT_SECONDS = 30L;
 
     public LoadBalancerServer(String host, int port, IBackendNodePool backendPool, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
@@ -56,7 +54,9 @@ public class LoadBalancerServer extends Server {
         drainPending();
     }
 
+    //todo make a settings class for these
     private volatile boolean useThreadManager = true;
+    private static final long REQUEST_TIMEOUT_SECONDS = 30L;
 
     public void disableThreadManager() {
         this.useThreadManager = false;
@@ -87,7 +87,7 @@ public class LoadBalancerServer extends Server {
 
             final InternalPacket internal = new InternalPacket(new InternalPacket.Forward(getPacketRegistry()::getPacketId, packet));
 
-            transactionManager.registerRequest(internal, REQUEST_TIMEOUT_SECONDS * 500L).whenComplete(((response, throwable) -> {
+            transactionManager.registerRequest(internal, REQUEST_TIMEOUT_SECONDS * 1000L).whenComplete(((response, throwable) -> {
                 if (throwable != null) {
                     backend.timeout(internal.getRequestId());
                     logger.push("transaction", AnsiColor.RED_BRIGHT).error(internal.requestCode(), throwable).pop();

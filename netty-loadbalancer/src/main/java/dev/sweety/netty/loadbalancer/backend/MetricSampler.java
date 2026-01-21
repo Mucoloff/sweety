@@ -11,6 +11,7 @@ import oshi.hardware.HardwareAbstractionLayer;
 import oshi.software.os.OSProcess;
 import oshi.software.os.OperatingSystem;
 
+//todo make it customizable
 public class MetricSampler {
 
     private final SystemInfo si = new SystemInfo();
@@ -24,6 +25,7 @@ public class MetricSampler {
     private long[] prevCpuTicks;
 
     // smoothing
+    //todo make alphas configurable
     private final EMA cpuEma = new EMA(0.35f);
     private final EMA ramEma = new EMA(0.25f);
     private final EMA totCpuEma = new EMA(0.75f);
@@ -47,6 +49,7 @@ public class MetricSampler {
     }
 
     private long lastOverrideTime = 0;
+    //todo make a settings class for these
     private static final long OVERRIDE_COOLDOWN_MS = 5000;
 
     public SmoothedLoad sample() {

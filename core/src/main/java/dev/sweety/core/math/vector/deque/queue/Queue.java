@@ -1,4 +1,4 @@
-package dev.sweety.core.math.vector.queue;
+package dev.sweety.core.math.vector.deque.queue;
 
 public interface Queue<E> {
     void enqueue(E e);

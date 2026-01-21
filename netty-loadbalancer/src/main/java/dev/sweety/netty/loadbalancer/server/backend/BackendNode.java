@@ -118,8 +118,8 @@ public class BackendNode extends Client {
         Messenger.safeExecute(ctx, c -> sendPacket(internal).whenComplete((a, b) -> decrementInFlight()));
     }
 
-    private volatile int inFlight = 0;
 
+    private volatile int inFlight = 0;
     public synchronized boolean canAcceptPacket() {
         return this.inFlight < maxInFlight;
     }
