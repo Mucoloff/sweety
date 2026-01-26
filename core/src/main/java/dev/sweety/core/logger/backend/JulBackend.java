@@ -1,6 +1,7 @@
 package dev.sweety.core.logger.backend;
 
 import dev.sweety.core.logger.LogLevel;
+import lombok.AllArgsConstructor;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -9,6 +10,7 @@ import java.util.logging.Logger;
  * Backend basato su java.util.logging (JUL), presente nel JDK.
  * Non richiede dipendenze esterne e mantiene l'indipendenza da SLF4J.
  */
+@AllArgsConstructor
 public class JulBackend implements LoggerBackend {
 
     private final Logger logger;

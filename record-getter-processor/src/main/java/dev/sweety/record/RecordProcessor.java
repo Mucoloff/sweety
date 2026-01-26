@@ -1,6 +1,7 @@
 package dev.sweety.record;
 
 import com.google.auto.service.AutoService;
+import dev.sweety.record.annotations.DataIgnore;
 import dev.sweety.record.annotations.RecordData;
 import dev.sweety.record.annotations.RecordGetter;
 import dev.sweety.record.annotations.RecordSetter;
@@ -50,6 +51,7 @@ public class RecordProcessor extends AbstractProcessor {
         annotatedElements.addAll(roundEnv.getElementsAnnotatedWith(RecordData.class));
         annotatedElements.addAll(roundEnv.getElementsAnnotatedWith(RecordGetter.class));
         annotatedElements.addAll(roundEnv.getElementsAnnotatedWith(RecordSetter.class));
+        annotatedElements.removeAll(roundEnv.getElementsAnnotatedWith(DataIgnore.class));
 
         for (Element element : annotatedElements) {
             boolean isField = element.getKind().equals(ElementKind.FIELD);
@@ -75,7 +77,7 @@ public class RecordProcessor extends AbstractProcessor {
     private void generateInterface(TypeElement classElement) throws IOException {
         RecordData dataAnnotation = classElement.getAnnotation(RecordData.class);
         RecordGetter getterAnnotation = classElement.getAnnotation(RecordGetter.class);
-        RecordSetter settetAnnotation = classElement.getAnnotation(RecordSetter.class);
+        RecordSetter setterAnnotation = classElement.getAnnotation(RecordSetter.class);
 
         final boolean applyAll, includeStatic, getters, setters;
         if (dataAnnotation != null) {
@@ -87,9 +89,9 @@ public class RecordProcessor extends AbstractProcessor {
             includeStatic = getterAnnotation.includeStatic();
             getters = true;
             setters = false;
-        } else if (settetAnnotation != null) {
-            applyAll = settetAnnotation.applyAll();
-            includeStatic = settetAnnotation.includeStatic();
+        } else if (setterAnnotation != null) {
+            applyAll = setterAnnotation.applyAll();
+            includeStatic = setterAnnotation.includeStatic();
             getters = false;
             setters = true;
         } else applyAll = includeStatic = getters = setters = false;
@@ -114,6 +116,7 @@ public class RecordProcessor extends AbstractProcessor {
                     .collect(Collectors.toList());
 
             for (Element field : fields) {
+                if (field.getAnnotation(DataIgnore.class) != null) continue;
                 String fieldName = field.getSimpleName().toString();
                 String fieldType = field.asType().toString();
                 boolean isStatic = field.getModifiers().contains(Modifier.STATIC);

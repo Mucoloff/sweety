@@ -12,21 +12,21 @@ public class JsonFormat extends ConfigFormat {
 
     @Override
     public <T> String write(T obj) {
-        return GsonUtils.gson().toJson(obj);
+        return GsonUtils.write(obj);
     }
 
     @Override
     public <T> void save(T config, Appendable writer) {
-        GsonUtils.gson().toJson(config, writer);
+        GsonUtils.save(config,writer);
     }
 
     @Override
     public <T> T load(Reader reader, Class<T> configClass) {
-        return GsonUtils.gson().fromJson(reader, configClass);
+        return GsonUtils.load(reader, configClass);
     }
 
     @Override
     public <T> T read(String obj, Class<T> clazz) {
-        return GsonUtils.gson().fromJson(obj, clazz);
+        return GsonUtils.read(obj, clazz);
     }
 }

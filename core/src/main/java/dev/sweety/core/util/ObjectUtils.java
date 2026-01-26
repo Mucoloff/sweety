@@ -1,8 +1,10 @@
 package dev.sweety.core.util;
 
 import lombok.experimental.UtilityClass;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -17,8 +19,14 @@ public class ObjectUtils {
         return false;
     }
 
-    public <T> T nullOption(T t, T fallback) {
-        return isNull(t) ? fallback : t;
+    @SafeVarargs
+    public <T> @NotNull T nullOption(T t, @NotNull T fallback, Predicate<T>... predicates) {
+        return isNull(t, predicates) ? fallback : t;
+    }
+
+    @SafeVarargs
+    public <T, R> @NotNull R nullOption(T t, Function<@NotNull T, R> getter, @NotNull R fallback, Predicate<T>... predicates) {
+        return isNull(t, predicates) ? fallback : getter.apply(t);
     }
 
     @SafeVarargs

@@ -5,6 +5,7 @@ import dev.sweety.core.exception.ExceptionUtils;
 import dev.sweety.core.logger.backend.ConsoleBackend;
 import dev.sweety.core.logger.backend.LoggerBackend;
 import dev.sweety.core.logger.profile.ProfileScope;
+import dev.sweety.core.math.vector.deque.BlockingDeque;
 import dev.sweety.core.math.vector.deque.stack.Stack;
 import lombok.Getter;
 
@@ -18,7 +19,7 @@ import java.util.function.Function;
 public class SimpleLogger implements LogHelper {
     protected final String name;
 
-    private final ThreadLocal<Stack<String>> profiles = ThreadLocal.withInitial(LinkedStack::new);
+    private final ThreadLocal<Stack<String>> profiles = ThreadLocal.withInitial(BlockingDeque::new);
     // Pluggable backend support
     @Getter
     private volatile LoggerBackend backend = new ConsoleBackend();

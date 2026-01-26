@@ -89,8 +89,10 @@ tasks.register('build-and-publish') {
     }
 }
 
+/*
 subprojects {
 
     group = 'dev.sweety.' + project.name
 
 }
+ */
