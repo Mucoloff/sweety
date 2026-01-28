@@ -31,7 +31,7 @@ public class ProfileThread {
         return this;
     }
 
-    // ---------------------- Utility generate ----------------------
+    // ---------------------- Utility ----------------------
     private <V> CompletableFuture<V> wrapFuture(final CompletableFuture<V> future, final Future<?> scheduled) {
         if (thread.isShutdown() || thread.isTerminated()) {
             future.completeExceptionally(new RejectedExecutionException("ProfileThread is shutdown or terminated."));
