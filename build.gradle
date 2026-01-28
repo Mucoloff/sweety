@@ -31,8 +31,6 @@ allprojects {
         implementation 'org.apache.httpcomponents:httpclient:4.5.14'
         implementation 'commons-io:commons-io:2.20.0'
 
-        implementation 'com.github.retrooper:packetevents-api:2.7.0'
-
         implementation 'org.ow2.asm:asm:9.6'
         implementation 'com.google.guava:guava:31.1-jre'
 
