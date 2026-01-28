@@ -5,6 +5,7 @@ import dev.sweety.netty.messaging.listener.encoder.NettyEncoder;
 import dev.sweety.netty.messaging.listener.watcher.NettyWatcher;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.core.time.TimeMode;
 import io.netty.bootstrap.AbstractBootstrap;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
@@ -43,6 +44,10 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
     @Getter
     private final Packet[] packets;
     private final AtomicBoolean running = new AtomicBoolean();
+
+    @Getter
+    @Setter
+    public static TimeMode timeMode = TimeMode.MILLIS;
 
     @Getter
     private final IPacketRegistry packetRegistry;

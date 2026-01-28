@@ -45,7 +45,7 @@ public class PacketDecoder {
         if (hasTimestamp) {
             if (cantRead(in, 1)) return;
             timestamp = in.readVarLong();
-        } else timestamp = System.currentTimeMillis();
+        } else timestamp = Messenger.timeMode.now();
 
         // Validate checksum
         final CRC32C crc32 = ChecksumUtils.crc32(true);

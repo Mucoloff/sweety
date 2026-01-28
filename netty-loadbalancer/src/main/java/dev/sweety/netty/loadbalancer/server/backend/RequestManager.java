@@ -16,7 +16,7 @@ public class RequestManager {
     private final EMA currentLoadEma = new EMA(0.35f); // per current pending load medio
 
     public void addRequest(long requestId, int load) {
-        pendingRequests.put(requestId, new RequestInfo(System.currentTimeMillis(), load));
+        pendingRequests.put(requestId, new RequestInfo(System.nanoTime(), load));
         totalLoadEma.update(load);
         currentLoadEma.update(load);
         currentLoad.addAndGet(load);
@@ -26,7 +26,7 @@ public class RequestManager {
         RequestInfo info = pendingRequests.remove(requestId);
         if (info == null) return;
 
-        latencyEma.update(System.currentTimeMillis() - info.timestamp());
+        latencyEma.update(System.nanoTime() - info.timestamp());
         long l = currentLoad.addAndGet(-info.load());
         currentLoadEma.update(l);
     }

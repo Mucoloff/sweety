@@ -1,5 +1,6 @@
 package dev.sweety.netty.loadbalancer.backend;
 
+import dev.sweety.core.time.StopWatch;
 import dev.sweety.netty.loadbalancer.common.metrics.EMA;
 import dev.sweety.netty.loadbalancer.common.metrics.state.LoadGate;
 import dev.sweety.netty.loadbalancer.common.metrics.state.NodeState;
@@ -45,11 +46,11 @@ public class MetricSampler {
         this.totCpuEma.reset();
         this.totRamEma.reset();
         this.gate.reset();
-        lastOverrideTime = 0L;
+        this.overrideCooldownWatch.reset();
     }
 
-    private long lastOverrideTime = 0;
     //todo make a settings class for these
+    private final StopWatch overrideCooldownWatch = new StopWatch();
     private static final long OVERRIDE_COOLDOWN_MS = 5000;
 
     public SmoothedLoad sample() {
@@ -89,8 +90,8 @@ public class MetricSampler {
 
         NodeState finalState;
         if (totCpuSmooth > 0.85f || totRamSmooth > 0.90f) {
-            if (System.currentTimeMillis() - lastOverrideTime > OVERRIDE_COOLDOWN_MS) {
-                lastOverrideTime = System.currentTimeMillis();
+            if (overrideCooldownWatch.hasPassedMillis(OVERRIDE_COOLDOWN_MS)){
+                overrideCooldownWatch.reset();
                 finalState = NodeState.DEGRADED;
             } else {
                 finalState = state;
