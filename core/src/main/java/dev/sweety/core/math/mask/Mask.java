@@ -7,7 +7,7 @@ public interface Mask {
     byte[] masks();
 
     default boolean has(int i, byte index){
-        return (masks()[i] & index) != 0;
+        return (masks()[i] & index) == index;
     }
 
     default void set(int i, byte index) {

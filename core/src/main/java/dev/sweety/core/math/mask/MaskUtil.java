@@ -20,7 +20,7 @@ public class MaskUtil {
     }
 
     public boolean isPresent(byte _mask, byte index) {
-        return (_mask & index) != 0;
+        return (_mask & index) == index;
     }
 
     public byte set(byte _mask, byte index) {
