@@ -1,9 +1,9 @@
-package dev.sweety.core.math;
+package dev.sweety.core.math.mask;
 
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
-public class Mask {
+public class MaskUtil {
     private static final byte[] INDEXES = {
             0x1,
             0x2,
