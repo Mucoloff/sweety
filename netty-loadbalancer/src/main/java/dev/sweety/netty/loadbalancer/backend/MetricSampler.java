@@ -1,5 +1,6 @@
 package dev.sweety.netty.loadbalancer.backend;
 
+import dev.sweety.core.thread.ThreadManager;
 import dev.sweety.core.time.StopWatch;
 import dev.sweety.core.util.ObjectUtils;
 import dev.sweety.netty.loadbalancer.common.metrics.EMA;
@@ -38,6 +39,7 @@ public class MetricSampler {
     private final EMA totRamEma;
     private final EMA threadPressureEma;
     private final EMA openFilesEma;
+    private final EMA systemLoadEma;
     private final LoadGate gate;
     private final Config config;
 
@@ -70,12 +72,13 @@ public class MetricSampler {
         this.cpu = hw.getProcessor();
         this.mem = hw.getMemory();
 
-        this.cpuEma = new EMA(config.cpuEmaAlpha);
-        this.ramEma = new EMA(config.ramEmaAlpha);
-        this.totCpuEma = new EMA(config.totCpuEmaAlpha);
-        this.totRamEma = new EMA(config.totRamEmaAlpha);
-        this.threadPressureEma = new EMA(config.threadPressureEmaAlpha);
-        this.openFilesEma = new EMA(config.openFilesEmaAlpha);
+        this.cpuEma = new EMA(config.ema.cpu);
+        this.ramEma = new EMA(config.ema.ram);
+        this.totCpuEma = new EMA(config.ema.totCpu);
+        this.totRamEma = new EMA(config.ema.totRam);
+        this.threadPressureEma = new EMA(config.ema.threadPressure);
+        this.openFilesEma = new EMA(config.ema.openFiles);
+        this.systemLoadEma = new EMA(config.ema.systemLoad);
 
         this.prevProcess = os.getCurrentProcess();
         this.prevCpuTicks = cpu.getSystemCpuLoadTicks();
@@ -108,29 +111,42 @@ public class MetricSampler {
         this.overrideCooldownWatch.reset();
     }
 
+    private final ThreadManager threadManager = new ThreadManager("sampler-thread-manager");
+
     public synchronized SmoothedLoad sample() {
         // ===== PROCESS =====
         // Process might be dead or not found, fallback to previous to avoid crash
         OSProcess currProcess = ObjectUtils.nullOption(os.getProcess(prevProcess.getProcessID()), prevProcess);
 
-        // Handle potential OSHI exceptions or NaN
-        double cpuProcRawVal = currProcess.getProcessCpuLoadBetweenTicks(prevProcess);
-        float cpuProcRaw = (float) (Double.isNaN(cpuProcRawVal) ? 0d : cpuProcRawVal);
-
+        // Sampling CPU
+        float cpuProcRawVal = (float) currProcess.getProcessCpuLoadBetweenTicks(prevProcess);
+        float cpuProcRaw =  (Float.isNaN(cpuProcRawVal) ? 0f : cpuProcRawVal);
         final int logicalProcessorCount = Math.max(1, cpu.getLogicalProcessorCount());
-
         float cpuProcNorm = cpuProcRaw / logicalProcessorCount;
+        float cpuSmooth = cpuEma.update(cpuProcNorm);
 
+        // Sampling RAM
         long rss = currProcess.getResidentSetSize();
         float ramProcNorm = (float) rss / Math.max(1, mem.getTotal());
+        float ramSmooth = ramEma.update(ramProcNorm);
 
+        // Sampling TOTAL CPU
+        long[] currCpuTicks = cpu.getSystemCpuLoadTicks();
+        float cpuSystemNorm = (float) cpu.getSystemCpuLoadBetweenTicks(prevCpuTicks);
+        prevCpuTicks = currCpuTicks;
+        float totCpuSmooth = cpuSystemNorm > 0f ? totCpuEma.update(cpuSystemNorm) : totCpuEma.get(); // Avoid updating with 0 on invalid reads
+
+        // Sampling TOTAL RAM
+        float ramSystemNorm = 1f - ((float) mem.getAvailable() / Math.max(1, mem.getTotal()));
+        float totRamSmooth = totRamEma.update(ramSystemNorm);
+
+        // Sampling OPEN FILES
         long openFiles = currProcess.getOpenFiles();
         long maxOpenFiles = currProcess.getSoftOpenFileLimit(); // Soft limit is usually what matters for crash
-        if (maxOpenFiles <= 0) maxOpenFiles = currProcess.getHardOpenFileLimit(); // Fallback
-
-        // Normalized is fine for internal gate, but maybe user wants raw/string presentation?
+        if (maxOpenFiles <= 0) maxOpenFiles = currProcess.getHardOpenFileLimit();
         float openFilesNorm = maxOpenFiles > 0 ? (float) openFiles / maxOpenFiles : 0f;
         float openFilesSmooth = openFilesEma.update(openFilesNorm);
+
 
         // ASYNC PRESSURE UPDATE
         if (isThreadPressureUpdating.compareAndSet(false, true)) {
@@ -160,33 +176,21 @@ public class MetricSampler {
         float currentPressureAvg = asyncThreadPressure.get();
         float threadPressureSmooth = threadPressureEma.update(currentPressureAvg);
 
-
         // ===== SYSTEM =====
-        long[] currCpuTicks = cpu.getSystemCpuLoadTicks();
-        float cpuSystemNorm = (float) cpu.getSystemCpuLoadBetweenTicks(prevCpuTicks);
-
-        float ramSystemNorm = 1f - ((float) mem.getAvailable() / Math.max(1, mem.getTotal()));
-
         double[] loads = cpu.getSystemLoadAverage(3);
-
-        float systemLoadSmooth = (float) (loads[0] * 0.6f + loads[1] * 0.3f + loads[2] * 0.1f);
-        if (systemLoadSmooth < 0) systemLoadSmooth = 0f;
+        float systemLoad = (float) (loads[0] * 0.6f + loads[1] * 0.3f + loads[2] * 0.1f);
+        if (systemLoad < 0) systemLoad = 0f;
+        float systemLoadNorm = systemLoad / logicalProcessorCount;
+        float systemLoadSmooth = systemLoadEma.update(systemLoadNorm); // Quick EMA for smoothing spikes
 
         // ===== UPDATE SNAPSHOT =====
         prevProcess = currProcess;
-        prevCpuTicks = currCpuTicks;
 
-        // ===== EMA =====
-        float cpuSmooth = cpuEma.update(cpuProcNorm);
-        float ramSmooth = ramEma.update(ramProcNorm);
-        float totCpuSmooth = cpuSystemNorm > 0f ? totCpuEma.update(cpuSystemNorm) : totCpuEma.get(); // Avoid updating with 0 on invalid reads
-        float totRamSmooth = totRamEma.update(ramSystemNorm);
-
+        // state
         NodeState state = gate.update(cpuSmooth, ramSmooth, openFilesSmooth);
-
         NodeState finalState;
-        if (totCpuSmooth > 0.85f || totRamSmooth > 0.90f) { // Hardcoded thresholds? Move to config?
-            if (overrideCooldownWatch.hasPassedMillis(config.overrideCooldownMs)) {
+        if (totCpuSmooth > config.override.cpuThreshold || totRamSmooth > config.override.ramThreshold || systemLoadSmooth > config.override.systemLoadThreshold) {
+            if (overrideCooldownWatch.hasPassedMillis(config.override.cooldownMs)) {
                 overrideCooldownWatch.reset();
                 finalState = NodeState.DEGRADED;
             } else {
@@ -203,7 +207,7 @@ public class MetricSampler {
                 totRamSmooth,
                 openFilesSmooth,
                 threadPressureSmooth,
-                systemLoadSmooth / logicalProcessorCount,
+                systemLoadSmooth,
                 finalState
         );
     }
@@ -243,13 +247,27 @@ public class MetricSampler {
     }
 
     public static class Config {
-        public float cpuEmaAlpha = 0.35f;
-        public float ramEmaAlpha = 0.25f;
-        public float totCpuEmaAlpha = 0.75f;
-        public float totRamEmaAlpha = 0.45f;
-        public float threadPressureEmaAlpha = 0.5f;
-        public float openFilesEmaAlpha = 0.15f;
-        public long overrideCooldownMs = 5000;
+
+        public static class EMAConfig {
+            public float cpu = 0.35f;
+            public float ram = 0.25f;
+            public float totCpu = 0.75f;
+            public float totRam = 0.45f;
+            public float threadPressure = 0.5f;
+            public float openFiles = 0.15f;
+            public float systemLoad = 0.5f;
+        }
+
+        public static class OverrideConfig {
+            public float cpuThreshold = 0.85f;
+            public float ramThreshold = 0.90f;
+            public float systemLoadThreshold = 0.90f;
+            public long cooldownMs = 5000;
+        }
+
+        public EMAConfig ema = new EMAConfig();
+        public OverrideConfig override = new OverrideConfig();
+
 
         public LoadGate gate; // If null, built from limits below
 
@@ -270,6 +288,16 @@ public class MetricSampler {
 
         public Config withGate(@NotNull LoadGate gate) {
             this.gate = gate;
+            return this;
+        }
+
+        public Config withEMA(EMAConfig ema) {
+            this.ema = ema;
+            return this;
+        }
+
+        public Config withOverride(OverrideConfig override) {
+            this.override = override;
             return this;
         }
     }
