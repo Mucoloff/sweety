@@ -3,14 +3,14 @@ package dev.sweety.netty.loadbalancer.common.metrics;
 public final class EMA {
 
     private final float alpha; // 0 < alpha <= 1
-    private float value;
-    private boolean initialized = false;
+    private volatile float value;
+    private volatile boolean initialized = false;
 
     public EMA(float alpha) {
         this.alpha = alpha;
     }
 
-    public float update(float sample) {
+    public synchronized float update(float sample) {
         if (!initialized) {
             value = sample;
             initialized = true;

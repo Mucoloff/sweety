@@ -47,16 +47,15 @@ public abstract class Backend extends Server {
 
         //todo make a settings class for these
         final int delay = 2500;
-        final int samplingDelay = delay / 4;
 
-        this.metricsScheduler.scheduleAtFixedRate(sampler::sample, samplingDelay, samplingDelay, TimeUnit.MILLISECONDS);
+        this.sampler.startSampling();
         this.metricsScheduler.scheduleAtFixedRate(this::sendMetrics, delay, delay, TimeUnit.MILLISECONDS);
     }
 
     private void sendMetrics() {
         if (!channel.isActive() || !channel.isOpen() || !channel.isRegistered() || getClients().isEmpty()) return;
 
-        final MetricsUpdatePacket metricsPacket = new MetricsUpdatePacket(sampler.sample(), packetTimings);
+        final MetricsUpdatePacket metricsPacket = new MetricsUpdatePacket(sampler.get(), packetTimings);
         broadcastPacket(metricsPacket);
     }
 

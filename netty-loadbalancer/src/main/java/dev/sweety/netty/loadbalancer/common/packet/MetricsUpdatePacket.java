@@ -24,9 +24,9 @@ public class MetricsUpdatePacket extends Packet {
                 .writePercentual(load.ram(), SCALE)
                 .writePercentual(load.cpuTotal(), SCALE)
                 .writePercentual(load.ramTotal(), SCALE)
-                .writeFloat(load.openFiles())
+                .writePercentual(load.openFiles(), SCALE * 100)
                 .writePercentual(load.threadPressure(), SCALE)
-                .writeFloat(load.systemLoad())
+                .writePercentual(load.systemLoad(), SCALE)
                 .writeEnum(load.state())
                 .writeMap(packetTimings, (buf, pair) -> {
                     final EMA ema = pair.value();
@@ -42,9 +42,9 @@ public class MetricsUpdatePacket extends Packet {
                 this.buffer().readPercentual(SCALE),
                 this.buffer().readPercentual(SCALE),
                 this.buffer().readPercentual(SCALE),
-                this.buffer().readFloat(),
+                this.buffer().readPercentual(SCALE * 100),
                 this.buffer().readPercentual(SCALE),
-                this.buffer().readFloat(),
+                this.buffer().readPercentual(SCALE),
                 this.buffer().readEnum(NodeState.class)
         );
 

@@ -1,5 +1,6 @@
 package dev.sweety.netty.loadbalancer.backend;
 
+import dev.sweety.core.thread.ProfileThread;
 import dev.sweety.core.thread.ThreadManager;
 import dev.sweety.core.time.StopWatch;
 import dev.sweety.core.util.ObjectUtils;
@@ -17,12 +18,8 @@ import oshi.software.os.OSThread;
 import oshi.software.os.OperatingSystem;
 import oshi.util.GlobalConfig;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
-
-import static java.lang.Thread.State.TIMED_WAITING;
 
 public class MetricSampler {
 
@@ -45,12 +42,9 @@ public class MetricSampler {
 
     private final StopWatch overrideCooldownWatch = new StopWatch();
 
-    // Async thread pressure calculation
-    private final AtomicReference<Float> asyncThreadPressure = new AtomicReference<>(0f);
-    private final AtomicBoolean isThreadPressureUpdating = new AtomicBoolean(false);
-
-    private OSProcess prevProcess;
-    private long[] prevCpuTicks;
+    private final int pid;
+    private volatile OSProcess prevProcess;
+    private volatile long[] prevCpuTicks;
 
     static {
         if (dev.sweety.core.system.OperatingSystem.detectOS().equals(dev.sweety.core.system.OperatingSystem.WINDOWS)) {
@@ -81,6 +75,7 @@ public class MetricSampler {
         this.systemLoadEma = new EMA(config.ema.systemLoad);
 
         this.prevProcess = os.getCurrentProcess();
+        this.pid = prevProcess.getProcessID();
         this.prevCpuTicks = cpu.getSystemCpuLoadTicks();
 
         if (config.gate != null) {
@@ -93,7 +88,9 @@ public class MetricSampler {
             this.gate = new LoadGate(0.35f, 0.55f,
                     config.cpuLimits,
                     config.ramLimits,
-                    openFilesLimits
+                    openFilesLimits,
+                    config.threadPressureLimits,
+                    config.systemLoadLimits
             );
         }
     }
@@ -109,95 +106,103 @@ public class MetricSampler {
         this.openFilesEma.reset();
         this.gate.reset();
         this.overrideCooldownWatch.reset();
+        this.threadManager.shutdown();
     }
 
     private final ThreadManager threadManager = new ThreadManager("sampler-thread-manager");
 
-    public synchronized SmoothedLoad sample() {
-        // ===== PROCESS =====
-        // Process might be dead or not found, fallback to previous to avoid crash
-        OSProcess currProcess = ObjectUtils.nullOption(os.getProcess(prevProcess.getProcessID()), prevProcess);
+    private void sample(Runnable runnable, long timeMs) {
+        this.threadManager.getAvailableProfileThread().scheduleWithFixedDelay(runnable, timeMs, timeMs, TimeUnit.MILLISECONDS);
+    }
 
-        // Sampling CPU
+    public void startSampling() {
+        sample(this::sampleProcessCpu, config.timings.cpu);
+        sample(this::sampleProcessRam, config.timings.ram);
+        sample(this::sampleTotalCpu, config.timings.cpuTotal);
+        sample(this::sampleTotalRam, config.timings.ramTotal);
+        sample(this::sampleOpenFiles, config.timings.openFiles);
+        sample(this::sampleThreadPressure, config.timings.threadPressure);
+        sample(this::sampleSystemLoad, config.timings.systemLoad);
+    }
+
+    private void sampleProcessCpu() {
+        OSProcess currProcess = os.getProcess(prevProcess.getProcessID());
+        if (currProcess == null) currProcess = prevProcess;
         float cpuProcRawVal = (float) currProcess.getProcessCpuLoadBetweenTicks(prevProcess);
-        float cpuProcRaw =  (Float.isNaN(cpuProcRawVal) ? 0f : cpuProcRawVal);
+        float cpuProcRaw = (Float.isNaN(cpuProcRawVal) ? 0f : cpuProcRawVal);
         final int logicalProcessorCount = Math.max(1, cpu.getLogicalProcessorCount());
         float cpuProcNorm = cpuProcRaw / logicalProcessorCount;
-        float cpuSmooth = cpuEma.update(cpuProcNorm);
+        this.cpuEma.update(cpuProcNorm);
 
-        // Sampling RAM
+        this.prevProcess = currProcess;
+    }
+
+    private void sampleProcessRam() {
+        OSProcess currProcess = os.getProcess(pid);
+        if (currProcess == null) return;
         long rss = currProcess.getResidentSetSize();
         float ramProcNorm = (float) rss / Math.max(1, mem.getTotal());
-        float ramSmooth = ramEma.update(ramProcNorm);
+        this.ramEma.update(ramProcNorm);
+    }
 
-        // Sampling TOTAL CPU
+    private void sampleTotalCpu() {
         long[] currCpuTicks = cpu.getSystemCpuLoadTicks();
         float cpuSystemNorm = (float) cpu.getSystemCpuLoadBetweenTicks(prevCpuTicks);
         prevCpuTicks = currCpuTicks;
-        float totCpuSmooth = cpuSystemNorm > 0f ? totCpuEma.update(cpuSystemNorm) : totCpuEma.get(); // Avoid updating with 0 on invalid reads
+        if (cpuSystemNorm > 0f) this.totCpuEma.update(cpuSystemNorm);
+    }
 
-        // Sampling TOTAL RAM
+    private void sampleTotalRam() {
         float ramSystemNorm = 1f - ((float) mem.getAvailable() / Math.max(1, mem.getTotal()));
-        float totRamSmooth = totRamEma.update(ramSystemNorm);
+        this.totRamEma.update(ramSystemNorm);
+    }
 
-        // Sampling OPEN FILES
+    private void sampleOpenFiles() {
+        OSProcess currProcess = os.getProcess(pid);
+        if (currProcess == null) return;
         long openFiles = currProcess.getOpenFiles();
-        long maxOpenFiles = currProcess.getSoftOpenFileLimit(); // Soft limit is usually what matters for crash
+        long maxOpenFiles = currProcess.getSoftOpenFileLimit();
         if (maxOpenFiles <= 0) maxOpenFiles = currProcess.getHardOpenFileLimit();
         float openFilesNorm = maxOpenFiles > 0 ? (float) openFiles / maxOpenFiles : 0f;
-        float openFilesSmooth = openFilesEma.update(openFilesNorm);
+        this.openFilesEma.update(openFilesNorm);
+    }
 
+    private void sampleThreadPressure() {
+        OSProcess process = os.getProcess(pid);
+        if (process == null) return;
+        float val = calculatePressure(process);
+        this.threadPressureEma.update(val);
+    }
 
-        // ASYNC PRESSURE UPDATE
-        if (isThreadPressureUpdating.compareAndSet(false, true)) {
-            // Must fetch a FRESH snapshot for thread details, as getProcess() snapshot might not fully populate threads deep list
-            // or the list might be empty if not specifically requested depending on OSHI version/flags.
-            // Actually getThreadDetails() should work on the snapshot if valid.
-            // Let's create a fresh thread update task.
-            int pid = currProcess.getProcessID();
-
-            CompletableFuture.runAsync(() -> {
-                try {
-                    // Fetch fresh process process to ensure we have threads
-                    // Note: In OSHI 6+, getProcess(pid) attempts to populate everything.
-                    OSProcess freshProcess = os.getProcess(pid);
-                    if (freshProcess != null) {
-                        float val = calculatePressure(freshProcess);
-                        asyncThreadPressure.set(val);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                } finally {
-                    isThreadPressureUpdating.set(false);
-                }
-            });
-        }
-
-        float currentPressureAvg = asyncThreadPressure.get();
-        float threadPressureSmooth = threadPressureEma.update(currentPressureAvg);
-
-        // ===== SYSTEM =====
+    private void sampleSystemLoad() {
         double[] loads = cpu.getSystemLoadAverage(3);
         float systemLoad = (float) (loads[0] * 0.6f + loads[1] * 0.3f + loads[2] * 0.1f);
         if (systemLoad < 0) systemLoad = 0f;
+        final int logicalProcessorCount = Math.max(1, cpu.getLogicalProcessorCount());
         float systemLoadNorm = systemLoad / logicalProcessorCount;
-        float systemLoadSmooth = systemLoadEma.update(systemLoadNorm); // Quick EMA for smoothing spikes
+        this.systemLoadEma.update(systemLoadNorm);
+    }
 
-        // ===== UPDATE SNAPSHOT =====
-        prevProcess = currProcess;
+    public synchronized SmoothedLoad get() {
+        float cpuSmooth = cpuEma.get();
+        float ramSmooth = ramEma.get();
+        float totCpuSmooth = totCpuEma.get();
+        float totRamSmooth = totRamEma.get();
+        float openFilesSmooth = openFilesEma.get();
+        float threadPressureSmooth = threadPressureEma.get();
+        float systemLoadSmooth = systemLoadEma.get();
 
         // state
-        NodeState state = gate.update(cpuSmooth, ramSmooth, openFilesSmooth);
-        NodeState finalState;
-        if (totCpuSmooth > config.override.cpuThreshold || totRamSmooth > config.override.ramThreshold || systemLoadSmooth > config.override.systemLoadThreshold) {
-            if (overrideCooldownWatch.hasPassedMillis(config.override.cooldownMs)) {
-                overrideCooldownWatch.reset();
-                finalState = NodeState.DEGRADED;
-            } else {
-                finalState = state;
-            }
+
+        final boolean degraded = totCpuSmooth > config.override.cpuThreshold || totRamSmooth > config.override.ramThreshold || systemLoadSmooth > config.override.systemLoadThreshold;
+        final boolean timer = overrideCooldownWatch.hasPassedMillis(config.override.cooldownMs);
+
+        final NodeState state;
+        if (degraded && timer) {
+            overrideCooldownWatch.reset();
+            state = NodeState.DEGRADED;
         } else {
-            finalState = state;
+            state = gate.update(cpuSmooth, ramSmooth, openFilesSmooth, threadPressureSmooth, systemLoadSmooth);
         }
 
         return new SmoothedLoad(
@@ -208,7 +213,7 @@ public class MetricSampler {
                 openFilesSmooth,
                 threadPressureSmooth,
                 systemLoadSmooth,
-                finalState
+                state
         );
     }
 
@@ -265,22 +270,29 @@ public class MetricSampler {
             public long cooldownMs = 5000;
         }
 
+        public static class Timings {
+            public long cpu = 150, ram = 150, cpuTotal = 150, ramTotal = 150, openFiles = 1000, threadPressure = 1000, systemLoad = 1000;
+        }
+
         public EMAConfig ema = new EMAConfig();
         public OverrideConfig override = new OverrideConfig();
+        public Timings timings = new Timings();
 
 
         public LoadGate gate; // If null, built from limits below
 
         public LoadGate.Limits cpuLimits = new LoadGate.Limits(0.55f, 0.70f, 0.6f);
         public LoadGate.Limits ramLimits = new LoadGate.Limits(0.60f, 0.75f, 0.4f);
+        public LoadGate.Limits openFilesLimits = new LoadGate.Limits(0.60f, 0.80f, 0.5f);
+        public LoadGate.Limits aggressiveFilesLimits = new LoadGate.Limits(0.40f, 0.60f, 0.7f); // Aggressive weight, lower threshold
+        public LoadGate.Limits threadPressureLimits = new LoadGate.Limits(0.50f, 0.70f, 0.5f);
+        public LoadGate.Limits systemLoadLimits = new LoadGate.Limits(0.55f, 0.75f, 0.5f);
 
         // Calculate limits based on soft and hard open file limits
         public BiFunction<Long, Long, LoadGate.Limits> openFilesLimitsCalculator = (soft, hard) -> {
             // Example dynamic logic: if limit is low (< 4096), be more conservative
-            if (soft > 0 && soft < 4096) {
-                return new LoadGate.Limits(0.40f, 0.60f, 0.7f); // Aggressive weight, lower threshold
-            }
-            return new LoadGate.Limits(0.60f, 0.80f, 0.5f);
+            if (soft > 0 && soft < 4096) return aggressiveFilesLimits;
+            return openFilesLimits;
         };
 
         public Config() {

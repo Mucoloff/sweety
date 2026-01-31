@@ -94,6 +94,13 @@ public class BackendNode extends Client {
             updateMaxObserved(avgLoad, currentLoad, currentTime);
 
             usageScore = (metrics.cpu() + metrics.ram()) * 0.5f * ((state = metrics.state()) == NodeState.DEGRADED ? 0.7f : 1f);
+            /* todo
+                ? cpuTotal
+                ? ramTotal
+                metrics.openFiles();
+                metrics.threadPressure();
+                metrics.systemLoad();
+            */
             latencyScore = MathUtils.clamp(requestManager.getAverageLatency() / maxExpectedLatency);
             bandwidthScore = avgLoad / maxObservedAvgLoad;
             currentBandwidthScore = currentLoad / maxObservedCurrentLoad;
@@ -120,6 +127,7 @@ public class BackendNode extends Client {
 
 
     private volatile int inFlight = 0;
+
     public synchronized boolean canAcceptPacket() {
         return this.inFlight < maxInFlight;
     }
