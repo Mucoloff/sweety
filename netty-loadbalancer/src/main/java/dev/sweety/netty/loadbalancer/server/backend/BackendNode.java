@@ -93,24 +93,30 @@ public class BackendNode extends Client {
             float currentTime = (float) packetTimings.values().stream().mapToDouble(Float::doubleValue).average().orElse(0.5f);
             updateMaxObserved(avgLoad, currentLoad, currentTime);
 
-            usageScore = (metrics.cpu() + metrics.ram()) * 0.5f * ((state = metrics.state()) == NodeState.DEGRADED ? 0.7f : 1f);
-            /* todo
-                ? cpuTotal
-                ? ramTotal
-                metrics.openFiles();
-                metrics.threadPressure();
-                metrics.systemLoad();
-            */
+            // Update node state first (so penalty applies consistently)
+            final float statePenalty = ((state = metrics.state()) == NodeState.DEGRADED ? 0.7f : 1f);
+
+            // Resource usage score: weighted blend of process usage + pressure indicators.
+            // (CPU/RAM stay the main driver, the others help detect contention / nearing limits.)
+            usageScore = statePenalty * (
+                    0.32f * metrics.cpu()
+                            + 0.28f * metrics.ram()
+                            + 0.15f * metrics.openFiles()
+                            + 0.15f * metrics.threadPressure()
+                            + 0.10f * metrics.systemLoad()
+            );
+
             latencyScore = MathUtils.clamp(requestManager.getAverageLatency() / maxExpectedLatency);
             bandwidthScore = avgLoad / maxObservedAvgLoad;
             currentBandwidthScore = currentLoad / maxObservedCurrentLoad;
             packetTimeScore = currentTime / maxObservedPacketTime;
 
-            totalScore = 0.35f * usageScore
+            // Total score: keep previous weights but shift a bit from bandwidth -> usage to reflect new richer usage signal.
+            totalScore = 0.40f * usageScore
                     + 0.25f * latencyScore
-                    + 0.2f * bandwidthScore
-                    + 0.1f * currentBandwidthScore
-                    + 0.1f * packetTimeScore;
+                    + 0.15f * bandwidthScore
+                    + 0.10f * currentBandwidthScore
+                    + 0.10f * packetTimeScore;
 
         } else if (loadBalancer != null && packet instanceof InternalPacket internal) {
             requestManager.completeRequest(internal.getRequestId());
