@@ -26,14 +26,20 @@ public class MathUtils {
         return 1f / (1f + (float)Math.exp(-val));
     }
 
+    public static float clamp(float v) {
+        return Math.max(0f, Math.min(1f, v));
+    }
+
     public interface Compare<T> {
         boolean compare(T a, T b);
     }
 
-    public <T> Stream<T> parallel(Collection<T> collection) {
+    public static <T> Stream<T> parallel(Collection<T> collection) {
         int cores = Runtime.getRuntime().availableProcessors();
-        int threshold = 4 * cores;
+        if (cores <= 1) return collection.stream();
+        int threshold = 1024;
         if (collection.size() < threshold) return collection.stream();
         return collection.parallelStream();
     }
+
 }

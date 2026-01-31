@@ -9,6 +9,8 @@ import dev.sweety.netty.packet.model.Packet;
 import java.util.HashMap;
 import java.util.Map;
 
+import static dev.sweety.core.math.MathUtils.clamp;
+
 public class MetricsUpdatePacket extends Packet {
 
     private static final float SCALE = 10_000f;
@@ -24,30 +26,25 @@ public class MetricsUpdatePacket extends Packet {
 
     public MetricsUpdatePacket(final SmoothedLoad load, Map<Integer, EMA> packetTimings) {
         this.buffer()
-                .writeVarInt((int) (clamp(load.cpu()) * SCALE))
-                .writeVarInt((int) (clamp(load.ram()) * SCALE))
-                .writeVarInt((int) (clamp(load.cpuTotal()) * SCALE))
-                .writeVarInt((int) (clamp(load.ramTotal()) * SCALE))
+                .writePercentual(load.cpu(), SCALE)
+                .writePercentual(load.ram(), SCALE)
+                .writePercentual(load.cpuTotal(), SCALE)
+                .writePercentual(load.ramTotal(), SCALE)
                 .writeEnum(load.state())
                 .writeMap(packetTimings, (buf, pair) -> {
                     final EMA ema = pair.value();
-                    buf.writeVarInt(pair.key()).writeVarInt((int) (clamp(ema.get()) * SCALE));
+                    buf.writeVarInt(pair.key()).writePercentual(ema.get(), SCALE);
                 });
     }
 
     public MetricsUpdatePacket(final int _id, final long _timestamp, final byte[] _data) {
         super(_id, _timestamp, _data);
-        this.cpu = this.buffer().readVarInt() / SCALE;
-        this.ram = this.buffer().readVarInt() / SCALE;
-        this.cpuTotal = this.buffer().readVarInt() / SCALE;
-        this.ramTotal = this.buffer().readVarInt() / SCALE;
+        this.cpu = this.buffer().readPercentual(SCALE);
+        this.ram = this.buffer().readPercentual(SCALE);
+        this.cpuTotal = this.buffer().readPercentual(SCALE);
+        this.ramTotal = this.buffer().readPercentual(SCALE);
         this.state = this.buffer().readEnum(NodeState.class);
-        this.packetTimings = this.buffer().readMap(PacketBuffer::readVarInt, buf -> buf.readVarInt() / SCALE, HashMap::new);
-
-    }
-
-    public static float clamp(float v) {
-        return Math.max(0f, Math.min(1f, v));
+        this.packetTimings = this.buffer().readMap(PacketBuffer::readVarInt, buf -> buf.readPercentual(SCALE), HashMap::new);
     }
 
     public float cpu() {

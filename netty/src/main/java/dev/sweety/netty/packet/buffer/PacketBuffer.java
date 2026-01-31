@@ -1,5 +1,6 @@
 package dev.sweety.netty.packet.buffer;
 
+import dev.sweety.core.math.MathUtils;
 import dev.sweety.netty.messaging.exception.PacketDecodeException;
 import dev.sweety.netty.packet.buffer.io.CallableDecoder;
 import dev.sweety.netty.packet.buffer.io.CallableEncoder;
@@ -11,7 +12,6 @@ import it.unimi.dsi.fastutil.Pair;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.EOFException;
-import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -604,26 +604,11 @@ public class PacketBuffer {
         return this.nettyBuffer;
     }
 
-    // Compute CRC32 directly on the ByteBuf content without altering readerIndex
-    public int computeCrc32(int seed) {
-        java.util.zip.CRC32 crc32 = new java.util.zip.CRC32();
-        // Seed via 4 bytes
-        ByteBuffer seedBuf = ByteBuffer.allocate(4).putInt(seed);
-        seedBuf.flip();
-        crc32.update(seedBuf);
-        // If heap-backed, use nioBuffer for zero-copy
-        int idx = this.nettyBuffer.readerIndex();
-        int len = this.nettyBuffer.readableBytes();
-        ByteBuffer nio = this.nettyBuffer.nioBuffer(idx, len);
-        crc32.update(nio);
-        return (int) crc32.getValue();
+    public PacketBuffer writePercentual(float percent, float scale) {
+        return this.writeVarInt((int) (MathUtils.clamp(percent) * scale));
     }
 
-    public PacketBuffer writePercentual(float percent) {
-        return this.writeVarInt((int) (percent * 100));
-    }
-
-    public float readPercentual() {
-        return this.readVarInt() * 0.01f;
+    public float readPercentual(float scale) {
+        return this.readVarInt() / scale;
     }
 }

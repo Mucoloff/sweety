@@ -14,10 +14,14 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.string.StringDecoder;
+import io.netty.handler.codec.string.StringEncoder;
+import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.EventExecutor;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -66,14 +70,16 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
         this.packets = packets;
         this.packetRegistry = packetRegistry;
 
-        final Consumer<SocketChannel> initChannelConsumer = (ch) -> {
-            ChannelPipeline p = ch.pipeline();
-            p.addLast(
-                    new NettyDecoder(this.packetRegistry),
-                    new NettyWatcher(this),
-                    new NettyEncoder(this.packetRegistry)
-            );
-
+        final ChannelInitializer<SocketChannel> init = new ChannelInitializer<>() {
+            @Override
+            protected void initChannel(SocketChannel ch) {
+                ChannelPipeline p = ch.pipeline();
+                p.addLast(
+                        new NettyDecoder(Messenger.this.packetRegistry),
+                        new NettyWatcher(Messenger.this),
+                        new NettyEncoder(Messenger.this.packetRegistry)
+                );
+            }
         };
 
         // Configura bootstrap UNA volta sola
@@ -83,24 +89,14 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
                     .option(ChannelOption.SO_BACKLOG, 128)
                     .childOption(ChannelOption.TCP_NODELAY, true)
                     .childOption(ChannelOption.SO_KEEPALIVE, true)
-                    .childHandler(new ChannelInitializer<SocketChannel>() {
-                        @Override
-                        protected void initChannel(SocketChannel ch) {
-                            initChannelConsumer.accept(ch);
-                        }
-                    });
+                    .childHandler(init);
         } else if (bootstrap instanceof Bootstrap client) {
             client.group(this.worker)
                     .channel(NioSocketChannel.class)
                     .option(ChannelOption.TCP_NODELAY, true)
                     .option(ChannelOption.SO_KEEPALIVE, true)
                     .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
-                    .handler(new ChannelInitializer<SocketChannel>() {
-                        @Override
-                        protected void initChannel(SocketChannel ch) {
-                            initChannelConsumer.accept(ch);
-                        }
-                    });
+                    .handler(init);
         }
     }
 

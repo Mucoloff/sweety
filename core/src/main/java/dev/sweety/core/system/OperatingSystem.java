@@ -34,6 +34,15 @@ public enum OperatingSystem {
         this.name = name;
     }
 
+    public static OperatingSystem detectOS() {
+        String os = System.getProperty("os.name").toLowerCase(Locale.ROOT);
+        if (os.contains("win")) return OperatingSystem.WINDOWS;
+        if (os.contains("mac")) return OperatingSystem.OSX;
+        if (os.contains("solaris") || os.contains("sunos")) return OperatingSystem.SOLARIS;
+        if (os.contains("linux") || os.contains("unix")) return OperatingSystem.LINUX;
+        return OperatingSystem.UNKNOWN;
+    }
+
     public void open(URL url) {
         try {
             Process process = Runtime.getRuntime().exec(this.getURLOpenCommand(url));
@@ -66,9 +75,7 @@ public enum OperatingSystem {
 
     protected String[] getURLOpenCommand(URL url) {
         String string = url.toString();
-        if ("file".equals(url.getProtocol())) {
-            string = string.replace("file:", "file://");
-        }
+        if ("file".equals(url.getProtocol())) string = string.replace("file:", "file://");
 
         return new String[]{"xdg-open", string};
     }
@@ -80,15 +87,6 @@ public enum OperatingSystem {
             System.err.printf("Couldn't open uri %s %s\n", uri, exception);
         }
 
-    }
-
-    public static OperatingSystem detectOS() {
-        String os = System.getProperty("os.name").toLowerCase(Locale.ROOT);
-        if (os.contains("win")) return OperatingSystem.WINDOWS;
-        if (os.contains("mac")) return OperatingSystem.OSX;
-        if (os.contains("solaris") || os.contains("sunos")) return OperatingSystem.SOLARIS;
-        if (os.contains("linux") || os.contains("unix")) return OperatingSystem.LINUX;
-        return OperatingSystem.UNKNOWN;
     }
 
 }

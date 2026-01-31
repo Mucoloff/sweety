@@ -4,6 +4,7 @@ import lombok.experimental.UtilityClass;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -36,7 +37,6 @@ public class ObjectUtils {
 
     public <E extends Enum<E>> E getByOrdinalMod(int ordinal, Class<E> clazz) {
         return getByOrdinalMod(ordinal, clazz.getEnumConstants());
-
     }
 
     public <E extends Enum<E>> E getByName(String name, Class<E> clazz) {
@@ -49,7 +49,7 @@ public class ObjectUtils {
         return factory.get();
     }
 
-    public static <T> T make(T object, java.util.function.Consumer<T> initializer) {
+    public static <T> T make(T object, Consumer<T> initializer) {
         initializer.accept(object);
         return object;
     }

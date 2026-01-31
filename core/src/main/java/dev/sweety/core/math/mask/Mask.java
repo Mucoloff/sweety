@@ -6,20 +6,21 @@ public interface Mask {
 
     byte[] masks();
 
-    default boolean has(int i, byte index){
-        return (masks()[i] & index) == index;
+    default boolean has(int i, int index){
+        final byte idx = (byte) index;
+        return (masks()[i] & idx) == idx;
     }
 
-    default void set(int i, byte index) {
-        masks()[i] |= index;
+    default void set(int i, int index) {
+        masks()[i] |= (byte) index;
     }
 
-    default void unset(int i, byte index) {
+    default void unset(int i, int index) {
         masks()[i] &= (byte) ~index;
     }
 
-    default void set(int i, byte index, boolean state) {
-        if (state) masks()[i] |= index;
+    default void set(int i, int index, boolean state) {
+        if (state) masks()[i] |= (byte) index;
         else masks()[i] &= (byte) ~index;
     }
 

@@ -35,6 +35,7 @@ public class PacketDecoder {
         if (in.readableBytes() - seedBuf.remaining() < 2) return; // minimal header
         in.markReaderIndex();
 
+        // Check if we can read at least the flags
         final int id = in.readVarInt();
         if (cantRead(in, 1)) return;
 
@@ -43,6 +44,7 @@ public class PacketDecoder {
         final long timestamp;
 
         if (hasTimestamp) {
+            // Check if we can read the varlong
             if (cantRead(in, 1)) return;
             timestamp = in.readVarLong();
         } else timestamp = Messenger.timeMode.now();
@@ -57,11 +59,12 @@ public class PacketDecoder {
         } else {
             final boolean compressed = in.readBoolean();
 
-
+            // Check if we can read the payload length
             if (cantRead(in, 1)) return;
             final int payloadLength = in.readVarInt();
 
             if (cantRead(in, payloadLength)) return;
+
             // Get a retained slice of the payload for zero-copy checksum
             final PacketBuffer slice = in.readRetainedSlice(payloadLength);
             final ByteBuf nioView = slice.nettyBuffer();
@@ -80,12 +83,18 @@ public class PacketDecoder {
             }
         }
 
+        // Check for checksum VarInt
+        if (in.readableBytes() < 1) {
+            if (payloadBuf != Unpooled.EMPTY_BUFFER)
+                payloadBuf.release();
+            in.resetReaderIndex();
+            return;
+        }
 
-        if (cantRead(in, 1)) return;
         final int checksum = in.readVarInt();
         final int check = (int) crc32.getValue();
         if (check != checksum) {
-            payloadBuf.release();
+            if (payloadBuf != Unpooled.EMPTY_BUFFER) payloadBuf.release();
             throw new PacketDecodeException("Invalid checksum for packetId " + id);
         }
 

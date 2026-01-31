@@ -1,4 +1,3 @@
-
 package dev.sweety.netty.packet.model;
 
 import dev.sweety.core.crypt.ChecksumUtils;

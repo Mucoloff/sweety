@@ -19,19 +19,15 @@ public class NettyWatcher extends ChannelHandlerAdapter {
             try {
                 this.messenger.onPacketReceive(ctx, packet);
             } finally {
-                // Release inbound packet buffer to prevent leaks
-                try {
-                    //packet.release();
-                } catch (Throwable ignored) {
-                }
+                packet.release();
             }
-        } else ctx.close();
+        } else ctx.fireChannelRead(msg);
     }
 
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         this.messenger.join(ctx, ctx.newPromise());
 
-        Packet[] initial = this.messenger.getPackets();
+        final Packet[] initial = this.messenger.getPackets();
         if (initial != null && initial.length > 0) {
             this.messenger.sendPacket(ctx, initial).exceptionally(ex -> {
                 this.messenger.exception(ctx, new Exception("Watcher failed to send initial packets", ex));

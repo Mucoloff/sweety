@@ -31,7 +31,8 @@ public class PacketEncoder {
         final boolean hasTimestamp = packet.timestamp() > 0L;
         final PacketBuffer payloadBuf = packet.buffer();
         final ByteBuf payloadNetty = payloadBuf.nettyBuffer();
-        final boolean hasPayload = payloadNetty.readableBytes() > 0;
+        final int readable = payloadNetty.readableBytes();
+        final boolean hasPayload = readable > 0;
 
         out.writeVarInt(packetId).writeBoolean(hasTimestamp).writeBoolean(hasPayload);
         if (hasTimestamp) out.writeVarLong(packet.timestamp());
@@ -40,11 +41,12 @@ public class PacketEncoder {
         CRC32C crc32 = ChecksumUtils.crc32(true);
         final ByteBuffer seedBuf = ByteBuffer.allocate(4).putInt(Messenger.SEED).order(ByteOrder.BIG_ENDIAN).flip();
         crc32.update(seedBuf);
+
         if (hasPayload) {
-            final int readable = payloadNetty.readableBytes();
             final boolean compressed;
             ByteBuf toWrite = payloadNetty.slice(payloadNetty.readerIndex(), readable);
             toWrite.retain();
+
             if (readable < ZIP_THRESHOLD) {
                 compressed = false;
             } else {
