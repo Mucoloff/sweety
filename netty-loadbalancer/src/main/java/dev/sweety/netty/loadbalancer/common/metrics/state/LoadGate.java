@@ -1,44 +1,33 @@
 package dev.sweety.netty.loadbalancer.common.metrics.state;
 
-import java.util.Arrays;
-import java.util.stream.IntStream;
 
 public final class LoadGate {
 
-    private NodeState state = NodeState.HEALTHY;
+    private volatile NodeState state = NodeState.HEALTHY;
 
-    // soglie per metrica (stessa lunghezza di in/out)
     private final float min, max;
     private final float[] in;
     private final float[] out;
     private final float[] weights;
 
+    private final int count;
+
     public LoadGate(float min, float max, Limits... limits) {
         if (min >= max) throw new IllegalArgumentException("min must be less than max");
         this.min = min;
         this.max = max;
-        if (limits == null || limits.length == 0) throw new IllegalArgumentException("limits is empty");
-        this.in = new float[limits.length];
-        this.out = new float[limits.length];
-        this.weights = new float[limits.length];
-        for (int i = 0; i < limits.length; i++) {
+        if (limits == null || (this.count = limits.length) == 0) throw new IllegalArgumentException("limits is empty");
+        this.in = new float[this.count];
+        this.out = new float[this.count];
+        this.weights = new float[this.count];
+        for (int i = 0; i < this.count; i++) {
             this.in[i] = limits[i].in();
             this.out[i] = limits[i].out();
             this.weights[i] = limits[i].weight();
         }
     }
 
-    public LoadGate(float min, float max) {
-        this(min, max,
-                new Limits(0.55f, 0.70f, 0.6f), // CPU
-                new Limits(0.60f, 0.75f, 0.4f)); // RAM
-    }
-
-    public LoadGate(){
-        this(0.35f, 0.55f);
-    }
-
-    public NodeState update(float... metrics) {
+    public synchronized NodeState update(float... metrics) {
         if (metrics == null) throw new IllegalArgumentException("metrics null");
         if (metrics.length != in.length)
             throw new IllegalArgumentException("metrics length mismatch: expected " + in.length + " got " + metrics.length);
@@ -54,13 +43,17 @@ public final class LoadGate {
         return state;
     }
 
-    public void reset() {
+    public synchronized void reset() {
         this.state = NodeState.HEALTHY;
+    }
+
+    public NodeState get() {
+        return state;
     }
 
     private boolean aboveOut(float... metrics) {
         float value = 0f;
-        for (int i = 0; i < metrics.length; i++) {
+        for (int i = 0; i < metrics.length && i < this.count; i++) {
             if (metrics[i] > out[i]) {
                 value += weights[i];
             }
@@ -70,7 +63,7 @@ public final class LoadGate {
 
     private boolean belowIn(float... metrics) {
         float value = 0f;
-        for (int i = 0; i < metrics.length; i++) {
+        for (int i = 0; i < metrics.length && i < this.count; i++) {
             if (metrics[i] >= in[i]) {
                 value += weights[i];
             }
@@ -78,6 +71,19 @@ public final class LoadGate {
         return value <= min;
     }
 
+    @Override
+    public String toString() {
+        return "LoadGate{" +
+                "state=" + state +
+                ", min=" + min +
+                ", max=" + max +
+                '}';
+    }
+
     public record Limits(float in, float out, float weight) {
+        public Limits {
+            if (in >= out) throw new IllegalArgumentException("in must be less than out");
+            if (weight <= 0) throw new IllegalArgumentException("weight must be positive");
+        }
     }
 }

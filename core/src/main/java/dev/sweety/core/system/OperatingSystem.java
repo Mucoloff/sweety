@@ -35,7 +35,7 @@ public enum OperatingSystem {
     }
 
     public static OperatingSystem detectOS() {
-        String os = System.getProperty("os.name").toLowerCase(Locale.ROOT);
+        String os = System.getProperty("os.name", "generic").toLowerCase(Locale.ROOT);
         if (os.contains("win")) return OperatingSystem.WINDOWS;
         if (os.contains("mac")) return OperatingSystem.OSX;
         if (os.contains("solaris") || os.contains("sunos")) return OperatingSystem.SOLARIS;

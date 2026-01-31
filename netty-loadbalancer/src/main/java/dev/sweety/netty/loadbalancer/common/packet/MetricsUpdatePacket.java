@@ -9,19 +9,13 @@ import dev.sweety.netty.packet.model.Packet;
 import java.util.HashMap;
 import java.util.Map;
 
-import static dev.sweety.core.math.MathUtils.clamp;
 
 public class MetricsUpdatePacket extends Packet {
 
     private static final float SCALE = 10_000f;
 
-    //todo array of floats for custom metrics?
-    private float cpu;       // EMA process / machine
-    private float ram;       // EMA process / machine
-    private float cpuTotal;  // system (debug)
-    private float ramTotal;  // system (debug)
+    private SmoothedLoad load;
 
-    private NodeState state; // HEALTHY / DEGRADED
     private Map<Integer, Float> packetTimings; // packet ID -> EMA latency
 
     public MetricsUpdatePacket(final SmoothedLoad load, Map<Integer, EMA> packetTimings) {
@@ -30,6 +24,9 @@ public class MetricsUpdatePacket extends Packet {
                 .writePercentual(load.ram(), SCALE)
                 .writePercentual(load.cpuTotal(), SCALE)
                 .writePercentual(load.ramTotal(), SCALE)
+                .writeFloat(load.openFiles())
+                .writePercentual(load.threadPressure(), SCALE)
+                .writeFloat(load.systemLoad())
                 .writeEnum(load.state())
                 .writeMap(packetTimings, (buf, pair) -> {
                     final EMA ema = pair.value();
@@ -39,32 +36,52 @@ public class MetricsUpdatePacket extends Packet {
 
     public MetricsUpdatePacket(final int _id, final long _timestamp, final byte[] _data) {
         super(_id, _timestamp, _data);
-        this.cpu = this.buffer().readPercentual(SCALE);
-        this.ram = this.buffer().readPercentual(SCALE);
-        this.cpuTotal = this.buffer().readPercentual(SCALE);
-        this.ramTotal = this.buffer().readPercentual(SCALE);
-        this.state = this.buffer().readEnum(NodeState.class);
+
+        this.load = new SmoothedLoad(
+                this.buffer().readPercentual(SCALE),
+                this.buffer().readPercentual(SCALE),
+                this.buffer().readPercentual(SCALE),
+                this.buffer().readPercentual(SCALE),
+                this.buffer().readFloat(),
+                this.buffer().readPercentual(SCALE),
+                this.buffer().readFloat(),
+                this.buffer().readEnum(NodeState.class)
+        );
+
+
         this.packetTimings = this.buffer().readMap(PacketBuffer::readVarInt, buf -> buf.readPercentual(SCALE), HashMap::new);
     }
 
     public float cpu() {
-        return cpu;
+        return load.cpu();
     }
 
     public float ram() {
-        return ram;
+        return load.ram();
     }
 
     public float cpuTotal() {
-        return cpuTotal;
+        return load.cpuTotal();
     }
 
     public float ramTotal() {
-        return ramTotal;
+        return load.ramTotal();
+    }
+
+    public float openFiles() {
+        return load.openFiles();
+    }
+
+    public float threadPressure() {
+        return load.threadPressure();
+    }
+
+    public float systemLoad() {
+        return load.systemLoad();
     }
 
     public NodeState state() {
-        return state;
+        return load.state();
     }
 
     public Map<Integer, Float> packetTimings() {

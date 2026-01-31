@@ -2,6 +2,7 @@ package dev.sweety.netty.loadbalancer.server.backend;
 
 import dev.sweety.core.color.AnsiColor;
 import dev.sweety.core.logger.SimpleLogger;
+import dev.sweety.core.math.MathUtils;
 import dev.sweety.core.math.RandomUtils;
 import dev.sweety.netty.feature.AutoReconnect;
 import dev.sweety.netty.loadbalancer.common.metrics.state.NodeState;
@@ -92,9 +93,8 @@ public class BackendNode extends Client {
             float currentTime = (float) packetTimings.values().stream().mapToDouble(Float::doubleValue).average().orElse(0.5f);
             updateMaxObserved(avgLoad, currentLoad, currentTime);
 
-
             usageScore = (metrics.cpu() + metrics.ram()) * 0.5f * ((state = metrics.state()) == NodeState.DEGRADED ? 0.7f : 1f);
-            latencyScore = MetricsUpdatePacket.clamp(requestManager.getAverageLatency() / maxExpectedLatency);
+            latencyScore = MathUtils.clamp(requestManager.getAverageLatency() / maxExpectedLatency);
             bandwidthScore = avgLoad / maxObservedAvgLoad;
             currentBandwidthScore = currentLoad / maxObservedCurrentLoad;
             packetTimeScore = currentTime / maxObservedPacketTime;

@@ -36,7 +36,7 @@ public abstract class Backend extends Server {
 
     private final ThreadManager threadManager = new ThreadManager("backend-thread-manager");
 
-    private final ScheduledExecutorService metricsScheduler = ThreadUtil.namedScheduler("metrics-scheduler");
+    private final ScheduledExecutorService metricsScheduler = ThreadUtil.namedScheduler("metrics-sampler");
     private final MetricSampler sampler = new MetricSampler();
 
     public Backend(String host, int port, IPacketRegistry packetRegistry, Packet... packets) {
