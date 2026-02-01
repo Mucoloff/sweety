@@ -156,8 +156,7 @@ public class BackendNode extends Client {
 
     @Override
     public void exception(ChannelHandlerContext ctx, Throwable throwable) {
-        logger.push("exception").error(throwable).pop();
-        autoReconnect.onException(throwable);
+        if (!autoReconnect.onException(throwable)) logger.push("exception").error(throwable).pop();
     }
 
     @Override

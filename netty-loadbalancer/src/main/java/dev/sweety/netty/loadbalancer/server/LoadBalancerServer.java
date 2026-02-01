@@ -6,6 +6,7 @@ import dev.sweety.core.math.function.TriFunction;
 import dev.sweety.core.math.vector.deque.BlockingDeque;
 import dev.sweety.core.thread.ProfileThread;
 import dev.sweety.core.thread.ThreadManager;
+import dev.sweety.netty.feature.AutoReconnect;
 import dev.sweety.netty.feature.TransactionManager;
 import dev.sweety.netty.loadbalancer.common.packet.InternalPacket;
 import dev.sweety.netty.loadbalancer.server.backend.BackendNode;
@@ -51,7 +52,7 @@ public class LoadBalancerServer extends Server {
     @Override
     public void onPacketReceive(ChannelHandlerContext ctx, Packet packet) {
         if (packet instanceof InternalPacket) return;
-        pendingPackets.enqueue(new PacketContext(packet.rewind(), ctx));
+        pendingPackets.enqueue(new PacketContext(packet.retain().rewind(), ctx));
         drainPending();
     }
 
@@ -71,7 +72,7 @@ public class LoadBalancerServer extends Server {
         } else this.drainPendingInternal();
     }
 
-    private synchronized void drainPendingInternal() {
+    private void drainPendingInternal() {
         if (pendingPackets.isEmpty()) return;
         PacketContext pq;
 
@@ -122,7 +123,7 @@ public class LoadBalancerServer extends Server {
 
     @Override
     public void exception(ChannelHandlerContext ctx, Throwable throwable) {
-        logger.push("exception").error(throwable).pop();
+        if (!AutoReconnect.exception(throwable)) logger.push("exception").error(throwable).pop();
         ctx.close();
     }
 

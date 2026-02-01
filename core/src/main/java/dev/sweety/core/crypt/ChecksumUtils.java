@@ -65,35 +65,70 @@ public class ChecksumUtils {
         return sb.toString();
     }
 
-    public int murmurHash3(byte[] data, int seed) {
-        ByteBuffer buf = ByteBuffer.wrap(data);
+    /**
+     * MurmurHash3 a 32-bit. Ideale per Bloom Filters e Count-Min Sketch.
+     * È un hash non crittografico ma con un'ottima distribuzione.
+     */
+    public static int murmurHash3(byte[] data, int seed) {
         int h1 = seed;
-        while (buf.remaining() >= 4) {
-            int k = buf.getInt();
-            k *= 0xcc9e2d51;
-            k = Integer.rotateLeft(k, 15);
-            k *= 0x1b873593;
-            h1 ^= k;
-            h1 = Integer.rotateLeft(h1, 13);
-            h1 = h1 * 5 + 0xe6546b64;
-        }
-        int k1 = 0;
-        int rem = buf.remaining();
-        if (rem > 0) {
-            for (int i = 0; i < rem; i++) {
-                k1 ^= (buf.get() & 0xFF) << (i * 8);
-            }
+        int len = data.length;
+        int nblocks = len / 4;
+
+        // --- Body ---
+        for (int i = 0; i < nblocks; i++) {
+            int k1 = getBlock(data, i);
+
             k1 *= 0xcc9e2d51;
             k1 = Integer.rotateLeft(k1, 15);
             k1 *= 0x1b873593;
+
             h1 ^= k1;
+            h1 = Integer.rotateLeft(h1, 13);
+            h1 = h1 * 5 + 0xe6546b64;
         }
-        h1 ^= data.length;
-        h1 ^= (h1 >>> 16);
+
+        // --- Tail ---
+        int k1 = 0;
+        int tailIndex = nblocks * 4;
+        switch (len & 3) {
+            case 3:
+                k1 ^= (data[tailIndex + 2] & 0xff) << 16;
+            case 2:
+                k1 ^= (data[tailIndex + 1] & 0xff) << 8;
+            case 1:
+                k1 ^= (data[tailIndex] & 0xff);
+                k1 *= 0xcc9e2d51;
+                k1 = Integer.rotateLeft(k1, 15);
+                k1 *= 0x1b873593;
+                h1 ^= k1;
+        }
+
+        // --- Finalization ---
+        h1 ^= len;
+        h1 ^= h1 >>> 16;
         h1 *= 0x85ebca6b;
-        h1 ^= (h1 >>> 13);
+        h1 ^= h1 >>> 13;
         h1 *= 0xc2b2ae35;
-        h1 ^= (h1 >>> 16);
+        h1 ^= h1 >>> 16;
+
         return h1;
+    }
+
+    private static int getBlock(byte[] data, int i) {
+        int index = i * 4;
+        return ((data[index] & 0xff)) |
+                ((data[index + 1] & 0xff) << 8) |
+                ((data[index + 2] & 0xff) << 16) |
+                ((data[index + 3] & 0xff) << 24);
+    }
+
+    /**
+     * Alternativa rapida se hai già un int come base.
+     */
+    public static int hashInt(int x) {
+        x = ((x >>> 16) ^ x) * 0x45d9f3b;
+        x = ((x >>> 16) ^ x) * 0x45d9f3b;
+        x = (x >>> 16) ^ x;
+        return x;
     }
 }
