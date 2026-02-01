@@ -11,8 +11,8 @@ import java.util.concurrent.CompletableFuture;
 
 public abstract class Client extends Messenger<Bootstrap> {
 
-    public Client(String host, int port, IPacketRegistry packetRegistry, Packet... packets) {
-        super(new Bootstrap(), host, port, packetRegistry, packets);
+    public Client(String host, int port, IPacketRegistry packetRegistry, int localPort, Packet... packets) {
+        super(new Bootstrap(), host, port, packetRegistry, localPort, packets);
     }
 
     public CompletableFuture<Void> sendPacket(Packet packet) {

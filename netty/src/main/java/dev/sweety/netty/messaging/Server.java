@@ -16,7 +16,7 @@ public abstract class Server extends Messenger<ServerBootstrap> {
     private final Map<SocketAddress, ChannelHandlerContext> clients = new ConcurrentHashMap<>();
 
     public Server(String host, int port, IPacketRegistry packetRegistry, Packet... packets) {
-        super(new ServerBootstrap(), host, port, packetRegistry, packets);
+        super(new ServerBootstrap(), host, port, packetRegistry, -1, packets);
     }
 
     public void broadcastPacket(final Packet msg) {

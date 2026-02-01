@@ -1,9 +1,7 @@
 package dev.sweety.netty.loadbalancer.backend;
 
-import dev.sweety.core.thread.ProfileThread;
 import dev.sweety.core.thread.ThreadManager;
 import dev.sweety.core.time.StopWatch;
-import dev.sweety.core.util.ObjectUtils;
 import dev.sweety.netty.loadbalancer.common.metrics.EMA;
 import dev.sweety.netty.loadbalancer.common.metrics.SmoothedLoad;
 import dev.sweety.netty.loadbalancer.common.metrics.state.LoadGate;
@@ -57,7 +55,7 @@ public class MetricSampler {
         this(new Config());
     }
 
-    public MetricSampler(Config config) {
+    public MetricSampler(final Config config) {
         this.config = config;
 
         this.si = new SystemInfo();
@@ -112,6 +110,7 @@ public class MetricSampler {
     private final ThreadManager threadManager = new ThreadManager("sampler-thread-manager");
 
     private void sample(Runnable runnable, long timeMs) {
+        if (timeMs <= 0) return;
         this.threadManager.getAvailableProfileThread().scheduleWithFixedDelay(runnable, timeMs, timeMs, TimeUnit.MILLISECONDS);
     }
 
@@ -253,6 +252,7 @@ public class MetricSampler {
 
     public static class Config {
 
+        // use negative values to disable
         public static class EMAConfig {
             public float cpu = 0.35f;
             public float ram = 0.25f;
@@ -277,7 +277,6 @@ public class MetricSampler {
         public EMAConfig ema = new EMAConfig();
         public OverrideConfig override = new OverrideConfig();
         public Timings timings = new Timings();
-
 
         public LoadGate gate; // If null, built from limits below
 

@@ -23,12 +23,12 @@ public class InternalPacket extends PacketTransaction<InternalPacket.Forward, In
     }
 
     @Override
-    protected Forward constructRequest() {
+    protected Forward request() {
         return new Forward();
     }
 
     @Override
-    protected Forward constructResponse() {
+    protected Forward response() {
         return new Forward();
     }
 

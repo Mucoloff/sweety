@@ -40,7 +40,7 @@ public class TestClient extends Client {
 
 
     public TestClient(String host, int port, IPacketRegistry packetRegistry) {
-        super(host, port, packetRegistry);
+        super(host, port, packetRegistry, 12345);
         eventSystem.subscribe(new Object() {
 
             @LinkEvent

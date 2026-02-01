@@ -21,12 +21,12 @@ public class PingTransaction extends PacketTransaction<PingTransaction.Ping, Pin
     }
 
     @Override
-    protected Ping constructRequest() {
+    protected Ping request() {
         return new Ping();
     }
 
     @Override
-    protected Pong constructResponse() {
+    protected Pong response() {
         return new Pong();
     }
 

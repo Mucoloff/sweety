@@ -20,7 +20,7 @@ public class ClientTest extends Client {
     private final AutoReconnect autoReconnect = new AutoReconnect(2500L, TimeUnit.MILLISECONDS, this::start);
 
     public ClientTest(String host, int port, IPacketRegistry packetRegistry) {
-        super(host, port, packetRegistry);
+        super(host, port, packetRegistry, 12345);
     }
 
     @Override

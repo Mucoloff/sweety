@@ -35,8 +35,8 @@ public abstract class PacketTransaction<R extends PacketTransaction.Transaction,
     public PacketTransaction(final int _id, final long _timestamp, final byte[] _data) {
         super(_id, _timestamp, _data);
         this.requestId = this.buffer().readVarLong();
-        this.request = this.buffer().readObject(this::constructRequest);
-        this.response = this.buffer().readObject(this::constructResponse);
+        this.request = this.buffer().readObject(this::request);
+        this.response = this.buffer().readObject(this::response);
     }
 
     private static long generateId() {
@@ -59,9 +59,9 @@ public abstract class PacketTransaction<R extends PacketTransaction.Transaction,
         return this.response != null;
     }
 
-    protected abstract R constructRequest();
+    protected abstract R request();
 
-    protected abstract S constructResponse();
+    protected abstract S response();
 
     @Data
     @NoArgsConstructor

@@ -1,6 +1,5 @@
 package dev.sweety.netty.loadbalancer.common.metrics.state;
 
-
 public final class LoadGate {
 
     private volatile NodeState state = NodeState.HEALTHY;

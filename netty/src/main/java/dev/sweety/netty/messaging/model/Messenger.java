@@ -21,6 +21,7 @@ import io.netty.util.concurrent.EventExecutor;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -56,7 +57,8 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
     @Getter
     private final IPacketRegistry packetRegistry;
 
-    public Messenger(B bootstrap, String host, int port, IPacketRegistry packetRegistry, Packet... packets) {
+
+        public Messenger(B bootstrap, String host, int port, IPacketRegistry packetRegistry, int localPort, Packet... packets) {
         this.bootstrap = bootstrap;
         this.boss = new NioEventLoopGroup();
         this.worker = new NioEventLoopGroup(16);
@@ -96,6 +98,8 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
                     .option(ChannelOption.TCP_NODELAY, true)
                     .option(ChannelOption.SO_KEEPALIVE, true)
                     .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
+                    .option(ChannelOption.SO_REUSEADDR, true)
+                    .localAddress(localPort > 0 ? new InetSocketAddress(localPort) : null)
                     .handler(init);
         }
     }
@@ -107,7 +111,7 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
     @Setter
     private Consumer<Channel> onConnect;
 
-    public CompletableFuture<Channel> connect() {
+    public CompletableFuture<Channel> connect(){
         final CompletableFuture<Channel> future = new CompletableFuture<>();
 
         ChannelFutureListener channelFutureListener = (f) -> {

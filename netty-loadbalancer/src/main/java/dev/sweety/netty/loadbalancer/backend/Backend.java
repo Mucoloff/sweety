@@ -69,10 +69,10 @@ public abstract class Backend extends Server {
         return Arrays.stream(handled);
     }
 
-    private volatile boolean useThreadManager = true;
+    private volatile boolean useThreadManager = false;
 
-    public void disableThreadManager() {
-        this.useThreadManager = false;
+    public void useThreadManager() {
+        this.useThreadManager = true;
     }
 
     @Override

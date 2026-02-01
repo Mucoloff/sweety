@@ -15,7 +15,7 @@ public class LB {
         final IBackendNodePool pool = new BackendNodePool(Balancers.ROUND_OPTIMIZED_PACKET_ADAPTIVE.get(), node1, node2);
 
         final LoadBalancerServer loadBalancer = new LoadBalancerServer(LBSettings.LB_HOST, LBSettings.LB_PORT, pool, LBSettings.registry);
-        loadBalancer.disableThreadManager();
+        //loadBalancer.useThreadManager();
         loadBalancer.start();
 
         while (true) {

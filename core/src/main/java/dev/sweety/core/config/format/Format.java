@@ -3,7 +3,8 @@ package dev.sweety.core.config.format;
 import java.io.Reader;
 
 public enum Format {
-    JSON(new JsonFormat());
+    JSON(new JsonFormat()),
+    YAML(new YamlFormat()),;
 
     public static final Format[] VALUES = values();
 

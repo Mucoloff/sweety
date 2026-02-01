@@ -55,11 +55,11 @@ public class LoadBalancerServer extends Server {
     }
 
     //todo make a settings class for these
-    private volatile boolean useThreadManager = true;
+    private volatile boolean useThreadManager = false;
     private static final long REQUEST_TIMEOUT_SECONDS = 30L;
 
-    public void disableThreadManager() {
-        this.useThreadManager = false;
+    public void useThreadManager() {
+        this.useThreadManager = true;
     }
 
     public void drainPending() {

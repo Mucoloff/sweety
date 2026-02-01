@@ -34,7 +34,7 @@ public class BackendNode extends Client {
     private final RequestManager requestManager = new RequestManager();
 
     public BackendNode(String host, int port, IPacketRegistry packetRegistry) {
-        super(host, port, packetRegistry);
+        super(host, port, packetRegistry, -1);
         this.logger = new SimpleLogger("Node#" + AnsiColor.fromColor(RandomUtils.RANDOM.nextInt() * port) + port + AnsiColor.RESET.getColor()).info("Waiting for backend...");
     }
 
