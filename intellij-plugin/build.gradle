@@ -1,0 +1,37 @@
+plugins {
+    id 'java'
+    id 'org.jetbrains.intellij' version '1.17.2'
+}
+
+group = 'dev.sweety'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Dipendenza dalle annotazioni per poterle riconoscere
+    implementation project(':record-getter-processor')
+}
+
+// See https://github.com/JetBrains/gradle-intellij-plugin/
+intellij {
+    version = '2025.3.1' // Versione di IntelliJ su cui testare
+    type = 'IU' // IntelliJ Ultimate Edition
+    plugins = ['com.intellij.java']
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.named("buildSearchableOptions") {
+    enabled = false
+}
+
+tasks.withType(JavaCompile) {
+    options.compilerArgs += ["-Xlint:deprecation"]
+}

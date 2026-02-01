@@ -7,11 +7,7 @@ import java.lang.annotation.Target;
 
 @Target({ElementType.FIELD, ElementType.TYPE})
 @Retention(RetentionPolicy.SOURCE)
-public @interface RecordSetter {
-
-    boolean applyAll() default true;
-
-    boolean includeStatic() default false;
+public @interface AllArgsConstructor {
 
 }
 

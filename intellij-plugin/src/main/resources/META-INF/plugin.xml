@@ -1,0 +1,18 @@
+<idea-plugin>
+    <id>dev.sweety.record.plugin</id>
+    <name>Sweety Record</name>
+    <vendor>Sweety</vendor>
+
+    <description><![CDATA[
+    INTEGRATION for Sweety Record annotations (RecordGetter, RecordSetter, RecordData).
+    Adds code completion and removes false positive errors for generated methods.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.java</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Adds support for generated methods -->
+        <lang.psiAugmentProvider implementation="dev.sweety.record.plugin.RecordAugmentProvider"/>
+    </extensions>
+</idea-plugin>

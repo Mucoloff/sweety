@@ -1,4 +1,4 @@
-package dev.sweety.record;
+package dev.sweety.core.util;
 
 import java.lang.reflect.Field;
 
