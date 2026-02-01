@@ -22,6 +22,11 @@ public class NettyDecoder extends ByteToMessageDecoder {
     }
 
     @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        super.channelInactive(ctx);
+    }
+
+    @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
         List<Packet> packets = new ArrayList<>(1);
         try {

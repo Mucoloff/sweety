@@ -5,6 +5,7 @@ import dev.sweety.netty.packet.model.Packet;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 public interface IBackendNodePool {
 
@@ -12,5 +13,9 @@ public interface IBackendNodePool {
 
     BackendNode next(Packet packet, ChannelHandlerContext ctx);
 
-    List<BackendNode> pool();
+    BackendNode[] pool();
+
+    default void foreachNode(Consumer<BackendNode> consumer){
+        for (BackendNode node : pool()) consumer.accept(node);
+    }
 }

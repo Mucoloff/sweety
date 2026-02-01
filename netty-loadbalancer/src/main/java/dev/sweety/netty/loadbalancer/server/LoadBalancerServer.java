@@ -10,6 +10,7 @@ import dev.sweety.netty.feature.AutoReconnect;
 import dev.sweety.netty.feature.TransactionManager;
 import dev.sweety.netty.loadbalancer.common.packet.InternalPacket;
 import dev.sweety.netty.loadbalancer.server.backend.BackendNode;
+import dev.sweety.netty.loadbalancer.server.packets.OrderedResponseQueue;
 import dev.sweety.netty.loadbalancer.server.packets.PacketContext;
 import dev.sweety.netty.loadbalancer.server.pool.IBackendNodePool;
 import dev.sweety.netty.messaging.Server;
@@ -20,7 +21,10 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
 import java.awt.*;
+import java.net.SocketAddress;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class LoadBalancerServer extends Server {
 
@@ -35,11 +39,13 @@ public class LoadBalancerServer extends Server {
 
     private final TriFunction<Packet, Integer, Long, byte[]> constructor;
 
+    private final Map<SocketAddress, OrderedResponseQueue> clientQueues = new ConcurrentHashMap<>();
+
     public LoadBalancerServer(String host, int port, IBackendNodePool backendPool, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
 
         this.backendPool = backendPool;
-        this.backendPool.pool().forEach(node -> node.setLoadBalancer(this));
+        this.backendPool.foreachNode(node -> node.setLoadBalancer(this));
         this.backendPool.initialize();
 
         this.constructor = (id, ts, data) -> packetRegistry.construct(id, ts, data, this.logger);
@@ -52,12 +58,21 @@ public class LoadBalancerServer extends Server {
     @Override
     public void onPacketReceive(ChannelHandlerContext ctx, Packet packet) {
         if (packet instanceof InternalPacket) return;
-        pendingPackets.enqueue(new PacketContext(packet.retain().rewind(), ctx));
+
+        // Ottieni o crea la coda ordinata per questo client
+        SocketAddress clientAddr = ctx.channel().remoteAddress();
+        OrderedResponseQueue queue = clientQueues.computeIfAbsent(clientAddr,
+            addr -> new OrderedResponseQueue(ctx, this::sendPacket));
+
+        // Assegna un sequence ID per mantenere l'ordine
+        long sequenceId = queue.nextSequenceId();
+
+        pendingPackets.enqueue(new PacketContext(packet.retain().rewind(), ctx, sequenceId));
         drainPending();
     }
 
     //todo make a settings class for these
-    private volatile boolean useThreadManager = true;
+    private volatile boolean useThreadManager = false;
     private static final long REQUEST_TIMEOUT_SECONDS = 10L;
 
     public void useThreadManager() {
@@ -72,13 +87,14 @@ public class LoadBalancerServer extends Server {
         } else this.drainPendingInternal();
     }
 
-    private void drainPendingInternal() {
+    private synchronized void drainPendingInternal() {
         if (pendingPackets.isEmpty()) return;
         PacketContext pq;
 
         while ((pq = pendingPackets.dequeue()) != null) {
             final Packet packet = pq.packet();
             final ChannelHandlerContext ctx = pq.ctx();
+            final long sequenceId = pq.sequenceId();
 
             BackendNode backend = backendPool.next(packet, ctx);
             if (backend == null) {
@@ -89,18 +105,32 @@ public class LoadBalancerServer extends Server {
 
             final InternalPacket internal = new InternalPacket(new InternalPacket.Forward(getPacketRegistry()::getPacketId, packet));
 
+            // Ottieni la coda ordinata per questo client
+            final SocketAddress clientAddr = ctx.channel().remoteAddress();
+            final OrderedResponseQueue responseQueue = clientQueues.get(clientAddr);
+
             transactionManager.registerRequest(internal, REQUEST_TIMEOUT_SECONDS * 1000L).whenComplete(((response, throwable) -> {
                 if (throwable != null) {
                     backend.timeout(internal.getRequestId());
                     logger.push("transaction", AnsiColor.RED_BRIGHT).error(internal.requestCode(), throwable).pop();
+
+                    // Anche in caso di errore, completa con array vuoto per non bloccare la coda
+                    if (responseQueue != null && sequenceId >= 0) {
+                        responseQueue.complete(sequenceId, new Packet[0]);
+                    }
                     return;
                 }
 
                 Packet[] responses = response.decode(constructor);
-
                 Arrays.stream(responses).forEach(Packet::rewind);
 
-                Messenger.safeExecute(ctx, c -> sendPacket(c, responses));
+                // Usa la coda ordinata per garantire l'ordine delle risposte
+                if (responseQueue != null && sequenceId >= 0) {
+                    responseQueue.complete(sequenceId, responses);
+                } else {
+                    // Fallback: invio diretto se non c'è coda (non dovrebbe accadere)
+                    Messenger.safeExecute(ctx, c -> sendPacket(c, responses));
+                }
             }));
 
             backend.forward(ctx, internal);
@@ -112,7 +142,7 @@ public class LoadBalancerServer extends Server {
         super.stop();
         transactionManager.shutdown();
         queueScheduler.shutdown();
-        backendPool.pool().forEach(BackendNode::stop);
+        backendPool.foreachNode(BackendNode::stop);
     }
 
     public void complete(InternalPacket internal, ChannelHandlerContext ctx) {
@@ -136,8 +166,16 @@ public class LoadBalancerServer extends Server {
 
     @Override
     public void quit(ChannelHandlerContext ctx, ChannelPromise promise) {
-        logger.push("disconnect", AnsiColor.RED_BRIGHT).info(ctx.channel().remoteAddress()).pop();
-        super.removeClient(ctx.channel().remoteAddress());
+        SocketAddress addr = ctx.channel().remoteAddress();
+        logger.push("disconnect", AnsiColor.RED_BRIGHT).info(addr).pop();
+
+        // Rimuovi la coda ordinata del client
+        OrderedResponseQueue queue = clientQueues.remove(addr);
+        if (queue != null) {
+            queue.reset();
+        }
+
+        super.removeClient(addr);
         promise.setSuccess();
     }
 

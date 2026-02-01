@@ -2,30 +2,43 @@ package dev.sweety.netty.loadbalancer.server.pool;
 
 import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.netty.loadbalancer.server.backend.BackendNode;
-import dev.sweety.netty.loadbalancer.server.balancer.Balancer;
+import dev.sweety.netty.loadbalancer.server.balancer.CounterBalancer;
 import dev.sweety.netty.packet.model.Packet;
 import io.netty.channel.ChannelHandlerContext;
 
-import java.util.List;
+import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
 
-public record BackendNodePool(SimpleLogger logger, List<BackendNode> pool,
-                              Balancer balancer) implements IBackendNodePool {
+public final class BackendNodePool implements IBackendNodePool {
 
-    public BackendNodePool(Balancer balancerSystem, BackendNode... nodes) {
-        this(new SimpleLogger(BackendNodePool.class), List.of(nodes), balancerSystem);
+    private final SimpleLogger logger;
+    private final BackendNode[] pool;
+    private final CounterBalancer balancer;
+    private final AtomicInteger counter = new AtomicInteger();
+
+    public BackendNodePool(CounterBalancer balancer, BackendNode... nodes) {
+        this.logger = new SimpleLogger(BackendNodePool.class);
+        this.pool = nodes;
+        this.balancer = balancer;
     }
 
     /**
      * Inizializza il pool, connettendo ogni backend.
      */
-
     @Override
     public void initialize() {
-        if (this.pool.isEmpty()) {
+        if (this.pool.length == 0) {
             this.logger.warn("Nessun backend configurato.");
             return;
         }
-        this.pool.forEach(BackendNode::start);
+        for (BackendNode node : pool) {
+            node.start();
+        }
+    }
+
+    @Override
+    public BackendNode[] pool() {
+        return pool;
     }
 
     /**
@@ -35,9 +48,16 @@ public record BackendNodePool(SimpleLogger logger, List<BackendNode> pool,
      */
     @Override
     public BackendNode next(Packet packet, ChannelHandlerContext ctx) {
-        if (this.pool.isEmpty()) return null;
-        final List<BackendNode> activeNodes = this.pool.stream().filter(BackendNode::isActive).filter(BackendNode::canAcceptPacket).toList();
-        if (activeNodes.isEmpty()) return null;
-        return balancer.nextNode(activeNodes, logger, packet, ctx);
+        if (this.pool.length == 0) return null;
+
+        final BackendNode[] activeNodes = Arrays.stream(pool)
+                .filter(BackendNode::isActive)
+                .filter(BackendNode::canAcceptPacket)
+                .toArray(BackendNode[]::new);
+
+        if (activeNodes.length == 0) return null;
+
+        return balancer.nextNode(activeNodes, logger, packet, ctx, counter);
     }
+
 }

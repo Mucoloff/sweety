@@ -55,14 +55,15 @@ public class AutoReconnect {
     }
 
     public boolean onException(Throwable t) {
-        if (!checkInstance(t)) return true;
-        if (!checkMsg(t)) return true;
-        start();
+        if (exception(t)) {
+            start();
+            return true;
+        }
         return false;
     }
 
-    public static boolean checkInstance(Throwable t){
-        return switch (t){
+    public static boolean checkInstance(Throwable t) {
+        return switch (t) {
             case ConnectTimeoutException b -> true;
             case ConnectException a -> true;
             case ClosedChannelException c -> true;

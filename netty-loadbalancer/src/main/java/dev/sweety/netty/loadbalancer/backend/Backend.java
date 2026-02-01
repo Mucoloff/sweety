@@ -69,7 +69,7 @@ public abstract class Backend extends Server {
         return Arrays.stream(handled);
     }
 
-    private volatile boolean useThreadManager = true;
+    private volatile boolean useThreadManager = false;
 
     public void useThreadManager() {
         this.useThreadManager = true;
@@ -110,7 +110,6 @@ public abstract class Backend extends Server {
     @Override
     public final void quit(ChannelHandlerContext ctx, ChannelPromise promise) {
         sampler.reset();
-        threadManager.shutdown();
         this.leave(ctx, promise);
     }
 

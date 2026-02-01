@@ -21,8 +21,6 @@ import java.util.function.BiFunction;
 
 public class MetricSampler {
 
-    private final SystemInfo si;
-    private final HardwareAbstractionLayer hw;
     private final OperatingSystem os;
 
     private final CentralProcessor cpu;
@@ -58,8 +56,8 @@ public class MetricSampler {
     public MetricSampler(final Config config) {
         this.config = config;
 
-        this.si = new SystemInfo();
-        this.hw = si.getHardware();
+        final SystemInfo si = new SystemInfo();
+        final HardwareAbstractionLayer hw = si.getHardware();
         this.os = si.getOperatingSystem();
         this.cpu = hw.getProcessor();
         this.mem = hw.getMemory();

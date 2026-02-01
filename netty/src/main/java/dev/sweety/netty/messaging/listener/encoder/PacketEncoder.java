@@ -28,7 +28,7 @@ public class PacketEncoder {
         if (packetId == -1)
             throw new PacketEncodeException("Returned PacketId by registry is invalid (-1)");
 
-        final boolean hasTimestamp = packet.timestamp() > 0L;
+        final boolean hasTimestamp = packet.hasTimestamp();
         final PacketBuffer payloadBuf = packet.buffer();
         final ByteBuf payloadNetty = payloadBuf.nettyBuffer();
         final int readable = payloadNetty.readableBytes();

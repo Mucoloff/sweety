@@ -5,11 +5,15 @@ import dev.sweety.netty.loadbalancer.server.backend.BackendNode;
 import dev.sweety.netty.packet.model.Packet;
 import io.netty.channel.ChannelHandlerContext;
 
-import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @FunctionalInterface
-public interface Balancer {
+public interface Balancer extends CounterBalancer {
 
-    BackendNode nextNode(List<BackendNode> activeNodes, LogHelper logger, Packet packet, ChannelHandlerContext ctx);
+    BackendNode nextNode(BackendNode[] activeNodes, LogHelper logger, Packet packet, ChannelHandlerContext ctx);
 
+    @Override
+    default BackendNode nextNode(BackendNode[] activeNodes, LogHelper logger, Packet packet, ChannelHandlerContext ctx, AtomicInteger counter) {
+        return nextNode(activeNodes, logger, packet, ctx);
+    }
 }

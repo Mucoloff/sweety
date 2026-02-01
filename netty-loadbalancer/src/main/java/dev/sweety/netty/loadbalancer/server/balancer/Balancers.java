@@ -1,39 +1,29 @@
 package dev.sweety.netty.loadbalancer.server.balancer;
 
-import dev.sweety.core.logger.LogHelper;
-import dev.sweety.core.math.RandomUtils;
 import dev.sweety.netty.loadbalancer.server.backend.BackendNode;
-import dev.sweety.netty.packet.model.Packet;
-import io.netty.channel.ChannelHandlerContext;
-import lombok.AllArgsConstructor;
 
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 
-@AllArgsConstructor
 public enum Balancers {
 
-    ROUND_ROBIN(new Balancer() {
-        private final AtomicInteger counter = new AtomicInteger();
-
-        @Override
-        public BackendNode nextNode(List<BackendNode> activeNodes, LogHelper logger, Packet packet, ChannelHandlerContext ctx) {
-            int start = (counter.getAndUpdate(v -> (v + 1) % activeNodes.size()));
-            return activeNodes.get(start);
-        }
+    ROUND_ROBIN((activeNodes, logger, packet, ctx, counter) -> {
+        int index = counter.getAndUpdate(v -> (v + 1) % activeNodes.length);
+        return activeNodes[index];
     }),
 
-    RANDOM((activeNodes, logger, packet, ctx) -> RandomUtils.randomElement(activeNodes)),
+    RANDOM((activeNodes, logger, packet, ctx) ->
+        activeNodes[ThreadLocalRandom.current().nextInt(activeNodes.length)]),
 
     LOWEST_USAGE(fromParam(BackendNode::getUsageScore)),
     LOWEST_LATENCY(fromParam(BackendNode::getLatencyScore)),
     LOWEST_BANDWIDTH(fromParam(BackendNode::getBandwidthScore)),
 
-    LOWEST_PACKET_CPU_TIME((activeNodes, logger, packet, ctx) -> {
+    LOWEST_PACKET_CPU_TIME((activeNodes, logger, packet, ctx, counter) -> {
         final int id = packet.id();
         final Function<BackendNode, Float> nodeFloatFunction = (n) -> n.getAvgPacketTime(id) / n.getMaxObservedPacketTime();
         return fromParam(activeNodes, nodeFloatFunction);
@@ -41,41 +31,46 @@ public enum Balancers {
 
     OPTIMIZED_ADAPTIVE(fromParam(BackendNode::getTotalScore)),
 
-    ROUND_OPTIMIZED_PACKET_ADAPTIVE(new Balancer() {
+    ROUND_OPTIMIZED_PACKET_ADAPTIVE((activeNodes, logger, packet, ctx, counter) -> {
+        int start = counter.getAndUpdate(v -> (v + 1) % activeNodes.length);
+        int limit = Math.min(3, activeNodes.length);
 
-        private final AtomicInteger counter = new AtomicInteger();
-
-        @Override
-        public BackendNode nextNode(List<BackendNode> activeNodes, LogHelper logger, Packet packet, ChannelHandlerContext ctx) {
-            int start = (counter.getAndUpdate(v -> (v + 1) % activeNodes.size()));
-            List<BackendNode> candidates = activeNodes.stream()
-                    .skip(start)
-                    .limit(Math.min(3, activeNodes.size()))
-                    .toList();
-
-            final int packetId = packet.id();
-            final float factor = 0.35f;
-            final Function<BackendNode, Float> calcScore = (n) -> (factor * n.getTotalScore()) + ((1 - factor) * n.getAvgPacketTime(packetId) / n.getMaxObservedPacketTime());
-
-            return fromParam(candidates, calcScore);
+        BackendNode[] candidates = new BackendNode[limit];
+        for (int i = 0; i < limit; i++) {
+            candidates[i] = activeNodes[(start + i) % activeNodes.length];
         }
+
+        final int packetId = packet.id();
+        final float factor = 0.35f;
+        final Function<BackendNode, Float> calcScore = (n) ->
+            (factor * n.getTotalScore()) + ((1 - factor) * n.getAvgPacketTime(packetId) / n.getMaxObservedPacketTime());
+
+        return fromParam(candidates, calcScore);
     });
 
-    private final Balancer balancer;
+    private final CounterBalancer balancer;
 
-    public Balancer get() {
+    Balancers(CounterBalancer balancer) {
+        this.balancer = balancer;
+    }
+
+    Balancers(Balancer balancer) {
+        this.balancer = balancer;
+    }
+
+    public CounterBalancer get() {
         return balancer;
     }
 
-    private static BackendNode fromParam(List<BackendNode> activeNodes, Function<BackendNode, Float> score) {
-        float avgScore = (float) activeNodes.stream()
+    private static BackendNode fromParam(BackendNode[] activeNodes, Function<BackendNode, Float> score) {
+        float avgScore = (float) Arrays.stream(activeNodes)
                 .mapToDouble(score::apply)
                 .average()
                 .orElse(1.0);
-        return activeNodes.stream()
+        return Arrays.stream(activeNodes)
                 .filter(n -> score.apply(n) <= avgScore * 1.1f)
                 .min(comparingFloat(score))
-                .orElse(activeNodes.getFirst());
+                .orElse(activeNodes[0]);
     }
 
     private static Balancer fromParam(Function<BackendNode, Float> score) {

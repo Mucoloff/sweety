@@ -19,7 +19,7 @@ public class NettyWatcher extends ChannelHandlerAdapter {
             try {
                 this.messenger.onPacketReceive(ctx, packet);
             } finally {
-                //packet.release();
+                packet.release();
             }
         } else ctx.fireChannelRead(msg);
     }

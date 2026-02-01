@@ -13,14 +13,17 @@ import java.util.zip.CRC32C;
 @UtilityClass
 public class ChecksumUtils {
 
-    private final CRC32C crc32 = new CRC32C();
+    // ThreadLocal per avere un'istanza CRC32C per thread, evitando race condition
+    private final ThreadLocal<CRC32C> crc32ThreadLocal = ThreadLocal.withInitial(CRC32C::new);
 
     public CRC32C crc32(boolean reset) {
+        CRC32C crc32 = crc32ThreadLocal.get();
         if (reset) crc32.reset();
         return crc32;
     }
 
     public int crc32Int(byte[] data, long seed) {
+        CRC32C crc32 = crc32ThreadLocal.get();
         crc32.reset();
         crc32.update(ByteBuffer.allocate(8).putLong(seed).array());
         crc32.update(data);
