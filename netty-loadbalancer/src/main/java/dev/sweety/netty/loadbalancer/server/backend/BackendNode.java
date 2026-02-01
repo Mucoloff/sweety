@@ -43,9 +43,11 @@ public class BackendNode extends Client {
         requestManager.reset();
         usageScore = latencyScore = bandwidthScore = currentBandwidthScore = packetTimeScore = totalScore = 0f;
         maxObservedAvgLoad = maxObservedCurrentLoad = maxObservedPacketTime = 1f;
-        return super.connect().exceptionally(t -> {
+        return super.connect().exceptionally((t) -> {
             this.autoReconnect.onException(t);
             return null;
+        }).whenComplete((c,t) -> {
+            if (c != null) this.autoReconnect.complete();
         });
     }
 

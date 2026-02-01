@@ -51,10 +51,6 @@ public abstract class Packet {
         return this._buffer;
     }
 
-    public int refCnt() {
-        return this._buffer.refCnt();
-    }
-
     public Packet retain() {
         this._buffer.retain();
         return this;

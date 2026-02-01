@@ -25,6 +25,7 @@ public class LoadBalancerServer extends Server {
 
     private final IBackendNodePool backendPool;
     private final SimpleLogger logger = new SimpleLogger(LoadBalancerServer.class);
+
     private final BlockingDeque<PacketContext> pendingPackets = new BlockingDeque<>();
 
     private final TransactionManager transactionManager = new TransactionManager(this);
@@ -55,8 +56,8 @@ public class LoadBalancerServer extends Server {
     }
 
     //todo make a settings class for these
-    private volatile boolean useThreadManager = false;
-    private static final long REQUEST_TIMEOUT_SECONDS = 30L;
+    private volatile boolean useThreadManager = true;
+    private static final long REQUEST_TIMEOUT_SECONDS = 10L;
 
     public void useThreadManager() {
         this.useThreadManager = true;

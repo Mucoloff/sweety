@@ -112,9 +112,11 @@ public class TestClient extends Client {
 
     @Override
     public CompletableFuture<Channel> connect() {
-        return super.connect().exceptionally(t -> {
+        return super.connect().exceptionally((t) -> {
             this.autoReconnect.onException(t);
             return null;
+        }).whenComplete((c,t) -> {
+            if (c != null) this.autoReconnect.complete();
         });
     }
 

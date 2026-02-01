@@ -2,6 +2,7 @@ package dev.sweety.project.netty.loadbalancer.impl;
 
 import dev.sweety.core.color.AnsiColor;
 import dev.sweety.core.logger.SimpleLogger;
+import dev.sweety.netty.feature.AutoReconnect;
 import dev.sweety.netty.loadbalancer.backend.Backend;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
@@ -29,7 +30,7 @@ public class BackendTest extends Backend {
 
     @Override
     public void exception(ChannelHandlerContext ctx, Throwable throwable) {
-        logger.push("exception").error(throwable).pop();
+        if (!AutoReconnect.exception(throwable)) logger.push("exception").error(throwable).pop();
         ctx.close();
     }
 

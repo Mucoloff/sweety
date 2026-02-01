@@ -25,18 +25,17 @@ public class ClientTest extends Client {
 
     @Override
     public void onPacketReceive(ChannelHandlerContext ctx, Packet packet) {
-
         if (packet instanceof TextPacket text)
             logger.push("text").info("content: " + text.getText()).pop();
-
-
     }
 
     @Override
     public CompletableFuture<Channel> connect() {
-        return super.connect().exceptionally(t -> {
+        return super.connect().exceptionally((t) -> {
             this.autoReconnect.onException(t);
             return null;
+        }).whenComplete((c,t) -> {
+            if (c != null) this.autoReconnect.complete();
         });
     }
 
@@ -48,8 +47,8 @@ public class ClientTest extends Client {
 
     @Override
     public void exception(ChannelHandlerContext ctx, Throwable throwable) {
-        logger.push("exception").error(throwable).pop();
-        autoReconnect.onException(throwable);
+        if (!autoReconnect.onException(throwable)) logger.push("exception").error(throwable).pop();
+        ctx.close();
     }
 
     @Override

@@ -72,12 +72,13 @@ public abstract class Backend extends Server {
     private volatile boolean useThreadManager = false;
 
     public void useThreadManager() {
-        this.useThreadManager = true;
+        this.useThreadManager = false;
     }
 
     @Override
     public void onPacketReceive(ChannelHandlerContext ctx, Packet packet) {
         if (!(packet instanceof InternalPacket internal) || !internal.hasRequest()) return;
+
         Runnable r = () -> {
             final InternalPacket.Forward request = internal.getRequest();
             final List<Packet> handledPackets = Arrays.stream(request.decode(this.constructor))

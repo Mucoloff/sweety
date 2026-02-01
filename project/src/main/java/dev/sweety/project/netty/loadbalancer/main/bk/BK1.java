@@ -7,7 +7,7 @@ public class BK1 {
 
     public static void main(String[] args) {
         final BackendTest backend = new BackendTest(LBSettings.BK1_HOST, LBSettings.BK1_PORT, LBSettings.registry);
-        //backend.useThreadManager();
+        backend.useThreadManager();
         backend.start();
         while (true){
             Thread.onSpinWait();

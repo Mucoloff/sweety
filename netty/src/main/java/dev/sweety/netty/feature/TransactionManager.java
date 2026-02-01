@@ -6,12 +6,14 @@ import dev.sweety.netty.packet.model.PacketTransaction;
 import io.netty.bootstrap.AbstractBootstrap;
 import io.netty.channel.ChannelHandlerContext;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.*;
 
 public class TransactionManager {
 
-    private final Map<Long, CompletableFuture<PacketTransaction.Transaction>> pending = new ConcurrentHashMap<>();
+    private final Map<Long, CompletableFuture<PacketTransaction.Transaction>> pending = Collections.synchronizedMap(new LinkedHashMap<>());
 
     private final ProfileThread scheduler = new ProfileThread("transaction-manager-thread");
 
