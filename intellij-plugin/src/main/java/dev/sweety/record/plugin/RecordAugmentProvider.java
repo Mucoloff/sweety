@@ -15,6 +15,7 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
     private static final String RECORD_GETTER = "dev.sweety.record.annotations.RecordGetter";
     private static final String SETTER = "dev.sweety.record.annotations.Setter";
     private static final String ALL_ARGS_CONSTRUCTOR = "dev.sweety.record.annotations.AllArgsConstructor";
+    private static final String UTILITY_CLASS = "dev.sweety.record.annotations.UtilityClass";
     private static final String DATA_IGNORE = "dev.sweety.record.annotations.DataIgnore";
 
     @Override
@@ -34,11 +35,13 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
         PsiAnnotation getterAnn = psiClass.getAnnotation(RECORD_GETTER);
         PsiAnnotation setterAnn = psiClass.getAnnotation(SETTER);
         PsiAnnotation allArgsConstructorAnn = psiClass.getAnnotation(ALL_ARGS_CONSTRUCTOR);
+        PsiAnnotation utilityClassAnn = psiClass.getAnnotation(UTILITY_CLASS);
 
         boolean classHasData = dataAnn != null;
         boolean classHasGetter = getterAnn != null;
         boolean classHasSetter = setterAnn != null;
         boolean classHasAllArgsConstructor = allArgsConstructorAnn != null;
+        boolean classHasUtilityClass = utilityClassAnn != null;
 
         boolean applyAll = true;
         boolean includeStatic = false;
@@ -68,6 +71,16 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
 
         if (classHasAllArgsConstructor) {
             methods.add((Psi) createAllArgsConstructor(psiClass));
+        }
+
+        if (classHasUtilityClass) {
+             methods.add((Psi) createPrivateConstructor(psiClass));
+             for (PsiMethod method : psiClass.getMethods()) {
+                 if (method.isConstructor()) continue;
+                 if (!method.hasModifierProperty(PsiModifier.STATIC)) {
+                     methods.add((Psi) createStaticDelegate(method, psiClass));
+                 }
+             }
         }
 
         for (PsiField field : psiClass.getFields()) {
@@ -210,5 +223,33 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
 
         method.setNavigationElement(psiClass);
         return method;
+    }
+
+    private PsiMethod createPrivateConstructor(PsiClass psiClass) {
+        LightMethodBuilder method = new LightMethodBuilder(psiClass.getManager(), psiClass.getName());
+        method.setConstructor(true);
+        method.setContainingClass(psiClass);
+        method.addModifier(PsiModifier.PRIVATE);
+        method.setNavigationElement(psiClass);
+        return method;
+    }
+
+    private PsiMethod createStaticDelegate(PsiMethod method, PsiClass psiClass) {
+        LightMethodBuilder builder = new LightMethodBuilder(psiClass.getManager(), method.getName());
+        builder.setMethodReturnType(method.getReturnType());
+        builder.setContainingClass(psiClass);
+        builder.addModifier(PsiModifier.PUBLIC);
+        builder.addModifier(PsiModifier.STATIC);
+        builder.setNavigationElement(method);
+
+        for (PsiParameter p : method.getParameterList().getParameters()) {
+            builder.addParameter(p.getName(), p.getType());
+        }
+
+        for (PsiClassType type : method.getThrowsList().getReferencedTypes()) {
+            builder.addException(type);
+        }
+
+        return builder;
     }
 }

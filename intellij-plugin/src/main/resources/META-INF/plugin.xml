@@ -14,5 +14,6 @@
     <extensions defaultExtensionNs="com.intellij">
         <!-- Adds support for generated methods -->
         <lang.psiAugmentProvider implementation="dev.sweety.record.plugin.RecordAugmentProvider"/>
+        <custom.exception.handler implementation="dev.sweety.record.plugin.RecordSneakyThrowsExceptionHandler"/>
     </extensions>
 </idea-plugin>

@@ -9,12 +9,15 @@ import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.List;
+import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.Names;
 import dev.sweety.record.annotations.DataIgnore;
 import dev.sweety.record.annotations.RecordData;
 import dev.sweety.record.annotations.RecordGetter;
 import dev.sweety.record.annotations.Setter;
 import dev.sweety.record.annotations.AllArgsConstructor;
+import dev.sweety.record.annotations.SneakyThrows;
+import dev.sweety.record.annotations.UtilityClass;
 
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
@@ -30,15 +33,17 @@ import java.util.Set;
         "dev.sweety.record.annotations.Setter",
         "dev.sweety.record.annotations.RecordData",
         "dev.sweety.record.annotations.DataIgnore",
-        "dev.sweety.record.annotations.AllArgsConstructor"
+        "dev.sweety.record.annotations.AllArgsConstructor",
+        "dev.sweety.record.annotations.SneakyThrows",
+        "dev.sweety.record.annotations.UtilityClass"
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_21)
 @AutoService(Processor.class)
 public class RecordProcessor extends AbstractProcessor {
 
-    private Trees trees;
     private TreeMaker maker;
     private Names names;
+    private Trees trees; // Re-ordered slightly to match context, but field order doesn't matter much.
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -59,6 +64,8 @@ public class RecordProcessor extends AbstractProcessor {
         annotatedElements.addAll(roundEnv.getElementsAnnotatedWith(RecordGetter.class));
         annotatedElements.addAll(roundEnv.getElementsAnnotatedWith(Setter.class));
         annotatedElements.addAll(roundEnv.getElementsAnnotatedWith(AllArgsConstructor.class));
+        annotatedElements.addAll(roundEnv.getElementsAnnotatedWith(SneakyThrows.class));
+        annotatedElements.addAll(roundEnv.getElementsAnnotatedWith(UtilityClass.class));
         annotatedElements.removeAll(roundEnv.getElementsAnnotatedWith(DataIgnore.class));
 
         for (Element element : annotatedElements) {
@@ -66,6 +73,8 @@ public class RecordProcessor extends AbstractProcessor {
                 toProcess.add(element.getEnclosingElement());
             } else if (element.getKind() == ElementKind.CLASS) {
                 toProcess.add(element);
+            } else if (element.getKind() == ElementKind.METHOD || element.getKind() == ElementKind.CONSTRUCTOR) {
+                toProcess.add(element.getEnclosingElement());
             }
         }
 
@@ -91,6 +100,54 @@ public class RecordProcessor extends AbstractProcessor {
         RecordGetter getterAnnotation = classElement.getAnnotation(RecordGetter.class);
         Setter setterAnnotation = classElement.getAnnotation(Setter.class);
         AllArgsConstructor allArgsAnnotation = classElement.getAnnotation(AllArgsConstructor.class);
+        UtilityClass utilityClassAnnotation = classElement.getAnnotation(UtilityClass.class);
+
+        // --- UtilityClass ---
+        if (utilityClassAnnotation != null) {
+            // Make class final
+            classDecl.mods.flags |= Flags.FINAL;
+
+            JCTree.JCMethodDecl ctor = createPrivateConstructor(classDecl);
+            if (!methodExists(classDecl, ctor)) {
+                classDecl.defs = classDecl.defs.prepend(ctor);
+            }
+
+            // Make all members static
+            for (JCTree def : classDecl.defs) {
+                if (def instanceof JCTree.JCMethodDecl method) {
+                    if (!method.name.contentEquals("<init>")) { // Skip constructor
+                        method.mods.flags |= Flags.STATIC;
+                    }
+                } else if (def instanceof JCTree.JCVariableDecl field) {
+                    field.mods.flags |= Flags.STATIC;
+                } else if (def instanceof JCTree.JCClassDecl) {
+                    ((JCTree.JCClassDecl) def).mods.flags |= Flags.STATIC;
+                }
+            }
+            // Utility Class di solito non ha logica di Getter/Setter/Data quindi potremmo fermarci qui
+            // Ma se l'utente mette anche @RecordData è affar suo. Procediamo.
+        }
+
+        // --- SneakyThrows ---
+        boolean usesSneakyThrows = false;
+         for (JCTree def : classDecl.defs) {
+            if (def instanceof JCTree.JCMethodDecl) {
+                JCTree.JCMethodDecl method = (JCTree.JCMethodDecl) def;
+                if (hasAnnotation(method.mods, SneakyThrows.class)) {
+                    usesSneakyThrows = true;
+                    if (method.body != null) {
+                        wrapInSneakyThrows(method, classDecl.name);
+                    }
+                }
+            }
+        }
+
+        if (usesSneakyThrows) {
+             JCTree.JCMethodDecl sneakyMethod = createSneakyThrowMethod();
+             if (!methodExists(classDecl, sneakyMethod)) {
+                 classDecl.defs = classDecl.defs.append(sneakyMethod);
+             }
+        }
 
         boolean applyAll = false;
         boolean includeStatic = false;
@@ -308,11 +365,111 @@ public class RecordProcessor extends AbstractProcessor {
         for (JCTree def : classDecl.defs) {
             if (def instanceof JCTree.JCMethodDecl) {
                 JCTree.JCMethodDecl existing = (JCTree.JCMethodDecl) def;
-                if (existing.name.equals(method.name) && existing.params.length() == method.params.length()) { // Simplistic signature check
-                    return true;
+                if (existing.name.equals(method.name)) {
+                    // For $sneakyThrow, we just check name to avoid duplicate injection
+                    if (existing.name.contentEquals("$sneakyThrow")) return true;
+                    if (existing.params.length() == method.params.length()) { // Simplistic signature check
+                        return true;
+                    }
                 }
             }
         }
+
         return false;
+    }
+
+    private void wrapInSneakyThrows(JCTree.JCMethodDecl method, Name className) {
+        // Generates:
+        // try { originalBody } catch (Throwable t) { ClassName.<RuntimeException>$sneakyThrow(t); }
+
+        JCTree.JCBlock originalBody = method.body;
+
+        JCTree.JCVariableDecl catchParam = maker.VarDef(
+                maker.Modifiers(0),
+                names.fromString("t"),
+                maker.Ident(names.fromString("Throwable")),
+                null
+        );
+
+        JCTree.JCExpression methodSelect = maker.Select(maker.Ident(className), names.fromString("$sneakyThrow"));
+        JCTree.JCExpression call = maker.Apply(
+            List.of(maker.Ident(names.fromString("RuntimeException"))), // Type args
+            methodSelect,
+            List.of(maker.Ident(names.fromString("t")))
+        );
+
+        JCTree.JCStatement callStmt = maker.Exec(call);
+        JCTree.JCBlock catchBlock = maker.Block(0, List.of(callStmt));
+        JCTree.JCCatch catcher = maker.Catch(catchParam, catchBlock);
+
+        JCTree.JCTry tryCatch = maker.Try(
+                originalBody,
+                List.of(catcher),
+                null
+        );
+
+        method.body = maker.Block(0, List.of(tryCatch));
+    }
+
+    private JCTree.JCMethodDecl createSneakyThrowMethod() {
+        // private static <T extends Throwable> void $sneakyThrow(Throwable t) throws T {
+        //    throw (T) t;
+        // }
+
+        Name nameT = names.fromString("T");
+        Name nameSneaky = names.fromString("$sneakyThrow");
+        Name nameParam = names.fromString("t");
+
+        // <T extends Throwable>
+        JCTree.JCTypeParameter typeParam = maker.TypeParameter(nameT, List.of(maker.Ident(names.fromString("Throwable"))));
+
+        // Param: Throwable t
+        JCTree.JCVariableDecl param = maker.VarDef(
+                maker.Modifiers(Flags.PARAMETER),
+                nameParam,
+                maker.Ident(names.fromString("Throwable")),
+                null
+        );
+
+        // Body: throw (T) t;
+        JCTree.JCExpression cast = maker.TypeCast(maker.Ident(nameT), maker.Ident(nameParam));
+        JCTree.JCStatement throwStmt = maker.Throw(cast);
+        JCTree.JCBlock body = maker.Block(0, List.of(throwStmt));
+
+        return maker.MethodDef(
+                maker.Modifiers(Flags.PRIVATE | Flags.STATIC),
+                nameSneaky,
+                maker.TypeIdent(TypeTag.VOID),
+                List.of(typeParam),
+                List.of(param),
+                List.of(maker.Ident(nameT)), // throws T
+                body,
+                null
+        );
+    }
+
+    private JCTree.JCMethodDecl createPrivateConstructor(JCTree.JCClassDecl classDecl) {
+        JCTree.JCStatement throwStmt = maker.Throw(
+                maker.NewClass(
+                        null,
+                        List.nil(),
+                        maker.Ident(names.fromString("UnsupportedOperationException")),
+                        List.of(maker.Literal("This is a utility class and cannot be instantiated")),
+                        null
+                )
+        );
+
+        JCTree.JCBlock body = maker.Block(0, List.of(throwStmt));
+
+        return maker.MethodDef(
+                maker.Modifiers(Flags.PRIVATE),
+                names.fromString("<init>"),
+                null,
+                List.nil(),
+                List.nil(),
+                List.nil(),
+                body,
+                null
+        );
     }
 }
