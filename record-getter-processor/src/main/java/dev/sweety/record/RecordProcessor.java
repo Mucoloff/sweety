@@ -17,7 +17,6 @@ import dev.sweety.record.annotations.RecordGetter;
 import dev.sweety.record.annotations.Setter;
 import dev.sweety.record.annotations.AllArgsConstructor;
 import dev.sweety.record.annotations.SneakyThrows;
-import dev.sweety.record.annotations.UtilityClass;
 
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
@@ -65,7 +64,6 @@ public class RecordProcessor extends AbstractProcessor {
         annotatedElements.addAll(roundEnv.getElementsAnnotatedWith(Setter.class));
         annotatedElements.addAll(roundEnv.getElementsAnnotatedWith(AllArgsConstructor.class));
         annotatedElements.addAll(roundEnv.getElementsAnnotatedWith(SneakyThrows.class));
-        annotatedElements.addAll(roundEnv.getElementsAnnotatedWith(UtilityClass.class));
         annotatedElements.removeAll(roundEnv.getElementsAnnotatedWith(DataIgnore.class));
 
         for (Element element : annotatedElements) {
@@ -100,51 +98,10 @@ public class RecordProcessor extends AbstractProcessor {
         RecordGetter getterAnnotation = classElement.getAnnotation(RecordGetter.class);
         Setter setterAnnotation = classElement.getAnnotation(Setter.class);
         AllArgsConstructor allArgsAnnotation = classElement.getAnnotation(AllArgsConstructor.class);
-        UtilityClass utilityClassAnnotation = classElement.getAnnotation(UtilityClass.class);
-
-        // --- UtilityClass ---
-        if (utilityClassAnnotation != null) {
-            // Make class final
-            classDecl.mods.flags |= Flags.FINAL;
-
-            maker.at(classDecl.pos); // Ensure position is set
-            JCTree.JCMethodDecl ctor = createPrivateConstructor(classDecl);
-
-            boolean ctorFound = false;
-            for (JCTree def : classDecl.defs) {
-                if (def instanceof JCTree.JCMethodDecl existingCtor && existingCtor.name.contentEquals("<init>")) {
-                    // If a constructor already exists, we might modify it to be private
-                    existingCtor.mods.flags &= ~Flags.PUBLIC; // Remove public flag
-                    existingCtor.mods.flags |= Flags.PRIVATE; // Add private flag
-                    ctorFound = true;
-                }
-            }
-
-            if (!ctorFound) {
-                classDecl.defs = classDecl.defs.prepend(ctor);
-                processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, "Prepended private constructor to " + classDecl.name);
-            } else {
-                processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, "Modified existing constructor in " + classDecl.name);
-            }
-
-            // Make all members static
-            for (JCTree def : classDecl.defs) {
-                if (def instanceof JCTree.JCMethodDecl method) {
-                    if (!method.name.contentEquals("<init>")) { // Skip constructor
-                        method.mods.flags |= Flags.STATIC;
-                    }
-                } else if (def instanceof JCTree.JCVariableDecl field) {
-                    field.mods.flags |= Flags.STATIC;
-                } else if (def instanceof JCTree.JCClassDecl) {
-                    ((JCTree.JCClassDecl) def).mods.flags |= Flags.STATIC;
-                }
-            }
-
-        }
 
         // --- SneakyThrows ---
         boolean usesSneakyThrows = false;
-         for (JCTree def : classDecl.defs) {
+        for (JCTree def : classDecl.defs) {
             if (def instanceof JCTree.JCMethodDecl method) {
                 if (hasAnnotation(method.mods, SneakyThrows.class)) {
                     usesSneakyThrows = true;
@@ -156,10 +113,10 @@ public class RecordProcessor extends AbstractProcessor {
         }
 
         if (usesSneakyThrows) {
-             JCTree.JCMethodDecl sneakyMethod = createSneakyThrowMethod();
-             if (!methodExists(classDecl, sneakyMethod)) {
-                 classDecl.defs = classDecl.defs.append(sneakyMethod);
-             }
+            JCTree.JCMethodDecl sneakyMethod = createSneakyThrowMethod();
+            if (!methodExists(classDecl, sneakyMethod)) {
+                classDecl.defs = classDecl.defs.append(sneakyMethod);
+            }
         }
 
         boolean applyAll = false;
@@ -404,9 +361,9 @@ public class RecordProcessor extends AbstractProcessor {
 
         JCTree.JCExpression methodSelect = maker.Select(maker.Ident(className), names.fromString("$sneakyThrow"));
         JCTree.JCExpression call = maker.Apply(
-            List.of(maker.Ident(names.fromString("RuntimeException"))), // Type args
-            methodSelect,
-            List.of(maker.Ident(names.fromString("t")))
+                List.of(maker.Ident(names.fromString("RuntimeException"))), // Type args
+                methodSelect,
+                List.of(maker.Ident(names.fromString("t")))
         );
 
         JCTree.JCStatement callStmt = maker.Exec(call);

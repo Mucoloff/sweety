@@ -17,7 +17,6 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
     private static final String RECORD_GETTER = "dev.sweety.record.annotations.RecordGetter";
     private static final String SETTER = "dev.sweety.record.annotations.Setter";
     private static final String ALL_ARGS_CONSTRUCTOR = "dev.sweety.record.annotations.AllArgsConstructor";
-    private static final String UTILITY_CLASS = "dev.sweety.record.annotations.UtilityClass";
     private static final String DATA_IGNORE = "dev.sweety.record.annotations.DataIgnore";
 
     @Override
@@ -39,13 +38,10 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
         boolean classHasGetter = false;
         boolean classHasSetter = false;
         boolean classHasAllArgsConstructor = false;
-        boolean classHasUtilityClass = false;
 
         PsiAnnotation dataAnn = null;
         PsiAnnotation getterAnn = null;
         PsiAnnotation setterAnn = null;
-        PsiAnnotation allArgsConstructorAnn = null;
-        PsiAnnotation utilityClassAnn = null;
 
         PsiModifierList modifierList = psiClass.getModifierList();
         if (modifierList != null) {
@@ -72,13 +68,7 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
                     }
                 } else if ("AllArgsConstructor".equals(refName) || ALL_ARGS_CONSTRUCTOR.endsWith("." + refName)) {
                     if (ann.hasQualifiedName(ALL_ARGS_CONSTRUCTOR)) {
-                        allArgsConstructorAnn = ann;
                         classHasAllArgsConstructor = true;
-                    }
-                } else if ("UtilityClass".equals(refName) || UTILITY_CLASS.endsWith("." + refName)) {
-                    if (ann.hasQualifiedName(UTILITY_CLASS)) {
-                        utilityClassAnn = ann;
-                        classHasUtilityClass = true;
                     }
                 }
             }
@@ -114,29 +104,16 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
                 result.add((Psi) createAllArgsConstructor(psiClass));
             }
 
-            if (classHasUtilityClass) {
-                //result.add((Psi) createPrivateConstructor(psiClass));
-                for (PsiMethod method : getOwnMethods(psiClass)) {
-                    if (method.isConstructor()) continue;
-                    if (!method.hasModifierProperty(PsiModifier.STATIC)) {
-                        //result.remove(method);
-                        //method.delete();
-                        //result.add((Psi) createStaticDelegate(method, psiClass));
-                        //method.getModifierList().setModifierProperty(PsiModifier.STATIC, true);
-                        //nessuno di questi funziona senza errori
-                    }
-                }
-            }
-
             for (PsiField field : getOwnFields(psiClass)) {
-                if (field.getAnnotation(DATA_IGNORE) != null) continue;
+
+                if (hasAnnotation(field, DATA_IGNORE)) continue;
 
                 boolean isStatic = field.hasModifierProperty(PsiModifier.STATIC);
                 boolean isFinal = field.hasModifierProperty(PsiModifier.FINAL);
 
-                boolean fieldHasData = field.getAnnotation(RECORD_DATA) != null;
-                boolean fieldHasGetter = field.getAnnotation(RECORD_GETTER) != null;
-                boolean fieldHasSetter = field.getAnnotation(SETTER) != null;
+                boolean fieldHasData = hasAnnotation(field, RECORD_DATA);
+                boolean fieldHasGetter = hasAnnotation(field, RECORD_GETTER);
+                boolean fieldHasSetter = hasAnnotation(field, SETTER);
 
                 boolean shouldGenGetter = fieldHasData || fieldHasGetter;
                 boolean shouldGenSetter = fieldHasData || fieldHasSetter;
@@ -157,6 +134,8 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
                 }
 
                 if (shouldGenSetter && !isFinal) {
+                    // Cache the builder type to avoid repeated resolving inside loop which creates recursion risk
+                    PsiType builderType = null;
                     for (String sType : setterTypes) {
                         final boolean classic;
                         final boolean builder = switch (sType) {
@@ -177,22 +156,28 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
                                 yield false;
                             }
                         };
-                        result.add((Psi) createSetter(field, psiClass, classic, builder));
+
+                        // Only create type once if needed
+                        if (builder && !isStatic && builderType == null) {
+                             builderType = JavaPsiFacade.getElementFactory(psiClass.getProject()).createType(psiClass);
+                        }
+
+                        result.add((Psi) createSetter(field, psiClass, classic, builder, builderType));
                     }
                 }
             }
         }
 
-        if (type.isAssignableFrom(PsiField.class) && classHasUtilityClass) {
-             for (PsiField field : getOwnFields(psiClass)) {
-                 if (!field.hasModifierProperty(PsiModifier.STATIC)) {
-                     result.add((Psi) createStaticFieldDelegate(field, psiClass));
-                 }
-             }
-        }
-
         return result;
     }
+
+    private boolean hasExplicitConstructor(PsiClass psiClass) {
+        for (PsiMethod method : getOwnMethods(psiClass)) {
+            if (method.isConstructor()) return true;
+        }
+        return false;
+    }
+
 
     private List<PsiField> getOwnFields(PsiClass psiClass) {
         List<PsiField> fields = new ArrayList<>();
@@ -275,7 +260,7 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
         return method;
     }
 
-    private PsiMethod createSetter(PsiField field, PsiClass psiClass, boolean classic, boolean builder) {
+    private PsiMethod createSetter(PsiField field, PsiClass psiClass, boolean classic, boolean builder, PsiType builderType) {
         String fieldName = field.getName();
         String methodName;
 
@@ -288,9 +273,13 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
         LightMethodBuilder method = new LightMethodBuilder(psiClass.getManager(), methodName);
 
         if (builder && !field.hasModifierProperty(PsiModifier.STATIC)) {
-             method.setMethodReturnType(JavaPsiFacade.getElementFactory(psiClass.getProject()).createType(psiClass));
+            if (builderType != null) {
+                method.setMethodReturnType(builderType);
+            } else {
+                method.setMethodReturnType(JavaPsiFacade.getElementFactory(psiClass.getProject()).createType(psiClass));
+            }
         } else {
-             method.setMethodReturnType(PsiTypes.voidType());
+            method.setMethodReturnType(PsiTypes.voidType());
         }
 
         method.setContainingClass(psiClass);
@@ -322,11 +311,17 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
     }
 
     private PsiMethod createPrivateConstructor(PsiClass psiClass) {
-        LightMethodBuilder method = new LightMethodBuilder(psiClass.getManager(), psiClass.getName());
+        LightMethodBuilder method = new LightMethodBuilder(psiClass.getManager(), "<init>");
         method.setConstructor(true);
         method.setContainingClass(psiClass);
         method.addModifier(PsiModifier.PRIVATE);
         method.setNavigationElement(psiClass);
+
+        PsiElementFactory factory = JavaPsiFacade.getElementFactory(psiClass.getProject());
+        PsiClassType exceptionType = factory.createTypeByFQClassName("java.lang.UnsupportedOperationException", psiClass.getResolveScope());
+        method.addException(exceptionType);
+
+        // Cannot add body in PsiAugmentProvider effectively shown in structure, but this is for declaration.
         return method;
     }
 
@@ -334,7 +329,11 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
         LightMethodBuilder builder = new LightMethodBuilder(psiClass.getManager(), method.getName());
         builder.setMethodReturnType(method.getReturnType());
         builder.setContainingClass(psiClass);
-        builder.addModifier(PsiModifier.PUBLIC);
+
+        if (method.hasModifierProperty(PsiModifier.PUBLIC)) builder.addModifier(PsiModifier.PUBLIC);
+        if (method.hasModifierProperty(PsiModifier.PRIVATE)) builder.addModifier(PsiModifier.PRIVATE);
+        if (method.hasModifierProperty(PsiModifier.PROTECTED)) builder.addModifier(PsiModifier.PROTECTED);
+
         builder.addModifier(PsiModifier.STATIC);
         builder.setNavigationElement(method);
 
@@ -346,6 +345,21 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
             builder.addException(type);
         }
 
+
         return builder;
+    }
+
+    private boolean hasAnnotation(PsiElement element, String qualifiedName) {
+        if (element instanceof PsiModifierListOwner owner) {
+            PsiModifierList modifierList = owner.getModifierList();
+            if (modifierList != null) {
+                for (PsiAnnotation annotation : modifierList.getAnnotations()) {
+                    if (annotation.hasQualifiedName(qualifiedName)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 }

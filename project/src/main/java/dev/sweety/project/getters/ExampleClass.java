@@ -31,8 +31,6 @@ public class ExampleClass {
         ExampleClass.setT1("New T1");
         System.out.println("Static T1 Modified: " + ExampleClass.t1());
 
-        UtilsTest.method1();
-
         c.excepthandler();
     }
 
