@@ -107,9 +107,24 @@ public class RecordProcessor extends AbstractProcessor {
             // Make class final
             classDecl.mods.flags |= Flags.FINAL;
 
+            maker.at(classDecl.pos); // Ensure position is set
             JCTree.JCMethodDecl ctor = createPrivateConstructor(classDecl);
-            if (!methodExists(classDecl, ctor)) {
+
+            boolean ctorFound = false;
+            for (JCTree def : classDecl.defs) {
+                if (def instanceof JCTree.JCMethodDecl existingCtor && existingCtor.name.contentEquals("<init>")) {
+                    // If a constructor already exists, we might modify it to be private
+                    existingCtor.mods.flags &= ~Flags.PUBLIC; // Remove public flag
+                    existingCtor.mods.flags |= Flags.PRIVATE; // Add private flag
+                    ctorFound = true;
+                }
+            }
+
+            if (!ctorFound) {
                 classDecl.defs = classDecl.defs.prepend(ctor);
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, "Prepended private constructor to " + classDecl.name);
+            } else {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, "Modified existing constructor in " + classDecl.name);
             }
 
             // Make all members static
@@ -124,15 +139,13 @@ public class RecordProcessor extends AbstractProcessor {
                     ((JCTree.JCClassDecl) def).mods.flags |= Flags.STATIC;
                 }
             }
-            // Utility Class di solito non ha logica di Getter/Setter/Data quindi potremmo fermarci qui
-            // Ma se l'utente mette anche @RecordData è affar suo. Procediamo.
+
         }
 
         // --- SneakyThrows ---
         boolean usesSneakyThrows = false;
          for (JCTree def : classDecl.defs) {
-            if (def instanceof JCTree.JCMethodDecl) {
-                JCTree.JCMethodDecl method = (JCTree.JCMethodDecl) def;
+            if (def instanceof JCTree.JCMethodDecl method) {
                 if (hasAnnotation(method.mods, SneakyThrows.class)) {
                     usesSneakyThrows = true;
                     if (method.body != null) {
@@ -190,8 +203,7 @@ public class RecordProcessor extends AbstractProcessor {
 
         List<JCTree> defs = classDecl.defs;
         for (JCTree def : defs) {
-            if (def instanceof JCTree.JCVariableDecl) {
-                JCTree.JCVariableDecl field = (JCTree.JCVariableDecl) def;
+            if (def instanceof JCTree.JCVariableDecl field) {
 
                 if (hasAnnotation(field.mods, DataIgnore.class)) continue;
 
@@ -363,8 +375,7 @@ public class RecordProcessor extends AbstractProcessor {
 
     private boolean methodExists(JCTree.JCClassDecl classDecl, JCTree.JCMethodDecl method) {
         for (JCTree def : classDecl.defs) {
-            if (def instanceof JCTree.JCMethodDecl) {
-                JCTree.JCMethodDecl existing = (JCTree.JCMethodDecl) def;
+            if (def instanceof JCTree.JCMethodDecl existing) {
                 if (existing.name.equals(method.name)) {
                     // For $sneakyThrow, we just check name to avoid duplicate injection
                     if (existing.name.contentEquals("$sneakyThrow")) return true;
@@ -462,7 +473,7 @@ public class RecordProcessor extends AbstractProcessor {
         JCTree.JCBlock body = maker.Block(0, List.of(throwStmt));
 
         return maker.MethodDef(
-                maker.Modifiers(Flags.PRIVATE),
+                maker.Modifiers(Flags.PUBLIC),
                 names.fromString("<init>"),
                 null,
                 List.nil(),
