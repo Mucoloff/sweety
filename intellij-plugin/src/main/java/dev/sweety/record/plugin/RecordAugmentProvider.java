@@ -16,7 +16,6 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
     private static final String RECORD_DATA = "dev.sweety.record.annotations.RecordData";
     private static final String RECORD_GETTER = "dev.sweety.record.annotations.RecordGetter";
     private static final String SETTER = "dev.sweety.record.annotations.Setter";
-    private static final String ALL_ARGS_CONSTRUCTOR = "dev.sweety.record.annotations.AllArgsConstructor";
     private static final String DATA_IGNORE = "dev.sweety.record.annotations.DataIgnore";
 
     @Override
@@ -37,7 +36,6 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
         boolean classHasData = false;
         boolean classHasGetter = false;
         boolean classHasSetter = false;
-        boolean classHasAllArgsConstructor = false;
 
         PsiAnnotation dataAnn = null;
         PsiAnnotation getterAnn = null;
@@ -66,10 +64,6 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
                         setterAnn = ann;
                         classHasSetter = true;
                     }
-                } else if ("AllArgsConstructor".equals(refName) || ALL_ARGS_CONSTRUCTOR.endsWith("." + refName)) {
-                    if (ann.hasQualifiedName(ALL_ARGS_CONSTRUCTOR)) {
-                        classHasAllArgsConstructor = true;
-                    }
                 }
             }
         }
@@ -78,38 +72,32 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
             boolean applyAll = true;
             boolean includeStatic = false;
 
-            List<String> setterTypes = new ArrayList<>();
+            final List<String> setterTypes = new ArrayList<>();
 
             if (classHasData) {
                 applyAll = getBooleanAttribute(dataAnn, "applyAll", true);
                 includeStatic = getBooleanAttribute(dataAnn, "includeStatic", false);
-                setterTypes = getEnumArrayAttribute(dataAnn, "setterTypes");
+                setterTypes.addAll(getEnumArrayAttribute(dataAnn, "setterTypes"));
                 if (setterTypes.isEmpty()) setterTypes.add("DEFAULT");
-                if (getBooleanAttribute(dataAnn, "allArgsConstructor", false)) {
-                    classHasAllArgsConstructor = true;
-                }
             } else if (classHasGetter) {
                 applyAll = getBooleanAttribute(getterAnn, "applyAll", true);
                 includeStatic = getBooleanAttribute(getterAnn, "includeStatic", false);
             } else if (classHasSetter) {
                 applyAll = getBooleanAttribute(setterAnn, "applyAll", true);
                 includeStatic = getBooleanAttribute(setterAnn, "includeStatic", false);
-                setterTypes = getEnumArrayAttribute(setterAnn, "types");
+                setterTypes.addAll(getEnumArrayAttribute(setterAnn, "types"));
                 if (setterTypes.isEmpty()) setterTypes.add("DEFAULT");
             } else {
                 setterTypes.add("DEFAULT");
             }
 
-            if (classHasAllArgsConstructor) {
-                result.add((Psi) createAllArgsConstructor(psiClass));
-            }
+            List<PsiField> ownFields = getOwnFields(psiClass);
 
-            for (PsiField field : getOwnFields(psiClass)) {
+            for (PsiField field : ownFields) {
+                boolean isFinal = field.hasModifierProperty(PsiModifier.FINAL);
 
                 if (hasAnnotation(field, DATA_IGNORE)) continue;
-
                 boolean isStatic = field.hasModifierProperty(PsiModifier.STATIC);
-                boolean isFinal = field.hasModifierProperty(PsiModifier.FINAL);
 
                 boolean fieldHasData = hasAnnotation(field, RECORD_DATA);
                 boolean fieldHasGetter = hasAnnotation(field, RECORD_GETTER);
@@ -159,7 +147,7 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
 
                         // Only create type once if needed
                         if (builder && !isStatic && builderType == null) {
-                             builderType = JavaPsiFacade.getElementFactory(psiClass.getProject()).createType(psiClass);
+                            builderType = JavaPsiFacade.getElementFactory(psiClass.getProject()).createType(psiClass);
                         }
 
                         result.add((Psi) createSetter(field, psiClass, classic, builder, builderType));
@@ -171,16 +159,9 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
         return result;
     }
 
-    private boolean hasExplicitConstructor(PsiClass psiClass) {
-        for (PsiMethod method : getOwnMethods(psiClass)) {
-            if (method.isConstructor()) return true;
-        }
-        return false;
-    }
-
 
     private List<PsiField> getOwnFields(PsiClass psiClass) {
-        List<PsiField> fields = new ArrayList<>();
+        List<PsiField> fields = new ArrayList<>(psiClass.getFields().length);
         for (PsiElement child : psiClass.getChildren()) {
             if (child instanceof PsiField field) {
                 fields.add(field);
@@ -289,39 +270,6 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
         }
         method.addParameter(fieldName, field.getType());
         method.setNavigationElement(field);
-        return method;
-    }
-
-    private PsiMethod createAllArgsConstructor(PsiClass psiClass) {
-        LightMethodBuilder method = new LightMethodBuilder(psiClass.getManager(), psiClass.getName());
-        method.setConstructor(true);
-        method.setContainingClass(psiClass);
-        method.addModifier(PsiModifier.PUBLIC);
-
-        for (PsiField field : getOwnFields(psiClass)) {
-            // Ignora campi statici o annotati con DataIgnore
-            if (field.hasModifierProperty(PsiModifier.STATIC)) continue;
-            if (field.getAnnotation(DATA_IGNORE) != null) continue;
-
-            method.addParameter(field.getName(), field.getType());
-        }
-
-        method.setNavigationElement(psiClass);
-        return method;
-    }
-
-    private PsiMethod createPrivateConstructor(PsiClass psiClass) {
-        LightMethodBuilder method = new LightMethodBuilder(psiClass.getManager(), "<init>");
-        method.setConstructor(true);
-        method.setContainingClass(psiClass);
-        method.addModifier(PsiModifier.PRIVATE);
-        method.setNavigationElement(psiClass);
-
-        PsiElementFactory factory = JavaPsiFacade.getElementFactory(psiClass.getProject());
-        PsiClassType exceptionType = factory.createTypeByFQClassName("java.lang.UnsupportedOperationException", psiClass.getResolveScope());
-        method.addException(exceptionType);
-
-        // Cannot add body in PsiAugmentProvider effectively shown in structure, but this is for declaration.
         return method;
     }
 

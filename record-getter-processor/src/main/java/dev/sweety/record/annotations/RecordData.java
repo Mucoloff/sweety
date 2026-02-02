@@ -15,9 +15,5 @@ public @interface RecordData {
 
     Setter.Type[] setterTypes() default {Setter.Type.DEFAULT};
 
-    /**
-     * Genera un costruttore con tutti i campi (ignorando quelli statici o marcati con @DataIgnore)
-     */
-    boolean allArgsConstructor() default false;
 
 }

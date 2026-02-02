@@ -15,7 +15,6 @@ import dev.sweety.record.annotations.DataIgnore;
 import dev.sweety.record.annotations.RecordData;
 import dev.sweety.record.annotations.RecordGetter;
 import dev.sweety.record.annotations.Setter;
-import dev.sweety.record.annotations.AllArgsConstructor;
 import dev.sweety.record.annotations.SneakyThrows;
 
 import javax.annotation.processing.*;
@@ -24,6 +23,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -62,7 +62,6 @@ public class RecordProcessor extends AbstractProcessor {
         annotatedElements.addAll(roundEnv.getElementsAnnotatedWith(RecordData.class));
         annotatedElements.addAll(roundEnv.getElementsAnnotatedWith(RecordGetter.class));
         annotatedElements.addAll(roundEnv.getElementsAnnotatedWith(Setter.class));
-        annotatedElements.addAll(roundEnv.getElementsAnnotatedWith(AllArgsConstructor.class));
         annotatedElements.addAll(roundEnv.getElementsAnnotatedWith(SneakyThrows.class));
         annotatedElements.removeAll(roundEnv.getElementsAnnotatedWith(DataIgnore.class));
 
@@ -97,7 +96,6 @@ public class RecordProcessor extends AbstractProcessor {
         RecordData dataAnnotation = classElement.getAnnotation(RecordData.class);
         RecordGetter getterAnnotation = classElement.getAnnotation(RecordGetter.class);
         Setter setterAnnotation = classElement.getAnnotation(Setter.class);
-        AllArgsConstructor allArgsAnnotation = classElement.getAnnotation(AllArgsConstructor.class);
 
         // --- SneakyThrows ---
         boolean usesSneakyThrows = false;
@@ -126,7 +124,6 @@ public class RecordProcessor extends AbstractProcessor {
 
         // Nuovi flag
         Setter.Type[] setterTypes = {Setter.Type.DEFAULT};
-        boolean allArgsConstructor = false;
 
         if (dataAnnotation != null) {
             applyAll = dataAnnotation.applyAll();
@@ -134,7 +131,6 @@ public class RecordProcessor extends AbstractProcessor {
             doSearchGetters = true;
             doSearchSetters = true;
             setterTypes = dataAnnotation.setterTypes();
-            allArgsConstructor = dataAnnotation.allArgsConstructor();
         } else if (getterAnnotation != null) {
             applyAll = getterAnnotation.applyAll();
             includeStatic = getterAnnotation.includeStatic();
@@ -146,17 +142,6 @@ public class RecordProcessor extends AbstractProcessor {
             setterTypes = setterAnnotation.types();
         }
 
-        if (allArgsAnnotation != null) {
-            allArgsConstructor = true;
-        }
-
-        // Genera AllArgsConstructor se richiesto
-        if (allArgsConstructor) {
-            JCTree.JCMethodDecl ctor = createAllArgsConstructor(classDecl);
-            if (!methodExists(classDecl, ctor)) {
-                classDecl.defs = classDecl.defs.append(ctor);
-            }
-        }
 
         List<JCTree> defs = classDecl.defs;
         for (JCTree def : defs) {
@@ -296,49 +281,14 @@ public class RecordProcessor extends AbstractProcessor {
         );
     }
 
-    private JCTree.JCMethodDecl createAllArgsConstructor(JCTree.JCClassDecl classDecl) {
-        List<JCTree.JCVariableDecl> params = List.nil();
-        List<JCTree.JCStatement> assignments = List.nil();
-
-        for (JCTree def : classDecl.defs) {
-            if (!(def instanceof JCTree.JCVariableDecl field)) continue;
-
-            boolean isStatic = (field.mods.flags & Flags.STATIC) != 0;
-
-            if (isStatic || hasAnnotation(field.mods, DataIgnore.class)) continue;
-
-            // Crea parametro
-            params = params.append(maker.VarDef(maker.Modifiers(Flags.PARAMETER), field.name, field.vartype, null));
-
-            // Crea assegnamento this.field = field;
-            JCTree.JCExpression thisField = maker.Select(maker.Ident(names.fromString("this")), field.name);
-            JCTree.JCStatement assign = maker.Exec(maker.Assign(thisField, maker.Ident(field.name)));
-            assignments = assignments.append(assign);
-        }
-
-        JCTree.JCBlock body = maker.Block(0, assignments);
-
-        return maker.MethodDef(
-                maker.Modifiers(Flags.PUBLIC),
-                names.fromString("<init>"),
-                null,
-                List.nil(),
-                params,
-                List.nil(),
-                body,
-                null
-        );
-    }
-
     private boolean methodExists(JCTree.JCClassDecl classDecl, JCTree.JCMethodDecl method) {
         for (JCTree def : classDecl.defs) {
             if (def instanceof JCTree.JCMethodDecl existing) {
                 if (existing.name.equals(method.name)) {
                     // For $sneakyThrow, we just check name to avoid duplicate injection
-                    if (existing.name.contentEquals("$sneakyThrow")) return true;
-                    if (existing.params.length() == method.params.length()) { // Simplistic signature check
+                    if (existing.name.contentEquals("$sneakyThrow"))
                         return true;
-                    }
+                    if (existing.toString().equals(method.toString())) return true;
                 }
             }
         }

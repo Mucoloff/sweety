@@ -3,9 +3,9 @@ package dev.sweety.project.getters;
 import dev.sweety.record.annotations.*;
 
 import java.io.File;
+import java.util.UUID;
 
 @RecordData(includeStatic = true, setterTypes = Setter.Type.BUILDER)
-@AllArgsConstructor
 public class ExampleClass {
 
     private int id;
@@ -16,7 +16,9 @@ public class ExampleClass {
     private static String t1 = "t1";
 
     public static void main(String[] args) {
-        ExampleClass c = new ExampleClass(1, "suca");
+        ExampleClass c = new ExampleClass();
+
+        //new ExampleClass();
 
         System.out.println("ID: " + c.id());
         System.out.println("Name: " + c.name());
