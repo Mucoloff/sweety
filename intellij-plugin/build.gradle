@@ -12,7 +12,9 @@ repositories {
 
 dependencies {
     // Dipendenza dalle annotazioni per poterle riconoscere
-    implementation project(':record-getter-processor')
+    compileOnly(project(':record-getter-processor')) {
+        transitive = false
+    }
 }
 
 // See https://github.com/JetBrains/gradle-intellij-plugin/

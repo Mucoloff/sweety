@@ -1,9 +1,6 @@
 package dev.sweety.project.getters;
 
-import dev.sweety.record.annotations.AllArgsConstructor;
-import dev.sweety.record.annotations.RecordData;
-import dev.sweety.record.annotations.Setter;
-import dev.sweety.record.annotations.SneakyThrows;
+import dev.sweety.record.annotations.*;
 
 import java.io.File;
 
