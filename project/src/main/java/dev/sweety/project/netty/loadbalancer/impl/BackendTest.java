@@ -10,6 +10,8 @@ import dev.sweety.project.netty.packet.text.TextPacket;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 public class BackendTest extends Backend {
 
     private final SimpleLogger logger = new SimpleLogger(BackendTest.class);
@@ -34,10 +36,12 @@ public class BackendTest extends Backend {
         ctx.close();
     }
 
+
     @Override
     public void join(ChannelHandlerContext ctx, ChannelPromise promise) {
         logger.push("connect", AnsiColor.GREEN_BRIGHT).info(ctx.channel().localAddress()).pop();
         super.addClient(ctx, ctx.channel().remoteAddress());
+        this.ctx.set(ctx);
         promise.setSuccess();
     }
 

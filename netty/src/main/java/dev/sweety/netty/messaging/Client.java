@@ -5,14 +5,15 @@ import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.concurrent.CompletableFuture;
 
 public abstract class Client extends Messenger<Bootstrap> {
 
-    public Client(String host, int port, IPacketRegistry packetRegistry, int localPort, Packet... packets) {
-        super(new Bootstrap(), host, port, packetRegistry, localPort, packets);
+    public Client(String host, int port, IPacketRegistry packetRegistry, int localPort, ChannelHandler... handlers) {
+        super(new Bootstrap(), host, port, packetRegistry, localPort, handlers);
     }
 
     public CompletableFuture<Void> sendPacket(Packet packet) {

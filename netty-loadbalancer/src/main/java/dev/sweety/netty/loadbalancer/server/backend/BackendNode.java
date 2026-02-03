@@ -14,6 +14,7 @@ import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import lombok.Getter;
@@ -33,9 +34,13 @@ public class BackendNode extends Client {
     private final AutoReconnect autoReconnect = new AutoReconnect(2500L, TimeUnit.MILLISECONDS, this::start);
     private final RequestManager requestManager = new RequestManager();
 
-    public BackendNode(String host, int port, IPacketRegistry packetRegistry) {
-        super(host, port, packetRegistry, -1);
+    public BackendNode(String host, int port, IPacketRegistry packetRegistry, int localPort, ChannelHandler... handlers) {
+        super(host, port, packetRegistry, localPort, handlers);
         this.logger = new SimpleLogger("Node#" + AnsiColor.fromColor(RandomUtils.RANDOM.nextInt() * port) + port + AnsiColor.RESET.getColor()).info("Waiting for backend...");
+    }
+
+    public BackendNode(String host, int port, IPacketRegistry packetRegistry) {
+        this(host, port, packetRegistry, -1);
     }
 
     @Override

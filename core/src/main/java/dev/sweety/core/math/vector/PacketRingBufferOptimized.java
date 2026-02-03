@@ -1,4 +1,4 @@
-package dev.sweety.core.util;
+package dev.sweety.core.math.vector;
 
 public class PacketRingBufferOptimized<E> {
     private final E[] buffer;

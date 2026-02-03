@@ -10,6 +10,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class RecordAugmentProvider extends PsiAugmentProvider {
 
@@ -125,23 +126,24 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
                     // Cache the builder type to avoid repeated resolving inside loop which creates recursion risk
                     PsiType builderType = null;
                     for (String sType : setterTypes) {
-                        final boolean classic;
-                        final boolean builder = switch (sType) {
+                        final boolean fluent;
+                        final boolean builder;
+                        switch (sType) {
                             case "FLUENT" -> {
-                                classic = false;
-                                yield false;
+                                fluent = true;
+                                builder = false;
                             }
                             case "BUILDER" -> {
-                                classic = true;
-                                yield true;
+                                fluent = false;
+                                builder = true;
                             }
                             case "BUILDER_FLUENT" -> {
-                                classic = false;
-                                yield true;
+                                fluent = true;
+                                builder = true;
                             }
                             default -> {
-                                classic = true;
-                                yield false;
+                                fluent = false;
+                                builder = false;
                             }
                         };
 
@@ -150,7 +152,7 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
                             builderType = JavaPsiFacade.getElementFactory(psiClass.getProject()).createType(psiClass);
                         }
 
-                        result.add((Psi) createSetter(field, psiClass, classic, builder, builderType));
+                        result.add((Psi) createSetter(field, psiClass, !fluent, builder, builderType));
                     }
                 }
             }
@@ -254,11 +256,7 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
         LightMethodBuilder method = new LightMethodBuilder(psiClass.getManager(), methodName);
 
         if (builder && !field.hasModifierProperty(PsiModifier.STATIC)) {
-            if (builderType != null) {
-                method.setMethodReturnType(builderType);
-            } else {
-                method.setMethodReturnType(JavaPsiFacade.getElementFactory(psiClass.getProject()).createType(psiClass));
-            }
+            method.setMethodReturnType(Objects.requireNonNullElseGet(builderType, () -> JavaPsiFacade.getElementFactory(psiClass.getProject()).createType(psiClass)));
         } else {
             method.setMethodReturnType(PsiTypes.voidType());
         }

@@ -46,8 +46,8 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
     @Getter
     @Setter
     protected String host;
-    @Getter
-    private final Packet[] packets;
+
+
     private final AtomicBoolean running = new AtomicBoolean();
 
     @Getter
@@ -58,7 +58,7 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
     private final IPacketRegistry packetRegistry;
 
 
-        public Messenger(B bootstrap, String host, int port, IPacketRegistry packetRegistry, int localPort, Packet... packets) {
+        public Messenger(B bootstrap, String host, int port, IPacketRegistry packetRegistry, int localPort, ChannelHandler... handlers) {
         this.bootstrap = bootstrap;
         this.boss = new NioEventLoopGroup();
         this.worker = new NioEventLoopGroup(16);
@@ -69,14 +69,14 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
 
         this.port = port;
         this.host = host;
-        this.packets = packets;
         this.packetRegistry = packetRegistry;
 
         final ChannelInitializer<SocketChannel> init = new ChannelInitializer<>() {
             @Override
             protected void initChannel(SocketChannel ch) {
                 ChannelPipeline p = ch.pipeline();
-                p.addLast(
+                if (handlers != null) p.addLast(handlers);
+                else p.addLast(
                         new NettyDecoder(Messenger.this.packetRegistry),
                         new NettyWatcher(Messenger.this),
                         new NettyEncoder(Messenger.this.packetRegistry)

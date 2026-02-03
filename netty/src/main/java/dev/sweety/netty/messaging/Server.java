@@ -4,6 +4,7 @@ import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import lombok.Getter;
 
@@ -15,8 +16,8 @@ public abstract class Server extends Messenger<ServerBootstrap> {
     @Getter
     private final Map<SocketAddress, ChannelHandlerContext> clients = new ConcurrentHashMap<>();
 
-    public Server(String host, int port, IPacketRegistry packetRegistry, Packet... packets) {
-        super(new ServerBootstrap(), host, port, packetRegistry, -1, packets);
+    public Server(String host, int port, IPacketRegistry packetRegistry, ChannelHandler... handlers) {
+        super(new ServerBootstrap(), host, port, packetRegistry, -1, handlers);
     }
 
     public void broadcastPacket(final Packet msg) {

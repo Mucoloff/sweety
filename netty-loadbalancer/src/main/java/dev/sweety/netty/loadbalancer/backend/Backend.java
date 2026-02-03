@@ -14,6 +14,7 @@ import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
@@ -26,6 +27,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -39,8 +41,8 @@ public abstract class Backend extends Server {
     private final ScheduledExecutorService metricsScheduler = ThreadUtil.namedScheduler("metrics-sampler");
     private final MetricSampler sampler = new MetricSampler();
 
-    public Backend(String host, int port, IPacketRegistry packetRegistry, Packet... packets) {
-        super(host, port, packetRegistry, packets);
+    public Backend(String host, int port, IPacketRegistry packetRegistry, ChannelHandler... handlers) {
+        super(host, port, packetRegistry, handlers);
         this._logger = new SimpleLogger("Backend-" + port);
         this._logger.push("<init>", AnsiColor.fromColor(new Color(148, 186, 76))).info("Waiting for loadbalancer...");
         this.constructor = (id, ts, data) -> packetRegistry.construct(id, ts, data, this._logger);
@@ -75,6 +77,8 @@ public abstract class Backend extends Server {
         this.useThreadManager = true;
     }
 
+    protected final AtomicReference<ChannelHandlerContext> ctx = new AtomicReference<>();
+
     @Override
     public void onPacketReceive(ChannelHandlerContext ctx, Packet packet) {
         if (!(packet instanceof InternalPacket internal) || !internal.hasRequest()) return;
@@ -90,7 +94,9 @@ public abstract class Backend extends Server {
             final Packet[] packets = handledPackets.toArray(handledPackets.toArray(Packet[]::new));
             final InternalPacket.Forward response = new InternalPacket.Forward(getPacketRegistry()::getPacketId, packets);
 
-            Messenger.safeExecute(ctx, c -> sendPacket(c, new InternalPacket(internal.getRequestId(), response)));
+            Messenger.safeExecute(ctx, c -> sendPacket(
+                    this.ctx.getAndSet(c),
+                    new InternalPacket(internal.getRequestId(), response)));
         };
 
         if (useThreadManager){
