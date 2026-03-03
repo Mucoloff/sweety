@@ -34,6 +34,17 @@ public enum OperatingSystem {
         this.name = name;
     }
 
+    private static OperatingSystem CACHE;
+
+    public static OperatingSystem os() {
+        if (CACHE == null) CACHE = detectOS();
+        return CACHE;
+    }
+
+    public boolean isThis() {
+        return os() == this;
+    }
+
     public static OperatingSystem detectOS() {
         String os = System.getProperty("os.name", "generic").toLowerCase(Locale.ROOT);
         if (os.contains("win")) return OperatingSystem.WINDOWS;

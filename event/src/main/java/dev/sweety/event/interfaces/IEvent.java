@@ -1,4 +1,6 @@
-package dev.sweety.event;
+package dev.sweety.event.interfaces;
+
+import dev.sweety.event.Event;
 
 public interface IEvent {
 

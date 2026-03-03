@@ -1,5 +1,6 @@
 package dev.sweety.event;
 
+import dev.sweety.event.interfaces.IEvent;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;

@@ -1,5 +1,8 @@
 package dev.sweety.netty.packet.registry;
 
+import dev.sweety.core.logger.LogHelper;
+import dev.sweety.core.logger.LogLevel;
+import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.netty.messaging.exception.PacketRegistrationException;
 import dev.sweety.netty.packet.model.Packet;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -52,7 +55,9 @@ public class OptimizedPacketRegistry implements IPacketRegistry {
 
     @Override
     public int getPacketId(Class<? extends Packet> packetClass) {
-        return this.classToId.getOrDefault(packetClass, -1);
+        if (classToId.containsKey(packetClass)) return classToId.get(packetClass);
+        SimpleLogger.log(LogLevel.DEBUG, "Packet " + packetClass.getName() + " not registered!");
+        return -1;
     }
 
     @Override

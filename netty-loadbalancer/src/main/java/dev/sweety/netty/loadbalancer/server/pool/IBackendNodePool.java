@@ -4,18 +4,16 @@ import dev.sweety.netty.loadbalancer.server.backend.BackendNode;
 import dev.sweety.netty.packet.model.Packet;
 import io.netty.channel.ChannelHandlerContext;
 
-import java.util.List;
+import java.util.Collection;
 import java.util.function.Consumer;
 
-public interface IBackendNodePool {
+public interface IBackendNodePool<T extends BackendNode> {
 
-    void initialize();
+    T next(Packet packet, ChannelHandlerContext ctx);
 
-    BackendNode next(Packet packet, ChannelHandlerContext ctx);
+    Collection<T> pool();
 
-    BackendNode[] pool();
-
-    default void foreachNode(Consumer<BackendNode> consumer){
-        for (BackendNode node : pool()) consumer.accept(node);
+    default void foreachNode(Consumer<T> consumer) {
+        for (T node : pool()) consumer.accept(node);
     }
 }

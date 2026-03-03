@@ -22,7 +22,7 @@ public class LClient {
         final ClientTest client = new ClientTest(LBSettings.LB_HOST, LBSettings.LB_PORT, LBSettings.registry) {
 
             {
-                setOnConnect(c -> {
+                onConnect(c -> {
                             ChannelHandlerContext ctx = c.pipeline().firstContext();
                             Messenger.safeExecute(ctx, ct -> sendPacket(ct, packets));
                         });

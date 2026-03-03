@@ -6,7 +6,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class RequestManager {
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
+public class RequestMatrics {
 
     private final Map<Long, RequestInfo> pendingRequests = new ConcurrentHashMap<>();
 

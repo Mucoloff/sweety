@@ -1,6 +1,5 @@
 package dev.sweety.netty.messaging.listener.encoder;
 
-import dev.sweety.netty.messaging.exception.PacketEncodeException;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
@@ -18,7 +17,7 @@ public class NettyEncoder extends MessageToByteEncoder<Packet> {
 
     @Override
     protected void encode(ChannelHandlerContext ctx, Packet packet, ByteBuf out) throws Exception {
-        PacketBuffer buffer = new PacketBuffer(out).retain();
+        final PacketBuffer buffer = new PacketBuffer(out).retain();
         try {
             packetEncoder.encode(packet, buffer);
         } finally {

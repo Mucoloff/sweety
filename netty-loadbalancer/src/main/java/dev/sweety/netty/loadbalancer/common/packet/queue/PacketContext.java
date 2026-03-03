@@ -1,4 +1,4 @@
-package dev.sweety.netty.loadbalancer.server.packets;
+package dev.sweety.netty.loadbalancer.common.packet.queue;
 
 import dev.sweety.netty.packet.model.Packet;
 import io.netty.channel.ChannelHandlerContext;

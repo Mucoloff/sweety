@@ -9,7 +9,6 @@ import dev.sweety.netty.packet.model.Packet;
 import java.util.HashMap;
 import java.util.Map;
 
-
 public class MetricsUpdatePacket extends Packet {
 
     private static final float SCALE = 10_000f;

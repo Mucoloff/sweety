@@ -3,15 +3,16 @@ package dev.sweety.netty.loadbalancer.common.metrics;
 import dev.sweety.netty.loadbalancer.common.metrics.state.NodeState;
 
 public record SmoothedLoad(
-            float cpu,
-            float ram,
-            float cpuTotal,
-            float ramTotal,
-            float openFiles,
-            float threadPressure,
-            float systemLoad,
-            NodeState state
-    ) {
+        float cpu,
+        float ram,
+        float cpuTotal,
+        float ramTotal,
+        float openFiles,
+        float threadPressure,
+        float systemLoad,
+        NodeState state
+) {
+    public static final int SIZE = 7;
 
     public float[] data() {
         return new float[]{
@@ -25,8 +26,9 @@ public record SmoothedLoad(
         };
     }
 
-    public static SmoothedLoad fromData(final NodeState state,final float... data) {
-        if (data == null || data.length != 7) throw new IllegalArgumentException("Data array must contain exactly 7 elements.");
+    public static SmoothedLoad fromData(final NodeState state, final float... data) {
+        if (data == null || data.length != SIZE)
+            throw new IllegalArgumentException("Data array must contain exactly 7 elements.");
         return new SmoothedLoad(
                 data[0],
                 data[1],

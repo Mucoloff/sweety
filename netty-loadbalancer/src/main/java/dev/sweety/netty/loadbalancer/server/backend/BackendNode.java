@@ -5,75 +5,62 @@ import dev.sweety.core.logger.SimpleLogger;
 import dev.sweety.core.math.MathUtils;
 import dev.sweety.core.math.RandomUtils;
 import dev.sweety.netty.feature.AutoReconnect;
+import dev.sweety.netty.loadbalancer.common.backend.BackendSettings;
+import dev.sweety.netty.loadbalancer.common.backend.IBackend;
 import dev.sweety.netty.loadbalancer.common.metrics.state.NodeState;
-import dev.sweety.netty.loadbalancer.common.packet.InternalPacket;
+import dev.sweety.netty.loadbalancer.common.packet.internal.InternalPacket;
 import dev.sweety.netty.loadbalancer.common.packet.MetricsUpdatePacket;
 import dev.sweety.netty.loadbalancer.server.LoadBalancerServer;
 import dev.sweety.netty.messaging.Client;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandler;
+import dev.sweety.record.annotations.DataIgnore;
+import dev.sweety.record.annotations.RecordGetter;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPromise;
-import lombok.Getter;
-import lombok.Setter;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
-public class BackendNode extends Client {
+@RecordGetter
+public class BackendNode implements IBackend {
 
-    @Setter
-    private LoadBalancerServer loadBalancer;
+    protected final LoadBalancerServer<? extends BackendNode> loadBalancer;
     private final SimpleLogger logger;
 
-    private final AutoReconnect autoReconnect = new AutoReconnect(2500L, TimeUnit.MILLISECONDS, this::start);
-    private final RequestManager requestManager = new RequestManager();
+    private final int typeId, port;
 
-    public BackendNode(String host, int port, IPacketRegistry packetRegistry, int localPort, ChannelHandler... handlers) {
-        super(host, port, packetRegistry, localPort, handlers);
-        this.logger = new SimpleLogger("Node#" + AnsiColor.fromColor(RandomUtils.RANDOM.nextInt() * port) + port + AnsiColor.RESET.getColor()).info("Waiting for backend...");
+    protected ChannelHandlerContext ctx;
+
+    @DataIgnore
+    private final RequestMatrics requestMatrics = new RequestMatrics();
+
+    public BackendNode(final LoadBalancerServer<? extends BackendNode> loadBalancer, int port, int type) {
+        this.loadBalancer = loadBalancer;
+        this.typeId = type;
+        this.port = port;
+        final String color = AnsiColor.fromColor(RandomUtils.RANDOM.nextInt() * type * port) + port + AnsiColor.RESET.getColor();
+        this.logger = new SimpleLogger("Node#" + color).info("Backend connected!");
     }
 
-    public BackendNode(String host, int port, IPacketRegistry packetRegistry) {
-        this(host, port, packetRegistry, -1);
-    }
-
-    @Override
-    public CompletableFuture<Channel> connect() {
-        requestManager.reset();
+    public void disconnect() {
+        requestMatrics.reset();
         usageScore = latencyScore = bandwidthScore = currentBandwidthScore = packetTimeScore = totalScore = 0f;
         maxObservedAvgLoad = maxObservedCurrentLoad = maxObservedPacketTime = 1f;
-        return super.connect().exceptionally((t) -> {
-            this.autoReconnect.onException(t);
-            return null;
-        }).whenComplete((c,t) -> {
-            if (c != null) this.autoReconnect.complete();
-        });
+        packetTimings.clear();
+        inFlight = 0;
+        logger.push("disconnect").info("Backend disconnected!").pop();
     }
 
-    @Override
-    public void stop() {
-        this.autoReconnect.shutdown();
-        super.stop();
-    }
-
-    //todo make a settings class for these
-    private static final int maxInFlight = 50, inFlightAcceptable = 35;
-    private static final float maxExpectedLatency = 1000f;
-
-    @Getter
     private volatile NodeState state = NodeState.HEALTHY;
-    @Getter
     private volatile float usageScore = 0f, latencyScore = 0f, bandwidthScore = 0f, currentBandwidthScore = 0f, packetTimeScore = 0f, totalScore = 0f;
-    private volatile float maxObservedAvgLoad = 1f, maxObservedCurrentLoad = 1f;
 
-    @Getter
     private volatile float maxObservedPacketTime = 1f;
+    private final Map<Integer, Float> packetTimings = new ConcurrentHashMap<>();
+
+    @DataIgnore
+    private volatile float maxObservedAvgLoad = 1f, maxObservedCurrentLoad = 1f;
 
     synchronized void updateMaxObserved(float avgLoad, float currentLoad, float currentTime) {
         maxObservedAvgLoad = Math.max(maxObservedAvgLoad, avgLoad);
@@ -81,22 +68,27 @@ public class BackendNode extends Client {
         maxObservedPacketTime = Math.max(maxObservedPacketTime, currentTime);
     }
 
-    @Getter
-    private final Map<Integer, Float> packetTimings = new ConcurrentHashMap<>();
-
-    public final float getAvgPacketTime(int id) {
+    public final float avgPacketTime(int id) {
         return packetTimings.getOrDefault(id, maxObservedPacketTime);
     }
 
+    public boolean handled(Packet packet) {
+        if (packet instanceof MetricsUpdatePacket) return true;
+        if (packet instanceof InternalPacket) return true;
+        return false;
+    }
+
+
     @Override
-    public void onPacketReceive(ChannelHandlerContext ctx, Packet packet) {
+    public void onPacketReceive(final ChannelHandlerContext ctx, final Packet packet) {
+        this.ctx = ctx;
         if (packet instanceof MetricsUpdatePacket metrics) {
             //update packet timings
             packetTimings.putAll(metrics.packetTimings());
 
             // update max observed scores
-            float avgLoad = requestManager.getAverageBandwidthLoad();
-            float currentLoad = requestManager.getCurrentAverageBandwidthLoad();
+            float avgLoad = requestMatrics.getAverageBandwidthLoad();
+            float currentLoad = requestMatrics.getCurrentAverageBandwidthLoad();
             float currentTime = (float) packetTimings.values().stream().mapToDouble(Float::doubleValue).average().orElse(0.5f);
             updateMaxObserved(avgLoad, currentLoad, currentTime);
 
@@ -113,7 +105,7 @@ public class BackendNode extends Client {
                             + 0.10f * metrics.systemLoad()
             );
 
-            latencyScore = MathUtils.clamp(requestManager.getAverageLatency() / maxExpectedLatency);
+            latencyScore = MathUtils.clamp(requestMatrics.getAverageLatency() / BackendSettings.MAX_EXPECTED_LATENCY);
             bandwidthScore = avgLoad / maxObservedAvgLoad;
             currentBandwidthScore = currentLoad / maxObservedCurrentLoad;
             packetTimeScore = currentTime / maxObservedPacketTime;
@@ -126,23 +118,47 @@ public class BackendNode extends Client {
                     + 0.10f * packetTimeScore;
 
         } else if (loadBalancer != null && packet instanceof InternalPacket internal) {
-            requestManager.completeRequest(internal.getRequestId());
-            loadBalancer.complete(internal, ctx);
-        }
+            logger.push("receive", AnsiColor.CYAN_BRIGHT).info(internal.requestCode(), internal.hasRequest() ? "request" : internal.hasResponse() ? "response" : "none").pop();
+            if (internal.hasResponse()) complete(internal);
+        } else logger.push("receive").warn("Unknown packet type: " + packet).pop();
     }
 
-    public void forward(ChannelHandlerContext ctx, InternalPacket internal) {
-        requestManager.addRequest(internal.getRequestId(), internal.buffer().readableBytes());
+    public void complete(InternalPacket internal) {
+        requestMatrics.completeRequest(internal.getRequestId());
+    }
+
+    public void forward(InternalPacket internal) {
+        requestMatrics.addRequest(internal.getRequestId(), internal.buffer().readableBytes());
         logger.push("forward", AnsiColor.PURPLE_BRIGHT).info(internal.requestCode()).pop();
         incrementInFlight();
-        Messenger.safeExecute(ctx, c -> sendPacket(internal).whenComplete((a, b) -> decrementInFlight()));
     }
 
+    public <T> CompletableFuture<T> sendToSelf(Packet packet) {
+        final ChannelHandlerContext ctx = context();
+        return Messenger.safeExecute(ctx, c -> loadBalancer().sendPacket(c, packet));
+    }
 
+    public <T> CompletableFuture<T> sendToSelf(Packet... packets) {
+        final ChannelHandlerContext ctx = context();
+        return Messenger.safeExecute(ctx, c -> loadBalancer().sendPacket(c, packets));
+    }
+
+    public ChannelHandlerContext context() {
+        if (ctx == null) ctx = loadBalancer().backendPool().context(this);
+        return ctx;
+    }
+
+    public <T extends BackendNode> T ctx(ChannelHandlerContext ctx) {
+        this.ctx = ctx;
+        //noinspection unchecked
+        return ((T) this);
+    }
+
+    @DataIgnore
     private volatile int inFlight = 0;
 
     public synchronized boolean canAcceptPacket() {
-        return this.inFlight < maxInFlight;
+        return this.inFlight < BackendSettings.MAX_IN_FLIGHT;
     }
 
     public synchronized void incrementInFlight() {
@@ -151,31 +167,22 @@ public class BackendNode extends Client {
 
     public synchronized void decrementInFlight() {
         this.inFlight--;
-        if (inFlight < inFlightAcceptable) loadBalancer.drainPending();
+        if (inFlight < BackendSettings.IN_FLIGHT_ACCEPTABLE) {
+            loadBalancer.drainPending();
+        }
         if (this.inFlight < 0) this.inFlight = 0;
     }
 
     public void timeout(long requestId) {
-        requestManager.timeoutRequest(requestId);
+        requestMatrics.timeoutRequest(requestId);
     }
 
     @Override
-    public void exception(ChannelHandlerContext ctx, Throwable throwable) {
-        if (!autoReconnect.onException(throwable)) logger.push("exception").error(throwable).pop();
+    public String host() {
+        return "none";
     }
 
-    @Override
-    public void join(ChannelHandlerContext ctx, ChannelPromise promise) {
-        logger.push("connect", AnsiColor.GREEN_BRIGHT).info("backend " + port + " connected").pop();
-        promise.setSuccess();
-        loadBalancer.drainPending();
+    public String typeName() {
+        return typeId + ":" + port;
     }
-
-    @Override
-    public void quit(ChannelHandlerContext ctx, ChannelPromise promise) {
-        logger.push("disconnect", AnsiColor.RED_BRIGHT).info("backend " + port + " disconnected").pop();
-        promise.setSuccess();
-        autoReconnect.onQuit();
-    }
-
 }

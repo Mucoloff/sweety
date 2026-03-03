@@ -1,5 +1,6 @@
 package dev.sweety.core.file;
 
+import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
 import org.jetbrains.annotations.NotNull;
 
@@ -142,5 +143,15 @@ public class ZipUtils {
         }
 
         return outputDir;
+    }
+
+    @SneakyThrows
+    public byte[] zipBytes(byte[] data, String entryName) {
+        return zipByteArray(data, entryName);
+    }
+
+    @SneakyThrows
+    public byte[] unzipBytes(byte[] zipData) {
+        return unzipFirstFileFromZip(zipData);
     }
 }

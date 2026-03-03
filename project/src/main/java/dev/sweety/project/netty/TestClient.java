@@ -64,13 +64,13 @@ public class TestClient extends Client {
             if (ex != null) logger.warn(ex);
         };
 
-        setOnConnect(c -> {
+        onConnect(c -> {
             transactionManager.sendTransaction(c.pipeline().firstContext(), ping, 10000L).whenComplete(completedTransaction);
             sendPacket(new TextPacket("ciao"));
 
             PingTransaction p2 = new PingTransaction(new PingTransaction.Ping("ping in batch from client"));
 
-            sendPacket(new BatchPacket(getPacketRegistry()::getPacketId,
+            sendPacket(new BatchPacket(packetRegistry()::getPacketId,
                     new TextPacket("aaa"),
                     new TextPacket("bbb"),
                     p2

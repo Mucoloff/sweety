@@ -1,12 +1,13 @@
-package dev.sweety.netty.loadbalancer.server.packets;
+package dev.sweety.netty.loadbalancer.common.packet.queue;
 
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
 import io.netty.channel.ChannelHandlerContext;
+import lombok.Synchronized;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.function.BiConsumer;
 
 /**
@@ -18,15 +19,12 @@ public class OrderedResponseQueue {
     private final ChannelHandlerContext ctx;
     private final BiConsumer<ChannelHandlerContext, Packet[]> sender;
 
-    // Sequence number per i pacchetti in arrivo
-    private final AtomicLong nextSequence = new AtomicLong(0);
-    // Prossimo sequence number da inviare (protetto da sendLock)
+    private final LongAdder nextSequence = new LongAdder();
     private long nextToSend = 0;
 
     // Buffer per le risposte fuori ordine: sequenceId -> risposta
     private final Map<Long, Packet[]> pendingResponses = new ConcurrentHashMap<>();
 
-    // Lock per sincronizzare l'invio ordinato
     private final Object sendLock = new Object();
 
     public OrderedResponseQueue(ChannelHandlerContext ctx, BiConsumer<ChannelHandlerContext, Packet[]> sender) {
@@ -36,10 +34,13 @@ public class OrderedResponseQueue {
 
     /**
      * Ottiene il prossimo sequence number per un nuovo pacchetto in arrivo.
+     *
      * @return il sequence number assegnato
      */
     public long nextSequenceId() {
-        return nextSequence.getAndIncrement();
+        final long val = nextSequence.sum();
+        nextSequence.increment();
+        return val;
     }
 
     /**
@@ -48,22 +49,18 @@ public class OrderedResponseQueue {
      * altrimenti verrà bufferizzata fino a quando non sarà il suo turno.
      *
      * @param sequenceId il sequence number della richiesta originale
-     * @param responses i pacchetti di risposta
+     * @param responses  i pacchetti di risposta
      */
+    @Synchronized("sendLock")
     public void complete(long sequenceId, Packet[] responses) {
-        synchronized (sendLock) {
-            if (sequenceId == nextToSend) {
-                // È il prossimo da inviare, invia subito
-                sendResponse(responses);
-                nextToSend++;
-
-                // Controlla se ci sono altre risposte in coda pronte per essere inviate
-                drainReady();
-            } else {
-                // Non è ancora il suo turno, bufferizza
-                pendingResponses.put(sequenceId, responses);
-            }
+        if (sequenceId != nextToSend) {
+            pendingResponses.put(sequenceId, responses);
+            //re-enqueue
+            return;
         }
+        sendResponse(responses);
+        nextToSend++;
+        drainReady();
     }
 
     /**
@@ -80,19 +77,17 @@ public class OrderedResponseQueue {
     private void sendResponse(Packet[] responses) {
         if (responses == null || responses.length == 0) return;
         if (!ctx.channel().isActive()) return;
-
-        Messenger.safeExecute(ctx, c -> sender.accept(c, responses));
+        Messenger.safeRun(ctx, c -> sender.accept(c, responses));
     }
 
     /**
      * Resetta la coda (da chiamare quando il client si disconnette).
      */
+    @Synchronized("sendLock")
     public void reset() {
-        synchronized (sendLock) {
-            nextSequence.set(0);
-            nextToSend = 0;
-            pendingResponses.clear();
-        }
+        nextSequence.reset();
+        nextToSend = 0;
+        pendingResponses.clear();
     }
 
     /**

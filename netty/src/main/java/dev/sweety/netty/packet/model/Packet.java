@@ -23,7 +23,8 @@ public abstract class Packet {
 
     // (decoder)
     private int _readerIndex;
-    public Packet(final int _id,final long _timestamp,final byte[] _data) {
+
+    public Packet(final int _id, final long _timestamp, final byte[] _data) {
         this._id = _id;
         this._timestamp = _timestamp;
         this._buffer = new PacketBuffer(_data);
@@ -81,5 +82,4 @@ public abstract class Packet {
     public String toString() {
         return name() + " (" + _id + ")" + (_timestamp > 0 ? (" [" + TimeUtils.date(_timestamp, "dd-mm-yyyy hh:MM:ss") + "] ") : " ") + "- " + _buffer.readableBytes() + " bytes";
     }
-
 }

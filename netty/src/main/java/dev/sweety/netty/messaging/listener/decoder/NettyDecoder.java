@@ -34,7 +34,7 @@ public class NettyDecoder extends ByteToMessageDecoder {
             this.packetDecoder.decode(buf, packets);
             buf.release();
         } catch (PacketDecodeException e) {
-            SimpleLogger.log(LogLevel.DEBUG, "exception from context: " + ctx.channel().remoteAddress());
+            SimpleLogger.log(LogLevel.DEBUG,"netty-decoder", "exception from context: " + ctx.channel().remoteAddress());
             throw new RuntimeException(e);
         }
         out.addAll(packets);

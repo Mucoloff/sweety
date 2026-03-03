@@ -1,4 +1,4 @@
-package dev.sweety.core.util;
+package dev.sweety.core.filter;
 
 import dev.sweety.core.crypt.ChecksumUtils;
 

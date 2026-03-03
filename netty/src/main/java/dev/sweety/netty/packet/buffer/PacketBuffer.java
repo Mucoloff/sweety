@@ -1,8 +1,11 @@
 package dev.sweety.netty.packet.buffer;
 
 import dev.sweety.core.math.MathUtils;
+import dev.sweety.core.util.HasId;
 import dev.sweety.netty.messaging.exception.PacketDecodeException;
 import dev.sweety.netty.packet.buffer.io.*;
+import dev.sweety.netty.packet.buffer.io.callable.CallableDecoder;
+import dev.sweety.netty.packet.buffer.io.callable.CallableEncoder;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.Pair;
@@ -36,11 +39,15 @@ public class PacketBuffer {
         this.nettyBuffer.clear();
     }
 
+    //use writeVarInt
+    @Deprecated
     public PacketBuffer writeInt(int value) {
         this.nettyBuffer.writeInt(value);
         return this;
     }
 
+    //use readVarInt
+    @Deprecated
     public int readInt() {
         return this.nettyBuffer.readInt();
     }
@@ -159,11 +166,15 @@ public class PacketBuffer {
         return this.nettyBuffer.readFloat();
     }
 
+    //use writeVarLong
+    @Deprecated
     public PacketBuffer writeLong(long value) {
         this.nettyBuffer.writeLong(value);
         return this;
     }
 
+    //use readVarLong
+    @Deprecated
     public long readLong() {
         return this.nettyBuffer.readLong();
     }
@@ -208,7 +219,7 @@ public class PacketBuffer {
         T[] constants = clazz.getEnumConstants();
         int val = this.readVarInt();
 
-        if (HasId.class.isAssignableFrom(clazz)){
+        if (HasId.class.isAssignableFrom(clazz)) {
             for (T c : constants) {
                 if (((HasId) c).id() != val) continue;
                 return c;
@@ -626,4 +637,79 @@ public class PacketBuffer {
     public float readPercentual(float scale) {
         return this.readVarInt() / scale;
     }
+
+    private long packPosition(int x, int y, int z) {
+        return ((long) (x & 0x3FFFFFF) << 38) |
+                ((long) (z & 0x3FFFFFF) << 12) |
+                ((long) (y & 0xFFF));
+    }
+
+    private int[] unpackPosition(long packed) {
+        final int x = (int) (packed >> 38);
+        final int y = (int) (packed << 52 >> 52);
+        final int z = (int) (packed << 26 >> 38);
+
+        return new int[]{x, y, z};
+    }
+
+    public PacketBuffer writePosition(int x, int y, int z) {
+        return writeLong(packPosition(x, y, z));
+    }
+
+    public int[] readPosition() {
+        final long val = readLong();
+        return unpackPosition(val);
+    }
+
+    public PacketBuffer writeVarPosition(int x, int y, int z) {
+        return writeVarLong(packPosition(x, y, z));
+    }
+
+    public int[] readVarPosition() {
+        final long val = readVarLong();
+        return unpackPosition(val);
+    }
+
+    public PacketBuffer writeFixedInt(double value, int fractionBits) {
+        int fixed = (int) Math.round(value * (1 << fractionBits));
+        return writeInt(fixed);
+    }
+
+    public double readFixedInt(int fractionBits) {
+        return readInt() / (double) (1 << fractionBits);
+    }
+
+    public PacketBuffer writeFixedVarInt(double value, int fractionBits) {
+        int fixed = (int) Math.round(value * (1 << fractionBits));
+        return writeVarInt(fixed);
+    }
+
+    public double readFixedVarInt(int fractionBits) {
+        return readVarInt() / (double) (1 << fractionBits);
+    }
+
+    public PacketBuffer writeFixedVarLong(double value, int fractionBits) {
+        long fixed = Math.round(value * (1L << fractionBits));
+        return writeVarLong(fixed);
+    }
+
+    public double readFixedVarLong(int fractionBits) {
+        return readVarLong() / (double) (1L << fractionBits);
+    }
+
+    public PacketBuffer writeFixedPosition(double x, double y, double z, int fractionBits) {
+        return writeFixedVarLong(x, fractionBits)
+                .writeFixedVarLong(y, fractionBits)
+                .writeFixedVarLong(z, fractionBits);
+    }
+
+    public double[] readFixedPosition(int fractionBits) {
+        return new double[]{
+                readFixedVarLong(fractionBits),
+                readFixedVarLong(fractionBits),
+                readFixedVarLong(fractionBits)
+        };
+    }
+
+
 }

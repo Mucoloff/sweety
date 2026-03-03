@@ -1,7 +1,5 @@
 package dev.sweety.event.interfaces;
 
-import dev.sweety.event.IEvent;
-
 import java.util.function.Consumer;
 
 @FunctionalInterface

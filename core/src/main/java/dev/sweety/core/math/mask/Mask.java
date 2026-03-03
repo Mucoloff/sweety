@@ -6,7 +6,7 @@ public interface Mask {
 
     byte[] masks();
 
-    default boolean has(int i, int index){
+    default boolean has(int i, int index) {
         final byte idx = (byte) index;
         return (masks()[i] & idx) == idx;
     }
@@ -24,7 +24,7 @@ public interface Mask {
         else masks()[i] &= (byte) ~index;
     }
 
-    default void reset(){
+    default void reset() {
         Arrays.fill(masks(), (byte) 0x0);
     }
 

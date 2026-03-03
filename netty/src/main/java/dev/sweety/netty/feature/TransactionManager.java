@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.function.Consumer;
 
 public class TransactionManager {
 
@@ -59,11 +60,24 @@ public class TransactionManager {
 
     public <Response extends PacketTransaction.Transaction> boolean completeResponse(long id, ChannelHandlerContext ctx, Response response) {
         //noinspection unchecked
-        CompletableFuture<Response> future = (CompletableFuture<Response>) pending.remove(id);
-        if (future == null) return false;
+        final CompletableFuture<Response> future = (CompletableFuture<Response>) pending.remove(id);
+        if (future == null) {
+            System.out.println("not registered or expired: " + Long.toHexString(id));
+            return false;
+        }
 
-        Messenger.safeExecute(ctx, c -> future.complete(response));
+        Messenger.safeRun(ctx, c -> future.complete(response));
         return true;
+    }
+
+    public <Response extends PacketTransaction.Transaction, Transaction extends PacketTransaction<?, Response>> CompletableFuture<Response> compose(Transaction packet, Consumer<CompletableFuture<Response>> futureConsumer) {
+        //noinspection unchecked
+        final CompletableFuture<Response> future = (CompletableFuture<Response>) pending.get(packet.getRequestId());
+        if (future == null)
+            return CompletableFuture.failedFuture(new IllegalStateException("Request id not registered: " + packet.requestCode()));
+
+        futureConsumer.accept(future);
+        return future;
     }
 
     public void shutdown() {
@@ -75,15 +89,11 @@ public class TransactionManager {
     public <R extends PacketTransaction.Transaction, T extends PacketTransaction<?, R>>
     CompletableFuture<R> sendTransaction(ChannelHandlerContext ctx, T transaction, long timeoutMillis) {
 
-        CompletableFuture<R> result = new CompletableFuture<>();
+        final CompletableFuture<R> result = new CompletableFuture<>();
 
-        Messenger.safeExecute(ctx, c -> messenger.sendPacket(c, transaction).whenComplete((v, ex) -> {
-            if (ex != null) {
-                result.completeExceptionally(ex);
-                return;
-            }
-
-            registerRequest(transaction, timeoutMillis)
+        Messenger.safeRun(ctx, c -> messenger.sendPacket(c, transaction).whenComplete((v, ex) -> {
+            if (ex != null) result.completeExceptionally(ex);
+            else registerRequest(transaction, timeoutMillis)
                     .whenComplete((resp, rex) -> {
                         if (rex != null) result.completeExceptionally(rex);
                         else result.complete(resp);

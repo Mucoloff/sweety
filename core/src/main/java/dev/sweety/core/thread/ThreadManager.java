@@ -40,10 +40,7 @@ public class ThreadManager {
 
     public synchronized void shutdown(final ProfileThread profileThread) {
         if (profileThread == null) return;
-        if (profileThread.getProfileCount() > 1) {
-            profileThread.decrement();
-            return;
-        }
+        if (profileThread.decrement() <= 0) return;
         if (!this.profileThreads.contains(profileThread)) return;
         this.profileThreads.remove(profileThread.shutdown());
     }

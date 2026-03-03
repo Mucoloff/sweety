@@ -6,6 +6,9 @@ import dev.sweety.netty.messaging.listener.watcher.NettyWatcher;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import dev.sweety.core.time.TimeMode;
+import dev.sweety.record.annotations.DataIgnore;
+import dev.sweety.record.annotations.RecordData;
+import dev.sweety.record.annotations.Setter;
 import io.netty.bootstrap.AbstractBootstrap;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
@@ -14,51 +17,45 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.string.StringDecoder;
-import io.netty.handler.codec.string.StringEncoder;
-import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.EventExecutor;
-import lombok.Getter;
-import lombok.Setter;
 
 import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
+@RecordData(setterTypes = Setter.Type.BUILDER_FLUENT)
 public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel>> {
 
     // ==============================/
     // Handlers are now created per-connection instead of shared
     // ==============================/
+    @DataIgnore
     private final B bootstrap;
+    @DataIgnore
     private final NioEventLoopGroup boss;
+    @DataIgnore
     private final NioEventLoopGroup worker;
     // ===================================/
     public static final int SEED = 0x000FFFFF;
 
+    @DataIgnore
     protected Channel channel;
 
-    @Getter
-    @Setter
     protected int port;
-    @Getter
-    @Setter
     protected String host;
 
 
+    @DataIgnore
     private final AtomicBoolean running = new AtomicBoolean();
 
-    @Getter
-    @Setter
     public static TimeMode timeMode = TimeMode.MILLIS;
 
-    @Getter
     private final IPacketRegistry packetRegistry;
 
-
-        public Messenger(B bootstrap, String host, int port, IPacketRegistry packetRegistry, int localPort, ChannelHandler... handlers) {
+    public Messenger(B bootstrap, String host, int port, IPacketRegistry packetRegistry, int localPort) {
         this.bootstrap = bootstrap;
         this.boss = new NioEventLoopGroup();
         this.worker = new NioEventLoopGroup(16);
@@ -75,8 +72,7 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
             @Override
             protected void initChannel(SocketChannel ch) {
                 ChannelPipeline p = ch.pipeline();
-                if (handlers != null) p.addLast(handlers);
-                else p.addLast(
+                p.addLast(
                         new NettyDecoder(Messenger.this.packetRegistry),
                         new NettyWatcher(Messenger.this),
                         new NettyEncoder(Messenger.this.packetRegistry)
@@ -104,6 +100,7 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
         }
     }
 
+
     public Channel start() {
         return this.connect().join();
     }
@@ -111,13 +108,11 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
     @Setter
     private Consumer<Channel> onConnect;
 
-    public CompletableFuture<Channel> connect(){
+    public CompletableFuture<Channel> connect() {
         final CompletableFuture<Channel> future = new CompletableFuture<>();
 
         ChannelFutureListener channelFutureListener = (f) -> {
-            boolean success = f.isSuccess();
-            running(success);
-            if (success) {
+            if (f.isSuccess()) {
                 future.complete(this.channel = f.channel());
                 if (this.onConnect != null) onConnect.accept(this.channel);
             } else {
@@ -130,7 +125,6 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
         } else if (this.bootstrap instanceof Bootstrap client) {
             client.connect(this.host, this.port).addListener(channelFutureListener);
         } else {
-            running(false);
             future.completeExceptionally(
                     new IllegalStateException("[Netty] invalid class: " + this.bootstrap.getClass()));
         }
@@ -138,22 +132,22 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
         return future;
     }
 
-    public CompletableFuture<Void> sendPacket(ChannelHandlerContext ctx, Packet packet) {
-        CompletableFuture<Void> future = writePacket(ctx, packet);
+    public <T> CompletableFuture<T> sendPacket(ChannelHandlerContext ctx, Packet packet) {
+        CompletableFuture<T> future = writePacket(ctx, packet);
         flush(ctx);
         return future;
     }
 
-    public CompletableFuture<Void> sendPacket(ChannelHandlerContext ctx, Packet... msgs) {
+    public <T> CompletableFuture<T> sendPacket(ChannelHandlerContext ctx, Packet... msgs) {
         if (msgs == null || msgs.length == 0) return CompletableFuture.completedFuture(null);
         if (msgs.length == 1) return sendPacket(ctx, msgs[0]);
-        CompletableFuture<Void> future = writePacket(ctx, msgs);
+        CompletableFuture<T> future = writePacket(ctx, msgs);
         flush(ctx);
         return future;
     }
 
-    public CompletableFuture<Void> writePacket(ChannelHandlerContext ctx, Packet packet) {
-        CompletableFuture<Void> future = new CompletableFuture<>();
+    public <T> CompletableFuture<T> writePacket(ChannelHandlerContext ctx, Packet packet) {
+        CompletableFuture<T> future = new CompletableFuture<>();
         if (ctx == null || !ctx.channel().isActive()) {
             future.completeExceptionally(new IllegalStateException("Channel not active or context is null"));
             return future;
@@ -170,11 +164,11 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
         return future;
     }
 
-    public CompletableFuture<Void> writePacket(ChannelHandlerContext ctx, Packet... msgs) {
+    public <T> CompletableFuture<T> writePacket(ChannelHandlerContext ctx, Packet... msgs) {
         if (msgs == null || msgs.length == 0) return CompletableFuture.completedFuture(null);
         if (msgs.length == 1) return writePacket(ctx, msgs[0]);
 
-        CompletableFuture<Void> lastWrite = null;
+        CompletableFuture<T> lastWrite = null;
         for (Packet packet : msgs) {
             lastWrite = writePacket(ctx, packet);
         }
@@ -187,26 +181,63 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
         }
     }
 
-    public static void safeExecute(ChannelHandlerContext ctx, Consumer<ChannelHandlerContext> r) {
+    public static <T> CompletableFuture<T> safeExecute(ChannelHandlerContext ctx, Function<ChannelHandlerContext, CompletableFuture<T>> function) {
         //noinspection resource
         final EventExecutor executor = ctx.executor();
-        if (executor.inEventLoop()) r.accept(ctx);
-        else executor.execute(() -> r.accept(ctx));
+        if (executor.inEventLoop()) return function.apply(ctx);
+
+        final CompletableFuture<T> future = new CompletableFuture<>();
+
+        executor.execute(() -> {
+            final CompletableFuture<T> internal = function.apply(ctx);
+            if (internal == null) {
+                future.complete(null);
+                return;
+            }
+            internal.whenComplete((v, t) -> {
+                if (t != null) future.completeExceptionally(t);
+                else future.complete(v);
+            });
+        });
+
+        return future;
+    }
+
+    public static void safeRun(ChannelHandlerContext ctx, Consumer<ChannelHandlerContext> action) {
+        //noinspection resource
+        final EventExecutor executor = ctx.executor();
+        if (executor.inEventLoop()) action.accept(ctx);
+        else executor.execute(() -> action.accept(ctx));
+    }
+
+    public static <M extends Messenger<?>> void init(M messenger) {
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        messenger.start();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                messenger.stop();
+            } finally {
+                latch.countDown();
+            }
+        }));
+
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    public static String address(Channel channel) {
+        return "remote[%s] local[%s]".formatted(channel.remoteAddress(), channel.localAddress());
     }
 
 
     public void stop() {
-        running(false);
         this.boss.shutdownGracefully();
         this.worker.shutdownGracefully();
-    }
-
-    protected void running(final boolean running) {
-        this.running.set(running);
-    }
-
-    public boolean running() {
-        return this.running.get();
     }
 
     public abstract void onPacketReceive(ChannelHandlerContext ctx, Packet packet);

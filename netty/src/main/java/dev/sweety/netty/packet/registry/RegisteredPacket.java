@@ -1,14 +1,14 @@
 package dev.sweety.netty.packet.registry;
 
 import dev.sweety.netty.packet.model.Packet;
-import lombok.Getter;
+import dev.sweety.record.annotations.RecordGetter;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.List;
 
-@Getter
+@RecordGetter
 public class RegisteredPacket {
 
     private final Class<? extends Packet> packetClass;
@@ -34,4 +34,5 @@ public class RegisteredPacket {
         // noinspection unchecked
         return (T) this.constructor.newInstance(id, timestamp, data);
     }
+
 }

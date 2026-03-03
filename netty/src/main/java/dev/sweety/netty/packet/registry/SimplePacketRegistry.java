@@ -47,7 +47,7 @@ public class SimplePacketRegistry implements IPacketRegistry {
 
     @Override
     public int getPacketId(Class<? extends Packet> packetClass) {
-        return packets.entrySet().stream().filter(entry -> entry.getValue().getPacketClass().equals(packetClass)).findFirst().map(Map.Entry::getKey).orElse(-1);
+        return packets.entrySet().stream().filter(entry -> entry.getValue().packetClass().equals(packetClass)).findFirst().map(Map.Entry::getKey).orElse(-1);
     }
 
     @Override
@@ -63,6 +63,6 @@ public class SimplePacketRegistry implements IPacketRegistry {
 
     @Override
     public Set<Class<? extends Packet>> packets() {
-        return packets.values().stream().map(RegisteredPacket::getPacketClass).collect(Collectors.toSet());
+        return packets.values().stream().map(RegisteredPacket::packetClass).collect(Collectors.toSet());
     }
 }

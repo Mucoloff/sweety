@@ -1,4 +1,4 @@
-package dev.sweety.core.math.vector;
+package dev.sweety.core.math.vector.list;
 
 import java.util.*;
 

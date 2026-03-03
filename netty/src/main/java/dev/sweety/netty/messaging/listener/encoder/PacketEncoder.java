@@ -2,6 +2,7 @@ package dev.sweety.netty.messaging.listener.encoder;
 
 import dev.sweety.core.crypt.ChecksumUtils;
 import dev.sweety.core.file.ResourceUtils;
+import dev.sweety.core.file.ZipUtils;
 import dev.sweety.netty.messaging.exception.PacketEncodeException;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
@@ -22,8 +23,11 @@ public class PacketEncoder {
         this.packetRegistry = packetRegistry;
     }
 
-
     public void encode(final Packet packet, final PacketBuffer out) throws PacketEncodeException {
+        encode(packet, out, this.packetRegistry);
+    }
+
+    public static void encode(final Packet packet, final PacketBuffer out, final IPacketRegistry packetRegistry) throws PacketEncodeException {
         int packetId = packetRegistry.getPacketId(packet.getClass());
         if (packetId == -1)
             throw new PacketEncodeException("Returned PacketId by registry is invalid (-1)");
@@ -53,7 +57,7 @@ public class PacketEncoder {
                 // Attempt compression; only accept if beneficial
                 byte[] src = new byte[readable];
                 payloadNetty.getBytes(payloadNetty.readerIndex(), src);
-                byte[] zipped = ResourceUtils.zipBytes(src, "zipped-buffer");
+                byte[] zipped = ZipUtils.zipBytes(src, "zipped-buffer");
                 if (zipped.length >= src.length) {
                     compressed = false;
                 } else {

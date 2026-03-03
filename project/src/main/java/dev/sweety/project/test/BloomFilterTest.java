@@ -1,6 +1,6 @@
 package dev.sweety.project.test;
 
-import dev.sweety.core.util.FastScalableCountingBloomFilter;
+import dev.sweety.core.filter.FastScalableCountingBloomFilter;
 
 public class BloomFilterTest {
 

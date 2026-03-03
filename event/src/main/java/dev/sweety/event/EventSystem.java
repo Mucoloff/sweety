@@ -1,5 +1,6 @@
 package dev.sweety.event;
 
+import dev.sweety.event.interfaces.IEvent;
 import dev.sweety.event.interfaces.LinkEvent;
 import dev.sweety.event.interfaces.Listener;
 import dev.sweety.core.math.function.Operation;
@@ -21,7 +22,7 @@ import java.util.function.Function;
 
 public class EventSystem {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-    private static final Comparator<EventCallback> priorityFilter =
+    private static final Comparator<EventCallback<?>> priorityFilter =
             Comparator.comparingInt(EventCallback::priority);
 
     private static final BiConsumer<IEvent, Boolean> CHANGED = (event, state) -> {

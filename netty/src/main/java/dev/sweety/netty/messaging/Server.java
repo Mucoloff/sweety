@@ -4,20 +4,26 @@ import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
-import lombok.Getter;
 
 import java.net.SocketAddress;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public abstract class Server extends Messenger<ServerBootstrap> {
-    @Getter
-    private final Map<SocketAddress, ChannelHandlerContext> clients = new ConcurrentHashMap<>();
+import dev.sweety.record.annotations.RecordGetter;
 
-    public Server(String host, int port, IPacketRegistry packetRegistry, ChannelHandler... handlers) {
-        super(new ServerBootstrap(), host, port, packetRegistry, -1, handlers);
+public abstract class Server extends Messenger<ServerBootstrap> {
+
+    @RecordGetter
+    private final Map<SocketAddress, ChannelHandlerContext> clients;
+
+    public Server(String host, int port, IPacketRegistry packetRegistry, Map<SocketAddress, ChannelHandlerContext> clients) {
+        super(new ServerBootstrap(), host, port, packetRegistry, -1);
+        this.clients = clients;
+    }
+
+    public Server(String host, int port, IPacketRegistry packetRegistry) {
+        this(host, port, packetRegistry, new ConcurrentHashMap<>());
     }
 
     public void broadcastPacket(final Packet msg) {

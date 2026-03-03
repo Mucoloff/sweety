@@ -2,6 +2,7 @@ package dev.sweety.netty.messaging.listener.decoder;
 
 import dev.sweety.core.crypt.ChecksumUtils;
 import dev.sweety.core.file.ResourceUtils;
+import dev.sweety.core.file.ZipUtils;
 import dev.sweety.netty.messaging.exception.PacketDecodeException;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
@@ -10,6 +11,7 @@ import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.List;
@@ -23,13 +25,17 @@ public class PacketDecoder {
         this.packetRegistry = packetRegistry;
     }
 
-    private boolean cantRead(final PacketBuffer in, int len) {
+    private static boolean cantRead(final PacketBuffer in, int len) {
         if (in.readableBytes() >= len) return false;
         in.resetReaderIndex();
         return true;
     }
 
     public void decode(final PacketBuffer in, final List<Packet> out) throws PacketDecodeException {
+        decode(in, out, this.packetRegistry);
+    }
+
+    public static void decode(final PacketBuffer in, final List<Packet> out, final IPacketRegistry packetRegistry) throws PacketDecodeException {
         final ByteBuffer seedBuf = ByteBuffer.allocate(4).putInt(Messenger.SEED).order(ByteOrder.BIG_ENDIAN).flip();
 
         if (in.readableBytes() - seedBuf.remaining() < 2) return; // minimal header
@@ -75,7 +81,7 @@ public class PacketDecoder {
             if (compressed) {
                 final byte[] data = new byte[payloadLength];
                 nioView.getBytes(nioView.readerIndex(), data);
-                final byte[] unzipped = ResourceUtils.unzipBytes(data);
+                final byte[] unzipped = ZipUtils.unzipBytes(data);
                 payloadBuf = Unpooled.wrappedBuffer(unzipped);
                 slice.release();
             } else {

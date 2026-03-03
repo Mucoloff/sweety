@@ -1,7 +1,4 @@
-package dev.sweety.core.math.vector.deque;
-
-import dev.sweety.core.math.vector.deque.queue.Queue;
-import dev.sweety.core.math.vector.deque.stack.Stack;
+package dev.sweety.core.math.vector.list;
 
 import java.util.Objects;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -21,9 +18,9 @@ public class BlockingDeque<E> implements Queue<E>, Stack<E> {
     /* ================= QUEUE (FIFO) ================= */
 
     @Override
-    public void enqueue(E e) {
+    public boolean enqueue(E e) {
         Objects.requireNonNull(e);
-        deque.offerLast(e);
+        return deque.offerLast(e);
     }
 
     @Override
@@ -80,5 +77,15 @@ public class BlockingDeque<E> implements Queue<E>, Stack<E> {
     public void put(E e) throws InterruptedException {
         Objects.requireNonNull(e);
         deque.putLast(e);
+    }
+
+    public void addFixed(E e) {
+        while (!enqueue(e)) {
+            pop();
+        }
+    }
+
+    public E[] toArray(E[] a) {
+        return deque.toArray(a);
     }
 }

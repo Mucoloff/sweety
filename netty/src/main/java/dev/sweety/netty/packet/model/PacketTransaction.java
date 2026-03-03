@@ -3,12 +3,10 @@ package dev.sweety.netty.packet.model;
 import dev.sweety.core.crypt.ChecksumUtils;
 import dev.sweety.core.math.RandomUtils;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
-import dev.sweety.netty.packet.buffer.io.Decoder;
-import dev.sweety.netty.packet.buffer.io.Encoder;
-import lombok.Data;
+import dev.sweety.netty.packet.buffer.io.Codec;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 
+import java.util.Optional;
 import java.util.zip.CRC32C;
 
 @Getter
@@ -59,13 +57,21 @@ public abstract class PacketTransaction<R extends PacketTransaction.Transaction,
         return this.response != null;
     }
 
+    public Optional<R> requestOptional() {
+        return Optional.ofNullable(this.request);
+    }
+
+    public Optional<S> responseOptional() {
+        if (this.response == null) return Optional.empty();
+        return Optional.of(this.response);
+    }
+
     protected abstract R request();
 
     protected abstract S response();
 
-    @Data
-    @NoArgsConstructor
-    public abstract static class Transaction implements Encoder, Decoder {
+
+    public abstract static class Transaction implements Codec {
 
         @Override
         public void write(final PacketBuffer buffer) {

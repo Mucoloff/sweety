@@ -1,7 +1,7 @@
 package dev.sweety.packet.processor;
 
-import dev.sweety.netty.packet.buffer.io.CallableDecoder;
-import dev.sweety.netty.packet.buffer.io.CallableEncoder;
+import dev.sweety.netty.packet.buffer.io.callable.CallableDecoder;
+import dev.sweety.netty.packet.buffer.io.callable.CallableEncoder;
 import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
 

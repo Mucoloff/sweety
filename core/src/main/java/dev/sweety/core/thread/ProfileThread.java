@@ -10,7 +10,7 @@ public class ProfileThread {
     private final ScheduledExecutorService thread;
 
     public ProfileThread(final String name) {
-        this.thread = ThreadUtil.namedScheduler(name + "-" + THREAD_COUNTER.incrementAndGet());
+        this.thread = ThreadUtil.singleThreadScheduler(name + "-" + THREAD_COUNTER.incrementAndGet());
     }
 
     public int getProfileCount() {
@@ -22,8 +22,8 @@ public class ProfileThread {
         return this;
     }
 
-    public void decrement() {
-        profileCount.updateAndGet(v -> v > 0 ? v - 1 : 0);
+    public int decrement() {
+        return profileCount.updateAndGet(v -> v > 0 ? v - 1 : 0);
     }
 
     public ProfileThread shutdown() {

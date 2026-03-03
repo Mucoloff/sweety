@@ -1,7 +1,7 @@
 package dev.sweety.netty.packet.buffer;
 
 import dev.sweety.core.file.ZipUtils;
-import dev.sweety.netty.packet.buffer.io.CallableDecoder;
+import dev.sweety.netty.packet.buffer.io.callable.CallableDecoder;
 import dev.sweety.netty.packet.buffer.io.Encoder;
 import lombok.SneakyThrows;
 

@@ -1,6 +1,6 @@
 package dev.sweety.project.netty.loadbalancer.main;
 
-import dev.sweety.netty.loadbalancer.common.packet.InternalPacket;
+import dev.sweety.netty.loadbalancer.common.packet.internal.InternalPacket;
 import dev.sweety.netty.messaging.exception.PacketRegistrationException;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import dev.sweety.netty.packet.registry.OptimizedPacketRegistry;

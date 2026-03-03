@@ -1,6 +1,6 @@
-package dev.sweety.core.math.vector;
+package dev.sweety.core.math.vector.list;
 
-public class PacketRingBufferOptimized<E> {
+public class RingBufferOptimized<E> {
     private final E[] buffer;
 
     private int head = 0;
@@ -10,11 +10,9 @@ public class PacketRingBufferOptimized<E> {
     private final int capacity;
 
     @SuppressWarnings("unchecked")
-    public PacketRingBufferOptimized(int capacity) {
+    public RingBufferOptimized(int capacity) {
         this.capacity = capacity;
-        if (this.capacity % 2 != 0) {
-            throw new IllegalArgumentException("[!] Capacity must be a power of 2");
-        }
+        if (this.capacity % 2 != 0) throw new IllegalArgumentException("[!] Capacity must be a power of 2");
         this.buffer = (E[]) new Object[capacity];
     }
 

@@ -1,12 +1,13 @@
 package dev.sweety.netty.feature;
 
 import dev.sweety.core.thread.ProfileThread;
+import dev.sweety.record.annotations.DataIgnore;
+import dev.sweety.record.annotations.RecordData;
+import dev.sweety.record.annotations.Setter.Type;
 import io.netty.channel.Channel;
 import io.netty.channel.ConnectTimeoutException;
 import io.netty.handler.timeout.ReadTimeoutException;
 import io.netty.handler.timeout.WriteTimeoutException;
-import lombok.Getter;
-import lombok.Setter;
 
 import java.io.EOFException;
 import java.net.ConnectException;
@@ -17,18 +18,18 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
+@RecordData(setterTypes = Type.BUILDER_FLUENT)
 public class AutoReconnect {
 
+    @DataIgnore
     private final ProfileThread thread = new ProfileThread("auto-reconnect-thread");
 
-    @Getter
-    @Setter
     private long timeout;
-    @Getter
-    @Setter
     private TimeUnit timeUnit;
-    private final Supplier<Channel> start;
 
+    @DataIgnore
+    private final Supplier<Channel> start;
+    @DataIgnore
     private CompletableFuture<Channel> task;
 
     public AutoReconnect(long timeout, TimeUnit timeUnit, Supplier<Channel> start) {

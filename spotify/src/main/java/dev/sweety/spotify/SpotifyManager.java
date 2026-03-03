@@ -133,7 +133,7 @@ public class SpotifyManager {
         String url = this.oAuth.getAuthorizeUrl("user-read-playback-state user-read-email");
 
         try {
-            OperatingSystem.detectOS().open(new URL(url));
+            OperatingSystem.os().open(new URL(url));
         } catch (Exception e) {
             e.printStackTrace(System.err);
         }

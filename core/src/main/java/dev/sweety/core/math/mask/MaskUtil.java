@@ -4,7 +4,7 @@ import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class MaskUtil {
-    private static final byte[] INDEXES = {
+    public static final byte[] INDEXES = {
             0x1,
             0x2,
             0x4,

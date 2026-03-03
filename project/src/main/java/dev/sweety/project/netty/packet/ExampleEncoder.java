@@ -1,7 +1,7 @@
 package dev.sweety.project.netty.packet;
 
 import dev.sweety.netty.packet.buffer.PacketBuffer;
-import dev.sweety.netty.packet.buffer.io.CallableEncoder;
+import dev.sweety.netty.packet.buffer.io.callable.CallableEncoder;
 
 public class ExampleEncoder implements CallableEncoder<IExampleObj> {
 

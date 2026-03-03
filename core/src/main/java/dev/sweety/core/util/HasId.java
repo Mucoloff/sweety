@@ -1,4 +1,4 @@
-package dev.sweety.netty.packet.buffer.io;
+package dev.sweety.core.util;
 
 public interface HasId {
 

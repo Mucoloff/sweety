@@ -3,10 +3,11 @@ package dev.sweety.core.logger;
 import dev.sweety.core.color.AnsiColor;
 import dev.sweety.core.exception.ExceptionUtils;
 import dev.sweety.core.logger.backend.ConsoleBackend;
+import dev.sweety.core.logger.backend.FileBackend;
 import dev.sweety.core.logger.backend.LoggerBackend;
 import dev.sweety.core.logger.profile.ProfileScope;
-import dev.sweety.core.math.vector.deque.BlockingDeque;
-import dev.sweety.core.math.vector.deque.stack.Stack;
+import dev.sweety.core.math.vector.list.BlockingDeque;
+import dev.sweety.core.math.vector.list.Stack;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -17,12 +18,14 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 public class SimpleLogger implements LogHelper {
+
     protected final String name;
 
     private final ThreadLocal<Stack<String>> profiles = ThreadLocal.withInitial(BlockingDeque::new);
     // Pluggable backend support
     @Getter
     private volatile LoggerBackend backend = new ConsoleBackend();
+    private volatile FileBackend fileBackend;
 
     public SimpleLogger(String name) {
         this.name = name;
@@ -39,6 +42,11 @@ public class SimpleLogger implements LogHelper {
 
     public SimpleLogger setBackend(Function<String, LoggerBackend> backend) {
         this.backend = (backend != null) ? backend.apply(this.name) : new ConsoleBackend();
+        return this;
+    }
+
+    public SimpleLogger setFileBackend(FileBackend fileBackend) {
+        this.fileBackend = fileBackend;
         return this;
     }
 
@@ -63,6 +71,7 @@ public class SimpleLogger implements LogHelper {
         final String line = color + prefix + " " + color + message;
 
         backend.log(level, name, profiles.get().top(), line);
+        if (fileBackend != null) fileBackend.log(level, name, profiles.get().top(), line);
         return this;
     }
 
@@ -112,11 +121,11 @@ public class SimpleLogger implements LogHelper {
     }
 
     @Override
-    public String getMessage(Object[] input) {
+    public String getMessage(Object... input) {
         return parseMessage(input);
     }
 
-    private static String parseMessage(Object[] input) {
+    private static String parseMessage(Object... input) {
         final StringJoiner joiner = new StringJoiner(" ");
         for (Object part : input) {
 
@@ -138,6 +147,10 @@ public class SimpleLogger implements LogHelper {
 
         }
         return joiner.toString();
+    }
+
+    public String name() {
+        return name;
     }
 
     public SimpleLogger info(Object... input) {

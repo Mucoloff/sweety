@@ -1,4 +1,4 @@
-package dev.sweety.netty.packet.buffer.io;
+package dev.sweety.netty.packet.buffer.io.callable;
 
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 
