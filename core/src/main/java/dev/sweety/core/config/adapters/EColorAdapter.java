@@ -8,6 +8,6 @@ public class EColorAdapter extends GsonAdapter<EColor> {
     public EColorAdapter() {
         super(EColor.class,
                 (jsonElement, typeOfT, context) -> new EColor(jsonElement.getAsInt()),
-                (src, typeOfSrc, context) -> new JsonPrimitive(src.getRgba()));
+                (src, typeOfSrc, context) -> new JsonPrimitive(src.rgba()));
     }
 }
