@@ -1,16 +1,11 @@
-package dev.sweety.project.config;
+package dev.sweety.core.config.yml;
 
-import com.google.common.base.Preconditions;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.yaml.snakeyaml.Yaml;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -20,18 +15,30 @@ public class FileConfiguration {
 
     private final Yaml yaml = new Yaml();
 
-    public void save(File file) {
-        try (FileOutputStream fos = new FileOutputStream(file)) {
-            fos.write(yaml.dumpAsMap(map).getBytes(StandardCharsets.UTF_8));
+    public void save(Appendable writer) {
+        try {
+            writer.append(yaml.dumpAsMap(map));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
+    public void save(File file) {
+        try (FileWriter writer = new FileWriter(file)) {
+            save(writer);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void load(Reader reader) {
+        map.clear();
+        map.putAll(yaml.loadAs(reader, Map.class));
+    }
+
     public void load(File file) {
-        try (FileInputStream fis = new FileInputStream(file)) {
-            map.clear();
-            map.putAll(yaml.loadAs(fis, Map.class));
+        try (FileReader reader = new FileReader(file)) {
+            load(reader);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -480,8 +487,7 @@ public class FileConfiguration {
             val = serializeList(l);
         } else if (value instanceof Map<?, ?> m) {
             val = serializeMap(m);
-        }
-        else val = value;
+        } else val = value;
 
         current.put(parts[parts.length - 1], val);
     }

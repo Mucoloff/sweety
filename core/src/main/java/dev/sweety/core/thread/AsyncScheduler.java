@@ -17,7 +17,7 @@ public final class AsyncScheduler {
     static final SimpleLogger log = new SimpleLogger(AsyncScheduler.class);
 
     @Getter
-    private static ScheduledExecutorService scheduler = ThreadUtil.poolThreadScheduler(30, "MX Thread");
+    private static final ScheduledExecutorService scheduler = ThreadUtil.poolThreadScheduler(30, "MX Thread");
 
     private AsyncScheduler() {
 

@@ -23,6 +23,7 @@
             <option value="$PROJECT_DIR$/record-getter-processor" />
             <option value="$PROJECT_DIR$/spotify" />
             <option value="$PROJECT_DIR$/sql4j" />
+            <option value="$PROJECT_DIR$/test-kt" />
           </set>
         </option>
       </GradleProjectSettings>

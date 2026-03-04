@@ -1,4 +1,4 @@
-package dev.sweety.project.config;
+package dev.sweety.core.config.yml;
 
 import java.util.Map;
 

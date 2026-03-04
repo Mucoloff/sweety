@@ -1,5 +1,6 @@
 package dev.sweety.project.config;
 
+import dev.sweety.core.config.yml.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -34,8 +35,11 @@ public class YamlTest {
         }
     }
 
-
     public static void main(String[] args) throws IOException {
+        main1(args);
+    }
+
+    public static void main1(String[] args) throws IOException {
 
         File file = new File("config.yml");
         FileConfiguration config = new FileConfiguration();
@@ -67,34 +71,38 @@ public class YamlTest {
         objList.add(new TestObj("obj2"));
         config.set("app.objList", objList);
 
-        config.save(file);
+        config.save(System.out);
 
         //OperatingSystem.WINDOWS.open(file);
 
-        config.load(file);
-        System.out.println("App Name: " + config.getString("app.name"));
-        System.out.println("App Version: " + config.getInt("app.version"));
-        System.out.println("App Active: " + config.getBoolean("app.active"));
-        Map<String, Object> loadedNestedMap = config.getMap("app.nested");
-        System.out.println("Nested Key1: " + loadedNestedMap.get("key1"));
-        System.out.println("Nested Key2: " + loadedNestedMap.get("key2"));
-        TestObj loadedTestObj = config.getSerializable("app.testObj", TestObj.class);
+        if (false){
 
-        config.getMapList("app.listOfMaps").forEach(map -> {
-            System.out.println("List Item:");
-            map.forEach((key, value) -> System.out.println("  " + key + ": " + value));
-        });
+            config.load(file);
+            System.out.println("App Name: " + config.getString("app.name"));
+            System.out.println("App Version: " + config.getInt("app.version"));
+            System.out.println("App Active: " + config.getBoolean("app.active"));
+            Map<String, Object> loadedNestedMap = config.getMap("app.nested");
+            System.out.println("Nested Key1: " + loadedNestedMap.get("key1"));
+            System.out.println("Nested Key2: " + loadedNestedMap.get("key2"));
+            TestObj loadedTestObj = config.getSerializable("app.testObj", TestObj.class);
+
+            config.getMapList("app.listOfMaps").forEach(map -> {
+                System.out.println("List Item:");
+                map.forEach((key, value) -> System.out.println("  " + key + ": " + value));
+            });
 
 
-        System.out.println("TestObj: " + loadedTestObj);
+            System.out.println("TestObj: " + loadedTestObj);
 
-        System.out.println("obj map:");
-        Map<String, TestObj> map = config.getSerializableMap("app.objMap", TestObj.class);
-        map.forEach((k, v) -> System.out.println("  " + k + ": " + v));
+            System.out.println("obj map:");
+            Map<String, TestObj> map = config.getSerializableMap("app.objMap", TestObj.class);
+            map.forEach((k, v) -> System.out.println("  " + k + ": " + v));
 
-        System.out.println("obj list:");
-        List<TestObj> list = config.getSerializableList("app.objList", TestObj.class);
-        list.forEach((o) -> System.out.println("  " + o));
+            System.out.println("obj list:");
+            List<TestObj> list = config.getSerializableList("app.objList", TestObj.class);
+            list.forEach((o) -> System.out.println("  " + o));
+
+        }
     }
 
 }

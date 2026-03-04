@@ -1,7 +1,11 @@
-package dev.sweety.project.config;
+package dev.sweety.core.config.yml;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import dev.sweety.core.config.GsonUtils;
+import dev.sweety.core.config.adapters.GsonAdapter;
+
+import java.lang.reflect.*;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -23,7 +27,6 @@ public class ConfigSerializables {
         }
     }
 
-
     public static <T extends ConfigSerializable> T construct(Class<T> clazz, Map<String, Object> data) {
         final SerializableConstructor constructor = SERIALIZABLES.computeIfAbsent(clazz, ConfigSerializables::create);
         try {
@@ -35,28 +38,48 @@ public class ConfigSerializables {
 
     private record SerializableConstructor(
             Class<? extends ConfigSerializable> clazz,
-            Constructor<? extends ConfigSerializable> constructor
+            Executable executable
     ) {
 
         SerializableConstructor(Class<? extends ConfigSerializable> clazz) throws NoSuchMethodException {
             this(clazz, search(clazz));
         }
 
-        private static Constructor<? extends ConfigSerializable> search(final Class<? extends ConfigSerializable> clazz) throws NoSuchMethodException {
+        private static Executable search(final Class<? extends ConfigSerializable> clazz) throws NoSuchMethodException {
             final List<Constructor<?>> constructors = Arrays.stream(clazz.getConstructors())
                     .filter(constructor -> constructor.getParameterCount() == 1 && constructor.getParameterTypes()[0].equals(Map.class)
                     )
                     .toList();
-            if (constructors.isEmpty())
-                throw new NoSuchMethodException("Serializable " + clazz.getSimpleName() + " is missing (Map<String, Object>) constructor");
 
-            // noinspection unchecked
-            return (Constructor<? extends ConfigSerializable>) constructors.getFirst();
+            final List<Method> methods = Arrays.stream(clazz.getMethods())
+                    .filter(method -> method.getParameterCount() == 1 && method.getParameterTypes()[0].equals(Map.class) && method.getReturnType().equals(clazz) && (method.getModifiers() & Modifier.STATIC) != 0)
+                    .toList();
+
+            if (constructors.isEmpty() && methods.isEmpty()) {
+                throw new NoSuchMethodException("No constructor or static method found for class " + clazz.getName());
+            }
+
+            if (constructors.size() + methods.size() > 1) {
+                throw new NoSuchMethodException("Multiple constructors or static methods found for class " + clazz.getName());
+            }
+
+            final Executable executable = methods.isEmpty() ? constructors.getFirst() : methods.getFirst();
+            if (!executable.trySetAccessible()) executable.setAccessible(true);
+            return executable;
+
         }
 
         public <T extends ConfigSerializable> T create(Map<String, Object> data) throws InvocationTargetException, InstantiationException, IllegalAccessException {
-            // noinspection unchecked
-            return (T) this.constructor.newInstance(data);
+            return switch (this.executable) {
+                case Constructor<?> constructor ->
+                    //noinspection unchecked
+                        (T) constructor.newInstance(data);
+                case Method method ->
+                    //noinspection unchecked
+                        (T) method.invoke(null, data);
+                case null ->
+                        throw new IllegalStateException("Executable must be either a constructor or a static method");
+            };
         }
 
     }

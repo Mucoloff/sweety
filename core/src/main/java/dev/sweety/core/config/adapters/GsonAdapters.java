@@ -8,7 +8,7 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor
 public enum GsonAdapters {
     COLOR(new ColorAdapter()),
-    ECOLOR(new EColorAdapter())
+    ECOLOR(new NewEColorAdapter())
     ;
 
     public static final GsonAdapters[] VALUES = values();

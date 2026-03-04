@@ -7,21 +7,16 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
-public class FileBackend implements LoggerBackend {
+public record FileBackend(FileWriter fileWriter) implements LoggerBackend {
 
-    private final FileWriter fileWriter;
-
-    public FileBackend(File file) {
-        try {
-            this.fileWriter = new FileWriter(file);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    public FileBackend(File file) throws IOException {
+        this(new FileWriter(file));
     }
 
     @Override
     public void log(LogLevel level, String loggerName, String profile, String formattedLine) {
         try {
+
             fileWriter.append(AnsiColor.clear(formattedLine));
         } catch (IOException e) {
             throw new RuntimeException(e);

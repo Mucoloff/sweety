@@ -14,3 +14,5 @@ include 'record-getter-processor'
 include 'spotify'
 include 'sql4j'
 include 'intellij-plugin'
+
+include 'test-kt'
