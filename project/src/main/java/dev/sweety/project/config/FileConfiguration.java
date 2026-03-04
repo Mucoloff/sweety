@@ -427,7 +427,6 @@ public class FileConfiguration {
         final List<T> result = new ArrayList<>(list.size());
         for (Map<?, ?> map : list) {
             //noinspection unchecked
-            //todo è giusto?
             result.add(ConfigSerializables.construct(clazz, (Map<String, Object>) map));
         }
         return result;
@@ -478,15 +477,50 @@ public class FileConfiguration {
             ConfigSerializables.register(serializable.getClass());
             val = serializable.serialize();
         } else if (value instanceof List<?> l) {
-            //todo
-            val = value;
-        }else if (value instanceof Map<?, ?> m) {
-            //todo
-            val = value;
+            val = serializeList(l);
+        } else if (value instanceof Map<?, ?> m) {
+            val = serializeMap(m);
         }
         else val = value;
 
         current.put(parts[parts.length - 1], val);
+    }
+
+    private List<?> serializeList(List<?> list) {
+        List<Object> result = new ArrayList<>(list.size());
+        for (Object item : list) {
+            switch (item) {
+                case ConfigSerializable serializable -> {
+                    ConfigSerializables.register(serializable.getClass());
+                    result.add(serializable.serialize());
+                }
+                case List<?> l -> result.add(serializeList(l));
+                case Map<?, ?> m -> result.add(serializeMap(m));
+                case null, default -> result.add(item);
+            }
+        }
+        return result;
+    }
+
+    private Map<String, Object> serializeMap(Map<?, ?> map) {
+        Map<String, Object> result = new HashMap<>(map.size());
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            Object value = entry.getValue();
+            Object serializedValue;
+
+            switch (value) {
+                case ConfigSerializable serializable -> {
+                    ConfigSerializables.register(serializable.getClass());
+                    serializedValue = serializable.serialize();
+                }
+                case List<?> l -> serializedValue = serializeList(l);
+                case Map<?, ?> m -> serializedValue = serializeMap(m);
+                case null, default -> serializedValue = value;
+            }
+
+            result.put(entry.getKey().toString(), serializedValue);
+        }
+        return result;
     }
 
     protected boolean isPrimitiveWrapper(@Nullable Object input) {

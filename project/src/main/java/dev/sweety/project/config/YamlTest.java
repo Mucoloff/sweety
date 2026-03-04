@@ -1,7 +1,5 @@
 package dev.sweety.project.config;
 
-import dev.sweety.core.system.OperatingSystem;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -59,19 +57,15 @@ public class YamlTest {
 
         config.set("app.testObj", new TestObj("TestName"));
 
-        if (true) {
-            final Map<String, TestObj> objMap = new HashMap<>();
-            objMap.put("obj1", new TestObj("obj1"));
-            objMap.put("obj2", new TestObj("obj2"));
-            config.set("app.objMap", objMap);
-        }
+        final Map<String, TestObj> objMap = new HashMap<>();
+        objMap.put("obj1", new TestObj("obj1"));
+        objMap.put("obj2", new TestObj("obj2"));
+        config.set("app.objMap", objMap);
 
-        if (true) {
-            final List<TestObj> objList = new ArrayList<>();
-            objList.add(new TestObj("obj1"));
-            objList.add(new TestObj("obj2"));
-            config.set("app.objList", objList);
-        }
+        final List<TestObj> objList = new ArrayList<>();
+        objList.add(new TestObj("obj1"));
+        objList.add(new TestObj("obj2"));
+        config.set("app.objList", objList);
 
         config.save(file);
 
@@ -93,9 +87,12 @@ public class YamlTest {
 
 
         System.out.println("TestObj: " + loadedTestObj);
+
+        System.out.println("obj map:");
         Map<String, TestObj> map = config.getSerializableMap("app.objMap", TestObj.class);
         map.forEach((k, v) -> System.out.println("  " + k + ": " + v));
 
+        System.out.println("obj list:");
         List<TestObj> list = config.getSerializableList("app.objList", TestObj.class);
         list.forEach((o) -> System.out.println("  " + o));
     }
