@@ -1,8 +1,6 @@
 package dev.sweety.core.math.vector.d2;
 
-import lombok.Getter;
-
-import java.util.Objects;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * 2D int Vector.
@@ -11,34 +9,22 @@ import java.util.Objects;
  * PacketEvents usually uses this for block positions as they don't need any decimals.
  * Converted from Vector3i to 2i
  *
+ * @param x X (coordinate/angle/whatever you wish)
+ * @param y Y (coordinate/angle/whatever you wish)
  * @author retrooper, mksweety
  * @since 1.7
  */
 
-@Getter
-public class Vector2i {
+public record Vector2i(int x, int y) {
 
     private static final Vector2i ZERO = new Vector2i();
-
-    /**
-     * X (coordinate/angle/whatever you wish)
-     */
-
-    public final int x;
-
-    /**
-     * Y (coordinate/angle/whatever you wish)
-     */
-
-    public final int y;
 
     /**
      * Default constructor setting all coordinates/angles/values to their default values (=0).
      */
 
     public Vector2i() {
-        this.x = 0;
-        this.y = 0;
+        this(0, 0);
     }
 
     /**
@@ -48,9 +34,7 @@ public class Vector2i {
      * @param y Y
      */
 
-    public Vector2i(int x, int y) {
-        this.x = x;
-        this.y = y;
+    public Vector2i {
     }
 
     /**
@@ -63,18 +47,10 @@ public class Vector2i {
      */
 
     public Vector2i(int[] array) {
-        if (array.length > 0) {
-            x = array[0];
-        } else {
-            x = 0;
-            y = 0;
-            return;
-        }
-        if (array.length > 1) {
-            y = array[1];
-        } else {
-            y = 0;
-        }
+        this(
+                array.length > 0 ? array[0] : 0,
+                array.length > 1 ? array[1] : 0
+        );
     }
 
     /**
@@ -87,19 +63,12 @@ public class Vector2i {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof Vector2i vec) {
-            return x == vec.x && y == vec.y;
-        } else if (obj instanceof Vector2d vec) {
-            return x == vec.x && y == vec.y;
-        } else if (obj instanceof Vector2f vec) {
-            return x == vec.x && y == vec.y;
-        }
-        return false;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(x, y);
+        return switch (obj) {
+            case Vector2i(int _x, int _y) -> this.x() == _x && this.y() == _y;
+            case Vector2d(double _x, double _y) -> this.x() == _x && this.y() == _y;
+            case Vector2f(float _x, float _y) -> this.x() == _x && this.y() == _y;
+            case null, default -> false;
+        };
     }
 
     public Vector2d toVector3d() {
@@ -165,7 +134,7 @@ public class Vector2i {
     }
 
     @Override
-    public String toString() {
+    public @NotNull String toString() {
         return "X: " + x + ", Y: " + y;
     }
 }

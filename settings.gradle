@@ -1,18 +1,57 @@
 rootProject.name = 'sweety'
 
-include 'core'
-include 'event'
-include 'event-processor'
-include 'minecraft'
-include 'module'
-include 'netty'
-include 'netty-loadbalancer'
-include 'ormlite-util'
-include 'packet-processor'
-include 'project'
-include 'record-getter-processor'
-include 'spotify'
-include 'sql4j'
-include 'intellij-plugin'
+include 'core' //todo remove
 
-include 'test-kt'
+include 'feature'
+
+include 'feature:event' //todo split
+
+include 'feature:module'
+include 'feature:module:extension'
+include 'feature:module:extension:api'
+include 'feature:module:extension:common'
+include 'feature:module:extension:manager'
+include 'feature:module:feature'
+include 'feature:module:versioning'
+
+include 'feature:service'
+include 'feature:service:api'
+include 'feature:service:impl'
+
+include 'hook'
+include 'hook:spotify'
+include 'hook:microsoft-auth'
+
+include 'minecraft'
+include 'minecraft:network'
+include 'minecraft:plugin'
+include 'minecraft:version'
+
+include 'network'
+include 'network:netty'
+include 'network:netty-loadbalancer'
+include 'network:netty-saas'
+
+include 'util'
+include 'util:logger'
+
+include 'util:persistence'
+
+include 'util:persistence:configuration'
+include 'util:persistence:configuration:common'
+include 'util:persistence:configuration:json'
+include 'util:persistence:configuration:yaml'
+
+include 'util:persistence:ormlite-util'
+include 'util:persistence:sql4j'
+
+include 'util:processor'
+include 'util:processor:event-processor'
+include 'util:processor:packet-processor'
+include 'util:processor:record-getter-processor'
+include 'util:processor:intellij-plugin'
+
+include 'util:signature'
+include 'util:thread'
+include 'util:time'
+include 'util:vector'

@@ -14,10 +14,8 @@ public class ObjectUtils {
 
     @SafeVarargs
     public <T> boolean isNull(T t, Predicate<T>... predicates) {
-        if (t == null) return true;
-        if (t instanceof CharSequence c && c.isEmpty()) return true;
-        for (Predicate<T> predicate : predicates) if (predicate.test(t)) return true;
-        return false;
+        if (t == null || t instanceof CharSequence c && c.isEmpty()) return true;
+        return Arrays.stream(predicates).anyMatch(predicate -> predicate.test(t));
     }
 
     @SafeVarargs

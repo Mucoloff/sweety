@@ -40,16 +40,17 @@ public class ListFiles {
 
     public static void main(String[] args) throws IOException {
         File o = new File("file_tree.txt");
-        if (!o.exists()) {
-            o.createNewFile();
-        }
+        if (!o.exists()) o.createNewFile();
 
         ListFiles listFiles = new ListFiles(o);
 
 
-        for (String s : new String[]{"core", "event", "event-processor", "minecraft", "module", "netty", "netty-loadbalancer","ormlite-util", "packet-processor", "project", "record-getter-processor", "spotify"}) {
-            listFiles.printFiles(new File("/home/sweety/projects/java/sweety/" + s + "/src/main/java/dev/sweety/"), "  ");
-        }
+        //for (String s : new String[]{"core", "event", "event-processor", "minecraft", "module", "netty", "netty-loadbalancer","ormlite-util", "packet-processor", "project", "record-getter-processor", "spotify"}) {
+            listFiles.printFiles(new File("/run/media/sweety/share/projects/java/todo/sweety/"
+                    )
+                    //+ s + "/src/main/java/dev/sweety/")
+                    , "  ");
+        //}
 
     }
 

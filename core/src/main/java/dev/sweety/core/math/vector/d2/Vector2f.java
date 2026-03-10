@@ -1,38 +1,25 @@
 package dev.sweety.core.math.vector.d2;
 
-import lombok.Getter;
-
-import java.util.Objects;
-
 /**
  * 2D float Vector.
  * This vector can represent coordinates, angles, or anything you want.
  * You can use this to represent an array if you really want.
  * Converted from Vector3f to 2f
  *
+ * @param x X (coordinate/angle/whatever you wish)
+ * @param y Y (coordinate/angle/whatever you wish)
  * @author retrooper, mksweety
  * @since 1.8
  */
-@Getter
-public class Vector2f {
+public record Vector2f(float x, float y) {
 
     private static final Vector2f ZERO = new Vector2f();
-
-    /**
-     * X (coordinate/angle/whatever you wish)
-     */
-    public final float x;
-    /**
-     * Y (coordinate/angle/whatever you wish)
-     */
-    public final float y;
 
     /**
      * Default constructor setting all coordinates/angles/values to their default values (=0).
      */
     public Vector2f() {
-        this.x = 0.0f;
-        this.y = 0.0f;
+        this(0.0f, 0.0f);
     }
 
     /**
@@ -41,9 +28,7 @@ public class Vector2f {
      * @param x X
      * @param y Y
      */
-    public Vector2f(float x, float y) {
-        this.x = x;
-        this.y = y;
+    public Vector2f {
     }
 
     /**
@@ -55,19 +40,10 @@ public class Vector2f {
      * @param array Array.
      */
     public Vector2f(float[] array) {
-        if (array.length > 0) {
-            x = array[0];
-        } else {
-            x = 0;
-            y = 0;
-            return;
-        }
-
-        if (array.length > 1) {
-            y = array[1];
-        } else {
-            y = 0;
-        }
+        this(
+                array.length > 0 ? array[0] : 0.0f,
+                array.length > 1 ? array[1] : 0.0f
+        );
     }
 
     /**
@@ -79,19 +55,12 @@ public class Vector2f {
      */
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof Vector2f vec) {
-            return x == vec.x && y == vec.y;
-        } else if (obj instanceof Vector2d vec) {
-            return x == vec.x && y == vec.y;
-        } else if (obj instanceof Vector2i vec) {
-            return x == (double) vec.x && y == (double) vec.y;
-        }
-        return false;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(x, y);
+        return switch (obj) {
+            case Vector2i(int _x, int _y) -> this.x() == _x && this.y() == _y;
+            case Vector2d(double _x, double _y) -> this.x() == _x && this.y() == _y;
+            case Vector2f(float _x, float _y) -> this.x() == _x && this.y() == _y;
+            case null, default -> false;
+        };
     }
 
     public Vector2f add(float x, float y) {

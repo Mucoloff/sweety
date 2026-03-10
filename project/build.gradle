@@ -4,16 +4,16 @@ dependencies {
     implementation project(":netty")
     implementation project(":netty-loadbalancer")
     implementation project(":module")
-    implementation project(":sql4j")
+    implementation project(":persistence:sql4j")
 
-    implementation project(":record-getter-processor")
-    annotationProcessor project(":record-getter-processor")
+    implementation project(":processor::record-getter-processor")
+    annotationProcessor project(":processor::record-getter-processor")
 
-    implementation project(":packet-processor")
-    annotationProcessor project(":packet-processor")
+    implementation project(":processor::packet-processor")
+    annotationProcessor project(":processor::packet-processor")
 
-    implementation project(":event-processor")
-    annotationProcessor project(":event-processor")
+    implementation project(":processor::event-processor")
+    annotationProcessor project(":processor::event-processor")
 
     implementation 'com.github.oshi:oshi-core:6.6.5'
 }

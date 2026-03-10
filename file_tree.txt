@@ -1,312 +1,1695 @@
-  └── 📁 core/
-      ├── 📁 color/
-      │   ├── 📄 AnsiColor.java
-      │   └── 📄 EColor.java
-      ├── 📁 crypt/
-      │   ├── 📄 ByteCrypt.java
-      │   ├── 📄 ChecksumUtils.java
-      │   └── 📁 signature/
-      │       ├── 📄 FieldInjector.java
-      │       ├── 📄 Signature.java
-      │       └── 📄 Watermark.java
-      ├── 📁 easing/
-      │   ├── 📄 Animation.java
-      │   └── 📄 Easing.java
-      ├── 📁 exception/
-      │   ├── 📄 AuthFailureException.java
-      │   ├── 📄 Except.java
-      │   ├── 📄 ExceptionUtils.java
-      │   └── 📄 NoStackTraceThrowable.java
-      ├── 📁 file/
-      │   ├── 📄 ResourceUtils.java
-      │   └── 📄 ZipUtils.java
-      ├── 📁 logger/
-      │   ├── 📄 LogHelper.java
-      │   ├── 📄 LogLevel.java
-      │   ├── 📄 SimpleLogger.java
-      │   ├── 📁 backend/
-      │   │   ├── 📄 ConsoleBackend.java
-      │   │   ├── 📄 JulBackend.java
-      │   │   ├── 📄 LoggerBackend.java
-      │   │   ├── 📄 NoOpBackend.java
-      │   │   └── 📄 SLF4JBackend.java
-      │   └── 📁 profile/
-      │       └── 📄 ProfileScope.java
-      ├── 📁 math/
-      │   ├── 📄 Mask.java
-      │   ├── 📄 MathUtils.java
-      │   ├── 📄 Operation.java
-      │   ├── 📄 Pair.java
-      │   ├── 📄 RandomUtils.java
-      │   ├── 📄 TriFunction.java
-      │   ├── 📁 algo/
-      │   │   ├── 📄 EloUtils.java
-      │   │   └── 📄 LinkedStackUtils.java
-      │   ├── 📁 pointer/
-      │   │   ├── 📄 Ptr.java
-      │   │   └── 📄 Ref.java
-      │   └── 📁 vector/
-      │       ├── 📄 CoordUtils.java
-      │       ├── 📁 d2/
-      │       │   ├── 📄 Polar.java
-      │       │   ├── 📄 PolarF.java
-      │       │   ├── 📄 Vector2d.java
-      │       │   ├── 📄 Vector2f.java
-      │       │   └── 📄 Vector2i.java
-      │       ├── 📁 d3/
-      │       │   ├── 📄 Spherical.java
-      │       │   ├── 📄 SphericalF.java
-      │       │   ├── 📄 Vector3d.java
-      │       │   ├── 📄 Vector3f.java
-      │       │   └── 📄 Vector3i.java
-      │       ├── 📁 queue/
-      │       │   ├── 📄 LinkedQueue.java
-      │       │   └── 📄 Queue.java
-      │       └── 📁 stack/
-      │           ├── 📄 DequeStack.java
-      │           ├── 📄 LinkedStack.java
-      │           ├── 📄 Node.java
-      │           ├── 📄 Stack.java
-      │           └── 📄 StackContext.java
-      ├── 📁 persistence/
-      │   ├── 📁 config/
-      │   │   ├── 📄 ConfigManager.java
-      │   │   ├── 📄 FileContainer.java
-      │   │   ├── 📄 GsonUtils.java
-      │   │   ├── 📁 adapters/
-      │   │   │   ├── 📄 ColorAdapter.java
-      │   │   │   ├── 📄 EColorAdapter.java
-      │   │   │   ├── 📄 GsonAdapter.java
-      │   │   │   └── 📄 GsonAdapters.java
-      │   │   ├── 📁 compression/
-      │   │   │   └── 📄 GzipCompressor.java
-      │   │   └── 📁 format/
-      │   │       ├── 📄 ConfigFormat.java
-      │   │       ├── 📄 Format.java
-      │   │       └── 📄 JsonFormat.java
-      │   └── 📁 sql/
-      │       ├── 📄 ConnectionType.java
-      │       ├── 📄 Database.java
-      │       ├── 📄 Repository.java
-      │       └── 📄 Table.java
-      ├── 📁 service/
-      │   ├── 📄 Provider.java
-      │   ├── 📄 ServiceHelper.java
-      │   ├── 📄 ServiceKey.java
-      │   ├── 📄 ServiceRegistry.java
-      │   └── 📁 impl/
-      │       ├── 📄 ServiceContext.java
-      │       ├── 📄 ServiceManager.java
-      │       └── 📄 TypedServiceManager.java
-      ├── 📁 system/
-      │   ├── 📄 OperatingSystem.java
-      │   └── 📄 SystemUtils.java
-      ├── 📁 thread/
-      │   ├── 📄 ProfileThread.java
-      │   └── 📄 ThreadManager.java
-      ├── 📁 time/
-      │   ├── 📄 StopWatch.java
-      │   └── 📄 TimeUtils.java
-      └── 📁 util/
-          ├── 📄 Expirable.java
-          ├── 📄 FastScalableCountingBloomFilter.java
-          ├── 📄 Loadable.java
-          ├── 📄 ObjectUtils.java
-          └── 📄 UUIDUtils.java
-  └── 📁 event/
-      ├── 📄 Event.java
-      ├── 📄 EventSystem.java
-      ├── 📄 IEvent.java
-      ├── 📁 info/
-      │   ├── 📄 Priority.java
-      │   └── 📄 State.java
-      └── 📁 interfaces/
-          ├── 📄 LinkEvent.java
-          └── 📄 Listener.java
-  └── 📁 event/
-      └── 📁 processor/
-          ├── 📄 EventMapping.java
-          ├── 📄 EventProcessor.java
-          └── 📄 GenerateEvent.java
-  └── 📁 netty/
-      └── 📁 loadbalancer/
-          ├── 📄 LoadBalancerServer.java
-          ├── 📄 PacketQueue.java
-          ├── 📁 backend/
-          │   ├── 📄 BackendNode.java
-          │   ├── 📄 BackendServer.java
-          │   └── 📁 pool/
-          │       ├── 📄 BackendPool.java
-          │       ├── 📄 IBackendPool.java
-          │       └── 📁 balancer/
-          │           ├── 📄 BalancerSystem.java
-          │           └── 📄 Balancers.java
-          └── 📁 packets/
-              ├── 📄 ForwardPacket.java
-              ├── 📄 MetricsUpdatePacket.java
-              └── 📄 WrappedPacket.java
-  └── 📁 minecraft/
-      ├── 📁 auth/
-      │   ├── 📄 AccountType.java
-      │   ├── 📄 AltStorage.java
-      │   ├── 📄 HttpUtils.java
-      │   └── 📄 MicrosoftLogin.java
-      ├── 📁 color/
-      │   └── 📄 ChatColor.java
-      ├── 📁 ping/
-      │   ├── 📄 MinecraftPing.java
-      │   ├── 📄 PingUtils.java
-      │   ├── 📁 exception/
-      │   │   ├── 📄 EndOfStreamException.java
-      │   │   ├── 📄 InvalidPacketDataException.java
-      │   │   └── 📄 NetworkException.java
-      │   ├── 📁 io/
-      │   │   ├── 📄 PacketInputStream.java
-      │   │   ├── 📄 PacketOutputStream.java
-      │   │   ├── 📄 PacketReader.java
-      │   │   └── 📄 PacketWriter.java
-      │   └── 📁 packet/
-      │       ├── 📄 C2SPacket.java
-      │       └── 📄 S2CPacket.java
-      └── 📁 version/
-          ├── 📄 MinecraftVersion.java
-          └── 📄 VersionComparison.java
-  └── 📁 module/
-      ├── 📁 extension/
-      │   ├── 📄 Extension.java
-      │   ├── 📄 ExtensionInfo.java
-      │   ├── 📄 ExtensionManager.java
-      │   ├── 📄 ExtensionNotFoundException.java
-      │   └── 📄 Toggleable.java
-      ├── 📁 feature/
-      │   ├── 📄 FeatureManager.java
-      │   └── 📄 OptionalFeature.java
-      └── 📁 loader/
-          ├── 📄 DownloadFile.java
-          ├── 📄 ExtensionClassLoader.java
-          ├── 📄 InMemoryJarURLHandler.java
-          ├── 📄 RuntimeDependencyLoader.java
-          └── 📄 SingleClassLoader.java
-  └── 📁 netty/
-      ├── 📁 feature/
-      │   ├── 📄 AutoReconnect.java
-      │   └── 📄 TransactionManager.java
-      ├── 📁 messaging/
-      │   ├── 📄 Client.java
-      │   ├── 📄 Server.java
-      │   ├── 📁 exception/
-      │   │   ├── 📄 ClientException.java
-      │   │   ├── 📄 ClientInvalid.java
-      │   │   ├── 📄 PacketDecodeException.java
-      │   │   ├── 📄 PacketEncodeException.java
-      │   │   └── 📄 PacketRegistrationException.java
-      │   ├── 📁 listener/
-      │   │   ├── 📁 decoder/
-      │   │   │   ├── 📄 NettyDecoder.java
-      │   │   │   └── 📄 PacketDecoder.java
-      │   │   ├── 📁 encoder/
-      │   │   │   ├── 📄 NettyEncoder.java
-      │   │   │   └── 📄 PacketEncoder.java
-      │   │   └── 📁 watcher/
-      │   │       └── 📄 NettyWatcher.java
-      │   └── 📁 model/
-      │       └── 📄 Messenger.java
-      └── 📁 packet/
-          ├── 📁 buffer/
-          │   ├── 📄 FileBuffer.java
-          │   ├── 📄 PacketBuffer.java
-          │   └── 📁 io/
-          │       ├── 📄 CallableDecoder.java
-          │       ├── 📄 CallableEncoder.java
-          │       ├── 📄 Decoder.java
-          │       └── 📄 Encoder.java
-          ├── 📁 model/
-          │   ├── 📄 Packet.java
-          │   └── 📄 PacketTransaction.java
-          └── 📁 registry/
-              ├── 📄 IPacketRegistry.java
-              ├── 📄 OptimizedPacketRegistry.java
-              ├── 📄 RegisteredPacket.java
-              └── 📄 SimplePacketRegistry.java
-  └── 📁 packet/
-      └── 📁 processor/
-          ├── 📄 BufferUtils.java
-          ├── 📄 BuildPacket.java
-          ├── 📄 FieldBuffer.java
-          └── 📄 PacketProcessor.java
-  └── 📁 project/
-      ├── 📁 getters/
-      │   └── 📄 ExampleClass.java
-      ├── 📁 netty/
-      │   ├── 📄 TestClient.java
-      │   ├── 📄 TestServer.java
-      │   ├── 📁 loadbalancer/
-      │   │   ├── 📄 ACBalancer.java
-      │   │   ├── 📄 DummyBackend.java
-      │   │   ├── 📄 DummyClient.java
-      │   │   ├── 📄 Main.java
-      │   │   ├── 📄 PlayerPacket.java
-      │   │   └── 📁 test/
-      │   │       ├── 📄 RunBackend1.java
-      │   │       ├── 📄 RunBackend2.java
-      │   │       ├── 📄 RunBackend3.java
-      │   │       ├── 📄 RunClient.java
-      │   │       └── 📄 RunLb.java
-      │   ├── 📁 packet/
-      │   │   ├── 📄 Example.java
-      │   │   ├── 📄 ExampleDecoder.java
-      │   │   ├── 📄 ExampleEncoder.java
-      │   │   ├── 📄 ExampleObj.java
-      │   │   ├── 📄 IExampleObj.java
-      │   │   ├── 📄 TestPacketMain.java
-      │   │   ├── 📁 file/
-      │   │   │   └── 📄 FilePacket.java
-      │   │   └── 📁 text/
-      │   │       └── 📄 TextPacket.java
-      │   └── 📁 ping/
-      │       └── 📄 PingTransaction.java
-      └── 📁 test/
-          ├── 📄 BloomFilterTest.java
-          ├── 📄 CompressionProbe.java
-          ├── 📄 ListFiles.java
-          ├── 📄 MailSender.java
-          ├── 📄 TestBuffer.java
-          ├── 📄 TestMail.java
-          └── 📁 feature/
-              ├── 📄 SimpleFileServer.java
-              ├── 📄 TestFeature.java
-              └── 📄 TestFeatureMain.java
-  └── 📁 record/
-      ├── 📄 DataUtils.java
-      ├── 📄 Formats.java
-      ├── 📄 RecordProcessor.java
-      └── 📁 annotations/
-          ├── 📄 RecordData.java
-          ├── 📄 RecordGetter.java
-          └── 📄 RecordSetter.java
-  └── 📁 spotify/
-      ├── 📄 SpotifyManager.java
-      ├── 📁 api/
-      │   └── 📄 SpotifyWebInterface.java
-      ├── 📁 auth/
-      │   ├── 📄 AuthToken.java
-      │   └── 📄 SpotifyOAuth.java
-      ├── 📁 client/
-      │   └── 📄 SpotifyClient.java
-      ├── 📁 model/
-      │   ├── 📄 Album.java
-      │   ├── 📄 Artist.java
-      │   ├── 📄 Image.java
-      │   ├── 📄 Queue.java
-      │   ├── 📁 device/
-      │   │   ├── 📄 Device.java
-      │   │   └── 📄 Devices.java
-      │   ├── 📁 playback/
-      │   │   ├── 📄 ExternalUrls.java
-      │   │   ├── 📄 Playback.java
-      │   │   └── 📄 PlaybackContext.java
-      │   └── 📁 track/
-      │       ├── 📄 Track.java
-      │       └── 📄 TrackItem.java
-      └── 📁 registry/
-          └── 📄 EndpointRegistry.java
+  ├── 📄 build.gradle
+  ├── 📁 core/
+  │   ├── 📁 build/
+  │   │   ├── 📁 classes/
+  │   │   │   └── 📁 java/
+  │   │   │       └── 📁 main/
+  │   │   │           └── 📁 dev/
+  │   │   │               └── 📁 sweety/
+  │   │   │                   └── 📁 core/
+  │   │   │                       ├── 📁 color/
+  │   │   │                       │   ├── 📄 AnsiColor.class
+  │   │   │                       │   ├── 📄 ColorUtils.class
+  │   │   │                       │   └── 📄 EColor.class
+  │   │   │                       ├── 📁 config/
+  │   │   │                       │   ├── 📄 ConfigManager.class
+  │   │   │                       │   ├── 📄 FileContainer.class
+  │   │   │                       │   ├── 📄 GsonUtils.class
+  │   │   │                       │   ├── 📁 adapters/
+  │   │   │                       │   │   ├── 📄 ColorAdapter.class
+  │   │   │                       │   │   ├── 📄 EColorAdapter.class
+  │   │   │                       │   │   ├── 📄 GsonAdapter.class
+  │   │   │                       │   │   ├── 📄 GsonAdapters.class
+  │   │   │                       │   │   └── 📄 NewEColorAdapter.class
+  │   │   │                       │   ├── 📁 compression/
+  │   │   │                       │   │   └── 📄 GzipCompressor.class
+  │   │   │                       │   ├── 📁 format/
+  │   │   │                       │   │   ├── 📄 ConfigFormat.class
+  │   │   │                       │   │   ├── 📄 Format.class
+  │   │   │                       │   │   ├── 📄 JsonFormat.class
+  │   │   │                       │   │   └── 📄 YamlFormat.class
+  │   │   │                       │   └── 📁 yml/
+  │   │   │                       │       ├── 📄 ConfigSerializable.class
+  │   │   │                       │       ├── 📄 ConfigSerializables$SerializableConstructor.class
+  │   │   │                       │       ├── 📄 ConfigSerializables.class
+  │   │   │                       │       └── 📄 FileConfiguration.class
+  │   │   │                       ├── 📁 crypt/
+  │   │   │                       │   ├── 📄 ByteCrypt.class
+  │   │   │                       │   ├── 📄 ChecksumUtils.class
+  │   │   │                       │   └── 📁 signature/
+  │   │   │                       │       ├── 📄 FieldInjector$1.class
+  │   │   │                       │       ├── 📄 FieldInjector.class
+  │   │   │                       │       ├── 📄 Signature.class
+  │   │   │                       │       └── 📄 Watermark.class
+  │   │   │                       ├── 📁 easing/
+  │   │   │                       │   ├── 📄 Animation.class
+  │   │   │                       │   └── 📄 Easing.class
+  │   │   │                       ├── 📁 exception/
+  │   │   │                       │   ├── 📄 AuthFailureException.class
+  │   │   │                       │   ├── 📄 Except.class
+  │   │   │                       │   ├── 📄 ExceptionUtils$ThrowingSupplier.class
+  │   │   │                       │   ├── 📄 ExceptionUtils.class
+  │   │   │                       │   └── 📄 NoStackTraceThrowable.class
+  │   │   │                       ├── 📁 file/
+  │   │   │                       │   ├── 📄 ResourceUtils.class
+  │   │   │                       │   ├── 📄 ZipUtils$1.class
+  │   │   │                       │   └── 📄 ZipUtils.class
+  │   │   │                       ├── 📁 filter/
+  │   │   │                       │   ├── 📄 CountMinSketch.class
+  │   │   │                       │   └── 📄 FastScalableCountingBloomFilter.class
+  │   │   │                       ├── 📁 logger/
+  │   │   │                       │   ├── 📄 LogHelper.class
+  │   │   │                       │   ├── 📄 LogLevel.class
+  │   │   │                       │   ├── 📄 SimpleLogger.class
+  │   │   │                       │   ├── 📁 backend/
+  │   │   │                       │   │   ├── 📄 ConsoleBackend.class
+  │   │   │                       │   │   ├── 📄 FileBackend.class
+  │   │   │                       │   │   ├── 📄 JulBackend$1.class
+  │   │   │                       │   │   ├── 📄 JulBackend.class
+  │   │   │                       │   │   ├── 📄 LoggerBackend.class
+  │   │   │                       │   │   ├── 📄 NoOpBackend.class
+  │   │   │                       │   │   ├── 📄 SLF4JBackend$1.class
+  │   │   │                       │   │   └── 📄 SLF4JBackend.class
+  │   │   │                       │   └── 📁 profile/
+  │   │   │                       │       └── 📄 ProfileScope.class
+  │   │   │                       ├── 📁 math/
+  │   │   │                       │   ├── 📄 MathUtils$Compare.class
+  │   │   │                       │   ├── 📄 MathUtils.class
+  │   │   │                       │   ├── 📄 Pair$1.class
+  │   │   │                       │   ├── 📄 Pair.class
+  │   │   │                       │   ├── 📄 RandomUtils.class
+  │   │   │                       │   ├── 📁 algo/
+  │   │   │                       │   │   └── 📄 EloUtils.class
+  │   │   │                       │   ├── 📁 function/
+  │   │   │                       │   │   ├── 📄 Function4.class
+  │   │   │                       │   │   ├── 📄 Operation.class
+  │   │   │                       │   │   ├── 📄 TriConsumer.class
+  │   │   │                       │   │   └── 📄 TriFunction.class
+  │   │   │                       │   ├── 📁 mask/
+  │   │   │                       │   │   ├── 📄 Mask.class
+  │   │   │                       │   │   └── 📄 MaskUtil.class
+  │   │   │                       │   ├── 📁 splitstate/
+  │   │   │                       │   │   ├── 📄 ConfirmableState.class
+  │   │   │                       │   │   ├── 📄 SplitState.class
+  │   │   │                       │   │   └── 📄 SplitStateBoolean.class
+  │   │   │                       │   └── 📁 vector/
+  │   │   │                       │       ├── 📄 CoordUtils.class
+  │   │   │                       │       ├── 📁 d2/
+  │   │   │                       │       │   ├── 📄 Polar.class
+  │   │   │                       │       │   ├── 📄 PolarF.class
+  │   │   │                       │       │   ├── 📄 Vector2d.class
+  │   │   │                       │       │   ├── 📄 Vector2f.class
+  │   │   │                       │       │   └── 📄 Vector2i.class
+  │   │   │                       │       ├── 📁 d3/
+  │   │   │                       │       │   ├── 📄 Spherical.class
+  │   │   │                       │       │   └── 📄 SphericalF.class
+  │   │   │                       │       └── 📁 list/
+  │   │   │                       │           ├── 📄 BlockingDeque.class
+  │   │   │                       │           ├── 📄 CircularlyLinkedList$1.class
+  │   │   │                       │           ├── 📄 CircularlyLinkedList$2.class
+  │   │   │                       │           ├── 📄 CircularlyLinkedList$Node.class
+  │   │   │                       │           ├── 📄 CircularlyLinkedList.class
+  │   │   │                       │           ├── 📄 Queue.class
+  │   │   │                       │           ├── 📄 RingBufferOptimized.class
+  │   │   │                       │           ├── 📄 SampleList.class
+  │   │   │                       │           └── 📄 Stack.class
+  │   │   │                       ├── 📁 service/
+  │   │   │                       │   ├── 📄 Provider.class
+  │   │   │                       │   ├── 📄 ServiceHelper.class
+  │   │   │                       │   ├── 📄 ServiceKey.class
+  │   │   │                       │   ├── 📄 ServiceRegistry.class
+  │   │   │                       │   └── 📁 impl/
+  │   │   │                       │       ├── 📄 ServiceContext.class
+  │   │   │                       │       ├── 📄 ServiceManager.class
+  │   │   │                       │       └── 📄 TypedServiceManager.class
+  │   │   │                       ├── 📁 system/
+  │   │   │                       │   ├── 📄 OperatingSystem$1.class
+  │   │   │                       │   ├── 📄 OperatingSystem$2.class
+  │   │   │                       │   ├── 📄 OperatingSystem.class
+  │   │   │                       │   └── 📄 SystemUtils.class
+  │   │   │                       ├── 📁 thread/
+  │   │   │                       │   ├── 📄 AsyncScheduler$DecoratedCallable.class
+  │   │   │                       │   ├── 📄 AsyncScheduler$DecoratedRunnable.class
+  │   │   │                       │   ├── 📄 AsyncScheduler.class
+  │   │   │                       │   ├── 📄 ProfileThread.class
+  │   │   │                       │   ├── 📄 ThreadManager.class
+  │   │   │                       │   └── 📄 ThreadUtil.class
+  │   │   │                       ├── 📁 time/
+  │   │   │                       │   ├── 📄 Expirable.class
+  │   │   │                       │   ├── 📄 StopWatch.class
+  │   │   │                       │   ├── 📄 TimeMode.class
+  │   │   │                       │   └── 📄 TimeUtils.class
+  │   │   │                       └── 📁 util/
+  │   │   │                           ├── 📄 DataUtils.class
+  │   │   │                           ├── 📄 HasId.class
+  │   │   │                           ├── 📄 Loadable.class
+  │   │   │                           ├── 📄 ObjectUtils.class
+  │   │   │                           └── 📄 UUIDUtils.class
+  │   │   ├── 📁 generated/
+  │   │   │   └── 📁 sources/
+  │   │   │       ├── 📁 annotationProcessor/
+  │   │   │       │   └── 📁 java/
+  │   │   │       │       └── 📁 main/
+  │   │   │       └── 📁 headers/
+  │   │   │           └── 📁 java/
+  │   │   │               └── 📁 main/
+  │   │   ├── 📁 libs/
+  │   │   │   └── 📄 core-1.0.0.jar
+  │   │   ├── 📁 lombok/
+  │   │   │   └── 📁 effective-config/
+  │   │   │       └── 📄 lombok-main.config
+  │   │   ├── 📁 publications/
+  │   │   │   └── 📁 mavenJava/
+  │   │   │       ├── 📄 module.json
+  │   │   │       └── 📄 pom-default.xml
+  │   │   └── 📁 tmp/
+  │   │       ├── 📁 compileJava/
+  │   │       │   ├── 📁 compileTransaction/
+  │   │       │   │   ├── 📁 backup-dir/
+  │   │       │   │   └── 📁 stash-dir/
+  │   │       │   │       └── 📄 FileConfiguration.class.uniqueId0
+  │   │       │   └── 📄 previous-compilation-data.bin
+  │   │       ├── 📁 jar/
+  │   │       │   └── 📄 MANIFEST.MF
+  │   │       └── 📁 publishMavenJavaPublicationToMavenLocal/
+  │   │           └── 📄 module-maven-metadata.xml
+  │   ├── 📄 build.gradle.kts
+  │   └── 📁 src/
+  │       └── 📁 main/
+  │           ├── 📁 java/
+  │           │   └── 📁 dev/
+  │           │       └── 📁 sweety/
+  │           │           └── 📁 core/
+  │           │               ├── 📁 color/
+  │           │               │   ├── 📄 AnsiColor.java
+  │           │               │   ├── 📄 ColorUtils.java
+  │           │               │   └── 📄 EColor.java
+  │           │               ├── 📁 config/
+  │           │               │   ├── 📄 ConfigManager.java
+  │           │               │   ├── 📄 FileContainer.java
+  │           │               │   ├── 📄 GsonUtils.java
+  │           │               │   ├── 📁 adapters/
+  │           │               │   │   ├── 📄 ColorAdapter.java
+  │           │               │   │   ├── 📄 EColorAdapter.java
+  │           │               │   │   ├── 📄 GsonAdapter.java
+  │           │               │   │   ├── 📄 GsonAdapters.java
+  │           │               │   │   └── 📄 NewEColorAdapter.java
+  │           │               │   ├── 📁 compression/
+  │           │               │   │   └── 📄 GzipCompressor.java
+  │           │               │   ├── 📁 format/
+  │           │               │   │   ├── 📄 ConfigFormat.java
+  │           │               │   │   ├── 📄 Format.java
+  │           │               │   │   ├── 📄 JsonFormat.java
+  │           │               │   │   └── 📄 YamlFormat.java
+  │           │               │   └── 📁 yml/
+  │           │               │       ├── 📄 ConfigSerializable.java
+  │           │               │       ├── 📄 ConfigSerializables.java
+  │           │               │       └── 📄 FileConfiguration.java
+  │           │               ├── 📁 crypt/
+  │           │               │   ├── 📄 ByteCrypt.java
+  │           │               │   ├── 📄 ChecksumUtils.java
+  │           │               │   └── 📁 signature/
+  │           │               │       ├── 📄 FieldInjector.java
+  │           │               │       ├── 📄 Signature.java
+  │           │               │       └── 📄 Watermark.java
+  │           │               ├── 📁 easing/
+  │           │               │   ├── 📄 Animation.java
+  │           │               │   └── 📄 Easing.java
+  │           │               ├── 📁 exception/
+  │           │               │   ├── 📄 AuthFailureException.java
+  │           │               │   ├── 📄 Except.java
+  │           │               │   ├── 📄 ExceptionUtils.java
+  │           │               │   └── 📄 NoStackTraceThrowable.java
+  │           │               ├── 📁 file/
+  │           │               │   ├── 📄 ResourceUtils.java
+  │           │               │   └── 📄 ZipUtils.java
+  │           │               ├── 📁 filter/
+  │           │               │   ├── 📄 CountMinSketch.java
+  │           │               │   └── 📄 FastScalableCountingBloomFilter.java
+  │           │               ├── 📁 logger/
+  │           │               │   ├── 📄 LogHelper.java
+  │           │               │   ├── 📄 LogLevel.java
+  │           │               │   ├── 📄 SimpleLogger.java
+  │           │               │   ├── 📁 backend/
+  │           │               │   │   ├── 📄 ConsoleBackend.java
+  │           │               │   │   ├── 📄 FileBackend.java
+  │           │               │   │   ├── 📄 JulBackend.java
+  │           │               │   │   ├── 📄 LoggerBackend.java
+  │           │               │   │   ├── 📄 NoOpBackend.java
+  │           │               │   │   └── 📄 SLF4JBackend.java
+  │           │               │   └── 📁 profile/
+  │           │               │       └── 📄 ProfileScope.java
+  │           │               ├── 📁 math/
+  │           │               │   ├── 📄 MathUtils.java
+  │           │               │   ├── 📄 Pair.java
+  │           │               │   ├── 📄 RandomUtils.java
+  │           │               │   ├── 📁 algo/
+  │           │               │   │   └── 📄 EloUtils.java
+  │           │               │   ├── 📁 function/
+  │           │               │   │   ├── 📄 Function4.java
+  │           │               │   │   ├── 📄 Operation.java
+  │           │               │   │   ├── 📄 TriConsumer.java
+  │           │               │   │   └── 📄 TriFunction.java
+  │           │               │   ├── 📁 mask/
+  │           │               │   │   ├── 📄 Mask.java
+  │           │               │   │   └── 📄 MaskUtil.java
+  │           │               │   ├── 📁 splitstate/
+  │           │               │   │   ├── 📄 ConfirmableState.java
+  │           │               │   │   ├── 📄 SplitState.java
+  │           │               │   │   └── 📄 SplitStateBoolean.java
+  │           │               │   └── 📁 vector/
+  │           │               │       ├── 📄 CoordUtils.java
+  │           │               │       ├── 📁 d2/
+  │           │               │       │   ├── 📄 Polar.java
+  │           │               │       │   ├── 📄 PolarF.java
+  │           │               │       │   ├── 📄 Vector2d.java
+  │           │               │       │   ├── 📄 Vector2f.java
+  │           │               │       │   └── 📄 Vector2i.java
+  │           │               │       ├── 📁 d3/
+  │           │               │       │   ├── 📄 Spherical.java
+  │           │               │       │   └── 📄 SphericalF.java
+  │           │               │       └── 📁 list/
+  │           │               │           ├── 📄 BlockingDeque.java
+  │           │               │           ├── 📄 CircularlyLinkedList.java
+  │           │               │           ├── 📄 Queue.java
+  │           │               │           ├── 📄 RingBufferOptimized.java
+  │           │               │           ├── 📄 SampleList.java
+  │           │               │           └── 📄 Stack.java
+  │           │               ├── 📁 service/
+  │           │               │   ├── 📄 Provider.java
+  │           │               │   ├── 📄 ServiceHelper.java
+  │           │               │   ├── 📄 ServiceKey.java
+  │           │               │   ├── 📄 ServiceRegistry.java
+  │           │               │   └── 📁 impl/
+  │           │               │       ├── 📄 ServiceContext.java
+  │           │               │       ├── 📄 ServiceManager.java
+  │           │               │       └── 📄 TypedServiceManager.java
+  │           │               ├── 📁 system/
+  │           │               │   ├── 📄 OperatingSystem.java
+  │           │               │   └── 📄 SystemUtils.java
+  │           │               ├── 📁 thread/
+  │           │               │   ├── 📄 AsyncScheduler.java
+  │           │               │   ├── 📄 ProfileThread.java
+  │           │               │   ├── 📄 ThreadManager.java
+  │           │               │   └── 📄 ThreadUtil.java
+  │           │               ├── 📁 time/
+  │           │               │   ├── 📄 Expirable.java
+  │           │               │   ├── 📄 StopWatch.java
+  │           │               │   ├── 📄 TimeMode.java
+  │           │               │   └── 📄 TimeUtils.java
+  │           │               └── 📁 util/
+  │           │                   ├── 📄 DataUtils.java
+  │           │                   ├── 📄 HasId.java
+  │           │                   ├── 📄 Loadable.java
+  │           │                   ├── 📄 ObjectUtils.java
+  │           │                   └── 📄 UUIDUtils.java
+  │           └── 📁 kotlin/
+  ├── 📁 event/
+  │   ├── 📁 build/
+  │   │   ├── 📁 classes/
+  │   │   │   └── 📁 java/
+  │   │   │       └── 📁 main/
+  │   │   │           └── 📁 dev/
+  │   │   │               └── 📁 sweety/
+  │   │   │                   └── 📁 event/
+  │   │   │                       ├── 📄 Event.class
+  │   │   │                       ├── 📄 EventSystem$EventCallback.class
+  │   │   │                       ├── 📄 EventSystem.class
+  │   │   │                       ├── 📁 info/
+  │   │   │                       │   ├── 📄 Priority.class
+  │   │   │                       │   └── 📄 State.class
+  │   │   │                       └── 📁 interfaces/
+  │   │   │                           ├── 📄 IEvent.class
+  │   │   │                           ├── 📄 LinkEvent.class
+  │   │   │                           └── 📄 Listener.class
+  │   │   ├── 📁 generated/
+  │   │   │   └── 📁 sources/
+  │   │   │       ├── 📁 annotationProcessor/
+  │   │   │       │   └── 📁 java/
+  │   │   │       │       └── 📁 main/
+  │   │   │       └── 📁 headers/
+  │   │   │           └── 📁 java/
+  │   │   │               └── 📁 main/
+  │   │   ├── 📁 libs/
+  │   │   │   └── 📄 event-1.0.0.jar
+  │   │   ├── 📁 lombok/
+  │   │   │   └── 📁 effective-config/
+  │   │   │       └── 📄 lombok-main.config
+  │   │   ├── 📁 publications/
+  │   │   │   └── 📁 mavenJava/
+  │   │   │       ├── 📄 module.json
+  │   │   │       └── 📄 pom-default.xml
+  │   │   └── 📁 tmp/
+  │   │       ├── 📁 compileJava/
+  │   │       │   ├── 📁 compileTransaction/
+  │   │       │   │   ├── 📁 backup-dir/
+  │   │       │   │   └── 📁 stash-dir/
+  │   │       │   └── 📄 previous-compilation-data.bin
+  │   │       ├── 📁 jar/
+  │   │       │   └── 📄 MANIFEST.MF
+  │   │       └── 📁 publishMavenJavaPublicationToMavenLocal/
+  │   │           └── 📄 module-maven-metadata.xml
+  │   ├── 📄 build.gradle
+  │   └── 📁 src/
+  │       └── 📁 main/
+  │           └── 📁 java/
+  │               └── 📁 dev/
+  │                   └── 📁 sweety/
+  │                       └── 📁 event/
+  │                           ├── 📄 Event.java
+  │                           ├── 📄 EventSystem.java
+  │                           ├── 📁 info/
+  │                           │   ├── 📄 Priority.java
+  │                           │   └── 📄 State.java
+  │                           └── 📁 interfaces/
+  │                               ├── 📄 IEvent.java
+  │                               ├── 📄 LinkEvent.java
+  │                               └── 📄 Listener.java
+  ├── 📄 file_tree.txt
+  ├── 📁 gradle/
+  │   └── 📁 wrapper/
+  │       ├── 📄 gradle-wrapper.jar
+  │       └── 📄 gradle-wrapper.properties
+  ├── 📄 gradlew
+  ├── 📄 gradlew.bat
+  ├── 📁 hook/
+  │   ├── 📁 microsoft-auth/
+  │   └── 📁 spotify/
+  ├── 📁 libs/
+  │   ├── 📄 gson-2.11.0.jar
+  │   └── 📄 lombok-1.18.34.jar
+  ├── 📁 logger/
+  │   ├── 📄 build.gradle
+  │   └── 📁 src/
+  │       ├── 📁 main/
+  │       │   ├── 📁 java/
+  │       │   │   └── 📁 dev/
+  │       │   │       └── 📁 sweety/
+  │       │   │           └── 📄 Main.java
+  │       │   └── 📁 resources/
+  │       └── 📁 test/
+  │           ├── 📁 java/
+  │           └── 📁 resources/
+  ├── 📁 minecraft/
+  │   ├── 📁 build/
+  │   │   ├── 📁 classes/
+  │   │   │   └── 📁 java/
+  │   │   │       └── 📁 main/
+  │   │   │           └── 📁 dev/
+  │   │   │               └── 📁 sweety/
+  │   │   │                   └── 📁 minecraft/
+  │   │   │                       ├── 📁 auth/
+  │   │   │                       │   ├── 📄 AccountType.class
+  │   │   │                       │   ├── 📄 AltStorage$AltStorageBuilder.class
+  │   │   │                       │   ├── 📄 AltStorage.class
+  │   │   │                       │   ├── 📄 HttpUtils.class
+  │   │   │                       │   ├── 📄 MicrosoftLogin$AuthTokenResponse.class
+  │   │   │                       │   ├── 📄 MicrosoftLogin$GameOwnershipResponse$Item.class
+  │   │   │                       │   ├── 📄 MicrosoftLogin$GameOwnershipResponse.class
+  │   │   │                       │   ├── 📄 MicrosoftLogin$Handler.class
+  │   │   │                       │   ├── 📄 MicrosoftLogin$LoginData.class
+  │   │   │                       │   ├── 📄 MicrosoftLogin$McResponse.class
+  │   │   │                       │   ├── 📄 MicrosoftLogin$ProfileResponse.class
+  │   │   │                       │   ├── 📄 MicrosoftLogin$XblXstsResponse$DisplayClaims$Claim.class
+  │   │   │                       │   ├── 📄 MicrosoftLogin$XblXstsResponse$DisplayClaims.class
+  │   │   │                       │   ├── 📄 MicrosoftLogin$XblXstsResponse.class
+  │   │   │                       │   └── 📄 MicrosoftLogin.class
+  │   │   │                       ├── 📁 color/
+  │   │   │                       │   └── 📄 ChatColor.class
+  │   │   │                       ├── 📁 ping/
+  │   │   │                       │   ├── 📄 MinecraftPing.class
+  │   │   │                       │   ├── 📄 PingUtils.class
+  │   │   │                       │   ├── 📁 exception/
+  │   │   │                       │   │   ├── 📄 EndOfStreamException.class
+  │   │   │                       │   │   ├── 📄 InvalidPacketDataException.class
+  │   │   │                       │   │   └── 📄 NetworkException.class
+  │   │   │                       │   ├── 📁 io/
+  │   │   │                       │   │   ├── 📄 PacketInputStream.class
+  │   │   │                       │   │   ├── 📄 PacketOutputStream.class
+  │   │   │                       │   │   ├── 📄 PacketReader.class
+  │   │   │                       │   │   └── 📄 PacketWriter.class
+  │   │   │                       │   └── 📁 packet/
+  │   │   │                       │       ├── 📄 C2SPacket.class
+  │   │   │                       │       └── 📄 S2CPacket.class
+  │   │   │                       └── 📁 version/
+  │   │   │                           ├── 📄 MinecraftVersion.class
+  │   │   │                           └── 📄 VersionComparison.class
+  │   │   ├── 📁 generated/
+  │   │   │   └── 📁 sources/
+  │   │   │       ├── 📁 annotationProcessor/
+  │   │   │       │   └── 📁 java/
+  │   │   │       │       └── 📁 main/
+  │   │   │       └── 📁 headers/
+  │   │   │           └── 📁 java/
+  │   │   │               └── 📁 main/
+  │   │   ├── 📁 libs/
+  │   │   │   └── 📄 minecraft-1.0.0.jar
+  │   │   ├── 📁 lombok/
+  │   │   │   └── 📁 effective-config/
+  │   │   │       └── 📄 lombok-main.config
+  │   │   ├── 📁 publications/
+  │   │   │   └── 📁 mavenJava/
+  │   │   │       ├── 📄 module.json
+  │   │   │       └── 📄 pom-default.xml
+  │   │   ├── 📁 resources/
+  │   │   │   └── 📁 main/
+  │   │   │       └── 📁 callback/
+  │   │   │           ├── 📄 fail.html
+  │   │   │           └── 📄 microsoft.html
+  │   │   └── 📁 tmp/
+  │   │       ├── 📁 compileJava/
+  │   │       │   ├── 📁 compileTransaction/
+  │   │       │   │   ├── 📁 backup-dir/
+  │   │       │   │   └── 📁 stash-dir/
+  │   │       │   │       ├── 📄 MicrosoftLogin$AuthTokenResponse.class.uniqueId7
+  │   │       │   │       ├── 📄 MicrosoftLogin$GameOwnershipResponse$Item.class.uniqueId2
+  │   │       │   │       ├── 📄 MicrosoftLogin$GameOwnershipResponse.class.uniqueId10
+  │   │       │   │       ├── 📄 MicrosoftLogin$Handler.class.uniqueId6
+  │   │       │   │       ├── 📄 MicrosoftLogin$LoginData.class.uniqueId4
+  │   │       │   │       ├── 📄 MicrosoftLogin$McResponse.class.uniqueId0
+  │   │       │   │       ├── 📄 MicrosoftLogin$ProfileResponse.class.uniqueId5
+  │   │       │   │       ├── 📄 MicrosoftLogin$XblXstsResponse$DisplayClaims$Claim.class.uniqueId8
+  │   │       │   │       ├── 📄 MicrosoftLogin$XblXstsResponse$DisplayClaims.class.uniqueId9
+  │   │       │   │       ├── 📄 MicrosoftLogin$XblXstsResponse.class.uniqueId3
+  │   │       │   │       └── 📄 MicrosoftLogin.class.uniqueId1
+  │   │       │   └── 📄 previous-compilation-data.bin
+  │   │       ├── 📁 jar/
+  │   │       │   └── 📄 MANIFEST.MF
+  │   │       └── 📁 publishMavenJavaPublicationToMavenLocal/
+  │   │           └── 📄 module-maven-metadata.xml
+  │   ├── 📄 build.gradle
+  │   ├── 📁 network/
+  │   ├── 📁 plugin/
+  │   ├── 📁 src/
+  │   │   └── 📁 main/
+  │   │       ├── 📁 java/
+  │   │       │   └── 📁 dev/
+  │   │       │       └── 📁 sweety/
+  │   │       │           └── 📁 minecraft/
+  │   │       │               ├── 📁 auth/
+  │   │       │               │   ├── 📄 AccountType.java
+  │   │       │               │   ├── 📄 AltStorage.java
+  │   │       │               │   ├── 📄 HttpUtils.java
+  │   │       │               │   └── 📄 MicrosoftLogin.java
+  │   │       │               ├── 📁 color/
+  │   │       │               │   └── 📄 ChatColor.java
+  │   │       │               ├── 📁 ping/
+  │   │       │               │   ├── 📄 MinecraftPing.java
+  │   │       │               │   ├── 📄 PingUtils.java
+  │   │       │               │   ├── 📁 exception/
+  │   │       │               │   │   ├── 📄 EndOfStreamException.java
+  │   │       │               │   │   ├── 📄 InvalidPacketDataException.java
+  │   │       │               │   │   └── 📄 NetworkException.java
+  │   │       │               │   ├── 📁 io/
+  │   │       │               │   │   ├── 📄 PacketInputStream.java
+  │   │       │               │   │   ├── 📄 PacketOutputStream.java
+  │   │       │               │   │   ├── 📄 PacketReader.java
+  │   │       │               │   │   └── 📄 PacketWriter.java
+  │   │       │               │   └── 📁 packet/
+  │   │       │               │       ├── 📄 C2SPacket.java
+  │   │       │               │       └── 📄 S2CPacket.java
+  │   │       │               └── 📁 version/
+  │   │       │                   ├── 📄 MinecraftVersion.java
+  │   │       │                   └── 📄 VersionComparison.java
+  │   │       └── 📁 resources/
+  │   │           └── 📁 callback/
+  │   │               ├── 📄 fail.html
+  │   │               └── 📄 microsoft.html
+  │   └── 📁 version/
+  ├── 📁 module/
+  │   ├── 📁 build/
+  │   │   ├── 📁 classes/
+  │   │   │   └── 📁 java/
+  │   │   │       └── 📁 main/
+  │   │   │           └── 📁 dev/
+  │   │   │               └── 📁 sweety/
+  │   │   │                   └── 📁 module/
+  │   │   │                       ├── 📁 extension/
+  │   │   │                       │   ├── 📄 Extension.class
+  │   │   │                       │   ├── 📄 ExtensionInfo.class
+  │   │   │                       │   ├── 📄 ExtensionManager.class
+  │   │   │                       │   ├── 📄 ExtensionNotFoundException.class
+  │   │   │                       │   └── 📄 Toggleable.class
+  │   │   │                       ├── 📁 feature/
+  │   │   │                       │   ├── 📄 FeatureManager.class
+  │   │   │                       │   └── 📄 OptionalFeature.class
+  │   │   │                       └── 📁 loader/
+  │   │   │                           ├── 📄 DownloadFile.class
+  │   │   │                           ├── 📄 ExtensionClassLoader.class
+  │   │   │                           ├── 📄 InMemoryJarURLHandler$1.class
+  │   │   │                           ├── 📄 InMemoryJarURLHandler.class
+  │   │   │                           ├── 📄 RuntimeDependencyLoader.class
+  │   │   │                           └── 📄 SingleClassLoader.class
+  │   │   ├── 📁 generated/
+  │   │   │   └── 📁 sources/
+  │   │   │       ├── 📁 annotationProcessor/
+  │   │   │       │   └── 📁 java/
+  │   │   │       │       └── 📁 main/
+  │   │   │       └── 📁 headers/
+  │   │   │           └── 📁 java/
+  │   │   │               └── 📁 main/
+  │   │   ├── 📁 libs/
+  │   │   │   └── 📄 module-1.0.0.jar
+  │   │   ├── 📁 lombok/
+  │   │   │   └── 📁 effective-config/
+  │   │   │       └── 📄 lombok-main.config
+  │   │   ├── 📁 publications/
+  │   │   │   └── 📁 mavenJava/
+  │   │   │       ├── 📄 module.json
+  │   │   │       └── 📄 pom-default.xml
+  │   │   └── 📁 tmp/
+  │   │       ├── 📁 compileJava/
+  │   │       │   ├── 📁 compileTransaction/
+  │   │       │   │   ├── 📁 backup-dir/
+  │   │       │   │   └── 📁 stash-dir/
+  │   │       │   └── 📄 previous-compilation-data.bin
+  │   │       ├── 📁 jar/
+  │   │       │   └── 📄 MANIFEST.MF
+  │   │       └── 📁 publishMavenJavaPublicationToMavenLocal/
+  │   │           └── 📄 module-maven-metadata.xml
+  │   ├── 📄 build.gradle
+  │   ├── 📁 extension/
+  │   │   ├── 📁 api/
+  │   │   ├── 📁 common/
+  │   │   └── 📁 manager/
+  │   ├── 📁 feature/
+  │   ├── 📁 src/
+  │   │   └── 📁 main/
+  │   │       └── 📁 java/
+  │   │           └── 📁 dev/
+  │   │               └── 📁 sweety/
+  │   │                   └── 📁 module/
+  │   │                       ├── 📁 extension/
+  │   │                       │   ├── 📄 Extension.java
+  │   │                       │   ├── 📄 ExtensionInfo.java
+  │   │                       │   ├── 📄 ExtensionManager.java
+  │   │                       │   ├── 📄 ExtensionNotFoundException.java
+  │   │                       │   └── 📄 Toggleable.java
+  │   │                       ├── 📁 feature/
+  │   │                       │   ├── 📄 FeatureManager.java
+  │   │                       │   └── 📄 OptionalFeature.java
+  │   │                       └── 📁 loader/
+  │   │                           ├── 📄 DownloadFile.java
+  │   │                           ├── 📄 ExtensionClassLoader.java
+  │   │                           ├── 📄 InMemoryJarURLHandler.java
+  │   │                           ├── 📄 RuntimeDependencyLoader.java
+  │   │                           └── 📄 SingleClassLoader.java
+  │   └── 📁 versioning/
+  ├── 📁 netty/
+  │   ├── 📁 build/
+  │   │   ├── 📁 classes/
+  │   │   │   └── 📁 java/
+  │   │   │       └── 📁 main/
+  │   │   │           └── 📁 dev/
+  │   │   │               └── 📁 sweety/
+  │   │   │                   └── 📁 netty/
+  │   │   │                       ├── 📁 feature/
+  │   │   │                       │   ├── 📄 AutoReconnect.class
+  │   │   │                       │   ├── 📄 QueueContext.class
+  │   │   │                       │   ├── 📄 TransactionManager.class
+  │   │   │                       │   └── 📁 batch/
+  │   │   │                       │       └── 📄 Batch.class
+  │   │   │                       ├── 📁 messaging/
+  │   │   │                       │   ├── 📄 Client.class
+  │   │   │                       │   ├── 📄 Server.class
+  │   │   │                       │   ├── 📁 exception/
+  │   │   │                       │   │   ├── 📄 ClientException.class
+  │   │   │                       │   │   ├── 📄 ClientInvalid.class
+  │   │   │                       │   │   ├── 📄 PacketDecodeException.class
+  │   │   │                       │   │   ├── 📄 PacketEncodeException.class
+  │   │   │                       │   │   └── 📄 PacketRegistrationException.class
+  │   │   │                       │   ├── 📁 listener/
+  │   │   │                       │   │   ├── 📁 decoder/
+  │   │   │                       │   │   │   ├── 📄 NettyDecoder.class
+  │   │   │                       │   │   │   └── 📄 PacketDecoder.class
+  │   │   │                       │   │   ├── 📁 encoder/
+  │   │   │                       │   │   │   ├── 📄 NettyEncoder.class
+  │   │   │                       │   │   │   └── 📄 PacketEncoder.class
+  │   │   │                       │   │   └── 📁 watcher/
+  │   │   │                       │   │       └── 📄 NettyWatcher.class
+  │   │   │                       │   └── 📁 model/
+  │   │   │                       │       ├── 📄 Messenger$1.class
+  │   │   │                       │       └── 📄 Messenger.class
+  │   │   │                       └── 📁 packet/
+  │   │   │                           ├── 📁 buffer/
+  │   │   │                           │   ├── 📄 FileBuffer.class
+  │   │   │                           │   ├── 📄 PacketBuffer.class
+  │   │   │                           │   └── 📁 io/
+  │   │   │                           │       ├── 📄 Codec.class
+  │   │   │                           │       ├── 📄 Decoder.class
+  │   │   │                           │       ├── 📄 Encoder.class
+  │   │   │                           │       └── 📁 callable/
+  │   │   │                           │           ├── 📄 CallableCodec.class
+  │   │   │                           │           ├── 📄 CallableDecoder.class
+  │   │   │                           │           └── 📄 CallableEncoder.class
+  │   │   │                           ├── 📁 model/
+  │   │   │                           │   ├── 📄 BatchPacket.class
+  │   │   │                           │   ├── 📄 Packet.class
+  │   │   │                           │   ├── 📄 PacketTransaction$Transaction.class
+  │   │   │                           │   └── 📄 PacketTransaction.class
+  │   │   │                           └── 📁 registry/
+  │   │   │                               ├── 📄 IPacketRegistry.class
+  │   │   │                               ├── 📄 OptimizedPacketRegistry.class
+  │   │   │                               ├── 📄 RegisteredPacket.class
+  │   │   │                               └── 📄 SimplePacketRegistry.class
+  │   │   ├── 📁 generated/
+  │   │   │   └── 📁 sources/
+  │   │   │       ├── 📁 annotationProcessor/
+  │   │   │       │   └── 📁 java/
+  │   │   │       │       └── 📁 main/
+  │   │   │       └── 📁 headers/
+  │   │   │           └── 📁 java/
+  │   │   │               └── 📁 main/
+  │   │   ├── 📁 libs/
+  │   │   │   └── 📄 netty-1.0.0.jar
+  │   │   ├── 📁 lombok/
+  │   │   │   └── 📁 effective-config/
+  │   │   │       └── 📄 lombok-main.config
+  │   │   ├── 📁 publications/
+  │   │   │   └── 📁 mavenJava/
+  │   │   │       ├── 📄 module.json
+  │   │   │       └── 📄 pom-default.xml
+  │   │   └── 📁 tmp/
+  │   │       ├── 📁 compileJava/
+  │   │       │   ├── 📁 compileTransaction/
+  │   │       │   │   ├── 📁 backup-dir/
+  │   │       │   │   └── 📁 stash-dir/
+  │   │       │   └── 📄 previous-compilation-data.bin
+  │   │       ├── 📁 jar/
+  │   │       │   └── 📄 MANIFEST.MF
+  │   │       └── 📁 publishMavenJavaPublicationToMavenLocal/
+  │   │           └── 📄 module-maven-metadata.xml
+  │   ├── 📄 build.gradle
+  │   └── 📁 src/
+  │       └── 📁 main/
+  │           └── 📁 java/
+  │               └── 📁 dev/
+  │                   └── 📁 sweety/
+  │                       └── 📁 netty/
+  │                           ├── 📁 feature/
+  │                           │   ├── 📄 AutoReconnect.java
+  │                           │   ├── 📄 QueueContext.java
+  │                           │   ├── 📄 TransactionManager.java
+  │                           │   └── 📁 batch/
+  │                           │       └── 📄 Batch.java
+  │                           ├── 📁 messaging/
+  │                           │   ├── 📄 Client.java
+  │                           │   ├── 📄 Server.java
+  │                           │   ├── 📁 exception/
+  │                           │   │   ├── 📄 ClientException.java
+  │                           │   │   ├── 📄 ClientInvalid.java
+  │                           │   │   ├── 📄 PacketDecodeException.java
+  │                           │   │   ├── 📄 PacketEncodeException.java
+  │                           │   │   └── 📄 PacketRegistrationException.java
+  │                           │   ├── 📁 listener/
+  │                           │   │   ├── 📁 decoder/
+  │                           │   │   │   ├── 📄 NettyDecoder.java
+  │                           │   │   │   └── 📄 PacketDecoder.java
+  │                           │   │   ├── 📁 encoder/
+  │                           │   │   │   ├── 📄 NettyEncoder.java
+  │                           │   │   │   └── 📄 PacketEncoder.java
+  │                           │   │   └── 📁 watcher/
+  │                           │   │       └── 📄 NettyWatcher.java
+  │                           │   └── 📁 model/
+  │                           │       └── 📄 Messenger.java
+  │                           └── 📁 packet/
+  │                               ├── 📁 buffer/
+  │                               │   ├── 📄 FileBuffer.java
+  │                               │   ├── 📄 PacketBuffer.java
+  │                               │   └── 📁 io/
+  │                               │       ├── 📄 Codec.java
+  │                               │       ├── 📄 Decoder.java
+  │                               │       ├── 📄 Encoder.java
+  │                               │       └── 📁 callable/
+  │                               │           ├── 📄 CallableCodec.java
+  │                               │           ├── 📄 CallableDecoder.java
+  │                               │           └── 📄 CallableEncoder.java
+  │                               ├── 📁 model/
+  │                               │   ├── 📄 BatchPacket.java
+  │                               │   ├── 📄 Packet.java
+  │                               │   └── 📄 PacketTransaction.java
+  │                               └── 📁 registry/
+  │                                   ├── 📄 IPacketRegistry.java
+  │                                   ├── 📄 OptimizedPacketRegistry.java
+  │                                   ├── 📄 RegisteredPacket.java
+  │                                   └── 📄 SimplePacketRegistry.java
+  ├── 📁 netty-loadbalancer/
+  │   ├── 📁 build/
+  │   │   ├── 📁 classes/
+  │   │   │   └── 📁 java/
+  │   │   │       └── 📁 main/
+  │   │   │           └── 📁 dev/
+  │   │   │               └── 📁 sweety/
+  │   │   │                   └── 📁 netty/
+  │   │   │                       └── 📁 loadbalancer/
+  │   │   │                           ├── 📁 backend/
+  │   │   │                           │   ├── 📄 Backend.class
+  │   │   │                           │   ├── 📄 LobbyBackend.class
+  │   │   │                           │   ├── 📄 MetricSampler$1.class
+  │   │   │                           │   ├── 📄 MetricSampler$Config$EMAConfig.class
+  │   │   │                           │   ├── 📄 MetricSampler$Config$OverrideConfig.class
+  │   │   │                           │   ├── 📄 MetricSampler$Config$Timings.class
+  │   │   │                           │   ├── 📄 MetricSampler$Config.class
+  │   │   │                           │   ├── 📄 MetricSampler.class
+  │   │   │                           │   ├── 📄 Transactions$State.class
+  │   │   │                           │   └── 📄 Transactions.class
+  │   │   │                           ├── 📁 common/
+  │   │   │                           │   ├── 📁 backend/
+  │   │   │                           │   │   ├── 📄 BackendSettings.class
+  │   │   │                           │   │   └── 📄 IBackend.class
+  │   │   │                           │   ├── 📁 metrics/
+  │   │   │                           │   │   ├── 📄 EMA.class
+  │   │   │                           │   │   ├── 📄 SmoothedLoad.class
+  │   │   │                           │   │   └── 📁 state/
+  │   │   │                           │   │       ├── 📄 LoadGate$1.class
+  │   │   │                           │   │       ├── 📄 LoadGate$Limits.class
+  │   │   │                           │   │       ├── 📄 LoadGate.class
+  │   │   │                           │   │       └── 📄 NodeState.class
+  │   │   │                           │   └── 📁 packet/
+  │   │   │                           │       ├── 📄 MetricsUpdatePacket.class
+  │   │   │                           │       ├── 📄 Packer.class
+  │   │   │                           │       ├── 📁 internal/
+  │   │   │                           │       │   ├── 📄 ForwardData.class
+  │   │   │                           │       │   ├── 📄 InternalPacket.class
+  │   │   │                           │       │   └── 📄 RoutingContext.class
+  │   │   │                           │       └── 📁 queue/
+  │   │   │                           │           ├── 📄 OrderedResponseQueue.class
+  │   │   │                           │           ├── 📄 PacketContext.class
+  │   │   │                           │           └── 📄 PacketReorder.class
+  │   │   │                           └── 📁 server/
+  │   │   │                               ├── 📄 LoadBalancerServer.class
+  │   │   │                               ├── 📁 backend/
+  │   │   │                               │   ├── 📄 BackendNode.class
+  │   │   │                               │   ├── 📄 RequestMatrics$RequestInfo.class
+  │   │   │                               │   └── 📄 RequestMatrics.class
+  │   │   │                               ├── 📁 balancer/
+  │   │   │                               │   ├── 📄 Balancer.class
+  │   │   │                               │   ├── 📄 Balancers$1.class
+  │   │   │                               │   ├── 📄 Balancers$2.class
+  │   │   │                               │   ├── 📄 Balancers$3.class
+  │   │   │                               │   ├── 📄 Balancers$4.class
+  │   │   │                               │   ├── 📄 Balancers$5.class
+  │   │   │                               │   ├── 📄 Balancers.class
+  │   │   │                               │   └── 📄 CounterBalancer.class
+  │   │   │                               └── 📁 pool/
+  │   │   │                                   ├── 📄 DynamicBackendNodePool.class
+  │   │   │                                   ├── 📄 IBackendNodePool.class
+  │   │   │                                   └── 📄 IDynamicBackendNodePool.class
+  │   │   ├── 📁 generated/
+  │   │   │   └── 📁 sources/
+  │   │   │       ├── 📁 annotationProcessor/
+  │   │   │       │   └── 📁 java/
+  │   │   │       │       └── 📁 main/
+  │   │   │       └── 📁 headers/
+  │   │   │           └── 📁 java/
+  │   │   │               └── 📁 main/
+  │   │   ├── 📁 libs/
+  │   │   │   └── 📄 netty-loadbalancer-1.0.0.jar
+  │   │   ├── 📁 lombok/
+  │   │   │   └── 📁 effective-config/
+  │   │   │       ├── 📄 lombok-main.config
+  │   │   │       └── 📄 lombok-test.config
+  │   │   ├── 📁 publications/
+  │   │   │   └── 📁 mavenJava/
+  │   │   │       ├── 📄 module.json
+  │   │   │       └── 📄 pom-default.xml
+  │   │   └── 📁 tmp/
+  │   │       ├── 📁 compileJava/
+  │   │       │   ├── 📁 compileTransaction/
+  │   │       │   │   ├── 📁 backup-dir/
+  │   │       │   │   └── 📁 stash-dir/
+  │   │       │   └── 📄 previous-compilation-data.bin
+  │   │       ├── 📁 jar/
+  │   │       │   └── 📄 MANIFEST.MF
+  │   │       └── 📁 publishMavenJavaPublicationToMavenLocal/
+  │   │           └── 📄 module-maven-metadata.xml
+  │   ├── 📄 build.gradle
+  │   └── 📁 src/
+  │       └── 📁 main/
+  │           └── 📁 java/
+  │               └── 📁 dev/
+  │                   └── 📁 sweety/
+  │                       └── 📁 netty/
+  │                           └── 📁 loadbalancer/
+  │                               ├── 📁 backend/
+  │                               │   ├── 📄 Backend.java
+  │                               │   ├── 📄 LobbyBackend.java
+  │                               │   ├── 📄 MetricSampler.java
+  │                               │   └── 📄 Transactions.java
+  │                               ├── 📁 common/
+  │                               │   ├── 📁 backend/
+  │                               │   │   ├── 📄 BackendSettings.java
+  │                               │   │   └── 📄 IBackend.java
+  │                               │   ├── 📁 metrics/
+  │                               │   │   ├── 📄 EMA.java
+  │                               │   │   ├── 📄 SmoothedLoad.java
+  │                               │   │   └── 📁 state/
+  │                               │   │       ├── 📄 LoadGate.java
+  │                               │   │       └── 📄 NodeState.java
+  │                               │   └── 📁 packet/
+  │                               │       ├── 📄 MetricsUpdatePacket.java
+  │                               │       ├── 📄 Packer.java
+  │                               │       ├── 📁 internal/
+  │                               │       │   ├── 📄 ForwardData.java
+  │                               │       │   ├── 📄 InternalPacket.java
+  │                               │       │   └── 📄 RoutingContext.java
+  │                               │       └── 📁 queue/
+  │                               │           ├── 📄 OrderedResponseQueue.java
+  │                               │           ├── 📄 PacketContext.java
+  │                               │           └── 📄 PacketReorder.java
+  │                               └── 📁 server/
+  │                                   ├── 📄 LoadBalancerServer.java
+  │                                   ├── 📁 backend/
+  │                                   │   ├── 📄 BackendNode.java
+  │                                   │   └── 📄 RequestMatrics.java
+  │                                   ├── 📁 balancer/
+  │                                   │   ├── 📄 Balancer.java
+  │                                   │   ├── 📄 Balancers.java
+  │                                   │   └── 📄 CounterBalancer.java
+  │                                   └── 📁 pool/
+  │                                       ├── 📄 DynamicBackendNodePool.java
+  │                                       ├── 📄 IBackendNodePool.java
+  │                                       └── 📄 IDynamicBackendNodePool.java
+  ├── 📁 persistence/
+  │   ├── 📁 configuration/
+  │   │   ├── 📁 common/
+  │   │   │   └── 📄 build.gradle
+  │   │   ├── 📁 json/
+  │   │   │   └── 📄 build.gradle
+  │   │   └── 📁 yaml/
+  │   │       └── 📄 build.gradle
+  │   ├── 📁 ormlite-util/
+  │   │   ├── 📁 build/
+  │   │   │   ├── 📁 classes/
+  │   │   │   │   └── 📁 java/
+  │   │   │   │       └── 📁 main/
+  │   │   │   │           └── 📁 dev/
+  │   │   │   │               └── 📁 sweety/
+  │   │   │   │                   └── 📁 ormlite/
+  │   │   │   │                       └── 📁 util/
+  │   │   │   │                           ├── 📄 ConnectionType$ConnectionSupplier.class
+  │   │   │   │                           ├── 📄 ConnectionType.class
+  │   │   │   │                           ├── 📄 Database.class
+  │   │   │   │                           ├── 📄 Repository.class
+  │   │   │   │                           └── 📄 Table.class
+  │   │   │   ├── 📁 generated/
+  │   │   │   │   └── 📁 sources/
+  │   │   │   │       ├── 📁 annotationProcessor/
+  │   │   │   │       │   └── 📁 java/
+  │   │   │   │       │       └── 📁 main/
+  │   │   │   │       └── 📁 headers/
+  │   │   │   │           └── 📁 java/
+  │   │   │   │               └── 📁 main/
+  │   │   │   ├── 📁 libs/
+  │   │   │   │   └── 📄 ormlite-util-1.0.0.jar
+  │   │   │   ├── 📁 lombok/
+  │   │   │   │   └── 📁 effective-config/
+  │   │   │   │       └── 📄 lombok-main.config
+  │   │   │   ├── 📁 publications/
+  │   │   │   │   └── 📁 mavenJava/
+  │   │   │   │       ├── 📄 module.json
+  │   │   │   │       └── 📄 pom-default.xml
+  │   │   │   └── 📁 tmp/
+  │   │   │       ├── 📁 compileJava/
+  │   │   │       │   └── 📄 previous-compilation-data.bin
+  │   │   │       ├── 📁 jar/
+  │   │   │       │   └── 📄 MANIFEST.MF
+  │   │   │       └── 📁 publishMavenJavaPublicationToMavenLocal/
+  │   │   │           └── 📄 module-maven-metadata.xml
+  │   │   ├── 📄 build.gradle
+  │   │   └── 📁 src/
+  │   │       └── 📁 main/
+  │   │           └── 📁 java/
+  │   │               └── 📁 dev/
+  │   │                   └── 📁 sweety/
+  │   │                       └── 📁 ormlite/
+  │   │                           └── 📁 util/
+  │   │                               ├── 📄 ConnectionType.java
+  │   │                               ├── 📄 Database.java
+  │   │                               ├── 📄 Repository.java
+  │   │                               └── 📄 Table.java
+  │   └── 📁 sql4j/
+  │       ├── 📁 build/
+  │       │   ├── 📁 classes/
+  │       │   │   └── 📁 java/
+  │       │   │       └── 📁 main/
+  │       │   │           └── 📁 dev/
+  │       │   │               └── 📁 sweety/
+  │       │   │                   └── 📁 sql4j/
+  │       │   │                       ├── 📁 api/
+  │       │   │                       │   ├── 📁 connection/
+  │       │   │                       │   │   ├── 📄 Dialect.class
+  │       │   │                       │   │   ├── 📄 QueryExecutor.class
+  │       │   │                       │   │   └── 📄 SqlConnection.class
+  │       │   │                       │   ├── 📁 obj/
+  │       │   │                       │   │   ├── 📄 Column$Info.class
+  │       │   │                       │   │   ├── 📄 Column.class
+  │       │   │                       │   │   ├── 📄 ForeignKey$Action.class
+  │       │   │                       │   │   ├── 📄 ForeignKey$Info.class
+  │       │   │                       │   │   ├── 📄 ForeignKey.class
+  │       │   │                       │   │   ├── 📄 Table$Info.class
+  │       │   │                       │   │   ├── 📄 Table.class
+  │       │   │                       │   │   └── 📁 table/
+  │       │   │                       │   │       └── 📄 TableRegistry.class
+  │       │   │                       │   ├── 📁 query/
+  │       │   │                       │   │   ├── 📄 AbstractQuery.class
+  │       │   │                       │   │   ├── 📄 AbstractUnsafeQuery.class
+  │       │   │                       │   │   ├── 📄 Query.class
+  │       │   │                       │   │   ├── 📄 UnsafeQuery.class
+  │       │   │                       │   │   ├── 📁 chain/
+  │       │   │                       │   │   │   ├── 📄 ChainableQuery.class
+  │       │   │                       │   │   │   ├── 📄 DependentQueryChain$Start.class
+  │       │   │                       │   │   │   ├── 📄 DependentQueryChain.class
+  │       │   │                       │   │   │   ├── 📄 QueryChain.class
+  │       │   │                       │   │   │   └── 📄 SimpleQueryChain.class
+  │       │   │                       │   │   └── 📁 functions/
+  │       │   │                       │   │       ├── 📄 QueryBinder.class
+  │       │   │                       │   │       └── 📄 QueryExecutor.class
+  │       │   │                       │   └── 📁 util/
+  │       │   │                       │       └── 📄 UUIDv8Hybrid.class
+  │       │   │                       └── 📁 impl/
+  │       │   │                           ├── 📄 Database.class
+  │       │   │                           ├── 📄 Repository.class
+  │       │   │                           ├── 📁 connection/
+  │       │   │                           │   ├── 📄 ConnectionType$ConnectionSupplier.class
+  │       │   │                           │   ├── 📄 ConnectionType.class
+  │       │   │                           │   ├── 📄 DialectType.class
+  │       │   │                           │   ├── 📁 h2/
+  │       │   │                           │   │   └── 📄 H2Connection.class
+  │       │   │                           │   ├── 📁 mysql/
+  │       │   │                           │   │   ├── 📄 MySQLConnection.class
+  │       │   │                           │   │   ├── 📄 MySqlDialect$1.class
+  │       │   │                           │   │   ├── 📄 MySqlDialect.class
+  │       │   │                           │   │   └── 📁 maria/
+  │       │   │                           │   │       ├── 📄 MariaDBConnection.class
+  │       │   │                           │   │       └── 📄 MariaDbDialect.class
+  │       │   │                           │   ├── 📁 postgre/
+  │       │   │                           │   │   └── 📄 PostgreSQLConnection.class
+  │       │   │                           │   └── 📁 sqlite/
+  │       │   │                           │       ├── 📄 SQLiteConnection.class
+  │       │   │                           │       ├── 📄 SqliteDialect$1.class
+  │       │   │                           │       └── 📄 SqliteDialect.class
+  │       │   │                           ├── 📁 query/
+  │       │   │                           │   ├── 📄 QueryCache.class
+  │       │   │                           │   ├── 📄 SelectJoin$Builder.class
+  │       │   │                           │   ├── 📄 SelectJoin.class
+  │       │   │                           │   ├── 📁 entity/
+  │       │   │                           │   │   ├── 📄 DeleteEntity.class
+  │       │   │                           │   │   ├── 📄 InsertEntity.class
+  │       │   │                           │   │   ├── 📄 SelectEntity.class
+  │       │   │                           │   │   └── 📄 UpdateEntity.class
+  │       │   │                           │   ├── 📁 param/
+  │       │   │                           │   │   ├── 📄 ParamQuery$Builder.class
+  │       │   │                           │   │   ├── 📄 ParamQuery.class
+  │       │   │                           │   │   └── 📄 QueryResult.class
+  │       │   │                           │   └── 📁 table/
+  │       │   │                           │       ├── 📄 CreateTable.class
+  │       │   │                           │       └── 📄 DropTable.class
+  │       │   │                           └── 📁 transaction/
+  │       │   │                               ├── 📄 TransactionManager$Transaction.class
+  │       │   │                               ├── 📄 TransactionManager$TransactionBlock.class
+  │       │   │                               └── 📄 TransactionManager.class
+  │       │   ├── 📁 generated/
+  │       │   │   └── 📁 sources/
+  │       │   │       ├── 📁 annotationProcessor/
+  │       │   │       │   └── 📁 java/
+  │       │   │       │       └── 📁 main/
+  │       │   │       └── 📁 headers/
+  │       │   │           └── 📁 java/
+  │       │   │               └── 📁 main/
+  │       │   ├── 📁 libs/
+  │       │   │   └── 📄 sql4j-1.0.0.jar
+  │       │   ├── 📁 lombok/
+  │       │   │   └── 📁 effective-config/
+  │       │   │       └── 📄 lombok-main.config
+  │       │   ├── 📁 publications/
+  │       │   │   └── 📁 mavenJava/
+  │       │   │       ├── 📄 module.json
+  │       │   │       └── 📄 pom-default.xml
+  │       │   └── 📁 tmp/
+  │       │       ├── 📁 compileJava/
+  │       │       │   └── 📄 previous-compilation-data.bin
+  │       │       ├── 📁 jar/
+  │       │       │   └── 📄 MANIFEST.MF
+  │       │       └── 📁 publishMavenJavaPublicationToMavenLocal/
+  │       │           └── 📄 module-maven-metadata.xml
+  │       ├── 📄 build.gradle
+  │       └── 📁 src/
+  │           └── 📁 main/
+  │               └── 📁 java/
+  │                   └── 📁 dev/
+  │                       └── 📁 sweety/
+  │                           └── 📁 sql4j/
+  │                               ├── 📁 api/
+  │                               │   ├── 📁 connection/
+  │                               │   │   ├── 📄 Dialect.java
+  │                               │   │   ├── 📄 QueryExecutor.java
+  │                               │   │   └── 📄 SqlConnection.java
+  │                               │   ├── 📁 obj/
+  │                               │   │   ├── 📄 Column.java
+  │                               │   │   ├── 📄 ForeignKey.java
+  │                               │   │   ├── 📄 Table.java
+  │                               │   │   └── 📁 table/
+  │                               │   │       └── 📄 TableRegistry.java
+  │                               │   ├── 📁 query/
+  │                               │   │   ├── 📄 AbstractQuery.java
+  │                               │   │   ├── 📄 AbstractUnsafeQuery.java
+  │                               │   │   ├── 📄 Query.java
+  │                               │   │   ├── 📄 UnsafeQuery.java
+  │                               │   │   ├── 📁 chain/
+  │                               │   │   │   ├── 📄 ChainableQuery.java
+  │                               │   │   │   ├── 📄 DependentQueryChain.java
+  │                               │   │   │   ├── 📄 QueryChain.java
+  │                               │   │   │   └── 📄 SimpleQueryChain.java
+  │                               │   │   └── 📁 functions/
+  │                               │   │       ├── 📄 QueryBinder.java
+  │                               │   │       └── 📄 QueryExecutor.java
+  │                               │   └── 📁 util/
+  │                               │       └── 📄 UUIDv8Hybrid.java
+  │                               └── 📁 impl/
+  │                                   ├── 📄 Database.java
+  │                                   ├── 📄 Repository.java
+  │                                   ├── 📁 connection/
+  │                                   │   ├── 📄 ConnectionType.java
+  │                                   │   ├── 📄 DialectType.java
+  │                                   │   ├── 📁 h2/
+  │                                   │   │   └── 📄 H2Connection.java
+  │                                   │   ├── 📁 mysql/
+  │                                   │   │   ├── 📄 MySQLConnection.java
+  │                                   │   │   ├── 📄 MySqlDialect.java
+  │                                   │   │   └── 📁 maria/
+  │                                   │   │       ├── 📄 MariaDBConnection.java
+  │                                   │   │       └── 📄 MariaDbDialect.java
+  │                                   │   ├── 📁 postgre/
+  │                                   │   │   └── 📄 PostgreSQLConnection.java
+  │                                   │   └── 📁 sqlite/
+  │                                   │       ├── 📄 SQLiteConnection.java
+  │                                   │       └── 📄 SqliteDialect.java
+  │                                   ├── 📁 query/
+  │                                   │   ├── 📄 QueryCache.java
+  │                                   │   ├── 📄 SelectJoin.java
+  │                                   │   ├── 📁 entity/
+  │                                   │   │   ├── 📄 DeleteEntity.java
+  │                                   │   │   ├── 📄 InsertEntity.java
+  │                                   │   │   ├── 📄 SelectEntity.java
+  │                                   │   │   └── 📄 UpdateEntity.java
+  │                                   │   ├── 📁 param/
+  │                                   │   │   ├── 📄 ParamQuery.java
+  │                                   │   │   └── 📄 QueryResult.java
+  │                                   │   └── 📁 table/
+  │                                   │       ├── 📄 CreateTable.java
+  │                                   │       └── 📄 DropTable.java
+  │                                   └── 📁 transaction/
+  │                                       └── 📄 TransactionManager.java
+  ├── 📁 processor/
+  │   ├── 📁 event-processor/
+  │   │   ├── 📁 build/
+  │   │   │   ├── 📁 classes/
+  │   │   │   │   └── 📁 java/
+  │   │   │   │       └── 📁 main/
+  │   │   │   │           ├── 📁 META-INF/
+  │   │   │   │           │   └── 📁 services/
+  │   │   │   │           │       └── 📄 javax.annotation.processing.Processor
+  │   │   │   │           └── 📁 dev/
+  │   │   │   │               └── 📁 sweety/
+  │   │   │   │                   └── 📁 event/
+  │   │   │   │                       └── 📁 processor/
+  │   │   │   │                           ├── 📄 EventMapping.class
+  │   │   │   │                           ├── 📄 EventProcessor.class
+  │   │   │   │                           └── 📄 GenerateEvent.class
+  │   │   │   ├── 📁 generated/
+  │   │   │   │   └── 📁 sources/
+  │   │   │   │       ├── 📁 annotationProcessor/
+  │   │   │   │       │   └── 📁 java/
+  │   │   │   │       │       └── 📁 main/
+  │   │   │   │       └── 📁 headers/
+  │   │   │   │           └── 📁 java/
+  │   │   │   │               └── 📁 main/
+  │   │   │   ├── 📁 libs/
+  │   │   │   │   └── 📄 event-processor-1.0.0.jar
+  │   │   │   ├── 📁 lombok/
+  │   │   │   │   └── 📁 effective-config/
+  │   │   │   │       └── 📄 lombok-main.config
+  │   │   │   ├── 📁 publications/
+  │   │   │   │   └── 📁 mavenJava/
+  │   │   │   │       ├── 📄 module.json
+  │   │   │   │       └── 📄 pom-default.xml
+  │   │   │   └── 📁 tmp/
+  │   │   │       ├── 📁 compileJava/
+  │   │   │       │   ├── 📁 compileTransaction/
+  │   │   │       │   │   ├── 📁 backup-dir/
+  │   │   │       │   │   └── 📁 stash-dir/
+  │   │   │       │   └── 📄 previous-compilation-data.bin
+  │   │   │       ├── 📁 jar/
+  │   │   │       │   └── 📄 MANIFEST.MF
+  │   │   │       └── 📁 publishMavenJavaPublicationToMavenLocal/
+  │   │   │           └── 📄 module-maven-metadata.xml
+  │   │   ├── 📄 build.gradle
+  │   │   └── 📁 src/
+  │   │       └── 📁 main/
+  │   │           └── 📁 java/
+  │   │               └── 📁 dev/
+  │   │                   └── 📁 sweety/
+  │   │                       └── 📁 event/
+  │   │                           └── 📁 processor/
+  │   │                               ├── 📄 EventMapping.java
+  │   │                               ├── 📄 EventProcessor.java
+  │   │                               └── 📄 GenerateEvent.java
+  │   ├── 📁 intellij-plugin/
+  │   │   ├── 📁 build/
+  │   │   │   ├── 📁 classes/
+  │   │   │   │   └── 📁 java/
+  │   │   │   │       └── 📁 main/
+  │   │   │   │           └── 📁 dev/
+  │   │   │   │               └── 📁 sweety/
+  │   │   │   │                   └── 📁 record/
+  │   │   │   │                       └── 📁 plugin/
+  │   │   │   │                           ├── 📄 RecordAugmentProvider.class
+  │   │   │   │                           └── 📄 RecordSneakyThrowsExceptionHandler.class
+  │   │   │   ├── 📁 distributions/
+  │   │   │   │   └── 📄 intellij-plugin-1.0-SNAPSHOT.zip
+  │   │   │   ├── 📁 generated/
+  │   │   │   │   └── 📁 sources/
+  │   │   │   │       ├── 📁 annotationProcessor/
+  │   │   │   │       │   └── 📁 java/
+  │   │   │   │       │       └── 📁 main/
+  │   │   │   │       └── 📁 headers/
+  │   │   │   │           └── 📁 java/
+  │   │   │   │               └── 📁 main/
+  │   │   │   ├── 📁 idea-sandbox/
+  │   │   │   │   ├── 📁 config/
+  │   │   │   │   │   └── 📁 options/
+  │   │   │   │   │       └── 📄 updates.xml
+  │   │   │   │   ├── 📁 config-test/
+  │   │   │   │   │   └── 📁 options/
+  │   │   │   │   │       └── 📄 updates.xml
+  │   │   │   │   ├── 📁 plugins/
+  │   │   │   │   │   └── 📁 intellij-plugin/
+  │   │   │   │   │       └── 📁 lib/
+  │   │   │   │   │           └── 📄 instrumented-intellij-plugin-1.0-SNAPSHOT.jar
+  │   │   │   │   └── 📁 plugins-test/
+  │   │   │   │       └── 📁 intellij-plugin/
+  │   │   │   │           └── 📁 lib/
+  │   │   │   │               └── 📄 instrumented-intellij-plugin-1.0-SNAPSHOT.jar
+  │   │   │   ├── 📁 instrumented/
+  │   │   │   │   ├── 📁 instrumentCode/
+  │   │   │   │   │   └── 📁 dev/
+  │   │   │   │   │       └── 📁 sweety/
+  │   │   │   │   │           └── 📁 record/
+  │   │   │   │   │               └── 📁 plugin/
+  │   │   │   │   │                   ├── 📄 RecordAugmentProvider.class
+  │   │   │   │   │                   └── 📄 RecordSneakyThrowsExceptionHandler.class
+  │   │   │   │   └── 📁 instrumentTestCode/
+  │   │   │   ├── 📁 libs/
+  │   │   │   │   ├── 📄 instrumented-intellij-plugin-1.0-SNAPSHOT.jar
+  │   │   │   │   └── 📄 intellij-plugin-1.0-SNAPSHOT.jar
+  │   │   │   ├── 📁 libsSearchableOptions/
+  │   │   │   │   └── 📁 lib/
+  │   │   │   │       └── 📄 searchableOptions-1.0-SNAPSHOT.jar
+  │   │   │   ├── 📁 lombok/
+  │   │   │   │   └── 📁 effective-config/
+  │   │   │   │       ├── 📄 lombok-main.config
+  │   │   │   │       └── 📄 lombok-test.config
+  │   │   │   ├── 📁 patchedPluginXmlFiles/
+  │   │   │   │   └── 📄 plugin.xml
+  │   │   │   ├── 📁 publications/
+  │   │   │   │   └── 📁 mavenJava/
+  │   │   │   │       ├── 📄 module.json
+  │   │   │   │       └── 📄 pom-default.xml
+  │   │   │   ├── 📁 resources/
+  │   │   │   │   └── 📁 main/
+  │   │   │   │       └── 📁 META-INF/
+  │   │   │   │           ├── 📄 plugin.xml
+  │   │   │   │           └── 📄 pluginIcon.svg
+  │   │   │   ├── 📁 searchableOptions/
+  │   │   │   └── 📁 tmp/
+  │   │   │       ├── 📁 .cache/
+  │   │   │       │   └── 📁 expanded/
+  │   │   │       │       ├── 📁 tar_3d8a30a41f83d85b697742d69a39ee32/
+  │   │   │       │       ├── 📁 tar_68ecc38eb340dff784e814ec77710108/
+  │   │   │       │       ├── 📁 tar_82126db0c1a14e8de8b7c048dc25d0c5/
+  │   │   │       │       ├── 📁 zip_9168a584c1d61d86f7c185101ecb14c5/
+  │   │   │       │       ├── 📁 zip_b350fa4bac13a3cacbb2baf2aadb8f0f/
+  │   │   │       │       └── 📁 zip_b67c979e0f89de6ebf86efd3152998dd/
+  │   │   │       ├── 📁 compileJava/
+  │   │   │       │   ├── 📁 compileTransaction/
+  │   │   │       │   │   ├── 📁 backup-dir/
+  │   │   │       │   │   └── 📁 stash-dir/
+  │   │   │       │   │       └── 📄 RecordAugmentProvider.class.uniqueId0
+  │   │   │       │   └── 📄 previous-compilation-data.bin
+  │   │   │       ├── 📁 downloadAndroidStudioProductReleasesXml/
+  │   │   │       ├── 📁 downloadIdeaProductReleasesXml/
+  │   │   │       ├── 📁 initializeIntelliJPlugin/
+  │   │   │       │   ├── 📄 2026-02-01
+  │   │   │       │   ├── 📄 2026-02-02
+  │   │   │       │   ├── 📄 2026-02-20
+  │   │   │       │   └── 📄 coroutines-javaagent.jar
+  │   │   │       ├── 📁 instrumentCode/
+  │   │   │       │   └── 📁 dev/
+  │   │   │       │       └── 📁 sweety/
+  │   │   │       │           └── 📁 record/
+  │   │   │       │               └── 📁 plugin/
+  │   │   │       │                   ├── 📄 RecordAugmentProvider.class
+  │   │   │       │                   └── 📄 RecordSneakyThrowsExceptionHandler.class
+  │   │   │       ├── 📁 instrumentTestCode/
+  │   │   │       ├── 📁 instrumentedJar/
+  │   │   │       │   └── 📄 MANIFEST.MF
+  │   │   │       ├── 📁 jar/
+  │   │   │       │   └── 📄 MANIFEST.MF
+  │   │   │       ├── 📁 jarSearchableOptions/
+  │   │   │       │   └── 📄 MANIFEST.MF
+  │   │   │       ├── 📁 publishMavenJavaPublicationToMavenLocal/
+  │   │   │       │   ├── 📄 module-maven-metadata.xml
+  │   │   │       │   └── 📄 snapshot-maven-metadata.xml
+  │   │   │       └── 📁 runPluginVerifier/
+  │   │   ├── 📄 build.gradle
+  │   │   └── 📁 src/
+  │   │       └── 📁 main/
+  │   │           ├── 📁 java/
+  │   │           │   └── 📁 dev/
+  │   │           │       └── 📁 sweety/
+  │   │           │           └── 📁 record/
+  │   │           │               └── 📁 plugin/
+  │   │           │                   ├── 📄 RecordAugmentProvider.java
+  │   │           │                   └── 📄 RecordSneakyThrowsExceptionHandler.java
+  │   │           └── 📁 resources/
+  │   │               └── 📁 META-INF/
+  │   │                   ├── 📄 plugin.xml
+  │   │                   └── 📄 pluginIcon.svg
+  │   ├── 📁 packet-processor/
+  │   │   ├── 📁 build/
+  │   │   │   ├── 📁 classes/
+  │   │   │   │   └── 📁 java/
+  │   │   │   │       └── 📁 main/
+  │   │   │   │           ├── 📁 META-INF/
+  │   │   │   │           │   └── 📁 services/
+  │   │   │   │           │       └── 📄 javax.annotation.processing.Processor
+  │   │   │   │           └── 📁 dev/
+  │   │   │   │               └── 📁 sweety/
+  │   │   │   │                   └── 📁 packet/
+  │   │   │   │                       └── 📁 processor/
+  │   │   │   │                           ├── 📄 BufferUtils.class
+  │   │   │   │                           ├── 📄 BuildPacket.class
+  │   │   │   │                           ├── 📄 FieldBuffer.class
+  │   │   │   │                           ├── 📄 PacketProcessor$1.class
+  │   │   │   │                           └── 📄 PacketProcessor.class
+  │   │   │   ├── 📁 generated/
+  │   │   │   │   └── 📁 sources/
+  │   │   │   │       ├── 📁 annotationProcessor/
+  │   │   │   │       │   └── 📁 java/
+  │   │   │   │       │       └── 📁 main/
+  │   │   │   │       └── 📁 headers/
+  │   │   │   │           └── 📁 java/
+  │   │   │   │               └── 📁 main/
+  │   │   │   ├── 📁 libs/
+  │   │   │   │   └── 📄 packet-processor-1.0.0.jar
+  │   │   │   ├── 📁 lombok/
+  │   │   │   │   └── 📁 effective-config/
+  │   │   │   │       └── 📄 lombok-main.config
+  │   │   │   ├── 📁 publications/
+  │   │   │   │   └── 📁 mavenJava/
+  │   │   │   │       ├── 📄 module.json
+  │   │   │   │       └── 📄 pom-default.xml
+  │   │   │   └── 📁 tmp/
+  │   │   │       ├── 📁 compileJava/
+  │   │   │       │   ├── 📁 compileTransaction/
+  │   │   │       │   │   ├── 📁 backup-dir/
+  │   │   │       │   │   └── 📁 stash-dir/
+  │   │   │       │   └── 📄 previous-compilation-data.bin
+  │   │   │       ├── 📁 jar/
+  │   │   │       │   └── 📄 MANIFEST.MF
+  │   │   │       └── 📁 publishMavenJavaPublicationToMavenLocal/
+  │   │   │           └── 📄 module-maven-metadata.xml
+  │   │   ├── 📄 build.gradle
+  │   │   └── 📁 src/
+  │   │       └── 📁 main/
+  │   │           └── 📁 java/
+  │   │               └── 📁 dev/
+  │   │                   └── 📁 sweety/
+  │   │                       └── 📁 packet/
+  │   │                           └── 📁 processor/
+  │   │                               ├── 📄 BufferUtils.java
+  │   │                               ├── 📄 BuildPacket.java
+  │   │                               ├── 📄 FieldBuffer.java
+  │   │                               └── 📄 PacketProcessor.java
+  │   └── 📁 record-getter-processor/
+  │       ├── 📁 build/
+  │       │   ├── 📁 classes/
+  │       │   │   └── 📁 java/
+  │       │   │       └── 📁 main/
+  │       │   │           ├── 📁 META-INF/
+  │       │   │           │   └── 📁 services/
+  │       │   │           │       └── 📄 javax.annotation.processing.Processor
+  │       │   │           └── 📁 dev/
+  │       │   │               └── 📁 sweety/
+  │       │   │                   └── 📁 record/
+  │       │   │                       ├── 📄 RecordProcessor.class
+  │       │   │                       └── 📁 annotations/
+  │       │   │                           ├── 📄 DataIgnore.class
+  │       │   │                           ├── 📄 RecordData.class
+  │       │   │                           ├── 📄 RecordGetter.class
+  │       │   │                           ├── 📄 Setter$Type.class
+  │       │   │                           ├── 📄 Setter.class
+  │       │   │                           └── 📄 SneakyThrows.class
+  │       │   ├── 📁 generated/
+  │       │   │   └── 📁 sources/
+  │       │   │       ├── 📁 annotationProcessor/
+  │       │   │       │   └── 📁 java/
+  │       │   │       │       └── 📁 main/
+  │       │   │       └── 📁 headers/
+  │       │   │           └── 📁 java/
+  │       │   │               └── 📁 main/
+  │       │   ├── 📁 libs/
+  │       │   │   └── 📄 record-getter-processor-1.0.0.jar
+  │       │   ├── 📁 lombok/
+  │       │   │   └── 📁 effective-config/
+  │       │   │       ├── 📄 lombok-main.config
+  │       │   │       └── 📄 lombok-test.config
+  │       │   ├── 📁 publications/
+  │       │   │   └── 📁 mavenJava/
+  │       │   │       ├── 📄 module.json
+  │       │   │       └── 📄 pom-default.xml
+  │       │   └── 📁 tmp/
+  │       │       ├── 📁 compileJava/
+  │       │       │   ├── 📁 compileTransaction/
+  │       │       │   │   ├── 📁 backup-dir/
+  │       │       │   │   └── 📁 stash-dir/
+  │       │       │   │       ├── 📄 RecordProcessor.class.uniqueId0
+  │       │       │   │       └── 📄 javax.annotation.processing.Processor.uniqueId1
+  │       │       │   └── 📄 previous-compilation-data.bin
+  │       │       ├── 📁 jar/
+  │       │       │   └── 📄 MANIFEST.MF
+  │       │       └── 📁 publishMavenJavaPublicationToMavenLocal/
+  │       │           └── 📄 module-maven-metadata.xml
+  │       ├── 📄 build.gradle
+  │       └── 📁 src/
+  │           └── 📁 main/
+  │               └── 📁 java/
+  │                   └── 📁 dev/
+  │                       └── 📁 sweety/
+  │                           └── 📁 record/
+  │                               ├── 📄 RecordProcessor.java
+  │                               └── 📁 annotations/
+  │                                   ├── 📄 DataIgnore.java
+  │                                   ├── 📄 RecordData.java
+  │                                   ├── 📄 RecordGetter.java
+  │                                   ├── 📄 Setter.java
+  │                                   └── 📄 SneakyThrows.java
+  ├── 📁 project/
+  │   ├── 📁 build/
+  │   │   ├── 📁 classes/
+  │   │   │   └── 📁 java/
+  │   │   │       └── 📁 main/
+  │   │   │           └── 📁 dev/
+  │   │   │               └── 📁 sweety/
+  │   │   │                   └── 📁 project/
+  │   │   │                       ├── 📁 config/
+  │   │   │                       │   ├── 📄 YamlTest$TestObj.class
+  │   │   │                       │   └── 📄 YamlTest.class
+  │   │   │                       ├── 📁 getters/
+  │   │   │                       │   └── 📄 ExampleClass.class
+  │   │   │                       ├── 📁 netty/
+  │   │   │                       │   ├── 📄 TestClient$1.class
+  │   │   │                       │   ├── 📄 TestClient.class
+  │   │   │                       │   ├── 📄 TestServer.class
+  │   │   │                       │   ├── 📁 loadbalancer/
+  │   │   │                       │   │   ├── 📁 impl/
+  │   │   │                       │   │   │   ├── 📄 BackendTest.class
+  │   │   │                       │   │   │   └── 📄 ClientTest.class
+  │   │   │                       │   │   └── 📁 main/
+  │   │   │                       │   │       ├── 📄 LB.class
+  │   │   │                       │   │       ├── 📄 LBSettings.class
+  │   │   │                       │   │       ├── 📄 LClient$1.class
+  │   │   │                       │   │       ├── 📄 LClient.class
+  │   │   │                       │   │       └── 📁 bk/
+  │   │   │                       │   │           ├── 📄 BK1.class
+  │   │   │                       │   │           └── 📄 BK2.class
+  │   │   │                       │   ├── 📁 packet/
+  │   │   │                       │   │   ├── 📄 Example.class
+  │   │   │                       │   │   ├── 📄 ExampleDecoder.class
+  │   │   │                       │   │   ├── 📄 ExampleEncoder.class
+  │   │   │                       │   │   ├── 📄 ExampleObj.class
+  │   │   │                       │   │   ├── 📄 ExamplePacketTest.class
+  │   │   │                       │   │   ├── 📄 IExampleObj.class
+  │   │   │                       │   │   ├── 📄 TestPacketMain.class
+  │   │   │                       │   │   ├── 📁 event/
+  │   │   │                       │   │   │   └── 📄 ExamplePacketTestEvent.class
+  │   │   │                       │   │   ├── 📁 file/
+  │   │   │                       │   │   │   ├── 📄 FilePacket.class
+  │   │   │                       │   │   │   └── 📁 event/
+  │   │   │                       │   │   │       └── 📄 FilePacketEvent.class
+  │   │   │                       │   │   └── 📁 text/
+  │   │   │                       │   │       ├── 📄 TextPacket.class
+  │   │   │                       │   │       └── 📁 event/
+  │   │   │                       │   │           └── 📄 TextPacketEvent.class
+  │   │   │                       │   └── 📁 ping/
+  │   │   │                       │       ├── 📄 PingTransaction$Ping.class
+  │   │   │                       │       ├── 📄 PingTransaction$Pong.class
+  │   │   │                       │       └── 📄 PingTransaction.class
+  │   │   │                       ├── 📁 sql4j/
+  │   │   │                       │   ├── 📄 Order.class
+  │   │   │                       │   ├── 📄 OrderDetail.class
+  │   │   │                       │   ├── 📄 Product.class
+  │   │   │                       │   ├── 📄 TestSql.class
+  │   │   │                       │   └── 📄 User.class
+  │   │   │                       ├── 📁 test/
+  │   │   │                       │   ├── 📄 BloomFilterTest.class
+  │   │   │                       │   ├── 📄 CompressionProbe.class
+  │   │   │                       │   ├── 📄 ListFiles.class
+  │   │   │                       │   ├── 📄 MailSender$1.class
+  │   │   │                       │   ├── 📄 MailSender.class
+  │   │   │                       │   ├── 📄 TestBuffer.class
+  │   │   │                       │   ├── 📄 TestCodec.class
+  │   │   │                       │   ├── 📄 TestMail.class
+  │   │   │                       │   └── 📁 feature/
+  │   │   │                       │       ├── 📄 SimpleFileServer$FileHandler.class
+  │   │   │                       │       ├── 📄 SimpleFileServer.class
+  │   │   │                       │       ├── 📄 TestFeature.class
+  │   │   │                       │       └── 📄 TestFeatureMain.class
+  │   │   │                       └── 📁 usage/
+  │   │   │                           └── 📄 UsageTest.class
+  │   │   ├── 📁 generated/
+  │   │   │   └── 📁 sources/
+  │   │   │       ├── 📁 annotationProcessor/
+  │   │   │       │   └── 📁 java/
+  │   │   │       │       └── 📁 main/
+  │   │   │       │           └── 📁 dev/
+  │   │   │       │               └── 📁 sweety/
+  │   │   │       │                   └── 📁 project/
+  │   │   │       │                       └── 📁 netty/
+  │   │   │       │                           └── 📁 packet/
+  │   │   │       │                               ├── 📄 ExamplePacketTest.java
+  │   │   │       │                               ├── 📁 event/
+  │   │   │       │                               │   └── 📄 ExamplePacketTestEvent.java
+  │   │   │       │                               ├── 📁 file/
+  │   │   │       │                               │   └── 📁 event/
+  │   │   │       │                               │       └── 📄 FilePacketEvent.java
+  │   │   │       │                               └── 📁 text/
+  │   │   │       │                                   └── 📁 event/
+  │   │   │       │                                       └── 📄 TextPacketEvent.java
+  │   │   │       └── 📁 headers/
+  │   │   │           └── 📁 java/
+  │   │   │               └── 📁 main/
+  │   │   ├── 📁 libs/
+  │   │   │   └── 📄 project-1.0.0.jar
+  │   │   ├── 📁 lombok/
+  │   │   │   └── 📁 effective-config/
+  │   │   │       └── 📄 lombok-main.config
+  │   │   ├── 📁 publications/
+  │   │   │   └── 📁 mavenJava/
+  │   │   │       ├── 📄 module.json
+  │   │   │       └── 📄 pom-default.xml
+  │   │   └── 📁 tmp/
+  │   │       ├── 📁 compileJava/
+  │   │       │   └── 📄 previous-compilation-data.bin
+  │   │       ├── 📁 jar/
+  │   │       │   └── 📄 MANIFEST.MF
+  │   │       └── 📁 publishMavenJavaPublicationToMavenLocal/
+  │   │           └── 📄 module-maven-metadata.xml
+  │   ├── 📄 build.gradle
+  │   ├── 📄 build.gradle~
+  │   └── 📁 src/
+  │       └── 📁 main/
+  │           └── 📁 java/
+  │               └── 📁 dev/
+  │                   └── 📁 sweety/
+  │                       └── 📁 project/
+  │                           ├── 📁 config/
+  │                           │   └── 📄 YamlTest.java
+  │                           ├── 📁 getters/
+  │                           │   └── 📄 ExampleClass.java
+  │                           ├── 📁 netty/
+  │                           │   ├── 📄 TestClient.java
+  │                           │   ├── 📄 TestServer.java
+  │                           │   ├── 📁 loadbalancer/
+  │                           │   │   ├── 📁 impl/
+  │                           │   │   │   ├── 📄 BackendTest.java
+  │                           │   │   │   └── 📄 ClientTest.java
+  │                           │   │   └── 📁 main/
+  │                           │   │       ├── 📄 LB.java
+  │                           │   │       ├── 📄 LBSettings.java
+  │                           │   │       ├── 📄 LClient.java
+  │                           │   │       └── 📁 bk/
+  │                           │   │           ├── 📄 BK1.java
+  │                           │   │           └── 📄 BK2.java
+  │                           │   ├── 📁 packet/
+  │                           │   │   ├── 📄 Example.java
+  │                           │   │   ├── 📄 ExampleDecoder.java
+  │                           │   │   ├── 📄 ExampleEncoder.java
+  │                           │   │   ├── 📄 ExampleObj.java
+  │                           │   │   ├── 📄 IExampleObj.java
+  │                           │   │   ├── 📄 TestPacketMain.java
+  │                           │   │   ├── 📁 file/
+  │                           │   │   │   └── 📄 FilePacket.java
+  │                           │   │   └── 📁 text/
+  │                           │   │       └── 📄 TextPacket.java
+  │                           │   └── 📁 ping/
+  │                           │       └── 📄 PingTransaction.java
+  │                           ├── 📁 sql4j/
+  │                           │   ├── 📄 Order.java
+  │                           │   ├── 📄 OrderDetail.java
+  │                           │   ├── 📄 Product.java
+  │                           │   ├── 📄 TestSql.java
+  │                           │   └── 📄 User.java
+  │                           ├── 📁 test/
+  │                           │   ├── 📄 BloomFilterTest.java
+  │                           │   ├── 📄 CompressionProbe.java
+  │                           │   ├── 📄 ListFiles.java
+  │                           │   ├── 📄 MailSender.java
+  │                           │   ├── 📄 TestBuffer.java
+  │                           │   ├── 📄 TestCodec.java
+  │                           │   ├── 📄 TestMail.java
+  │                           │   └── 📁 feature/
+  │                           │       ├── 📄 SimpleFileServer.java
+  │                           │       ├── 📄 TestFeature.java
+  │                           │       └── 📄 TestFeatureMain.java
+  │                           └── 📁 usage/
+  │                               └── 📄 UsageTest.java
+  ├── 📁 service/
+  │   ├── 📄 build.gradle
+  │   └── 📁 src/
+  │       ├── 📁 main/
+  │       │   ├── 📁 java/
+  │       │   │   └── 📁 dev/
+  │       │   │       └── 📁 sweety/
+  │       │   │           └── 📄 Main.java
+  │       │   └── 📁 resources/
+  │       └── 📁 test/
+  │           ├── 📁 java/
+  │           └── 📁 resources/
+  ├── 📄 settings.gradle
+  ├── 📁 signature/
+  ├── 📁 spotify/
+  │   ├── 📁 build/
+  │   │   ├── 📁 classes/
+  │   │   │   └── 📁 java/
+  │   │   │       └── 📁 main/
+  │   │   │           └── 📁 dev/
+  │   │   │               └── 📁 sweety/
+  │   │   │                   └── 📁 spotify/
+  │   │   │                       ├── 📄 SpotifyManager.class
+  │   │   │                       ├── 📁 api/
+  │   │   │                       │   ├── 📄 SpotifyWebInterface$1.class
+  │   │   │                       │   └── 📄 SpotifyWebInterface.class
+  │   │   │                       ├── 📁 auth/
+  │   │   │                       │   ├── 📄 AuthToken.class
+  │   │   │                       │   └── 📄 SpotifyOAuth.class
+  │   │   │                       ├── 📁 client/
+  │   │   │                       │   └── 📄 SpotifyClient.class
+  │   │   │                       ├── 📁 model/
+  │   │   │                       │   ├── 📄 Album.class
+  │   │   │                       │   ├── 📄 Artist.class
+  │   │   │                       │   ├── 📄 Image.class
+  │   │   │                       │   ├── 📄 Queue.class
+  │   │   │                       │   ├── 📁 device/
+  │   │   │                       │   │   ├── 📄 Device.class
+  │   │   │                       │   │   └── 📄 Devices.class
+  │   │   │                       │   ├── 📁 playback/
+  │   │   │                       │   │   ├── 📄 ExternalUrls.class
+  │   │   │                       │   │   ├── 📄 Playback.class
+  │   │   │                       │   │   └── 📄 PlaybackContext.class
+  │   │   │                       │   └── 📁 track/
+  │   │   │                       │       ├── 📄 Track.class
+  │   │   │                       │       └── 📄 TrackItem.class
+  │   │   │                       └── 📁 registry/
+  │   │   │                           ├── 📄 EndpointRegistry$Type.class
+  │   │   │                           └── 📄 EndpointRegistry.class
+  │   │   ├── 📁 generated/
+  │   │   │   └── 📁 sources/
+  │   │   │       ├── 📁 annotationProcessor/
+  │   │   │       │   └── 📁 java/
+  │   │   │       │       └── 📁 main/
+  │   │   │       └── 📁 headers/
+  │   │   │           └── 📁 java/
+  │   │   │               └── 📁 main/
+  │   │   ├── 📁 libs/
+  │   │   │   └── 📄 spotify-1.0.0.jar
+  │   │   ├── 📁 lombok/
+  │   │   │   └── 📁 effective-config/
+  │   │   │       └── 📄 lombok-main.config
+  │   │   ├── 📁 publications/
+  │   │   │   └── 📁 mavenJava/
+  │   │   │       ├── 📄 module.json
+  │   │   │       └── 📄 pom-default.xml
+  │   │   ├── 📁 resources/
+  │   │   │   └── 📁 main/
+  │   │   │       └── 📁 callback/
+  │   │   │           └── 📄 spotify.html
+  │   │   └── 📁 tmp/
+  │   │       ├── 📁 compileJava/
+  │   │       │   ├── 📁 compileTransaction/
+  │   │       │   │   ├── 📁 backup-dir/
+  │   │       │   │   └── 📁 stash-dir/
+  │   │       │   └── 📄 previous-compilation-data.bin
+  │   │       ├── 📁 jar/
+  │   │       │   └── 📄 MANIFEST.MF
+  │   │       └── 📁 publishMavenJavaPublicationToMavenLocal/
+  │   │           └── 📄 module-maven-metadata.xml
+  │   ├── 📄 build.gradle
+  │   └── 📁 src/
+  │       └── 📁 main/
+  │           ├── 📁 java/
+  │           │   └── 📁 dev/
+  │           │       └── 📁 sweety/
+  │           │           └── 📁 spotify/
+  │           │               ├── 📄 SpotifyManager.java
+  │           │               ├── 📁 api/
+  │           │               │   └── 📄 SpotifyWebInterface.java
+  │           │               ├── 📁 auth/
+  │           │               │   ├── 📄 AuthToken.java
+  │           │               │   └── 📄 SpotifyOAuth.java
+  │           │               ├── 📁 client/
+  │           │               │   └── 📄 SpotifyClient.java
+  │           │               ├── 📁 model/
+  │           │               │   ├── 📄 Album.java
+  │           │               │   ├── 📄 Artist.java
+  │           │               │   ├── 📄 Image.java
+  │           │               │   ├── 📄 Queue.java
+  │           │               │   ├── 📁 device/
+  │           │               │   │   ├── 📄 Device.java
+  │           │               │   │   └── 📄 Devices.java
+  │           │               │   ├── 📁 playback/
+  │           │               │   │   ├── 📄 ExternalUrls.java
+  │           │               │   │   ├── 📄 Playback.java
+  │           │               │   │   └── 📄 PlaybackContext.java
+  │           │               │   └── 📁 track/
+  │           │               │       ├── 📄 Track.java
+  │           │               │       └── 📄 TrackItem.java
+  │           │               └── 📁 registry/
+  │           │                   └── 📄 EndpointRegistry.java
+  │           └── 📁 resources/
+  │               └── 📁 callback/
+  │                   └── 📄 spotify.html
+  ├── 📁 test-kt/
+  │   ├── 📄 build.gradle.kts
+  │   └── 📁 src/
+  │       ├── 📁 main/
+  │       │   ├── 📁 kotlin/
+  │       │   │   └── 📄 Main.kt
+  │       │   └── 📁 resources/
+  │       └── 📁 test/
+  │           ├── 📁 kotlin/
+  │           └── 📁 resources/
+  ├── 📁 thread/
+  ├── 📁 time/
+  └── 📁 vector/

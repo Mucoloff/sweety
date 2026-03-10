@@ -38,7 +38,7 @@ public class CoordUtils {
     }
 
     public static String fromVec2f(String sep, Vector2f vec) {
-        return fromVec2f(sep, vec.x, vec.y);
+        return fromVec2f(sep, vec.x(), vec.y());
     }
 
     public static Vector2f toVec2f(final String[] parts) {
