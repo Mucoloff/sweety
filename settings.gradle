@@ -4,15 +4,23 @@ include 'core' //todo remove
 
 include 'feature'
 
-include 'feature:event' //todo split
+include 'feature:event'
+include 'feature:event:api'
+include 'feature:event:impl'
 
 include 'feature:module'
 include 'feature:module:extension'
 include 'feature:module:extension:api'
 include 'feature:module:extension:common'
 include 'feature:module:extension:manager'
+
 include 'feature:module:feature'
+
 include 'feature:module:versioning'
+include 'feature:module:versioning:client'
+include 'feature:module:versioning:client:app'
+include 'feature:module:versioning:client:launcher'
+include 'feature:module:versioning:update-server'
 
 include 'feature:service'
 include 'feature:service:api'
@@ -55,3 +63,4 @@ include 'util:signature'
 include 'util:thread'
 include 'util:time'
 include 'util:vector'
+include 'feature:module:versioning:protocol'

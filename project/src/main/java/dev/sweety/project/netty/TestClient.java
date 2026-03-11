@@ -1,7 +1,7 @@
 package dev.sweety.project.netty;
 
 import dev.sweety.core.color.AnsiColor;
-import dev.sweety.core.logger.SimpleLogger;
+import dev.sweety.logger.SimpleLogger;
 import dev.sweety.event.Event;
 import dev.sweety.event.EventSystem;
 import dev.sweety.event.interfaces.LinkEvent;
@@ -37,7 +37,6 @@ public class TestClient extends Client {
     private final EventMapping eventMapping = new EventMapping(eventSystem);
 
     private final AutoReconnect autoReconnect = new AutoReconnect(2500L, TimeUnit.MILLISECONDS, this::start);
-
 
     public TestClient(String host, int port, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry, 12345);

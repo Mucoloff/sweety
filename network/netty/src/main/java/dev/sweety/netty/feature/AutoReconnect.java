@@ -1,13 +1,11 @@
 package dev.sweety.netty.feature;
 
-import dev.sweety.core.thread.ProfileThread;
+import dev.sweety.thread.ProfileThread;
 import dev.sweety.record.annotations.DataIgnore;
 import dev.sweety.record.annotations.RecordData;
 import dev.sweety.record.annotations.Setter.Type;
 import io.netty.channel.Channel;
 import io.netty.channel.ConnectTimeoutException;
-import io.netty.handler.timeout.ReadTimeoutException;
-import io.netty.handler.timeout.WriteTimeoutException;
 
 import java.io.EOFException;
 import java.net.ConnectException;
@@ -64,17 +62,12 @@ public class AutoReconnect {
     }
 
     public static boolean checkInstance(Throwable t) {
-        return switch (t) {
-            case ConnectTimeoutException b -> true;
-            case ConnectException a -> true;
-            case ClosedChannelException c -> true;
-            case SocketException d -> true;
-            case SocketTimeoutException e -> true;
-            case EOFException f -> true;
-            case ReadTimeoutException g -> true;
-            case WriteTimeoutException h -> true;
-            case null, default -> false;
-        };
+        return t instanceof ConnectTimeoutException
+                || t instanceof ConnectException
+                || t instanceof ClosedChannelException
+                || t instanceof SocketException
+                || t instanceof SocketTimeoutException
+                || t instanceof EOFException;
     }
 
     public static boolean checkMsg(Throwable t) {

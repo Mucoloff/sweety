@@ -1,7 +1,7 @@
 package dev.sweety.project.usage;
 
-import dev.sweety.core.thread.ProfileThread;
-import dev.sweety.core.time.StopWatch;
+import dev.sweety.thread.ProfileThread;
+import dev.sweety.time.StopWatch;
 import dev.sweety.netty.loadbalancer.backend.MetricSampler;
 
 public class UsageTest {

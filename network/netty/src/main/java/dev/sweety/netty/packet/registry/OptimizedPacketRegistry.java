@@ -1,8 +1,8 @@
 package dev.sweety.netty.packet.registry;
 
-import dev.sweety.core.logger.LogHelper;
-import dev.sweety.core.logger.LogLevel;
-import dev.sweety.core.logger.SimpleLogger;
+import dev.sweety.logger.LogHelper;
+import dev.sweety.logger.LogLevel;
+import dev.sweety.logger.SimpleLogger;
 import dev.sweety.netty.messaging.exception.PacketRegistrationException;
 import dev.sweety.netty.packet.model.Packet;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;

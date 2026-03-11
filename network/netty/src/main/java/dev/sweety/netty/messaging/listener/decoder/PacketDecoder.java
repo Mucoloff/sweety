@@ -41,86 +41,91 @@ public class PacketDecoder {
         if (in.readableBytes() - seedBuf.remaining() < 2) return; // minimal header
         in.markReaderIndex();
 
-        // Check if we can read at least the flags
-        final int id = in.readVarInt();
-        if (cantRead(in, 1)) return;
-
-        final boolean hasTimestamp = in.readBoolean();
-        final boolean hasPayload = in.readBoolean();
-        final long timestamp;
-
-        if (hasTimestamp) {
-            // Check if we can read the varlong
-            if (cantRead(in, 1)) return;
-            timestamp = in.readVarLong();
-        } else timestamp = Messenger.timeMode.now();
-
-        // Validate checksum
-        final CRC32C crc32 = ChecksumUtils.crc32(true);
-        crc32.update(seedBuf);
-
-        final ByteBuf payloadBuf;
-        if (!hasPayload) {
-            payloadBuf = Unpooled.EMPTY_BUFFER;
-        } else {
-            final boolean compressed = in.readBoolean();
-
-            // Check if we can read the payload length
-            if (cantRead(in, 1)) return;
-            final int payloadLength = in.readVarInt();
-
-            if (cantRead(in, payloadLength)) return;
-
-            // Get a retained slice of the payload for zero-copy checksum
-            final PacketBuffer slice = in.readRetainedSlice(payloadLength);
-            final ByteBuf nioView = slice.nettyBuffer();
-
-            final ByteBuffer nio = nioView.nioBuffer(0, payloadLength);
-            crc32.update(nio);
-
-            if (compressed) {
-                final byte[] data = new byte[payloadLength];
-                nioView.getBytes(nioView.readerIndex(), data);
-                final byte[] unzipped = ZipUtils.unzipBytes(data);
-                payloadBuf = Unpooled.wrappedBuffer(unzipped);
-                slice.release();
-            } else {
-                payloadBuf = nioView; // pass through retained slice
-            }
-        }
-
-        // Check for checksum VarInt
-        if (in.readableBytes() < 1) {
-            if (payloadBuf != Unpooled.EMPTY_BUFFER)
-                payloadBuf.release();
-            in.resetReaderIndex();
-            return;
-        }
-
-        final int checksum = in.readVarInt();
-        final int check = (int) crc32.getValue();
-        if (check != checksum) {
-            if (payloadBuf != Unpooled.EMPTY_BUFFER) payloadBuf.release();
-            throw new PacketDecodeException("Invalid checksum for packetId " + id);
-        }
-
-        final Packet packet;
         try {
-            byte[] bytes;
-            if (!payloadBuf.isReadable()) {
-                bytes = new byte[0];
-            } else {
-                bytes = new byte[payloadBuf.readableBytes()];
-                payloadBuf.getBytes(payloadBuf.readerIndex(), bytes);
-            }
-            packet = packetRegistry.constructPacket(id, timestamp, bytes);
-        } catch (Exception e) {
-            throw new PacketDecodeException("Failed to decode packet (" + id + ")", e);
-        } finally {
-            if (payloadBuf != Unpooled.EMPTY_BUFFER) payloadBuf.release();
-        }
+            // Check if we can read at least the flags
+            final int id = in.readVarInt();
+            if (cantRead(in, 1)) return;
 
-        out.add(packet);
+            final boolean hasTimestamp = in.readBoolean();
+            final boolean hasPayload = in.readBoolean();
+            final long timestamp;
+
+            if (hasTimestamp) {
+                // Check if we can read the varlong
+                if (cantRead(in, 1)) return;
+                timestamp = in.readVarLong();
+            } else timestamp = Messenger.timeMode.now();
+
+            // Validate checksum
+            final CRC32C crc32 = ChecksumUtils.crc32(true);
+            crc32.update(seedBuf);
+
+            final ByteBuf payloadBuf;
+            if (!hasPayload) {
+                payloadBuf = Unpooled.EMPTY_BUFFER;
+            } else {
+                final boolean compressed = in.readBoolean();
+
+                // Check if we can read the payload length
+                if (cantRead(in, 1)) return;
+                final int payloadLength = in.readVarInt();
+
+                if (cantRead(in, payloadLength)) return;
+
+                // Get a retained slice of the payload for zero-copy checksum
+                final PacketBuffer slice = in.readRetainedSlice(payloadLength);
+                final ByteBuf nioView = slice.nettyBuffer();
+
+                final ByteBuffer nio = nioView.nioBuffer(0, payloadLength);
+                crc32.update(nio);
+
+                if (compressed) {
+                    final byte[] data = new byte[payloadLength];
+                    nioView.getBytes(nioView.readerIndex(), data);
+                    final byte[] unzipped = ZipUtils.unzipBytes(data);
+                    payloadBuf = Unpooled.wrappedBuffer(unzipped);
+                    slice.release();
+                } else {
+                    payloadBuf = nioView; // pass through retained slice
+                }
+            }
+
+            // Check for checksum VarInt
+            if (in.readableBytes() < 1) {
+                if (payloadBuf != Unpooled.EMPTY_BUFFER)
+                    payloadBuf.release();
+                in.resetReaderIndex();
+                return;
+            }
+
+            final int checksum = in.readVarInt();
+            final int check = (int) crc32.getValue();
+            if (check != checksum) {
+                if (payloadBuf != Unpooled.EMPTY_BUFFER) payloadBuf.release();
+                throw new PacketDecodeException("Invalid checksum for packetId " + id);
+            }
+
+            final Packet packet;
+            try {
+                byte[] bytes;
+                if (!payloadBuf.isReadable()) {
+                    bytes = new byte[0];
+                } else {
+                    bytes = new byte[payloadBuf.readableBytes()];
+                    payloadBuf.getBytes(payloadBuf.readerIndex(), bytes);
+                }
+                packet = packetRegistry.constructPacket(id, timestamp, bytes);
+            } catch (Exception e) {
+                throw new PacketDecodeException("Failed to decode packet (" + id + ")", e);
+            } finally {
+                if (payloadBuf != Unpooled.EMPTY_BUFFER) payloadBuf.release();
+            }
+
+            out.add(packet);
+        } catch (IndexOutOfBoundsException ignored) {
+            // Incomplete frame: wait for the next network chunk instead of closing channel.
+            in.resetReaderIndex();
+        }
     }
 
 }

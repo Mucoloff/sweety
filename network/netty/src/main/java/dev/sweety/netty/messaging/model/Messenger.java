@@ -5,7 +5,7 @@ import dev.sweety.netty.messaging.listener.encoder.NettyEncoder;
 import dev.sweety.netty.messaging.listener.watcher.NettyWatcher;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
-import dev.sweety.core.time.TimeMode;
+import dev.sweety.time.TimeMode;
 import dev.sweety.record.annotations.DataIgnore;
 import dev.sweety.record.annotations.RecordData;
 import dev.sweety.record.annotations.Setter;

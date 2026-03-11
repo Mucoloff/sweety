@@ -1,6 +1,6 @@
 package dev.sweety.project.netty.packet;
 
-import dev.sweety.event.info.State;
+import dev.sweety.feature.event.api.info.State;
 import dev.sweety.event.processor.GenerateEvent;
 import dev.sweety.packet.processor.BuildPacket;
 import dev.sweety.packet.processor.FieldBuffer;

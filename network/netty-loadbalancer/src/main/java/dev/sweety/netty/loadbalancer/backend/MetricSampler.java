@@ -1,7 +1,7 @@
 package dev.sweety.netty.loadbalancer.backend;
 
-import dev.sweety.core.thread.ThreadManager;
-import dev.sweety.core.time.StopWatch;
+import dev.sweety.thread.ThreadManager;
+import dev.sweety.time.StopWatch;
 import dev.sweety.netty.loadbalancer.common.metrics.EMA;
 import dev.sweety.netty.loadbalancer.common.metrics.SmoothedLoad;
 import dev.sweety.netty.loadbalancer.common.metrics.state.LoadGate;

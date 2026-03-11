@@ -1,0 +1,7 @@
+client/
+ ├ launcher/
+ │   ├ MainLauncher.java   → avvia launcher
+ │   ├ Updater.java        → controlla aggiornamenti, scarica patch
+ │   └ LauncherConfig.java → URL server, clientId
+ └ app/
+     └ AppMain.java        → applicazione vera

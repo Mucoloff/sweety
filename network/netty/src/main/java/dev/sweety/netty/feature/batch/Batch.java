@@ -2,15 +2,14 @@ package dev.sweety.netty.feature.batch;
 
 import dev.sweety.core.math.function.TriFunction;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
-import dev.sweety.netty.packet.buffer.io.Decoder;
-import dev.sweety.netty.packet.buffer.io.Encoder;
+import dev.sweety.netty.packet.buffer.io.Codec;
 import dev.sweety.netty.packet.model.Packet;
 
 import java.util.LinkedList;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-public final class Batch implements Encoder, Decoder {
+public final class Batch implements Codec {
 
     int packetCount;
     int[] packetIds;

@@ -1,6 +1,6 @@
 package dev.sweety.netty.feature;
 
-import dev.sweety.core.thread.ProfileThread;
+import dev.sweety.thread.ProfileThread;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.PacketTransaction;
 import io.netty.bootstrap.AbstractBootstrap;
@@ -80,27 +80,36 @@ public class TransactionManager {
         return future;
     }
 
+    public boolean failRequest(long requestId, Throwable throwable) {
+        final CompletableFuture<PacketTransaction.Transaction> future = pending.remove(requestId);
+        if (future == null) {
+            return false;
+        }
+        future.completeExceptionally(throwable != null ? throwable : new CancellationException("Request failed"));
+        return true;
+    }
+
     public void shutdown() {
         scheduler.shutdown();
-        pending.forEach((k, f) -> f.completeExceptionally(new CancellationException("Manager shutdown")));
-        pending.clear();
+        final Map<Long, CompletableFuture<PacketTransaction.Transaction>> snapshot;
+        synchronized (pending) {
+            snapshot = new LinkedHashMap<>(pending);
+            pending.clear();
+        }
+        snapshot.forEach((k, f) -> f.completeExceptionally(new CancellationException("Manager shutdown")));
     }
 
     public <R extends PacketTransaction.Transaction, T extends PacketTransaction<?, R>>
     CompletableFuture<R> sendTransaction(ChannelHandlerContext ctx, T transaction, long timeoutMillis) {
-
-        final CompletableFuture<R> result = new CompletableFuture<>();
-
+        final CompletableFuture<R> tracked = registerRequest(transaction, timeoutMillis);
         Messenger.safeRun(ctx, c -> messenger.sendPacket(c, transaction).whenComplete((v, ex) -> {
-            if (ex != null) result.completeExceptionally(ex);
-            else registerRequest(transaction, timeoutMillis)
-                    .whenComplete((resp, rex) -> {
-                        if (rex != null) result.completeExceptionally(rex);
-                        else result.complete(resp);
-                    });
+            if (ex == null) {
+                return;
+            }
+            this.pending.remove(transaction.getRequestId());
+            tracked.completeExceptionally(ex);
         }));
-
-        return result;
+        return tracked;
     }
 
 }

@@ -1,0 +1,16 @@
+plugins {
+    id 'application'
+}
+
+dependencies {
+}
+
+application {
+    mainClass = 'dev.sweety.app.AppMain'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'dev.sweety.app.AppMain'
+    }
+}

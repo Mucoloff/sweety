@@ -12,6 +12,8 @@
             <option value="$PROJECT_DIR$/core" />
             <option value="$PROJECT_DIR$/feature" />
             <option value="$PROJECT_DIR$/feature/event" />
+            <option value="$PROJECT_DIR$/feature/event/api" />
+            <option value="$PROJECT_DIR$/feature/event/impl" />
             <option value="$PROJECT_DIR$/feature/module" />
             <option value="$PROJECT_DIR$/feature/module/extension" />
             <option value="$PROJECT_DIR$/feature/module/extension/api" />
@@ -19,6 +21,11 @@
             <option value="$PROJECT_DIR$/feature/module/extension/manager" />
             <option value="$PROJECT_DIR$/feature/module/feature" />
             <option value="$PROJECT_DIR$/feature/module/versioning" />
+            <option value="$PROJECT_DIR$/feature/module/versioning/client" />
+            <option value="$PROJECT_DIR$/feature/module/versioning/client/app" />
+            <option value="$PROJECT_DIR$/feature/module/versioning/client/launcher" />
+            <option value="$PROJECT_DIR$/feature/module/versioning/protocol" />
+            <option value="$PROJECT_DIR$/feature/module/versioning/update-server" />
             <option value="$PROJECT_DIR$/feature/service" />
             <option value="$PROJECT_DIR$/feature/service/api" />
             <option value="$PROJECT_DIR$/feature/service/impl" />

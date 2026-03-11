@@ -1,5 +1,7 @@
 package dev.sweety.netty.messaging.listener.watcher;
 
+import dev.sweety.logger.LogLevel;
+import dev.sweety.logger.SimpleLogger;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
 import io.netty.channel.ChannelHandler.Sharable;
@@ -17,11 +19,15 @@ public class NettyWatcher extends ChannelHandlerAdapter {
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof Packet packet) {
             try {
+                SimpleLogger.log(LogLevel.INFO, "netty-watcher", "dispatch packet " + packet.name() + "(" + packet.id() + ") from " + ctx.channel().remoteAddress());
                 this.messenger.onPacketReceive(ctx, packet);
             } finally {
                 packet.release();
             }
-        } else ctx.fireChannelRead(msg);
+        } else {
+            SimpleLogger.log(LogLevel.WARN, "netty-watcher", "non-packet msg class=" + (msg != null ? msg.getClass().getName() : "null") + " from " + ctx.channel().remoteAddress());
+            ctx.fireChannelRead(msg);
+        }
     }
 
     public void channelActive(ChannelHandlerContext ctx) throws Exception {

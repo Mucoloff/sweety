@@ -26,6 +26,7 @@ public abstract class SqlConnection {
     public abstract String url();
 
     public Connection connection() throws SQLException {
+        //todo hikari
         final Connection connection = DriverManager.getConnection(url(), this.user, this.password);
         if (this.dialectType.equals(DialectType.SQLITE)) {
             try (var st = connection.createStatement()) {
@@ -69,6 +70,7 @@ public abstract class SqlConnection {
         initialized = true;
     }
 
+    //todo virtual thread
     public static synchronized Executor executor(DialectType dialectType) {
         if (EXECUTOR == null) {
             init();

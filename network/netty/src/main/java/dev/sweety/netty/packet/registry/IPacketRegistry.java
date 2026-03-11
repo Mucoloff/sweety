@@ -1,6 +1,6 @@
 package dev.sweety.netty.packet.registry;
 
-import dev.sweety.core.logger.LogHelper;
+import dev.sweety.logger.LogHelper;
 import dev.sweety.netty.messaging.exception.PacketRegistrationException;
 import dev.sweety.netty.packet.model.Packet;
 

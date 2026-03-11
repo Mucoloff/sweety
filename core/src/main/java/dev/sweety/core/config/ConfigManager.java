@@ -2,7 +2,7 @@ package dev.sweety.core.config;
 
 import dev.sweety.core.config.compression.GzipCompressor;
 import dev.sweety.core.config.format.Format;
-import dev.sweety.core.logger.SimpleLogger;
+//import dev.sweety.logger.SimpleLogger;
 import com.google.gson.JsonElement;
 import lombok.Getter;
 import lombok.Setter;
@@ -22,7 +22,7 @@ public class ConfigManager<T> {
     @Getter @Setter
     private T config;
 
-    private final SimpleLogger logger = new SimpleLogger(ConfigManager.class);
+    //private final SimpleLogger logger = new SimpleLogger(ConfigManager.class);
 
     // Costruttore type-safe (ex ConfigHandler)
     public ConfigManager(File directory, T defaultConfig, String filename, boolean compressed) {
@@ -63,7 +63,7 @@ public class ConfigManager<T> {
             byte[] data = compressed ? GzipCompressor.compress(json) : json.getBytes(StandardCharsets.UTF_8);
             FileUtils.writeByteArrayToFile(file, data);
         } catch (IOException e) {
-            logger.error("Failed to save config to " + file, e);
+            //logger.error("Failed to save config to " + file, e);
         }
     }
 
@@ -80,7 +80,7 @@ public class ConfigManager<T> {
             String json = compressed ? GzipCompressor.decompress(raw) : new String(raw, StandardCharsets.UTF_8);
             this.config = format.read(json, type);
         } catch (IOException e) {
-            logger.error("Failed to load config from " + file, e);
+            //logger.error("Failed to load config from " + file, e);
         }
     }
 

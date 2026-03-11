@@ -1,7 +1,7 @@
 package dev.sweety.netty.loadbalancer.server.pool;
 
 
-import dev.sweety.core.logger.SimpleLogger;
+import dev.sweety.logger.SimpleLogger;
 import dev.sweety.netty.loadbalancer.common.packet.internal.InternalPacket;
 import dev.sweety.netty.loadbalancer.server.LoadBalancerServer;
 import dev.sweety.netty.loadbalancer.server.backend.BackendNode;

@@ -1,0 +1,17 @@
++-------------------+      webhook      +-------------------+
+|   GitHub Repo     | ----------------> |  Update Server    |
+|  (Releases)       |                   |  - WebhookHandler |
++-------------------+                   |  - ReleaseManager |
+                                        |  - JarPatcher     |
+                                        |  - CacheManager   |
+                                        |  - ClientRegistry |
+                                        +---------+---------+
+                                                  |
+                                                  | GET /latest /download
+                                                  v
+                                        +-------------------+
+                                        |       Client      |
+                                        | - Launcher.jar    |
+                                        | - App.jar         |
+                                        | - Config.json     |
+                                        +-------------------+

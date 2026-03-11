@@ -1,7 +1,7 @@
 package dev.sweety.netty.loadbalancer.backend;
 
 import dev.sweety.core.color.AnsiColor;
-import dev.sweety.core.logger.SimpleLogger;
+import dev.sweety.logger.SimpleLogger;
 import dev.sweety.netty.feature.TransactionManager;
 import dev.sweety.netty.loadbalancer.common.packet.internal.ForwardData;
 import dev.sweety.netty.loadbalancer.common.packet.internal.InternalPacket;

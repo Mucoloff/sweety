@@ -1,5 +1,9 @@
 dependencies {
     implementation project(':core')
-    implementation "dev.sweety:record-getter-processor:1.0.0"
-    annotationProcessor "dev.sweety:record-getter-processor:1.0.0"
+    implementation project(':util:logger')
+    implementation project(':util:time')
+    implementation project(':util:thread')
+    var proc = project(':util:processor:record-getter-processor')
+    implementation proc
+    annotationProcessor proc
 }

@@ -1,0 +1,23 @@
+plugins {
+    id 'application'
+}
+
+dependencies {
+    implementation(project(":network:netty"))
+    implementation(project(":util:thread"))
+    implementation(project(":feature:module:versioning:protocol"))
+}
+
+application {
+    mainClass = 'dev.sweety.launcher.MainLauncher'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'dev.sweety.launcher.MainLauncher'
+    }
+    duplicatesStrategy = 'exclude'
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}

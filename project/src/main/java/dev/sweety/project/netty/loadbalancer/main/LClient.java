@@ -1,6 +1,6 @@
 package dev.sweety.project.netty.loadbalancer.main;
 
-import dev.sweety.core.time.StopWatch;
+import dev.sweety.time.StopWatch;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.project.netty.loadbalancer.impl.ClientTest;

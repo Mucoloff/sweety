@@ -12,6 +12,6 @@ dependencies {
     implementation 'com.squareup:javapoet:1.13.0'
 
     implementation project(':core')
-    implementation project(':feature:event')
+    implementation project(':feature:event:api')
+    implementation project(':feature:event:impl')
 }
-

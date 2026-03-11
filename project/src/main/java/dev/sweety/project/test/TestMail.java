@@ -1,6 +1,6 @@
 package dev.sweety.project.test;
 
-import dev.sweety.core.time.TimeUtils;
+import dev.sweety.time.TimeUtils;
 
 public class TestMail {
 

@@ -1,6 +1,6 @@
 package dev.sweety.netty.packet.model;
 
-import dev.sweety.core.time.TimeUtils;
+import dev.sweety.time.TimeUtils;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import org.jetbrains.annotations.NotNull;
 

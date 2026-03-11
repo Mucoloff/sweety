@@ -1,0 +1,9 @@
+update-server/
+ ├ MainServer.java        → Avvio HTTP server
+ ├ WebhookHandler.java    → Riceve webhook GitHub, verifica firma HMAC
+ ├ ReleaseManager.java    → Scarica jar base e versioni
+ ├ JarPatcher.java        → ASM injection + watermarking
+ ├ CacheManager.java      → Gestione jar generati, caching version/client
+ └ ClientRegistry.java    → Informazioni client (ID, profilo, preferenze)
+
+

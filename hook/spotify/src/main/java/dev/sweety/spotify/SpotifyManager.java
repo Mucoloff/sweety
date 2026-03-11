@@ -2,9 +2,9 @@ package dev.sweety.spotify;
 
 import com.sun.net.httpserver.HttpServer;
 import dev.sweety.core.file.ResourceUtils;
-import dev.sweety.core.logger.LogHelper;
+import dev.sweety.logger.LogHelper;
 import dev.sweety.core.system.OperatingSystem;
-import dev.sweety.core.time.StopWatch;
+import dev.sweety.time.StopWatch;
 import dev.sweety.core.util.ObjectUtils;
 import dev.sweety.spotify.auth.AuthToken;
 import dev.sweety.spotify.auth.SpotifyOAuth;
@@ -14,7 +14,7 @@ import lombok.Setter;
 
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.net.URL;
+import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
@@ -133,7 +133,7 @@ public class SpotifyManager {
         String url = this.oAuth.getAuthorizeUrl("user-read-playback-state user-read-email");
 
         try {
-            OperatingSystem.os().open(new URL(url));
+            OperatingSystem.os().open(URI.create(url));
         } catch (Exception e) {
             e.printStackTrace(System.err);
         }
