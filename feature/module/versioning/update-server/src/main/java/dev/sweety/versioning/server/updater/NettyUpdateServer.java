@@ -10,12 +10,13 @@ import dev.sweety.versioning.version.LauncherInfo;
 import dev.sweety.versioning.protocol.handshake.HandshakeRequest;
 import dev.sweety.versioning.protocol.handshake.HandshakeResponse;
 import dev.sweety.versioning.protocol.handshake.HandshakeTransaction;
-import dev.sweety.versioning.protocol.handshake.State;
 import dev.sweety.versioning.server.download.DownloadManager;
 import dev.sweety.versioning.server.release.ReleaseManager;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPromise;
+import manifold.util.concurrent.ConcurrentHashSet;
 
-import java.util.Optional;
+import java.util.Set;
 
 public class NettyUpdateServer extends SimpleServer {
 
@@ -42,20 +43,22 @@ public class NettyUpdateServer extends SimpleServer {
             final HandshakeRequest request = transaction.getRequest();
             final LauncherInfo info = request.getInfo();
 
-            final HandshakeResponse response = handleUpdateRequest(info);
+            final boolean forced = this.forcedUpdates.remove(ctx);
+
+            final HandshakeResponse response = handleUpdateRequest(forced, info);
 
             this.sendPacket(ctx, new HandshakeTransaction(transaction.getRequestId(), response));
         }
     }
 
-    private HandshakeResponse handleUpdateRequest(LauncherInfo info) {
+    private HandshakeResponse handleUpdateRequest(boolean forced, LauncherInfo info) {
         final LatestInfo latest = releaseManager.latest();
 
         final boolean updateLauncher = latest.launcher().newerThan(info.launcher());
         final boolean updateApp = latest.app().newerThan(info.app());
 
         final HandshakeResponse response;
-        if (updateApp && updateLauncher) {
+        if ((updateApp && updateLauncher) || forced) {
             String appToken = downloadManager.generate(info.clientId(), Artifact.APP, latest.app());
             String launcherToken = downloadManager.generate(info.clientId(), Artifact.LAUNCHER, latest.launcher());
             response = HandshakeResponse.both(appToken, latest.app(), launcherToken, latest.launcher());
@@ -70,8 +73,24 @@ public class NettyUpdateServer extends SimpleServer {
         return response;
     }
 
+    //todo use a similar garbage
+    private final Set<ChannelHandlerContext> forcedUpdates = new ConcurrentHashSet<>();
+
     public void broadcastRelease(LatestInfo state, boolean forced) {
-        //todo di fatto i client non si aggiornano perchè la versione è uguale
-        broadcastPacket(new ReleasePacket(state, forced));
+        ReleasePacket packet = new ReleasePacket(state, forced);
+        if (forced) {
+            this.clients().values().forEach((ctx) -> {
+                this.forcedUpdates.add(ctx);
+                sendPacket(ctx, packet);
+            });
+            return;
+        }
+        broadcastPacket(packet);
+    }
+
+    @Override
+    public void quit(ChannelHandlerContext ctx, ChannelPromise promise) {
+        super.quit(ctx, promise);
+        this.forcedUpdates.remove(ctx);
     }
 }

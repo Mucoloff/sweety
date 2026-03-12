@@ -9,13 +9,11 @@ import dev.sweety.versioning.version.LatestInfo;
 import dev.sweety.versioning.version.LauncherInfo;
 import dev.sweety.versioning.protocol.handshake.*;
 import dev.sweety.versioning.version.Version;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 public class UpdaterClient extends SimpleClient {
 
@@ -27,9 +25,8 @@ public class UpdaterClient extends SimpleClient {
         this(config, packetRegistry, -1, updateManager, stop);
     }
 
-    private final BiConsumer<ChannelHandlerContext, LauncherInfo> requestDownload = (ctx, info) -> {
-        sendPacket(ctx, new HandshakeTransaction(new HandshakeRequest(info)));
-    };
+    private final BiConsumer<ChannelHandlerContext, LauncherInfo> requestDownload = (ctx, info) ->
+            sendPacket(ctx, new HandshakeTransaction(new HandshakeRequest(info)));
 
     public UpdaterClient(AtomicReference<LauncherConfig> config, IPacketRegistry packetRegistry, int localPort, UpdateManager updateManager, Runnable stop) {
         super(config.get().nettyHost(), config.get().nettyPort(), packetRegistry, localPort);
@@ -85,22 +82,17 @@ public class UpdaterClient extends SimpleClient {
             final LatestInfo state = releasePacket.state();
             final LauncherConfig config = this.config.get();
 
-            final LauncherInfo info;
             if (releasePacket.forced()) {
-                System.out.println("forced!");
-                //todo up to date
-                info = this.config.updateAndGet(old -> old.withVersions(state.launcher(), state.app())).info();
-                System.out.println(state);
-                System.out.println(config.info());
-                System.out.println(info);
+                System.out.println("forced rollback detected!");
+                System.out.println("Current versions: " + config.info());
+                System.out.println("Target rollback versions: " + state);
             } else {
                 boolean updateApp = state.app().newerThan(config.app());
                 boolean updateLauncher = state.launcher().newerThan(config.launcher());
                 if (!updateApp && !updateLauncher) return;
-                info = config.info();
             }
 
-            this.requestDownload.accept(ctx, info);
+            this.requestDownload.accept(ctx, config.info());
         }
     }
 

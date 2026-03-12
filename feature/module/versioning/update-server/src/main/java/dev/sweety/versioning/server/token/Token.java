@@ -1,6 +1,7 @@
 package dev.sweety.versioning.server.token;
 
 import dev.sweety.time.Expirable;
+import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.version.Artifact;
 import dev.sweety.versioning.version.Version;
 
@@ -12,7 +13,7 @@ import java.util.zip.CRC32;
 
 public record Token(UUID clientId, Artifact type, Version version, long expireAt, UUID token) implements Expirable {
 
-    private static final byte[] SECRET = "very-secret-key".getBytes(StandardCharsets.UTF_8); //todo SECRET!
+    private static final byte[] SECRET = Settings.tokenGeneratorSalt.getBytes(StandardCharsets.UTF_8); //todo SECRET!
 
     public Token(UUID clientId, Artifact type, Version version, long delay) {
         this(clientId, type, version, System.currentTimeMillis() + delay, token(clientId, type, version, delay));

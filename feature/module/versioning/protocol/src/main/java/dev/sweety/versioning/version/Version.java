@@ -29,6 +29,15 @@ public record Version(int major, int minor, int patch) implements Encoder {
         return this.patch() > that.patch();
     }
 
+    @Override
+    public boolean equals(final Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof Version(int _major, int _minor, int _patch))) return false;
+        return this.major() == _major &&
+               this.minor() == _minor &&
+               this.patch() == _patch;
+    }
+
     public Path resolve(Path parent) {
         return parent.resolve(major+"").resolve(major+"").resolve(patch+"");
     }

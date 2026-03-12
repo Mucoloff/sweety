@@ -14,6 +14,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class DownloadManager {
 
+    //todo make a similar with general
+    //todo needed two tokens .... record Key(UUID client, Artifact artifact){} .... salvare come value Token...
+
     private final Map<UUID, Token> tokenMap = new ConcurrentHashMap<>();
     private final Set<UUID> garbage = new ConcurrentHashSet<>();
 

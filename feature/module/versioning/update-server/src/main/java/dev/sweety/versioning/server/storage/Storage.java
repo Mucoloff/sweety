@@ -7,8 +7,7 @@ import java.nio.file.Path;
 public class Storage {
 
     private final Path root, base, cache,
-            tmp,
-            metadata;
+            tmp, metadata, settings;
 
     public Storage() throws IOException {
         this.root = Path.of(System.getenv().getOrDefault("UPDATE_SERVER_ROOT", "storage"));
@@ -18,6 +17,7 @@ public class Storage {
         Files.createDirectories(this.tmp = this.root.resolve("tmp"));
 
         this.metadata = this.base.resolve("releases.json");
+        this.settings = this.root.resolve("settings.json");
     }
 
     public Path root() {
@@ -38,5 +38,9 @@ public class Storage {
     
     public Path metadata() {
         return this.metadata;
+    }
+
+    public Path settings() {
+        return settings;
     }
 }
