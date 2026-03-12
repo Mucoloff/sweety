@@ -17,7 +17,7 @@ public abstract class Extension implements Toggleable {
     private final File dataFolder;
 
     @NotNull
-    private final SimpleLogger logger; //todo
+    private final SimpleLogger logger;
 
     private boolean enabled;
 

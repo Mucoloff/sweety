@@ -1,7 +1,6 @@
 package dev.sweety.versioning.server.client;
 
 import dev.sweety.util.signature.Watermark;
-import dev.sweety.versioning.exception.InvalidTokenException;
 import dev.sweety.versioning.util.Utils;
 import dev.sweety.versioning.version.Version;
 

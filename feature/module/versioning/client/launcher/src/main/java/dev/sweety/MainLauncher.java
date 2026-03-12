@@ -1,4 +1,4 @@
-package dev.sweety.launcher.recode;
+package dev.sweety;
 
 import dev.sweety.launcher.config.LauncherConfig;
 import dev.sweety.launcher.update.UpdateManager;
@@ -7,7 +7,6 @@ import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.versioning.protocol.PacketRegistry;
 import dev.sweety.versioning.protocol.handshake.State;
 
-import java.lang.ref.Reference;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
@@ -21,16 +20,14 @@ public class MainLauncher {
 
         final AtomicReference<LauncherConfig> configRef = new AtomicReference<>(LauncherConfig.load(configFile));
 
-
         final CompletableFuture<State> handshake = new CompletableFuture<>();
 
         final Runnable stop = () -> {
 
         };
 
-        LauncherConfig config = configRef.get();
-        final UpdateManager updateManager = new UpdateManager(config.serverUrl(), config.clientId(), appJar, selfJar, handshake);
-        final UpdaterClient updater = new UpdaterClient(config.nettyHost(), config.nettyPort(), PacketRegistry.REGISTRY, config.info(), updateManager, stop);
+        final UpdateManager updateManager = new UpdateManager(configRef, appJar, selfJar, handshake);
+        final UpdaterClient updater = new UpdaterClient(configRef, PacketRegistry.REGISTRY, updateManager, stop);
 
         handshake.exceptionally(throwable -> {
             System.err.println("Failed to complete handshake: " + throwable.getMessage());
@@ -48,7 +45,7 @@ public class MainLauncher {
                 default -> {
                     System.out.println("state: " + state);
 
-
+                    //todo
 
                 }
             }

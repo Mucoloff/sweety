@@ -1,5 +1,6 @@
 package dev.sweety.launcher.update;
 
+import dev.sweety.launcher.config.LauncherConfig;
 import dev.sweety.versioning.protocol.handshake.State;
 
 import java.io.InputStream;
@@ -13,18 +14,18 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class UpdateManager {
 
-    private final String serverUrl;
-    private final UUID clientId;
     private final Path appJar;
     private final Path selfJar;
     private final CompletableFuture<State> handshakeState;
 
-    public UpdateManager(String serverUrl, UUID clientId, Path appJar, Path selfJar, CompletableFuture<State> handshakeState) {
-        this.serverUrl = serverUrl;
-        this.clientId = clientId;
+    private final AtomicReference<LauncherConfig> config;
+
+    public UpdateManager(AtomicReference<LauncherConfig> config, Path appJar, Path selfJar, CompletableFuture<State> handshakeState) {
+        this.config = config;
         this.appJar = appJar;
         this.selfJar = selfJar;
         this.handshakeState = handshakeState;
@@ -62,9 +63,11 @@ public class UpdateManager {
     }
 
     private void downloadArtifact(String token, Path destination) throws Exception {
-        String qToken = URLEncoder.encode(token, StandardCharsets.UTF_8);
-        String qClient = URLEncoder.encode(clientId.toString(), StandardCharsets.UTF_8);
-        URL downloadUrl = new URI(serverUrl + "/download?clientId=" + qClient + "&token=" + qToken).toURL();
+        final String serverUrl = config.get().serverUrl();
+        final UUID clientId = config.get().clientId();
+        final String qToken = URLEncoder.encode(token, StandardCharsets.UTF_8);
+        final String qClient = URLEncoder.encode(clientId.toString(), StandardCharsets.UTF_8);
+        final URL downloadUrl = new URI(serverUrl + "/download?clientId=" + qClient + "&token=" + qToken).toURL();
 
         Exception last = new IllegalStateException("download failed without details");
         for (int attempt = 1; attempt <= 3; attempt++) {

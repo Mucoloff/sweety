@@ -42,11 +42,9 @@ public class NettyUpdateServer extends SimpleServer {
             final HandshakeRequest request = transaction.getRequest();
             final LauncherInfo info = request.getInfo();
 
-            HandshakeResponse response = handleUpdateRequest(info);
+            final HandshakeResponse response = handleUpdateRequest(info);
 
             this.sendPacket(ctx, new HandshakeTransaction(transaction.getRequestId(), response));
-        } else {
-            //todo
         }
     }
 
@@ -60,13 +58,13 @@ public class NettyUpdateServer extends SimpleServer {
         if (updateApp && updateLauncher) {
             String appToken = downloadManager.generate(info.clientId(), Artifact.APP, latest.app());
             String launcherToken = downloadManager.generate(info.clientId(), Artifact.LAUNCHER, latest.launcher());
-            response = HandshakeResponse.both(appToken, launcherToken);
+            response = HandshakeResponse.both(appToken, latest.app(), launcherToken, latest.launcher());
         } else if (updateApp) {
             String appToken = (downloadManager.generate(info.clientId(), Artifact.APP, latest.app()));
-            response = HandshakeResponse.app(appToken);
+            response = HandshakeResponse.app(appToken, latest.app());
         } else if (updateLauncher) {
             String launcherToken = (downloadManager.generate(info.clientId(), Artifact.LAUNCHER, latest.launcher()));
-            response = HandshakeResponse.launcher(launcherToken);
+            response = HandshakeResponse.launcher(launcherToken, latest.launcher());
         } else response = HandshakeResponse.upToDate();
 
         return response;

@@ -1,8 +1,7 @@
 package dev.sweety.versioning.server.download;
 
-import dev.sweety.versioning.exception.InvalidTokenException;
-import dev.sweety.versioning.exception.TokenExpiredException;
 import dev.sweety.versioning.version.Artifact;
+import dev.sweety.versioning.exception.*;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.server.token.Token;
 import dev.sweety.versioning.util.Utils;

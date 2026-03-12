@@ -1,6 +1,8 @@
 package dev.sweety.versioning.exception;
 
-public class InvalidTokenException extends Exception { //todo except
+import dev.sweety.core.exception.Except;
+
+public class InvalidTokenException extends Except {
     public InvalidTokenException(String message) {
         super(message);
     }

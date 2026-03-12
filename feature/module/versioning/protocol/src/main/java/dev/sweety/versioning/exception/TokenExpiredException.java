@@ -1,6 +1,8 @@
 package dev.sweety.versioning.exception;
 
-public class TokenExpiredException extends Exception { //todo except
+import dev.sweety.core.exception.Except;
+
+public class TokenExpiredException extends Except {
     public TokenExpiredException(String message) {
         super(message);
     }

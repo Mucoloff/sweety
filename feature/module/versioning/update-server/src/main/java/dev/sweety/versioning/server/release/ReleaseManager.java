@@ -81,7 +81,11 @@ public class ReleaseManager {
     }
 
     public Path resolveBaseJar(Artifact artifact, Version version) {
-        return baseStorageDir.resolve(artifact.name().toLowerCase() + "-" + version + ".jar");
+        final String name = artifact.name().toLowerCase();
+        final String ver = version.toString();
+        return baseStorageDir.resolve(name)
+                .resolve(ver)
+                .resolve(name + "-" + ver + ".jar");
     }
 
     public synchronized boolean rollback() throws IOException {
