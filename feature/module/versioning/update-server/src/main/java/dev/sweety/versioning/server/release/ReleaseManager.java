@@ -1,5 +1,7 @@
 package dev.sweety.versioning.server.release;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev.sweety.versioning.server.storage.Storage;
 import dev.sweety.versioning.util.Utils;
@@ -7,7 +9,6 @@ import dev.sweety.versioning.version.Artifact;
 import dev.sweety.versioning.version.LatestInfo;
 import dev.sweety.versioning.version.Version;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,6 +25,7 @@ public class ReleaseManager {
     private static final int HISTORY_LIMIT = 20;
     private final Path baseStorageDir;
     private final Path metadataFile;
+    private final Path tempDir;
 
     private final Deque<LatestInfo> history = new ArrayDeque<>();
 
@@ -32,6 +34,7 @@ public class ReleaseManager {
     public ReleaseManager(final Storage storage) throws IOException {
         this.baseStorageDir = storage.base();
         this.metadataFile = storage.metadata();
+        this.tempDir = storage.tmp();
         update(loadOrDefault());
     }
 
@@ -50,17 +53,19 @@ public class ReleaseManager {
             return def;
         }
 
-        JsonObject root = Utils.GSON.fromJson(Files.readString(metadataFile), JsonObject.class);
-        JsonObject cur = root.getAsJsonObject("latest");
-        if (cur == null) {
-            return LatestInfo.DEFAULT;
+        final JsonObject root = Utils.GSON.fromJson(Files.readString(metadataFile), JsonObject.class);
+        final JsonObject latest = root.getAsJsonObject("latest");
+        final JsonArray hist = root.getAsJsonArray("history");
+
+        if (hist != null) {
+            for (JsonElement el : hist) {
+                JsonObject obj = el.getAsJsonObject();
+                history.addLast(deserialize(obj));
+            }
         }
 
-        return new LatestInfo(
-                Version.parse(cur.get("launcher").getAsString()),
-                Version.parse(cur.get("app").getAsString()),
-                Instant.parse(cur.get("updatedAt").getAsString())
-        );
+        return deserialize(latest);
+
     }
 
     private void persist() throws IOException {
@@ -68,24 +73,52 @@ public class ReleaseManager {
     }
 
     private void persist(LatestInfo state) throws IOException {
-        JsonObject root = new JsonObject();
-        JsonObject cur = new JsonObject();
-        cur.addProperty("launcher", state.launcher().toString());
-        cur.addProperty("app", state.app().toString());
-        cur.addProperty("updatedAt", state.updatedAt().toString());
-        root.add("latest", cur);
+        final JsonObject root = new JsonObject();
 
-        Path tmp = metadataFile.resolveSibling(metadataFile.getFileName() + ".tmp");
+        root.add("latest", serialize(state));
+
+        final JsonArray historyArray = new JsonArray();
+
+        this.history.stream().map(this::serialize).forEach(historyArray::add);
+
+        root.add("history", historyArray);
+
+        Path tmp = this.tempDir.resolve(this.metadataFile.getFileName() + ".tmp");
         Files.writeString(tmp, Utils.GSON.toJson(root));
-        Files.move(tmp, metadataFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        Files.move(tmp, this.metadataFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
     }
 
-    public Path resolveBaseJar(Artifact artifact, Version version) {
+    private JsonObject serialize(LatestInfo state) {
+        JsonObject obj = new JsonObject();
+
+        obj.addProperty("launcher", state.launcher().toString());
+        obj.addProperty("app", state.app().toString());
+        obj.addProperty("updatedAt", state.updatedAt().toString());
+
+        return obj;
+    }
+
+    private LatestInfo deserialize(JsonObject obj) {
+        return new LatestInfo(
+                Version.parse(obj.get("launcher").getAsString()),
+                Version.parse(obj.get("app").getAsString()),
+                Instant.parse(obj.get("updatedAt").getAsString())
+        );
+    }
+
+    private Path resolveFile(Path path, Artifact artifact, Version version, String extension) throws IOException {
         final String name = artifact.name().toLowerCase();
-        final String ver = version.toString();
-        return baseStorageDir.resolve(name)
-                .resolve(ver)
-                .resolve(name + "-" + ver + ".jar");
+        final Path dir = version.resolve(path.resolve(name));
+        Files.createDirectories(dir);
+        return dir.resolve(name + "-" + version + "." + extension);
+    }
+
+    private Path resolveTempJar(Artifact artifact, Version version) throws IOException {
+        return resolveFile(this.tempDir, artifact, version, "jar.tmp");
+    }
+
+    public Path resolveBaseJar(Artifact artifact, Version version) throws IOException {
+        return resolveFile(this.baseStorageDir, artifact, version, "jar");
     }
 
     public synchronized boolean rollback() throws IOException {
@@ -102,7 +135,6 @@ public class ReleaseManager {
             String appVersion,
             byte[] appJar
     ) throws IOException {
-
         Version launcher = null;
         Version app = null;
 
@@ -113,7 +145,7 @@ public class ReleaseManager {
 
             launcher = Version.parse(launcherVersion);
 
-            writeJar(resolveBaseJar(Artifact.LAUNCHER, launcher), launcherJar);
+            writeJar(Artifact.LAUNCHER, launcher, launcherJar);
         }
 
         if (appVersion != null) {
@@ -122,7 +154,7 @@ public class ReleaseManager {
             }
 
             app = Version.parse(appVersion);
-            writeJar(resolveBaseJar(Artifact.APP, app), appJar);
+            writeJar(Artifact.APP, app, appJar);
         }
 
         LatestInfo current = latest();
@@ -135,14 +167,10 @@ public class ReleaseManager {
                 nextApp
         );
 
-        if (Objects.equals(next, current)) {
-            return false;
-        }
+        if (Objects.equals(next, current)) return false;
 
-        history.addFirst(current);
-        while (history.size() > HISTORY_LIMIT) {
-            history.removeLast();
-        }
+        this.history.addFirst(current);
+        while (this.history.size() > HISTORY_LIMIT) this.history.removeLast();
 
         update(next);
         persist();
@@ -152,17 +180,10 @@ public class ReleaseManager {
         return true;
     }
 
-    private void writeJar(Path target, byte[] data) throws IOException {
-        Path tmp = target.resolveSibling(target.getFileName() + ".tmp");
-
-        Files.write(tmp, data);
-
-        Files.move(
-                tmp,
-                target,
-                StandardCopyOption.REPLACE_EXISTING,
-                StandardCopyOption.ATOMIC_MOVE
-        );
+    private void writeJar(Artifact artifact, Version version, byte[] data) throws IOException {
+        Path temp = resolveTempJar(artifact, version), target = resolveBaseJar(artifact, version);
+        Files.write(temp, data);
+        Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 
     }
 }

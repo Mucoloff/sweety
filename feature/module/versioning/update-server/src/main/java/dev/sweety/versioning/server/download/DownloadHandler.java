@@ -93,17 +93,16 @@ public class DownloadHandler implements HttpHandler {
             }
 
             CacheKey key = new CacheKey(artifact, version, clientId);
-            byte[] data = cacheManager.getOrCreate(key, () -> {
-                Map<String, Object> fields = new HashMap<>(clientRegistry.buildPatchFields(clientId, version));
-                //fields.put("VERSION", version.toString());
+            byte[] data = cacheManager.getOrCreate(key, k -> {
+                Map<String, Object> fields = clientRegistry.buildPatchFields(k.clientId(), k.version());
                 byte[] patched = JarPatcher.patchJar(
                         baseJar,
-                        clientId,
-                        version,
+                        k.clientId(),
+                        k.version(),
                         fields,
-                        clientRegistry.buildClientWatermarks(clientId, version)
+                        clientRegistry.buildClientWatermarks(k.clientId(), k.version())
                 );
-                System.out.println("Patched artifact=" + artifact + " clientId=" + clientId + " version=" + version + " bytes=" + patched.length);
+                System.out.println("Patched artifact=" + k.artifact() + " clientId=" + k.clientId() + " version=" + k.version() + " bytes=" + patched.length);
                 return patched;
             });
 

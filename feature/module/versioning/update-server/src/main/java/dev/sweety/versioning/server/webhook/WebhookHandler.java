@@ -13,6 +13,7 @@ import lombok.Setter;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 
@@ -25,7 +26,7 @@ public class WebhookHandler implements HttpHandler {
     private final WebhookRateLimiter rateLimiter;
 
     @Setter
-    private Consumer<LatestInfo> broadcast;
+    private BiConsumer<LatestInfo, Boolean> broadcast;
 
     public WebhookHandler(
             String secret,
@@ -91,16 +92,13 @@ public class WebhookHandler implements HttpHandler {
 
             if (updated) {
                 if (broadcast != null) {
-                    this.broadcast.accept(releaseManager.latest());
+                    this.broadcast.accept(releaseManager.latest(), false);
                 }
             }
 
             HttpUtils.sendText(exchange, 200, updated ? "updated" : "no changes");
-
         } catch (Exception e) {
-
             HttpUtils.sendText(exchange, 500, "Webhook error");
-
         } finally {
 
             exchange.close();

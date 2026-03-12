@@ -25,7 +25,6 @@ public class MainServer {
         final ClientRegistry clientRegistry = new ClientRegistry();
         final DownloadManager downloadManager = new DownloadManager();
 
-
         final HttpUpdateServer httpServer = new HttpUpdateServer(port, "token", "secret", releaseManager, downloadManager, cacheManager, clientRegistry);
         final ProfileThread t = new ProfileThread("http");
 

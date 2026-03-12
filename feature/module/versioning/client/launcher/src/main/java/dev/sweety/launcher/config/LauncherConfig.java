@@ -4,6 +4,7 @@ import dev.sweety.versioning.util.Utils;
 import dev.sweety.versioning.version.LauncherInfo;
 import dev.sweety.versioning.version.Version;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,7 +27,15 @@ public record LauncherConfig(String serverUrl,
                 true);
     }
 
-    public static LauncherConfig load(Path file) throws Exception {
+    public void save(Path file) {
+        try {
+            save(file,this);
+        } catch (IOException e) {
+            System.err.println("Failed to save config: " + e.getMessage());
+        }
+    }
+
+    public static LauncherConfig load(Path file) throws IOException {
         if (!Files.exists(file)) {
             LauncherConfig def = defaults();
             save(file, def);
@@ -36,7 +45,7 @@ public record LauncherConfig(String serverUrl,
         return normalize(loaded);
     }
 
-    public static void save(Path file, LauncherConfig config) throws Exception {
+    public static void save(Path file, LauncherConfig config) throws IOException {
         if (file.getParent() != null) {
             Files.createDirectories(file.getParent());
         }
@@ -45,6 +54,14 @@ public record LauncherConfig(String serverUrl,
 
     public LauncherConfig withVersions(Version launcherVersion, Version appVersion) {
         return new LauncherConfig(serverUrl, nettyHost, nettyPort, clientId, launcherVersion, appVersion, autoUpdateEnabled);
+    }
+
+    public LauncherConfig withLauncher(Version launcher) {
+        return new LauncherConfig(serverUrl, nettyHost, nettyPort, clientId, launcher, app, autoUpdateEnabled);
+    }
+
+    public LauncherConfig withApp(Version app) {
+        return new LauncherConfig(serverUrl, nettyHost, nettyPort, clientId, launcher, app, autoUpdateEnabled);
     }
 
     public LauncherInfo info() {

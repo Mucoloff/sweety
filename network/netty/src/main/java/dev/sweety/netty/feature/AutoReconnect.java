@@ -13,6 +13,7 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.channels.ClosedChannelException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -62,12 +63,12 @@ public class AutoReconnect {
     }
 
     public static boolean checkInstance(Throwable t) {
-        return t instanceof ConnectTimeoutException
-                || t instanceof ConnectException
-                || t instanceof ClosedChannelException
+        return t instanceof ClosedChannelException
                 || t instanceof SocketException
                 || t instanceof SocketTimeoutException
-                || t instanceof EOFException;
+                || t instanceof EOFException
+                || (t instanceof CompletionException c && checkInstance(c.getCause()))
+                ;
     }
 
     public static boolean checkMsg(Throwable t) {

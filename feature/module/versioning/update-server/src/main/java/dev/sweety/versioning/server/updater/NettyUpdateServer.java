@@ -70,7 +70,8 @@ public class NettyUpdateServer extends SimpleServer {
         return response;
     }
 
-    public void broadcastRelease(LatestInfo state) {
-        broadcastPacket(new ReleasePacket(state));
+    public void broadcastRelease(LatestInfo state, boolean forced) {
+        //todo di fatto i client non si aggiornano perchè la versione è uguale
+        broadcastPacket(new ReleasePacket(state, forced));
     }
 }

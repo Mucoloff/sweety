@@ -8,6 +8,7 @@ import dev.sweety.versioning.version.LatestInfo;
 import lombok.Setter;
 
 import java.io.IOException;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class RollbackHandler implements HttpHandler {
@@ -16,7 +17,7 @@ public class RollbackHandler implements HttpHandler {
     private final ReleaseManager releaseManager;
 
     @Setter
-    private Consumer<LatestInfo> broadcast;
+    private BiConsumer<LatestInfo, Boolean> broadcast;
 
     public RollbackHandler(String rollbackToken, ReleaseManager releaseManager) {
         this.rollbackToken = rollbackToken;
@@ -34,28 +35,30 @@ public class RollbackHandler implements HttpHandler {
                 HttpUtils.sendText(exchange, 401, "Unauthorized");
                 return;
             }
-            boolean ok = releaseManager.rollback();
-            LatestInfo state = releaseManager.latest();
+            System.out.println("Received rollback Request:");
+            final boolean ok = releaseManager.rollback();
+            final LatestInfo state = releaseManager.latest();
+
             if (!ok) {
                 HttpUtils.sendText(exchange, 409, "No rollback version available");
+                System.out.println("No rollback version available");
                 return;
             }
 
-            if (broadcast != null) broadcast.accept(state);
-            HttpUtils.sendText(exchange, 200, "Rollback applied");
+            if (this.broadcast != null) this.broadcast.accept(state, true);
+
+            HttpUtils.sendText(exchange, 200, "Rollback applied!");
+            System.out.println("Rollback applied!");
         } catch (Exception e) {
             HttpUtils.sendText(exchange, 500, "rollback error: " + e.getMessage());
         }
     }
 
     private boolean isAuthorizedRollback(HttpExchange exchange) {
-        if (rollbackToken == null || rollbackToken.isBlank()) {
-            return false;
-        }
+        if (rollbackToken == null || rollbackToken.isBlank()) return false;
+
         String auth = exchange.getRequestHeaders().getFirst("Authorization");
-        if (auth == null || !auth.startsWith("Bearer ")) {
-            return false;
-        }
+        if (auth == null || !auth.startsWith("Bearer ")) return false;
         String token = auth.substring("Bearer ".length());
         return HttpUtils.constantTimeEquals(token, rollbackToken);
     }

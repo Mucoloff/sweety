@@ -5,6 +5,7 @@ import dev.sweety.netty.packet.buffer.io.Encoder;
 import dev.sweety.netty.packet.buffer.io.callable.CallableDecoder;
 import org.jetbrains.annotations.NotNull;
 
+import java.nio.file.Path;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -26,6 +27,10 @@ public record Version(int major, int minor, int patch) implements Encoder {
         if (this.minor() != that.minor())
             return this.minor() > that.minor();
         return this.patch() > that.patch();
+    }
+
+    public Path resolve(Path parent) {
+        return parent.resolve(major+"").resolve(major+"").resolve(patch+"");
     }
 
     @Override

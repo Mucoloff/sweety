@@ -14,6 +14,7 @@ import dev.sweety.versioning.version.LatestInfo;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class HttpUpdateServer {
@@ -49,7 +50,7 @@ public class HttpUpdateServer {
         server.stop(delaySeconds);
     }
 
-    public void setBroadcast(Consumer<LatestInfo> broadcast) {
+    public void setBroadcast(BiConsumer<LatestInfo, Boolean> broadcast) {
         this.rollbackHandler.setBroadcast(broadcast);
         this.webhookHandler.setBroadcast(broadcast);
     }

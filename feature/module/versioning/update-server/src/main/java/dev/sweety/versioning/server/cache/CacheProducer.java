@@ -4,5 +4,5 @@ import java.io.IOException;
 
 @FunctionalInterface
 public interface CacheProducer {
-    byte[] produce() throws IOException;
+    byte[] produce(CacheKey key) throws IOException;
 }

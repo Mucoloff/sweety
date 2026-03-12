@@ -7,6 +7,7 @@ dependencies {
     implementation 'org.java-websocket:Java-WebSocket:1.5.6'
     implementation 'com.google.code.gson:gson:2.11.0'
 
+    implementation(project(":core"))
     implementation(project(':util:signature'))
     implementation(project(":util:thread"))
     implementation project(':util:logger')

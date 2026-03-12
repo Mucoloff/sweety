@@ -11,34 +11,31 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class CacheManager {
 
-    private final Path cacheRoot;
+    private final Path cacheRoot, tempDir;
     private final ConcurrentHashMap<CacheKey, Object> locks = new ConcurrentHashMap<>();
 
     public CacheManager(Storage storage) {
         this.cacheRoot = storage.cache();
+        this.tempDir = storage.tmp();
     }
 
     public byte[] getOrCreate(CacheKey key, CacheProducer producer) throws IOException {
-        Path cachedPath = toPath(key);
-        if (Files.exists(cachedPath)) {
-            return Files.readAllBytes(cachedPath);
-        }
+        Path cachedPath = key.toPath(cacheRoot);
+        Path tempPath = key.toPath(tempDir, "jar.tmp");
+
+        if (Files.exists(cachedPath)) return Files.readAllBytes(cachedPath);
 
         Object lock = locks.computeIfAbsent(key, ignored -> new Object());
         synchronized (lock) {
             try {
-                if (Files.exists(cachedPath)) {
-                    return Files.readAllBytes(cachedPath);
-                }
-                byte[] data = producer.produce();
-                Path dir = cachedPath.getParent();
-                if (dir != null) {
-                    Files.createDirectories(dir);
-                }
+                if (Files.exists(cachedPath)) return Files.readAllBytes(cachedPath);
 
-                Path tmp = cachedPath.resolveSibling(cachedPath.getFileName() + ".tmp");
-                Files.write(tmp, data);
-                Files.move(tmp, cachedPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+                byte[] data = producer.produce(key);
+                Path dir = cachedPath.getParent();
+                if (dir != null) Files.createDirectories(dir);
+
+                Files.write(tempPath, data);
+                Files.move(tempPath, cachedPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
                 return data;
             } finally {
                 locks.remove(key, lock);
@@ -46,10 +43,4 @@ public class CacheManager {
         }
     }
 
-    public Path toPath(CacheKey key) {
-        return cacheRoot
-                .resolve(key.artifact().name().toLowerCase())
-                .resolve(key.version().toString())
-                .resolve(key.clientId() + ".jar");
-    }
 }

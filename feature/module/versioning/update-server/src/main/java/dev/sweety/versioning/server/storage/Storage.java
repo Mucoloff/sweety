@@ -6,7 +6,9 @@ import java.nio.file.Path;
 
 public class Storage {
 
-    private final Path root, base, cache, tmp, metadata;
+    private final Path root, base, cache,
+            tmp,
+            metadata;
 
     public Storage() throws IOException {
         this.root = Path.of(System.getenv().getOrDefault("UPDATE_SERVER_ROOT", "storage"));
@@ -29,11 +31,11 @@ public class Storage {
     public Path cache() {
         return this.cache;
     }
-
+    
     public Path tmp() {
         return this.tmp;
     }
-
+    
     public Path metadata() {
         return this.metadata;
     }

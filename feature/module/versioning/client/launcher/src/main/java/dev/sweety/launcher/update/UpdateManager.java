@@ -13,18 +13,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 public class UpdateManager {
 
     private final Path appJar;
     private final Path selfJar;
-    private final CompletableFuture<State> handshakeState;
+    private final Consumer<State> handshakeState;
 
     private final AtomicReference<LauncherConfig> config;
 
-    public UpdateManager(AtomicReference<LauncherConfig> config, Path appJar, Path selfJar, CompletableFuture<State> handshakeState) {
+    public UpdateManager(AtomicReference<LauncherConfig> config, Path appJar, Path selfJar, Consumer<State> handshakeState) {
         this.config = config;
         this.appJar = appJar;
         this.selfJar = selfJar;
@@ -59,7 +59,7 @@ public class UpdateManager {
     }
 
     private void complete(State state) {
-        if (handshakeState != null) handshakeState.complete(state);
+        if (handshakeState != null) handshakeState.accept(state);
     }
 
     private void downloadArtifact(String token, Path destination) throws Exception {

@@ -8,12 +8,14 @@ import dev.sweety.versioning.protocol.update.ReleasePacket;
 import dev.sweety.versioning.version.LatestInfo;
 import dev.sweety.versioning.version.LauncherInfo;
 import dev.sweety.versioning.protocol.handshake.*;
+import dev.sweety.versioning.version.Version;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 public class UpdaterClient extends SimpleClient {
 
@@ -53,34 +55,52 @@ public class UpdaterClient extends SimpleClient {
 
             final State state = response.getState();
             final Optional<String> appToken = response.getAppToken();
+            final Optional<Version> appVersion = response.getAppVersion();
             final Optional<String> launcherToken = response.getLauncherToken();
+            final Optional<Version> launcherVersion = response.getLauncherVersion();
 
             switch (state) {
-                case APP -> appToken.ifPresent(updateManager::downloadAppUpdate);
-                case LAUNCHER -> launcherToken.ifPresent(updateManager::downloadLauncherUpdate);
+                case APP -> {
+                    appToken.ifPresent(updateManager::downloadAppUpdate);
+                    appVersion.ifPresent(version -> config.getAndUpdate(conf -> conf.withApp(version)));
+                }
+                case LAUNCHER -> {
+                    launcherToken.ifPresent(updateManager::downloadLauncherUpdate);
+                    launcherVersion.ifPresent(version -> config.getAndUpdate(conf -> conf.withLauncher(version)));
+                }
                 case BOTH -> {
                     appToken.ifPresent(updateManager::downloadAppUpdate);
                     launcherToken.ifPresent(updateManager::downloadLauncherUpdate);
+
+                    this.config.getAndUpdate(config -> {
+                        if (appVersion.isPresent() && launcherVersion.isPresent())
+                            return config.withVersions(launcherVersion.get(), appVersion.get());
+                        return appVersion.map(config::withApp).orElseGet(() -> launcherVersion.map(config::withLauncher).orElse(config));
+                    });
                 }
                 case UP_TO_DATE -> updateManager.upToDate();
                 case UNAVAILABLE -> updateManager.unavailable();
             }
         } else if (packet instanceof ReleasePacket releasePacket) {
             final LatestInfo state = releasePacket.state();
+            final LauncherConfig config = this.config.get();
 
-            final LauncherConfig config = this.config.updateAndGet(old -> {
-                boolean updateApp = state.app().newerThan(old.app());
-                boolean updateLauncher = state.launcher().newerThan(old.launcher());
+            final LauncherInfo info;
+            if (releasePacket.forced()) {
+                System.out.println("forced!");
+                //todo up to date
+                info = this.config.updateAndGet(old -> old.withVersions(state.launcher(), state.app())).info();
+                System.out.println(state);
+                System.out.println(config.info());
+                System.out.println(info);
+            } else {
+                boolean updateApp = state.app().newerThan(config.app());
+                boolean updateLauncher = state.launcher().newerThan(config.launcher());
+                if (!updateApp && !updateLauncher) return;
+                info = config.info();
+            }
 
-                if (!updateApp && !updateLauncher) return old;
-
-                return old.withVersions(
-                        updateLauncher ? state.launcher() : old.launcher(),
-                        updateApp ? state.app() : old.app()
-                );
-            });
-
-            this.requestDownload.accept(ctx, config.info());
+            this.requestDownload.accept(ctx, info);
         }
     }
 
