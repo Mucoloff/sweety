@@ -19,15 +19,15 @@ public class DownloadManager {
     private final Set<UUID> garbage = new ConcurrentHashSet<>();
 
     /** expire in millis */
-    private static final long EXPIRE_DELAY_NANO = 30_000_000L;
+    private static final long EXPIRE_DELAY_MS = 30_000L;
     private static final int MAX_GARBAGE = 50;
 
     /**
      * Genera un token e lo aggiunge al map + garbage
      */
-    public String generate(UUID clientId, Artifact artifact, Version version) {
+    public synchronized String generate(UUID clientId, Artifact artifact, Version version) {
 
-        final Token token = new Token(clientId, artifact, version, EXPIRE_DELAY_NANO);
+        final Token token = new Token(clientId, artifact, version, EXPIRE_DELAY_MS);
         final UUID tokenId = token.token();
 
         tokenMap.put(tokenId, token);
@@ -41,7 +41,7 @@ public class DownloadManager {
     /**
      * Cerca e rimuove un token valido
      */
-    public Token search(String tokenId) throws TokenExpiredException, InvalidTokenException {
+    public synchronized Token search(String tokenId) throws TokenExpiredException, InvalidTokenException {
         final UUID id;
         try {
             id = Utils.parseUuid(tokenId);
@@ -53,15 +53,15 @@ public class DownloadManager {
         garbage.remove(id);
 
         if (token == null) throw new InvalidTokenException("token not found!");
-        if (token.expired()) throw new TokenExpiredException("token expired!");
-
+        if (token.expired()) throw new TokenExpiredException("token expired! " + token.expiryTime());
         return token;
     }
 
     /**
      * Rimuove i token scaduti o già rimossi dal map
      */
-    public void clearGarbage() {
+    public synchronized void clearGarbage() {
+
         garbage.removeIf(id -> {
             Token token = tokenMap.get(id);
 

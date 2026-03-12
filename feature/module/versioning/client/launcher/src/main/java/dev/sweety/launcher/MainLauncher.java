@@ -16,22 +16,23 @@ public class MainLauncher {
         AtomicReference<LauncherConfig> configRef = new AtomicReference<>(config);
 
         NotificationListener notificationListener = new NotificationListener(
-                config.websocketUrl(),
-                config.clientId(),
-                config.localLauncherVersion(),
-                config.localAppVersion(),
+                //config.websocketUrl(),
+                "url",
+                config.clientId().toString(),
+                config.launcher().toString(),
+                config.app().toString(),
                 (launcherVer, appVer) -> {
                     try {
                         LauncherConfig current = configRef.get();
                         System.out.println("Received update notification: launcher=" + launcherVer + ", app=" + appVer);
-                        if (launcherVer != null && !launcherVer.equals(current.launcher())) {
+                        if (launcherVer != null && !launcherVer.equals(current.launcher().toString())) {
                             System.out.println("Launcher update available, scheduling self-update");
-                            Updater.updateLauncherSelf(current.serverUrl(), current.clientId(), launcherVer, selfJar);
+                            Updater.updateLauncherSelf(current.serverUrl(), current.clientId().toString(), launcherVer, selfJar);
                         }
-                        if (appVer != null && !appVer.equals(current.localAppVersion())) {
+                        if (appVer != null && !appVer.equals(current.app().toString())) {
                             System.out.println("App update available, downloading...");
-                            Updater.updateApp(current.serverUrl(), current.clientId(), appVer, appJar);
-                            LauncherConfig updated = current.withVersions(current.launcher(), appVer);
+                            Updater.updateApp(current.serverUrl(), current.clientId().toString(), appVer, appJar);
+                            LauncherConfig updated = current.withVersions(current.launcher(), current.app());
                             configRef.set(updated);
                             LauncherConfig.save(configFile, updated);
                         }

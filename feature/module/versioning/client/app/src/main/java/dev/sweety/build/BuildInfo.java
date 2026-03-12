@@ -8,6 +8,7 @@ public final class BuildInfo {
     public static final String TIMESTAMP = "0";
 
     private BuildInfo() {
+
     }
 }
 

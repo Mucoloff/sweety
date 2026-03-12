@@ -4,6 +4,7 @@ import dev.sweety.versioning.util.Utils;
 import dev.sweety.versioning.version.LauncherInfo;
 import dev.sweety.versioning.version.Version;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
@@ -19,7 +20,7 @@ public record LauncherConfig(String serverUrl,
                 "http://localhost:8080",
                 "localhost",
                 9900,
-                UUID.fromString("TEST"),
+                UUID.nameUUIDFromBytes("TEST".getBytes(StandardCharsets.UTF_8)),
                 Version.ZERO,
                 Version.ZERO,
                 true);

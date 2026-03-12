@@ -2,7 +2,7 @@ package dev.sweety.event.processor;
 
 import com.google.auto.service.AutoService;
 import com.squareup.javapoet.*;
-import dev.sweety.event.Event;
+import dev.sweety.event.api.Event;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;

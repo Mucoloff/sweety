@@ -36,7 +36,7 @@ public class RollbackHandler implements HttpHandler {
             }
             boolean ok = releaseManager.rollback();
             LatestInfo state = releaseManager.latest();
-            if (!ok || state == null) {
+            if (!ok) {
                 HttpUtils.sendText(exchange, 409, "No rollback version available");
                 return;
             }

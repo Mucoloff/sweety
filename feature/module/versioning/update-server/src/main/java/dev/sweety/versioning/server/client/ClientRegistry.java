@@ -31,8 +31,8 @@ public class ClientRegistry {
         ClientProfile profile = getOrCreate(clientId);
         long ts = Instant.now().toEpochMilli();
         return Map.of(
-                "CLIENT_ID", profile.clientId(),
-                "VERSION", version,
+                "CLIENT_ID", profile.clientId().toString(),
+                "VERSION", version.toString(),
                 "TIMESTAMP", Long.toString(ts),
                 "BUILD_ID", profile.clientId() + "-" + version + "-" + ts
         );

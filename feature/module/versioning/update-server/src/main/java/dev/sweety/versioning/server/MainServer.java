@@ -1,56 +1,45 @@
 package dev.sweety.versioning.server;
 
+import dev.sweety.netty.messaging.model.Messenger;
+import dev.sweety.thread.ProfileThread;
+import dev.sweety.versioning.protocol.PacketRegistry;
 import dev.sweety.versioning.server.cache.CacheManager;
 import dev.sweety.versioning.server.client.ClientRegistry;
+import dev.sweety.versioning.server.download.DownloadManager;
+import dev.sweety.versioning.server.http.HttpUpdateServer;
+import dev.sweety.versioning.server.release.ReleaseManager;
 import dev.sweety.versioning.server.storage.Storage;
+import dev.sweety.versioning.server.updater.NettyUpdateServer;
 
-import java.net.InetSocketAddress;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.IOException;
 
 public class MainServer {
 
-    public static void main(String[] args) throws Exception {
-        int port = Integer.parseInt(System.getenv().getOrDefault("UPDATE_SERVER_PORT", "8080"));
-        int wsPort = Integer.parseInt(System.getenv().getOrDefault("UPDATE_SERVER_WS_PORT", Integer.toString(port + 1)));
-        String secret = System.getenv().getOrDefault("UPDATE_SERVER_SECRET", "");
-        String rollbackToken = System.getenv().getOrDefault("UPDATE_SERVER_ROLLBACK_TOKEN", "change-me");
+    public static void main(String[] args) throws IOException {
+        int port = 8080;//Integer.parseInt(System.getenv().getOrDefault("UPDATE_SERVER_PORT", "8080"));
 
-        String publicBaseUrl = System.getenv().getOrDefault("UPDATE_SERVER_PUBLIC_URL", "http://localhost:" + port);
-        String websocketPublicUrl = System.getenv().getOrDefault("UPDATE_SERVER_WS_URL", "ws://localhost:" + wsPort + "/listen");
+        final Storage storage = new Storage();
 
-        Path root = Path.of(System.getenv().getOrDefault("UPDATE_SERVER_ROOT", "storage"));
-        Path base = root.resolve("base");
-        Path cache = root.resolve("cache");
-        Path tmp = root.resolve("tmp");
+        final ReleaseManager releaseManager = new ReleaseManager(storage);
+        final CacheManager cacheManager = new CacheManager(storage);
+        final ClientRegistry clientRegistry = new ClientRegistry();
+        final DownloadManager downloadManager = new DownloadManager();
 
-        Files.createDirectories(base);
-        Files.createDirectories(cache);
-        Files.createDirectories(tmp);
 
-        ReleaseManager releaseManager = new ReleaseManager(base);
+        final HttpUpdateServer httpServer = new HttpUpdateServer(port, "token", "secret", releaseManager, downloadManager, cacheManager, clientRegistry);
+        final ProfileThread t = new ProfileThread("http");
 
-        CacheManager cacheManager = new CacheManager(new Storage());
-        ClientRegistry clientRegistry = new ClientRegistry();
-        NotificationHub notificationHub = new NotificationHub();
-        WebhookIdempotencyStore idempotencyStore = new WebhookIdempotencyStore();
-        WebhookRateLimiter rateLimiter = new WebhookRateLimiter();
-        WebhookHandler webhookHandler = new WebhookHandler(secret, releaseManager, notificationHub, publicBaseUrl, idempotencyStore, rateLimiter);
+        Runnable stop = () -> {
+            httpServer.stop(0);
+            t.shutdown();
+        };
+        final NettyUpdateServer nettyServer = new NettyUpdateServer("localhost", 9900, PacketRegistry.REGISTRY, downloadManager, releaseManager, stop);
 
-        UpdateServer server = new UpdateServer(port, releaseManager, cacheManager, clientRegistry, webhookHandler, rollbackToken, notificationHub, publicBaseUrl, websocketPublicUrl);
-        WebSocketNotificationServer webSocketServer = new WebSocketNotificationServer(new InetSocketAddress(wsPort), notificationHub);
+        httpServer.setBroadcast(nettyServer::broadcastRelease);
 
-        webSocketServer.start();
-        server.start();
+        t.execute(httpServer::start);
 
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            server.stop(0);
-            try {
-                webSocketServer.stop();
-            } catch (Exception ignored) {
-            }
-        }));
-        System.out.println("Update server started on port " + port + ", websocket on " + wsPort);
+        Messenger.init(nettyServer);
     }
 
 }

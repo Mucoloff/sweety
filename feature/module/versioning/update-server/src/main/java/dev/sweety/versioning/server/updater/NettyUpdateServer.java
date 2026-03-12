@@ -46,14 +46,12 @@ public class NettyUpdateServer extends SimpleServer {
 
             this.sendPacket(ctx, new HandshakeTransaction(transaction.getRequestId(), response));
         } else {
-
+            //todo
         }
     }
 
     private HandshakeResponse handleUpdateRequest(LauncherInfo info) {
         final LatestInfo latest = releaseManager.latest();
-
-        if (latest == null) return new HandshakeResponse(State.UNAVAILABLE, Optional.empty(), Optional.empty());
 
         final boolean updateLauncher = latest.launcher().newerThan(info.launcher());
         final boolean updateApp = latest.app().newerThan(info.app());

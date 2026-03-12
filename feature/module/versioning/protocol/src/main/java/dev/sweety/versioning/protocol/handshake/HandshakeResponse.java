@@ -17,6 +17,7 @@ import java.util.Optional;
 public class HandshakeResponse extends PacketTransaction.Transaction {
 
     private State state;
+    //todo add versions
     private Optional<String> appToken, launcherToken;
 
     @Override

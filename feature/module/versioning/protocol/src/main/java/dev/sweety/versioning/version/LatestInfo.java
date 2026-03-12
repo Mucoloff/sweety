@@ -8,6 +8,10 @@ import java.time.Instant;
 
 public record LatestInfo(Version launcher, Version app, Instant updatedAt) implements Encoder {
 
+    public LatestInfo(Version launcher, Version app){
+        this(launcher, app, Instant.now());
+    }
+
     public static final LatestInfo DEFAULT = new LatestInfo(Version.ZERO, Version.ZERO, Instant.MIN);
 
     public static final CallableDecoder<LatestInfo> DECODER = buffer -> new LatestInfo(buffer.readObject(Version.DECODER), buffer.readObject(Version.DECODER), Instant.ofEpochMilli(buffer.readVarLong()));

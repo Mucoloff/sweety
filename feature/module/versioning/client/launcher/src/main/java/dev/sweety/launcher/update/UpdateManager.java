@@ -36,6 +36,7 @@ public class UpdateManager {
             complete(State.APP);
         } catch (Exception e) {
             complete(State.UNAVAILABLE);
+            e.printStackTrace(System.err);
         }
     }
 
@@ -63,7 +64,7 @@ public class UpdateManager {
     private void downloadArtifact(String token, Path destination) throws Exception {
         String qToken = URLEncoder.encode(token, StandardCharsets.UTF_8);
         String qClient = URLEncoder.encode(clientId.toString(), StandardCharsets.UTF_8);
-        URL downloadUrl = new URI(serverUrl + "/download?client=" + qClient + "&token=" + qToken).toURL();
+        URL downloadUrl = new URI(serverUrl + "/download?clientId=" + qClient + "&token=" + qToken).toURL();
 
         Exception last = new IllegalStateException("download failed without details");
         for (int attempt = 1; attempt <= 3; attempt++) {
@@ -75,7 +76,9 @@ public class UpdateManager {
                 conn.setReadTimeout(20_000);
 
                 int status = conn.getResponseCode();
-                if (status < 200 || status >= 300) throw new IllegalStateException("download failed status=" + status);
+                if (status < 200 || status >= 300) {
+                    throw new IllegalStateException("download failed status=" + status);
+                }
 
                 try (InputStream in = conn.getInputStream()) {
                     Files.copy(in, tmp, StandardCopyOption.REPLACE_EXISTING);
@@ -84,11 +87,10 @@ public class UpdateManager {
                 return;
             } catch (Exception ex) {
                 last = ex;
-                Thread.sleep(300L * attempt);
+                Thread.sleep(1000L * attempt);
             }
         }
         throw last;
     }
 
-    //todo enqueue update
 }

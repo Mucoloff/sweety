@@ -48,7 +48,7 @@ public class CacheManager {
 
     public Path toPath(CacheKey key) {
         return cacheRoot
-                .resolve(key.artifact().name())
+                .resolve(key.artifact().name().toLowerCase())
                 .resolve(key.version().toString())
                 .resolve(key.clientId() + ".jar");
     }

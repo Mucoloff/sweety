@@ -1,8 +1,8 @@
 package dev.sweety.event.processor;
 
 import dev.sweety.core.math.function.Operation;
-import dev.sweety.event.Event;
-import dev.sweety.event.EventSystem;
+import dev.sweety.event.api.Event;
+import dev.sweety.event.impl.EventSystem;
 import it.unimi.dsi.fastutil.Pair;
 
 import java.lang.reflect.InvocationTargetException;

@@ -15,14 +15,14 @@ public record Token(UUID clientId, Artifact type, Version version, long expireAt
     private static final byte[] SECRET = "very-secret-key".getBytes(StandardCharsets.UTF_8); //todo SECRET!
 
     public Token(UUID clientId, Artifact type, Version version, long delay) {
-        this(clientId, type, version, System.nanoTime() + delay, token(clientId, type, version, delay));
+        this(clientId, type, version, System.currentTimeMillis() + delay, token(clientId, type, version, delay));
     }
 
     private static UUID token(UUID clientId, Artifact type, Version version, long expireAt) {
         try {
             MessageDigest sha = MessageDigest.getInstance("SHA-256");
 
-            ByteBuffer buffer = ByteBuffer.allocate(16 + 8 + 8);
+            ByteBuffer buffer = ByteBuffer.allocate(16 + 4+ 8 + 8);
 
             buffer.putLong(clientId.getMostSignificantBits());
             buffer.putLong(clientId.getLeastSignificantBits());
@@ -50,8 +50,8 @@ public record Token(UUID clientId, Artifact type, Version version, long expireAt
         }
     }
 
-    @Override
+    /*@Override
     public long now() {
         return System.nanoTime();
-    }
+    }*/
 }

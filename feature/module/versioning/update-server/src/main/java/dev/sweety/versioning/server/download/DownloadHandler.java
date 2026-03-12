@@ -72,7 +72,8 @@ public class DownloadHandler implements HttpHandler {
             try {
                 token = this.downloadManager.search(_token);
             } catch (InvalidTokenException | TokenExpiredException e) {
-                HttpUtils.sendText(exchange, 400, "Invalid or expired token");
+                System.out.println("error: " + e.getMessage());
+                HttpUtils.sendText(exchange, 400, "Invalid or expired token " + e);
                 return;
             }
 
@@ -95,7 +96,7 @@ public class DownloadHandler implements HttpHandler {
             CacheKey key = new CacheKey(artifact, version, clientId);
             byte[] data = cacheManager.getOrCreate(key, () -> {
                 Map<String, Object> fields = new HashMap<>(clientRegistry.buildPatchFields(clientId, version));
-                fields.put("VERSION", version);
+                //fields.put("VERSION", version.toString());
                 byte[] patched = JarPatcher.patchJar(
                         baseJar,
                         clientId,
@@ -114,6 +115,7 @@ public class DownloadHandler implements HttpHandler {
                 os.write(data);
             }
         } catch (Exception e) {
+            e.printStackTrace();
             HttpUtils.sendText(exchange, 500, "download error: " + e.getMessage());
         }
     }

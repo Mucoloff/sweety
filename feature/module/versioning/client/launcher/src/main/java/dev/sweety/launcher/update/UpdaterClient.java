@@ -57,6 +57,7 @@ public class UpdaterClient extends SimpleClient {
             }
         } else if (packet instanceof ReleasePacket releasePacket) {
             final LatestInfo state = releasePacket.state();
+
             //todo
         }
     }
