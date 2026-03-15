@@ -6,8 +6,9 @@ import com.google.gson.JsonObject;
 import dev.sweety.versioning.server.storage.Storage;
 import dev.sweety.versioning.util.Utils;
 import dev.sweety.versioning.version.Artifact;
-import dev.sweety.versioning.version.LatestInfo;
+import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
+import dev.sweety.versioning.version.channel.Channel;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -15,175 +16,239 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
-import java.util.ArrayDeque;
-import java.util.Deque;
+import java.util.EnumMap;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class ReleaseManager {
 
     private static final int HISTORY_LIMIT = 20;
-    private final Path baseStorageDir;
-    private final Path metadataFile;
-    private final Path tempDir;
 
-    private final Deque<LatestInfo> history = new ArrayDeque<>();
+    private final EnumMap<Artifact, ReleaseState> states = new EnumMap<>(Artifact.class);
 
-    private final AtomicReference<LatestInfo> latest = new AtomicReference<>();
+    public ReleaseManager(Storage storage) throws IOException {
 
-    public ReleaseManager(final Storage storage) throws IOException {
-        this.baseStorageDir = storage.base();
-        this.metadataFile = storage.metadata();
-        this.tempDir = storage.tmp();
-        update(loadOrDefault());
+        for (Artifact artifact : Artifact.values()) {
+            ReleaseState state = new ReleaseState(artifact, storage);
+            states.put(artifact, state);
+
+            state.latest = loadOrDefault(state);
+        }
     }
 
-    public @NotNull LatestInfo latest() {
-        return latest.get();
+    public ReleaseInfo latest(Artifact artifact) {
+        ReleaseState s = states.get(artifact);
+
+        synchronized (s.lock) {
+            return s.latest;
+        }
     }
 
-    public void update(@NotNull LatestInfo latest) {
-        this.latest.set(latest);
+    public void update(@NotNull Artifact artifact, @NotNull ReleaseInfo latest) {
+        final ReleaseState s = states.get(artifact);
+
+        synchronized (s.lock) {
+            s.latest = latest;
+        }
     }
 
-    private LatestInfo loadOrDefault() throws IOException {
-        if (!Files.exists(metadataFile)) {
-            LatestInfo def = LatestInfo.DEFAULT;
-            persist(def);
+    private void updateAll(ReleaseProvider provider) throws IOException {
+        for (Artifact artifact : Artifact.values()) update(artifact, provider.provide(artifact));
+    }
+
+    private ReleaseInfo loadOrDefault(ReleaseState s) throws IOException {
+        if (!Files.exists(s.metadata)) {
+            ReleaseInfo def = ReleaseInfo.DEFAULT;
+            persist(s, def);
             return def;
         }
 
-        final JsonObject root = Utils.GSON.fromJson(Files.readString(metadataFile), JsonObject.class);
-        final JsonObject latest = root.getAsJsonObject("latest");
-        final JsonArray hist = root.getAsJsonArray("history");
+        JsonObject root = Utils.GSON.fromJson(
+                Files.readString(s.metadata),
+                JsonObject.class
+        );
+
+        JsonObject latest = root.getAsJsonObject("latest");
+
+        JsonArray hist = root.getAsJsonArray("history");
 
         if (hist != null) {
             for (JsonElement el : hist) {
-                JsonObject obj = el.getAsJsonObject();
-                history.addLast(deserialize(obj));
+                s.history.addLast(deserialize(el.getAsJsonObject()));
             }
         }
 
         return deserialize(latest);
-
     }
 
-    private void persist() throws IOException {
-        persist(latest());
+    private void persist(Artifact artifact) throws IOException {
+        final ReleaseState s = states.get(artifact);
+
+        synchronized (s.lock) {
+            persist(s, s.latest);
+        }
     }
 
-    private void persist(LatestInfo state) throws IOException {
-        final JsonObject root = new JsonObject();
-
-        root.add("latest", serialize(state));
-
-        final JsonArray historyArray = new JsonArray();
-
-        this.history.stream().map(this::serialize).forEach(historyArray::add);
-
-        root.add("history", historyArray);
-
-        Path tmp = this.tempDir.resolve(this.metadataFile.getFileName() + ".tmp");
-        Files.writeString(tmp, Utils.GSON.toJson(root));
-        Files.move(tmp, this.metadataFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+    private void persistAll() throws IOException {
+        for (Artifact artifact : Artifact.values()) persist(artifact);
     }
 
-    private JsonObject serialize(LatestInfo state) {
+    private void persist(ReleaseState s, ReleaseInfo latest) throws IOException {
+
+        JsonObject root = new JsonObject();
+
+        root.add("latest", serialize(latest));
+
+        JsonArray hist = new JsonArray();
+
+        for (ReleaseInfo info : s.history) {
+            hist.add(serialize(info));
+        }
+
+        root.add("history", hist);
+
+        Path tmpFile = s.tmp.resolve("metadata.tmp");
+
+        Files.writeString(tmpFile, Utils.GSON.toJson(root));
+
+        Files.move(
+                tmpFile,
+                s.metadata,
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.ATOMIC_MOVE
+        );
+    }
+
+    private JsonObject serialize(ReleaseInfo state) {
         JsonObject obj = new JsonObject();
 
-        obj.addProperty("launcher", state.launcher().toString());
-        obj.addProperty("app", state.app().toString());
+        obj.addProperty("version", state.version().toString());
+        obj.addProperty("channel", state.channel().toString());
         obj.addProperty("updatedAt", state.updatedAt().toString());
 
         return obj;
     }
 
-    private LatestInfo deserialize(JsonObject obj) {
-        return new LatestInfo(
-                Version.parse(obj.get("launcher").getAsString()),
-                Version.parse(obj.get("app").getAsString()),
+    private ReleaseInfo deserialize(JsonObject obj) {
+        return new ReleaseInfo(
+                Version.parse(obj.get("version").getAsString()),
+                Channel.valueOf(obj.get("channel").getAsString()),
                 Instant.parse(obj.get("updatedAt").getAsString())
         );
     }
 
-    private Path resolveFile(Path path, Artifact artifact, Version version, String extension) throws IOException {
+    private Path resolveFile(Path path, Artifact artifact, Version version, Channel channel, String extension) throws IOException {
         final String name = artifact.name().toLowerCase();
         final Path dir = version.resolve(path.resolve(name));
         Files.createDirectories(dir);
         return dir.resolve(name + "-" + version + "." + extension);
     }
 
-    private Path resolveTempJar(Artifact artifact, Version version) throws IOException {
-        return resolveFile(this.tempDir, artifact, version, "jar.tmp");
+    private Path resolveTempJar(ReleaseState s, @NotNull Artifact artifact, Version version, Channel channel) throws IOException {
+        return resolveFile(s.tmp, artifact, version, channel, "jar.tmp");
     }
 
-    public Path resolveBaseJar(Artifact artifact, Version version) throws IOException {
-        return resolveFile(this.baseStorageDir, artifact, version, "jar");
+    public Path resolveBaseJar(@NotNull Artifact artifact, Version version, Channel channel) throws IOException {
+        final ReleaseState s = states.get(artifact);
+        synchronized (s.lock) {
+            return resolveBaseJar(s, artifact, version, channel);
+        }
     }
 
-    public synchronized boolean rollback() throws IOException {
-        final LatestInfo prev = history.pollFirst();
-        if (prev == null) return false;
-        update(prev);
-        persist();
-        return true;
+    public Path resolveBaseJar(ReleaseState s, @NotNull Artifact artifact, Version version, Channel channel) throws IOException {
+        return resolveFile(s.base, artifact, version, channel, "jar");
     }
 
-    public synchronized boolean applyRelease(
-            String launcherVersion,
-            byte[] launcherJar,
-            String appVersion,
-            byte[] appJar
+    public ReleaseInfo rollback(Artifact artifact) throws IOException {
+
+        ReleaseState s = states.get(artifact);
+
+        synchronized (s.lock) {
+
+            ReleaseInfo prev = s.history.pollFirst();
+
+            if (prev == null)
+                return null;
+
+            s.latest = prev;
+
+            persist(s, prev);
+
+            return prev;
+        }
+    }
+
+    public ReleaseInfo applyRelease(
+            Artifact artifact,
+            String channel,
+            String version,
+            byte[] jar
     ) throws IOException {
-        Version launcher = null;
-        Version app = null;
 
-        if (launcherVersion != null) {
-            if (launcherJar == null) {
-                throw new IllegalArgumentException("launcherJar missing");
-            }
 
-            launcher = Version.parse(launcherVersion);
-
-            writeJar(Artifact.LAUNCHER, launcher, launcherJar);
+        Channel ch;
+        try {
+            ch = Channel.valueOf(channel);
+        } catch (IllegalArgumentException e) {
+            throw new IOException("Invalid channel: " + channel, e);
         }
 
-        if (appVersion != null) {
-            if (appJar == null) {
-                throw new IllegalArgumentException("appJar missing");
+
+        ReleaseState s = states.get(artifact);
+
+        synchronized (s.lock) {
+
+            Version ver = null;
+
+            if (version != null) {
+                if (jar == null)
+                    throw new IllegalArgumentException(artifact + ".jar missing");
+
+                ver = Version.parse(version);
+                writeJar(s, artifact, ver, ch, jar);
             }
 
-            app = Version.parse(appVersion);
-            writeJar(Artifact.APP, app, appJar);
+            ReleaseInfo current = s.latest;
+
+            Version nextVer = ver != null ? ver : current.version();
+
+            ReleaseInfo next = new ReleaseInfo(nextVer, ch);
+
+            if (Objects.equals(next, current))
+                return null;
+
+            s.history.addFirst(current);
+
+            while (s.history.size() > HISTORY_LIMIT)
+                s.history.removeLast();
+
+            s.latest = next;
+
+            persist(s, next);
+
+            return s.latest;
         }
-
-        LatestInfo current = latest();
-
-        Version nextLauncher = launcher != null ? launcher : current.launcher();
-        Version nextApp = app != null ? app : current.app();
-
-        LatestInfo next = new LatestInfo(
-                nextLauncher,
-                nextApp
-        );
-
-        if (Objects.equals(next, current)) return false;
-
-        this.history.addFirst(current);
-        while (this.history.size() > HISTORY_LIMIT) this.history.removeLast();
-
-        update(next);
-        persist();
-
-        System.out.println("Release applied: launcher=" + nextLauncher + " app=" + nextApp);
-
-        return true;
     }
 
-    private void writeJar(Artifact artifact, Version version, byte[] data) throws IOException {
-        Path temp = resolveTempJar(artifact, version), target = resolveBaseJar(artifact, version);
+    private void writeJar(
+            ReleaseState s,
+            Artifact artifact,
+            Version version,
+            Channel channel,
+            byte[] data
+    ) throws IOException {
+
+        Path temp = resolveTempJar(s, artifact, version, channel);
+
+        Path target = resolveBaseJar(s, artifact, version, channel);
+
         Files.write(temp, data);
-        Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 
+        Files.move(
+                temp,
+                target,
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.ATOMIC_MOVE
+        );
     }
+
 }

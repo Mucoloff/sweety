@@ -14,8 +14,6 @@ include 'feature:module:extension:api'
 include 'feature:module:extension:common'
 include 'feature:module:extension:manager'
 
-include 'feature:module:feature'
-
 include 'feature:module:versioning'
 include 'feature:module:versioning:client'
 include 'feature:module:versioning:client:app'

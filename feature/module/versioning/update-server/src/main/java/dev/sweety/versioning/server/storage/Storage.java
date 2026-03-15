@@ -1,22 +1,45 @@
 package dev.sweety.versioning.server.storage;
 
+import dev.sweety.versioning.version.Artifact;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.EnumMap;
 
 public class Storage {
 
-    private final Path root, base, cache,
-            tmp, metadata, settings;
+    private final Path root, settings, temp;
+
+    private final EnumMap<Artifact, Path> metadata = new EnumMap<>(Artifact.class);
+    private final EnumMap<Artifact, Path> artifacts = new EnumMap<>(Artifact.class);
+    private final EnumMap<Artifact, Path> cache = new EnumMap<>(Artifact.class);
+    private final EnumMap<Artifact, Path> tmp = new EnumMap<>(Artifact.class);
 
     public Storage() throws IOException {
         this.root = Path.of(System.getenv().getOrDefault("UPDATE_SERVER_ROOT", "storage"));
 
-        Files.createDirectories(this.base = this.root.resolve("base"));
-        Files.createDirectories(this.cache = this.root.resolve("cache"));
-        Files.createDirectories(this.tmp = this.root.resolve("tmp"));
+        Path base, cache;
 
-        this.metadata = this.base.resolve("releases.json");
+        Files.createDirectories(base = this.root.resolve("base"));
+        Files.createDirectories(cache = this.root.resolve("cache"));
+        Files.createDirectories(temp = this.root.resolve("tmp"));
+
+        for (Artifact value : Artifact.values()) {
+            final Path basePath = base.resolve(value.name().toLowerCase());
+            final Path cachePath = cache.resolve(value.name().toLowerCase());
+            final Path tmpPath = temp.resolve(value.name().toLowerCase());
+
+            Files.createDirectories(basePath);
+            Files.createDirectories(cachePath);
+            Files.createDirectories(tmpPath);
+
+            this.artifacts.put(value, basePath);
+            this.metadata.put(value, basePath.resolve("releases.json"));
+            this.cache.put(value, cachePath);
+            this.tmp.put(value, tmpPath);
+        }
+
         this.settings = this.root.resolve("settings.json");
     }
 
@@ -24,23 +47,27 @@ public class Storage {
         return this.root;
     }
 
-    public Path base() {
-        return this.base;
+    public EnumMap<Artifact, Path> metadata() {
+        return metadata;
     }
 
-    public Path cache() {
-        return this.cache;
+    public EnumMap<Artifact, Path> artifacts() {
+        return artifacts;
     }
-    
-    public Path tmp() {
-        return this.tmp;
+
+    public EnumMap<Artifact, Path> cache() {
+        return cache;
     }
-    
-    public Path metadata() {
-        return this.metadata;
+
+    public EnumMap<Artifact, Path> tmp() {
+        return tmp;
     }
 
     public Path settings() {
         return settings;
+    }
+
+    public Path temp() {
+        return temp;
     }
 }

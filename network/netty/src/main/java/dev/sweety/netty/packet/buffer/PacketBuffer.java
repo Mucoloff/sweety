@@ -493,6 +493,14 @@ public class PacketBuffer {
         return readMap(buffer -> Pair.of(kDecoder.read(buffer), vDecoder.read(buffer)), mapFactory);
     }
 
+    public <K extends Enum<K>, V> PacketBuffer writeEnumMap(EnumMap<K, V> map, CallableEncoder<? super V> vEncoder) {
+        return writeMap(map, PacketBuffer::writeEnum, vEncoder);
+    }
+
+    public <K extends Enum<K>, V> EnumMap<K, V> readEnumMap(Class<K> keyClass, CallableDecoder<V> vDecoder) {
+        return (EnumMap<K, V>) readMap(buffer -> buffer.readEnum(keyClass), vDecoder, i-> new EnumMap<>(keyClass));
+    }
+
     public boolean release() {
         return this.nettyBuffer.release();
     }

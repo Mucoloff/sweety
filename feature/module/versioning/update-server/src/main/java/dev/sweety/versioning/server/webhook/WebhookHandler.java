@@ -3,18 +3,16 @@ package dev.sweety.versioning.server.webhook;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import dev.sweety.versioning.server.release.ReleaseManager;
-
-import java.io.IOException;
-
-import dev.sweety.versioning.server.util.HttpUtils;
 import dev.sweety.versioning.server.util.Multipart;
-import dev.sweety.versioning.version.LatestInfo;
+import dev.sweety.versioning.version.Artifact;
+import dev.sweety.versioning.version.ReleaseInfo;
 import lombok.Setter;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+
+import static dev.sweety.versioning.server.util.HttpUtils.sendText;
+import static dev.sweety.versioning.server.util.HttpUtils.verifySignature;
 
 
 public class WebhookHandler implements HttpHandler {
@@ -26,7 +24,7 @@ public class WebhookHandler implements HttpHandler {
     private final WebhookRateLimiter rateLimiter;
 
     @Setter
-    private BiConsumer<LatestInfo, Boolean> broadcast;
+    private Consumer<ReleaseInfo> broadcast; //todo artifact
 
     public WebhookHandler(
             String secret,
@@ -44,32 +42,31 @@ public class WebhookHandler implements HttpHandler {
     public void handle(HttpExchange exchange) throws IOException {
 
         try {
-
             if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
-                HttpUtils.sendText(exchange, 405, "Method not allowed");
+                sendText(exchange, 405, "Method not allowed");
                 return;
             }
 
             String ip = exchange.getRemoteAddress().getAddress().getHostAddress();
             if (!rateLimiter.allow(ip)) {
-                HttpUtils.sendText(exchange, 429, "Rate limited");
+                sendText(exchange, 429, "Rate limited");
                 return;
             }
 
             String deliveryId = exchange.getRequestHeaders().getFirst("X-Delivery-Id");
             if (idempotencyStore.isProcessed(deliveryId)) {
-                HttpUtils.sendText(exchange, 202, "Already processed");
+                sendText(exchange, 202, "Already processed");
                 return;
             }
 
             byte[] body = exchange.getRequestBody().readNBytes(50 * 1024 * 1024);
 
-            if (!HttpUtils.verifySignature(
+            if (!verifySignature(
                     secret,
                     exchange.getRequestHeaders().getFirst("X-Signature"),
                     body)) {
 
-                HttpUtils.sendText(exchange, 401, "Invalid signature");
+                sendText(exchange, 401, "Invalid signature");
                 return;
             }
 
@@ -77,28 +74,30 @@ public class WebhookHandler implements HttpHandler {
 
             Multipart form = Multipart.parse(exchange, body);
 
-            String launcherVersion = form.getField("launcherVersion");
-            byte[] launcherJar = form.getFile("launcherJar");
+            String art = form.getField("artifact");
 
-            String appVersion = form.getField("appVersion");
-            byte[] appJar = form.getFile("appJar");
-
-            boolean updated = releaseManager.applyRelease(
-                    launcherVersion,
-                    launcherJar,
-                    appVersion,
-                    appJar
-            );
-
-            if (updated) {
-                if (broadcast != null) {
-                    this.broadcast.accept(releaseManager.latest(), false);
-                }
+            Artifact artifact;
+            try {
+                artifact = Artifact.valueOf(art);
+            } catch (IllegalArgumentException e) {
+                sendText(exchange, 400, "Invalid artifact: " + art);
+                return;
             }
 
-            HttpUtils.sendText(exchange, 200, updated ? "updated" : "no changes");
+            String channel = form.getField("channel");
+            String version = form.getField("version");
+            byte[] jar = form.getFile("jar");
+
+            ReleaseInfo release = releaseManager.applyRelease(artifact, channel, version, jar);
+            boolean updated = release != null;
+
+            if (updated) {
+                if (broadcast != null) this.broadcast.accept(release);
+            }
+
+            sendText(exchange, 200, updated ? "updated" : "no changes");
         } catch (Exception e) {
-            HttpUtils.sendText(exchange, 500, "Webhook error");
+            sendText(exchange, 500, "Webhook error");
         } finally {
 
             exchange.close();

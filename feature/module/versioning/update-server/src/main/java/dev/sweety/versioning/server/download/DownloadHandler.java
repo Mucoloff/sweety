@@ -13,6 +13,7 @@ import dev.sweety.versioning.server.util.HttpUtils;
 import dev.sweety.versioning.util.Utils;
 import dev.sweety.versioning.version.Artifact;
 import dev.sweety.versioning.version.Version;
+import dev.sweety.versioning.version.channel.Channel;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -85,29 +86,30 @@ public class DownloadHandler implements HttpHandler {
 
             final Version version = token.version();
             final Artifact artifact = token.type();
+            final Channel channel = token.channel();
 
-            Path baseJar = releaseManager.resolveBaseJar(artifact, version);
+            Path baseJar = releaseManager.resolveBaseJar(artifact, version, channel);
             if (!Files.exists(baseJar)) {
                 HttpUtils.sendText(exchange, 404, "Base jar not found: " + baseJar);
                 return;
             }
 
-            CacheKey key = new CacheKey(artifact, version, clientId);
+            CacheKey key = new CacheKey(artifact, version, channel, clientId);
             byte[] data = cacheManager.getOrCreate(key, k -> {
-                Map<String, Object> fields = clientRegistry.buildPatchFields(k.clientId(), k.version());
+                Map<String, Object> fields = clientRegistry.buildPatchFields(k);
                 byte[] patched = JarPatcher.patchJar(
                         baseJar,
                         k.clientId(),
                         k.version(),
                         fields,
-                        clientRegistry.buildClientWatermarks(k.clientId(), k.version())
+                        clientRegistry.buildClientWatermarks(k)
                 );
                 System.out.println("Patched artifact=" + k.artifact() + " clientId=" + k.clientId() + " version=" + k.version() + " bytes=" + patched.length);
                 return patched;
             });
 
             exchange.getResponseHeaders().set("Content-Type", "application/java-archive");
-            exchange.getResponseHeaders().set("Content-Disposition", "attachment; filename=\"" + artifact + "-" + version + "-" + clientId + ".jar\"");
+            exchange.getResponseHeaders().set("Content-Disposition", "attachment; filename=\"" + artifact + "-" + version + "-" + channel + "-" + clientId + ".jar\"");
             exchange.sendResponseHeaders(200, data.length);
             try (OutputStream os = exchange.getResponseBody()) {
                 os.write(data);

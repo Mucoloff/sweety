@@ -3,7 +3,7 @@ package dev.sweety.launcher;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import dev.sweety.launcher.config.LauncherConfig;
-import dev.sweety.versioning.version.LatestInfo;
+import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
 
 import java.io.InputStream;
@@ -22,7 +22,7 @@ public class Updater {
 
     private static final Gson GSON =  new Gson().newBuilder().disableHtmlEscaping().setPrettyPrinting().create();
 
-    public static LatestInfo fetchLatest(String serverUrl) throws Exception {
+    public static ReleaseInfo fetchLatest(String serverUrl) throws Exception {
         URL latestUrl = URI.create(serverUrl + "/latest").toURL();
         HttpURLConnection conn = (HttpURLConnection) latestUrl.openConnection();
         conn.setRequestMethod("GET");
@@ -38,15 +38,15 @@ public class Updater {
             JsonObject root = GSON.fromJson(new String(in.readAllBytes(), StandardCharsets.UTF_8), JsonObject.class);
             String launcherVersion = root.get("launcher").getAsString();
             String appVersion = root.get("app").getAsString();
-            return new LatestInfo(Version.ZERO, Version.ZERO, Instant.MIN);
+            return new ReleaseInfo(Version.ZERO, Version.ZERO, Instant.MIN);
         }
     }
 
-    public static boolean needsLauncherUpdate(LauncherConfig config, LatestInfo latest) {
+    public static boolean needsLauncherUpdate(LauncherConfig config, ReleaseInfo latest) {
         return !latest.launcher().equals(config.launcher());
     }
 
-    public static boolean needsAppUpdate(LauncherConfig config, LatestInfo latest) {
+    public static boolean needsAppUpdate(LauncherConfig config, ReleaseInfo latest) {
         return !latest.app().equals(config.app());
     }
 

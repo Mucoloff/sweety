@@ -25,7 +25,7 @@ public class MainServer {
         int port = 8080;//Integer.parseInt(System.getenv().getOrDefault("UPDATE_SERVER_PORT", "8080"));
 
         final Storage storage = new Storage();
-        loadSettings(storage.settings(), storage.tmp());
+        loadSettings(storage.settings(), storage.temp());
 
         final ReleaseManager releaseManager = new ReleaseManager(storage);
         final CacheManager cacheManager = new CacheManager(storage);
@@ -41,7 +41,8 @@ public class MainServer {
         };
         final NettyUpdateServer nettyServer = new NettyUpdateServer("localhost", 9900, PacketRegistry.REGISTRY, downloadManager, releaseManager, stop);
 
-        httpServer.setBroadcast(nettyServer::broadcastRelease);
+        httpServer.setRelease(nettyServer::broadcastRelease);
+        httpServer.setRollback(nettyServer::broadcastRollback);
 
         t.execute(httpServer::start);
 

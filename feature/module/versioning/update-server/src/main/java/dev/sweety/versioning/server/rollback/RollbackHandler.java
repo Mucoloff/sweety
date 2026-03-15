@@ -3,13 +3,15 @@ package dev.sweety.versioning.server.rollback;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import dev.sweety.versioning.server.release.ReleaseManager;
-import dev.sweety.versioning.server.util.HttpUtils;
-import dev.sweety.versioning.version.LatestInfo;
+import dev.sweety.versioning.version.Artifact;
+import dev.sweety.versioning.version.ReleaseInfo;
 import lombok.Setter;
 
 import java.io.IOException;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
+
+import static dev.sweety.versioning.server.util.HttpUtils.constantTimeEquals;
+import static dev.sweety.versioning.server.util.HttpUtils.sendText;
 
 public class RollbackHandler implements HttpHandler {
 
@@ -17,7 +19,7 @@ public class RollbackHandler implements HttpHandler {
     private final ReleaseManager releaseManager;
 
     @Setter
-    private BiConsumer<LatestInfo, Boolean> broadcast;
+    private BiConsumer<ReleaseInfo, ReleaseInfo> broadcast;
 
     public RollbackHandler(String rollbackToken, ReleaseManager releaseManager) {
         this.rollbackToken = rollbackToken;
@@ -28,29 +30,35 @@ public class RollbackHandler implements HttpHandler {
     public void handle(HttpExchange exchange) throws IOException {
         try {
             if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
-                HttpUtils.sendText(exchange, 405, "Method not allowed");
+                sendText(exchange, 405, "Method not allowed");
                 return;
             }
+
             if (!isAuthorizedRollback(exchange)) {
-                HttpUtils.sendText(exchange, 401, "Unauthorized");
+                sendText(exchange, 401, "Unauthorized");
                 return;
             }
+
+            Artifact artifact = null; //todo read from query or body
+
             System.out.println("Received rollback Request:");
-            final boolean ok = releaseManager.rollback();
-            final LatestInfo state = releaseManager.latest();
+
+            final ReleaseInfo prev = releaseManager.latest(artifact);
+            final ReleaseInfo rolled = releaseManager.rollback(artifact);
+            final boolean ok = rolled != null;
 
             if (!ok) {
-                HttpUtils.sendText(exchange, 409, "No rollback version available");
+                sendText(exchange, 409, "No rollback version available");
                 System.out.println("No rollback version available");
                 return;
             }
 
-            if (this.broadcast != null) this.broadcast.accept(state, true);
+            if (this.broadcast != null) this.broadcast.accept(rolled, prev);
 
-            HttpUtils.sendText(exchange, 200, "Rollback applied!");
+            sendText(exchange, 200, "Rollback applied!");
             System.out.println("Rollback applied!");
         } catch (Exception e) {
-            HttpUtils.sendText(exchange, 500, "rollback error: " + e.getMessage());
+            sendText(exchange, 500, "rollback error: " + e.getMessage());
         }
     }
 
@@ -60,6 +68,6 @@ public class RollbackHandler implements HttpHandler {
         String auth = exchange.getRequestHeaders().getFirst("Authorization");
         if (auth == null || !auth.startsWith("Bearer ")) return false;
         String token = auth.substring("Bearer ".length());
-        return HttpUtils.constantTimeEquals(token, rollbackToken);
+        return constantTimeEquals(token, rollbackToken);
     }
 }

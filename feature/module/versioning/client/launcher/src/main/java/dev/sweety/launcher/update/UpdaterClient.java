@@ -5,7 +5,7 @@ import dev.sweety.netty.messaging.impl.SimpleClient;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import dev.sweety.versioning.protocol.update.ReleasePacket;
-import dev.sweety.versioning.version.LatestInfo;
+import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.LauncherInfo;
 import dev.sweety.versioning.protocol.handshake.*;
 import dev.sweety.versioning.version.Version;
@@ -79,7 +79,7 @@ public class UpdaterClient extends SimpleClient {
                 case UNAVAILABLE -> updateManager.unavailable();
             }
         } else if (packet instanceof ReleasePacket releasePacket) {
-            final LatestInfo state = releasePacket.state();
+            final ReleaseInfo state = releasePacket.state();
             final LauncherConfig config = this.config.get();
 
             if (releasePacket.forced()) {

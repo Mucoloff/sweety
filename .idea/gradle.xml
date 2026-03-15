@@ -19,7 +19,6 @@
             <option value="$PROJECT_DIR$/feature/module/extension/api" />
             <option value="$PROJECT_DIR$/feature/module/extension/common" />
             <option value="$PROJECT_DIR$/feature/module/extension/manager" />
-            <option value="$PROJECT_DIR$/feature/module/feature" />
             <option value="$PROJECT_DIR$/feature/module/versioning" />
             <option value="$PROJECT_DIR$/feature/module/versioning/client" />
             <option value="$PROJECT_DIR$/feature/module/versioning/client/app" />

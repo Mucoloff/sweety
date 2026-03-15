@@ -36,4 +36,8 @@ public class Utils {
         buffer.putInt(version.patch());
         return buffer.array();
     }
+
+    public static byte[] toBytes(int value) {
+        return ByteBuffer.allocate(4).putInt(value).array();
+    }
 }

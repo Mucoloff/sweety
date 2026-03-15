@@ -1,17 +1,19 @@
 package dev.sweety.versioning.server.cache;
 
 import dev.sweety.versioning.server.storage.Storage;
+import dev.sweety.versioning.version.Artifact;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.EnumMap;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class CacheManager {
 
-    private final Path cacheRoot, tempDir;
+    private final EnumMap<Artifact, Path> cacheRoot, tempDir;
     private final ConcurrentHashMap<CacheKey, Object> locks = new ConcurrentHashMap<>();
 
     public CacheManager(Storage storage) {
@@ -20,12 +22,12 @@ public class CacheManager {
     }
 
     public byte[] getOrCreate(CacheKey key, CacheProducer producer) throws IOException {
-        Path cachedPath = key.toPath(cacheRoot);
-        Path tempPath = key.toPath(tempDir, "jar.tmp");
+        Path cachedPath = key.toPath(cacheRoot.get(key.artifact()));
+        Path tempPath = key.toPath(tempDir.get(key.artifact()), "jar.tmp");
 
         if (Files.exists(cachedPath)) return Files.readAllBytes(cachedPath);
 
-        Object lock = locks.computeIfAbsent(key, ignored -> new Object());
+        Object lock = locks.computeIfAbsent(key, _k -> new Object());
         synchronized (lock) {
             try {
                 if (Files.exists(cachedPath)) return Files.readAllBytes(cachedPath);

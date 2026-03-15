@@ -10,7 +10,7 @@ import dev.sweety.versioning.server.rollback.RollbackHandler;
 import dev.sweety.versioning.server.webhook.WebhookHandler;
 import dev.sweety.versioning.server.webhook.WebhookIdempotencyStore;
 import dev.sweety.versioning.server.webhook.WebhookRateLimiter;
-import dev.sweety.versioning.version.LatestInfo;
+import dev.sweety.versioning.version.ReleaseInfo;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -50,12 +50,15 @@ public class HttpUpdateServer {
         server.stop(delaySeconds);
     }
 
-    public void setBroadcast(BiConsumer<LatestInfo, Boolean> broadcast) {
-        this.rollbackHandler.setBroadcast(broadcast);
+    public int port() {
+        return server.getAddress().getPort();
+    }
+
+    public void setRelease(Consumer<ReleaseInfo> broadcast) {
         this.webhookHandler.setBroadcast(broadcast);
     }
 
-    public int port() {
-        return server.getAddress().getPort();
+    public void setRollback(BiConsumer<ReleaseInfo, ReleaseInfo> broadcast) {
+        this.rollbackHandler.setBroadcast(broadcast);
     }
 }
