@@ -4,7 +4,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class WebhookIdempotencyStore {
 
-    private static final long DEFAULT_TTL = 60 * 60 * 1000;
+    private static final long DEFAULT_TTL = 60 * 60 * 1000 * 1000L;
 
     private final ConcurrentHashMap<String, Long> deliveries = new ConcurrentHashMap<>();
     private final long ttl;
@@ -18,7 +18,7 @@ public class WebhookIdempotencyStore {
     }
 
     public boolean isProcessed(String id) {
-
+        lazyCleanup();
         if (id == null) return false;
 
         Long time = deliveries.get(id);
@@ -40,14 +40,13 @@ public class WebhookIdempotencyStore {
 
     }
 
+    private void lazyCleanup() {
+        if (deliveries.size() > 1000) cleanup();
+    }
+
     public void cleanup() {
-
         long now = System.currentTimeMillis();
-
-        deliveries.entrySet().removeIf(
-                e -> now - e.getValue() > ttl
-        );
-
+        deliveries.entrySet().removeIf(e -> now - e.getValue() > ttl);
     }
 
 }

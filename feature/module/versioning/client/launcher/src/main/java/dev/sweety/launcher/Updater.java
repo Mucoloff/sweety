@@ -3,8 +3,10 @@ package dev.sweety.launcher;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import dev.sweety.launcher.config.LauncherConfig;
+import dev.sweety.versioning.version.Artifact;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
+import dev.sweety.versioning.version.channel.Channel;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -20,7 +22,7 @@ import java.util.Locale;
 
 public class Updater {
 
-    private static final Gson GSON =  new Gson().newBuilder().disableHtmlEscaping().setPrettyPrinting().create();
+    private static final Gson GSON = new Gson().newBuilder().disableHtmlEscaping().setPrettyPrinting().create();
 
     public static ReleaseInfo fetchLatest(String serverUrl) throws Exception {
         URL latestUrl = URI.create(serverUrl + "/latest").toURL();
@@ -38,16 +40,13 @@ public class Updater {
             JsonObject root = GSON.fromJson(new String(in.readAllBytes(), StandardCharsets.UTF_8), JsonObject.class);
             String launcherVersion = root.get("launcher").getAsString();
             String appVersion = root.get("app").getAsString();
-            return new ReleaseInfo(Version.ZERO, Version.ZERO, Instant.MIN);
+            return new ReleaseInfo(Version.ZERO, Channel.STABLE, Instant.MIN);
         }
     }
 
-    public static boolean needsLauncherUpdate(LauncherConfig config, ReleaseInfo latest) {
-        return !latest.launcher().equals(config.launcher());
-    }
-
-    public static boolean needsAppUpdate(LauncherConfig config, ReleaseInfo latest) {
-        return !latest.app().equals(config.app());
+    public static boolean needsUpdate(Artifact artifact, LauncherConfig config, ReleaseInfo latest) {
+        Version current = config.versions().get(artifact);
+        return latest.version().newerThan(current);
     }
 
     public static void updateApp(String serverUrl, String clientId, String version, Path appJar) throws Exception {
@@ -78,7 +77,7 @@ public class Updater {
      * Helper per Linux / macOS: script bash che aspetta la JVM, sostituisce il jar e riavvia.
      */
     private static void launchHelperUnix(Path selfJar, Path updateJar) throws Exception {
-        String src  = escapeSingleQuotes(updateJar.toAbsolutePath().toString());
+        String src = escapeSingleQuotes(updateJar.toAbsolutePath().toString());
         String dest = escapeSingleQuotes(selfJar.toAbsolutePath().toString());
 
         String script = "#!/usr/bin/env bash\n"
@@ -103,7 +102,7 @@ public class Updater {
      * Usa {@code ping} come sostituto di {@code sleep} (disponibile su tutti i Windows).
      */
     private static void launchHelperWindows(Path selfJar, Path updateJar) throws Exception {
-        String src  = updateJar.toAbsolutePath().toString();
+        String src = updateJar.toAbsolutePath().toString();
         String dest = selfJar.toAbsolutePath().toString();
 
         // Su Windows non esiste mv atomico cross-drive; usiamo move /Y

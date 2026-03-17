@@ -73,7 +73,7 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
             protected void initChannel(SocketChannel ch) {
                 ChannelPipeline p = ch.pipeline();
                 p.addLast(
-                        new NettyDecoder(Messenger.this.packetRegistry),
+                        new NettyDecoder(Messenger.this.packetRegistry, Messenger.this),
                         new NettyWatcher(Messenger.this),
                         new NettyEncoder(Messenger.this.packetRegistry)
                 );

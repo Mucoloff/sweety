@@ -6,10 +6,12 @@ import dev.sweety.versioning.server.client.ClientRegistry;
 import dev.sweety.versioning.server.download.DownloadHandler;
 import dev.sweety.versioning.server.download.DownloadManager;
 import dev.sweety.versioning.server.release.ReleaseManager;
+import dev.sweety.versioning.server.rollback.RollbackConsumer;
 import dev.sweety.versioning.server.rollback.RollbackHandler;
 import dev.sweety.versioning.server.webhook.WebhookHandler;
 import dev.sweety.versioning.server.webhook.WebhookIdempotencyStore;
 import dev.sweety.versioning.server.webhook.WebhookRateLimiter;
+import dev.sweety.versioning.version.Artifact;
 import dev.sweety.versioning.version.ReleaseInfo;
 
 import java.io.IOException;
@@ -54,11 +56,11 @@ public class HttpUpdateServer {
         return server.getAddress().getPort();
     }
 
-    public void setRelease(Consumer<ReleaseInfo> broadcast) {
+    public void setRelease(BiConsumer<Artifact, ReleaseInfo> broadcast) {
         this.webhookHandler.setBroadcast(broadcast);
     }
 
-    public void setRollback(BiConsumer<ReleaseInfo, ReleaseInfo> broadcast) {
+    public void setRollback(RollbackConsumer broadcast) {
         this.rollbackHandler.setBroadcast(broadcast);
     }
 }

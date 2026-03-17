@@ -3,11 +3,15 @@ package dev.sweety.versioning.server.rollback;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import dev.sweety.versioning.server.release.ReleaseManager;
+import dev.sweety.versioning.server.util.HttpUtils;
+import dev.sweety.versioning.server.util.Multipart;
 import dev.sweety.versioning.version.Artifact;
 import dev.sweety.versioning.version.ReleaseInfo;
+import dev.sweety.versioning.version.channel.Channel;
 import lombok.Setter;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.function.BiConsumer;
 
 import static dev.sweety.versioning.server.util.HttpUtils.constantTimeEquals;
@@ -19,7 +23,7 @@ public class RollbackHandler implements HttpHandler {
     private final ReleaseManager releaseManager;
 
     @Setter
-    private BiConsumer<ReleaseInfo, ReleaseInfo> broadcast;
+    private RollbackConsumer broadcast;
 
     public RollbackHandler(String rollbackToken, ReleaseManager releaseManager) {
         this.rollbackToken = rollbackToken;
@@ -39,12 +43,32 @@ public class RollbackHandler implements HttpHandler {
                 return;
             }
 
-            Artifact artifact = null; //todo read from query or body
+            byte[] body = exchange.getRequestBody().readNBytes(50 * 1024 * 1024);
+
+            Multipart form = Multipart.parse(exchange, body);
+
+            String _artifact = form.getField("artifact");
+            String _channel = form.getField("channel");
+
+            if (_artifact == null || _artifact.isBlank() || _channel == null || _channel.isBlank()) {
+                HttpUtils.sendText(exchange, 400, "Missing artifact or channel");
+                return;
+            }
+
+            Artifact artifact;
+            Channel channel;
+            try {
+                artifact = Artifact.valueOf(_artifact.toUpperCase());
+                channel = Channel.valueOf(_channel.toUpperCase());
+            } catch (NullPointerException | IllegalArgumentException e) {
+                HttpUtils.sendText(exchange, 404, "Invalid artifact or channel: " + e.getMessage());
+                return;
+            }
 
             System.out.println("Received rollback Request:");
 
-            final ReleaseInfo prev = releaseManager.latest(artifact);
-            final ReleaseInfo rolled = releaseManager.rollback(artifact);
+            final ReleaseInfo prev = releaseManager.latest(artifact, channel);
+            final ReleaseInfo rolled = releaseManager.rollback(artifact, channel);
             final boolean ok = rolled != null;
 
             if (!ok) {
@@ -53,7 +77,7 @@ public class RollbackHandler implements HttpHandler {
                 return;
             }
 
-            if (this.broadcast != null) this.broadcast.accept(rolled, prev);
+            if (this.broadcast != null) this.broadcast.rollback(artifact, channel, rolled, prev);
 
             sendText(exchange, 200, "Rollback applied!");
             System.out.println("Rollback applied!");

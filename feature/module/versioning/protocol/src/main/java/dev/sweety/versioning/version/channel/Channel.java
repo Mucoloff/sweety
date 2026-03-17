@@ -15,4 +15,8 @@ public enum Channel {
     public boolean accepts(Channel releaseChannel) {
         return this.level >= releaseChannel.level;
     }
+
+    public boolean canBeUpdatedTo(Channel releaseChannel) {
+        return this.level <= releaseChannel.level;
+    }
 }

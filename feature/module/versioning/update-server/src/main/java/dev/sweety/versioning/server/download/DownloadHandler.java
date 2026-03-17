@@ -56,7 +56,7 @@ public class DownloadHandler implements HttpHandler {
             }
 
             if (_clientId.equalsIgnoreCase("invalid") || _token.equalsIgnoreCase("invalid")) {
-                HttpUtils.sendText(exchange, 400, "Invalid clientId or token");
+                HttpUtils.sendText(exchange, 404, "Invalid clientId or token");
                 return;
             }
 
@@ -80,7 +80,7 @@ public class DownloadHandler implements HttpHandler {
             final UUID clientId = token.clientId();
 
             if (!id.equals(clientId)) {
-                HttpUtils.sendText(exchange, 400, "clientId does not match token");
+                HttpUtils.sendText(exchange, 404, "clientId does not match token");
                 return;
             }
 

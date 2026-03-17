@@ -13,7 +13,9 @@ public record ReleaseInfo(Version version, Channel channel, Instant updatedAt) i
         this(version, channel, Instant.now());
     }
 
-    public static final ReleaseInfo DEFAULT = new ReleaseInfo(Version.ZERO, Channel.STABLE, Instant.MIN);
+    public static ReleaseInfo DEFAULT(Channel channel) {
+        return new ReleaseInfo(Version.ZERO, channel, Instant.MIN);
+    }
 
     public static final CallableDecoder<ReleaseInfo> DECODER = buffer -> new ReleaseInfo(
             buffer.readObject(Version.DECODER),

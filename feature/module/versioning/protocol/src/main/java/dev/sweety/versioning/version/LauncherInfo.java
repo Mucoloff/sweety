@@ -8,15 +8,18 @@ import dev.sweety.versioning.version.channel.Channel;
 import java.util.EnumMap;
 import java.util.UUID;
 
-public record LauncherInfo(UUID clientId, EnumMap<Artifact, Version> versions, Channel channel) implements Encoder {
+public record LauncherInfo(UUID buildId,UUID clientId, EnumMap<Artifact, Version> versions, Channel channel) implements Encoder {
 
     public static final CallableDecoder<LauncherInfo> DECODER =
-            buffer -> new LauncherInfo(buffer.readUuid(),
+            buffer -> new LauncherInfo(
+                    buffer.readUuid(),
+                    buffer.readUuid(),
                     buffer.readEnumMap(Artifact.class, Version.DECODER),
-                    buffer.readEnum(Channel.class));
+                    buffer.readEnum(Channel.class)
+            );
 
     @Override
     public void write(final PacketBuffer buffer) {
-        buffer.writeUuid(this.clientId).writeEnumMap(versions, PacketBuffer::writeObject).writeEnum(this.channel);
+        buffer.writeUuid(this.buildId).writeUuid(this.clientId).writeEnumMap(versions, PacketBuffer::writeObject).writeEnum(this.channel);
     }
 }

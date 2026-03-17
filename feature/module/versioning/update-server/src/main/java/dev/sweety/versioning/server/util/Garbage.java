@@ -3,69 +3,48 @@ package dev.sweety.versioning.server.util;
 import dev.sweety.time.Expirable;
 import dev.sweety.versioning.exception.InvalidTokenException;
 import dev.sweety.versioning.exception.TokenExpiredException;
-import manifold.util.concurrent.ConcurrentHashSet;
-import org.jetbrains.annotations.NotNull;
 
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+public class Garbage<Key, Value> implements IGarbage<Key, Value> {
 
-public class Garbage<Key, Value extends Expirable> {
+    private final ExpirableGarbage<Key, Container<Value>> internal;
+    private final long delay;
 
-    private final Map<Key, Value> data = new ConcurrentHashMap<>();
-    private final Set<Key> garbage = new ConcurrentHashSet<>();
-
-    private final int maxGarbage;
-
-    public Garbage(int maxGarbage) {
-        this.maxGarbage = maxGarbage;
+    public Garbage(int maxGarbage, long delay) {
+        this.internal = new ExpirableGarbage<>(maxGarbage);
+        this.delay = delay;
     }
 
-    /**
-     * Genera un token e lo aggiunge al map + garbage
-     */
-    public synchronized Value add(final Key key, final Value value) {
-        data.put(key, value);
-        garbage.add(key);
-        if (garbage.size() > maxGarbage) clearGarbage();
-        return value;
+    public Garbage(int maxGarbage, float loadFactor, long delay) {
+        this.internal = new ExpirableGarbage<>(maxGarbage, loadFactor);
+        this.delay = delay;
     }
 
-    /**
-     * Cerca e rimuove un token valido
-     */
-    public synchronized @NotNull Value consume(Key key) throws TokenExpiredException, InvalidTokenException {
-        final Value value = data.remove(key);
-        garbage.remove(key);
-
-        if (value == null) throw new InvalidTokenException("value not found!");
-        if (value.expired()) throw new TokenExpiredException("value expired! " + value.expiryTime());
-        return value;
+    @Override
+    public Value add(Key key, Value value) {
+        return internal.add(key, new Container<>(value, System.currentTimeMillis() + this.delay)).value();
     }
 
-    /**
-     * Rimuove i token scaduti o già rimossi dal map
-     */
-    public synchronized void clearGarbage() {
-
-        garbage.removeIf(key -> {
-            final Value value = data.get(key);
-
-            // se il value non esiste più → rimuovi
-            if (value == null) return true;
-
-            // se il value è scaduto → rimuovi da map e da garbage
-            if (value.expired()) {
-                data.remove(key);
-                return true;
-            }
-
-            return false;
-        });
+    @Override
+    public Value consume(Key key) throws TokenExpiredException, InvalidTokenException {
+        return internal.consume(key).value();
     }
 
-    public void remove(Key key){
-        data.remove(key);
-        garbage.remove(key);
+    @Override
+    public void lazyClear() {
+        internal.lazyClear();
+    }
+
+    @Override
+    public void clearGarbage() {
+        internal.clearGarbage();
+    }
+
+    @Override
+    public void remove(Key key) {
+        internal.remove(key);
+    }
+
+    private record Container<Value>(Value value, long expireAt) implements Expirable {
+
     }
 }

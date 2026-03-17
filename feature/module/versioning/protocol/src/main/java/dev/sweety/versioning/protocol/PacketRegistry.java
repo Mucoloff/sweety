@@ -30,7 +30,7 @@ public enum PacketRegistry implements PacketEnum {
         this.packetClass = packetClass;
     }
 
-    public static final IPacketRegistry REGISTRY = new OptimizedPacketRegistry(values().length - 2);
+    public static final IPacketRegistry REGISTRY = new OptimizedPacketRegistry(values().length - 1);
 
     static {
         NONE.register(REGISTRY, values());

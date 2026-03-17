@@ -6,8 +6,11 @@ import dev.sweety.launcher.update.UpdaterClient;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.versioning.protocol.PacketRegistry;
 import dev.sweety.versioning.protocol.handshake.State;
+import dev.sweety.versioning.version.Artifact;
 
 import java.nio.file.Path;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -30,15 +33,18 @@ public class MainLauncher {
             switch (state) {
                 case UNAVAILABLE ->
                         System.out.println("Update server is currently unavailable. Please try again later.");
-                case UP_TO_DATE -> System.out.println("Your launcher and app are up to date!");
+                case UP_TO_DATE -> System.out.println("You are up to date!");
                 default -> {
-                    System.out.println("updated " + state.name().toLowerCase());
+                    System.out.println("updated");
                     save.run();
                 }
             }
         };
 
-        final UpdateManager updateManager = new UpdateManager(config, appJar, selfJar, handshake);
+        final UpdateManager updateManager = new UpdateManager(config, new EnumMap<>(Map.of(
+                Artifact.APP, appJar,
+                Artifact.LAUNCHER, selfJar
+        )), handshake);
         final UpdaterClient updater = new UpdaterClient(config, PacketRegistry.REGISTRY, updateManager, save);
 
 

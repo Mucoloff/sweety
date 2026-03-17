@@ -15,7 +15,7 @@ import java.util.zip.CRC32;
 public record Token(UUID clientId, Artifact type, Version version, Channel channel, long expireAt,
                     UUID token) implements Expirable {
 
-    private static final byte[] SECRET = Settings.tokenGeneratorSalt.getBytes(StandardCharsets.UTF_8); //todo SECRET!
+    private static final byte[] SECRET = Settings.tokenGeneratorSalt.getBytes(StandardCharsets.UTF_8);
 
     public Token(UUID clientId, Artifact type, Version version, Channel channel, long delay) {
         this(clientId, type, version, channel, System.currentTimeMillis() + delay, token(clientId, type, version, delay));

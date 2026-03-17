@@ -2,6 +2,7 @@ package dev.sweety.launcher.update;
 
 import dev.sweety.launcher.config.LauncherConfig;
 import dev.sweety.versioning.protocol.handshake.State;
+import dev.sweety.versioning.version.Artifact;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -12,41 +13,32 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.EnumMap;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 public class UpdateManager {
 
-    private final Path appJar;
-    private final Path selfJar;
+    private final EnumMap<Artifact, Path> artifactPathMap;
+
     private final Consumer<State> handshakeState;
 
     private final AtomicReference<LauncherConfig> config;
 
-    public UpdateManager(AtomicReference<LauncherConfig> config, Path appJar, Path selfJar, Consumer<State> handshakeState) {
+    public UpdateManager(AtomicReference<LauncherConfig> config, EnumMap<Artifact, Path> artifactPathMap, Consumer<State> handshakeState) {
         this.config = config;
-        this.appJar = appJar;
-        this.selfJar = selfJar;
+        this.artifactPathMap = artifactPathMap;
         this.handshakeState = handshakeState;
     }
 
-    public void downloadAppUpdate(String appToken) {
+    public void downloadUpdate(Artifact artifact, String token) {
         try {
-            downloadArtifact(appToken, appJar);
-            complete(State.APP);
+            downloadArtifact(token, artifactPathMap.get(artifact));
+            complete(State.UPDATED);
         } catch (Exception e) {
             complete(State.UNAVAILABLE);
             e.printStackTrace(System.err);
-        }
-    }
-
-    public void downloadLauncherUpdate(String launcherToken) {
-        try {
-            downloadArtifact(launcherToken, selfJar);
-            complete(State.LAUNCHER);
-        } catch (Exception e) {
-            complete(State.UNAVAILABLE);
         }
     }
 
@@ -63,7 +55,7 @@ public class UpdateManager {
     }
 
     private void downloadArtifact(String token, Path destination) throws Exception {
-        final String serverUrl = config.get().serverUrl();
+        final String serverUrl = config.get().url();
         final UUID clientId = config.get().clientId();
         final String qToken = URLEncoder.encode(token, StandardCharsets.UTF_8);
         final String qClient = URLEncoder.encode(clientId.toString(), StandardCharsets.UTF_8);

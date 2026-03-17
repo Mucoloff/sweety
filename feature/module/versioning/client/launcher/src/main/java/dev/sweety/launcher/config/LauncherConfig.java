@@ -1,35 +1,54 @@
 package dev.sweety.launcher.config;
 
+import com.google.gson.JsonObject;
+import dev.sweety.build.BuildInfo;
 import dev.sweety.versioning.util.Utils;
+import dev.sweety.versioning.version.Artifact;
 import dev.sweety.versioning.version.LauncherInfo;
 import dev.sweety.versioning.version.Version;
+import dev.sweety.versioning.version.channel.Channel;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.UUID;
 
-public record LauncherConfig(String serverUrl,
-                             String nettyHost,
-                             int nettyPort,
-                             UUID clientId, Version launcher, Version app,
+public record LauncherConfig(String url,
+                             String host,
+                             int port,
+                             UUID buildId,
+                             UUID clientId,
+                             EnumMap<Artifact, Version> versions,
+                             Channel channel,
                              boolean autoUpdateEnabled) {
 
     public static LauncherConfig defaults() {
+        EnumMap<Artifact, Version> versions = new EnumMap<>(Artifact.class);
+
+        for (Artifact artifact : Artifact.values()) {
+            versions.put(artifact, Version.ZERO);
+        }
+
+        versions.put(Artifact.LAUNCHER, Version.parse(BuildInfo.VERSION));
+
         return new LauncherConfig(
                 "http://localhost:8080",
                 "localhost",
                 9900,
-                UUID.nameUUIDFromBytes("TEST".getBytes(StandardCharsets.UTF_8)),
-                Version.ZERO,
-                Version.ZERO,
+                UUID.nameUUIDFromBytes(BuildInfo.BUILD_ID.getBytes(StandardCharsets.UTF_8)),
+                UUID.nameUUIDFromBytes(BuildInfo.CLIENT_ID.getBytes(StandardCharsets.UTF_8)),
+                versions,
+                Channel.valueOf(BuildInfo.CHANNEL.toUpperCase()),
                 true);
     }
 
     public void save(Path file) {
         try {
-            save(file,this);
+            save(file, this);
         } catch (IOException e) {
             System.err.println("Failed to save config: " + e.getMessage());
         }
@@ -41,7 +60,41 @@ public record LauncherConfig(String serverUrl,
             save(file, def);
             return def;
         }
-        LauncherConfig loaded = Utils.GSON.fromJson(Files.readString(file), LauncherConfig.class);
+
+        JsonObject root = Utils.GSON.fromJson(
+                Files.readString(file),
+                JsonObject.class
+        );
+
+        String url = root.get("url").getAsString();
+        String host = root.get("host").getAsString();
+        int port = root.get("port").getAsInt();
+        //String uuid = root.get("clientId").getAsString();
+
+        UUID buildId = Utils.parseUuid(BuildInfo.BUILD_ID);
+        UUID clientId = Utils.parseUuid(BuildInfo.CLIENT_ID);
+
+        EnumMap<Artifact, Version> versions = new EnumMap<>(Artifact.class);
+        JsonObject versionsJson = root.getAsJsonObject("versions");
+        for (Artifact artifact : Artifact.values()) {
+            final Version ver;
+            final String artifactName = artifact.name().toLowerCase();
+            if (versionsJson.has(artifactName)) {
+                String versionStr = versionsJson.get(artifactName).getAsString();
+                ver = Version.parse(versionStr);
+            } else ver = Version.ZERO;
+
+            versions.put(artifact, ver);
+        }
+
+        versions.put(Artifact.LAUNCHER, Version.parse(BuildInfo.VERSION));
+
+        //String chan = root.get("channel").getAsString();
+        Channel channel = Channel.valueOf(BuildInfo.CHANNEL.toUpperCase());
+        boolean autoUpdate = root.get("autoUpdate").getAsBoolean();
+
+        LauncherConfig loaded = new LauncherConfig(url, host, port, buildId, clientId, versions, channel, autoUpdate);
+
         return normalize(loaded);
     }
 
@@ -49,38 +102,65 @@ public record LauncherConfig(String serverUrl,
         if (file.getParent() != null) {
             Files.createDirectories(file.getParent());
         }
-        Files.writeString(file, Utils.GSON.toJson(config));
+
+        JsonObject root = new JsonObject();
+
+        root.addProperty("url", config.url);
+        root.addProperty("host", config.host);
+        root.addProperty("port", config.port);
+        //root.addProperty("clientId", config.clientId.toString());
+
+        JsonObject versions = new JsonObject();
+        for (Map.Entry<Artifact, Version> entry : config.versions.entrySet()) {
+            versions.addProperty(entry.getKey().name().toLowerCase(), entry.getValue().toString());
+        }
+
+        versions.remove("launcher");
+
+        root.add("versions", versions);
+
+        //root.addProperty("channel", config.channel.name().toLowerCase());
+        root.addProperty("autoUpdate", config.autoUpdateEnabled);
+
+
+        Path tmpFile = file.resolveSibling(file.getFileName() + ".tmp");
+        Files.writeString(tmpFile, Utils.GSON.toJson(root));
+
+        Files.move(
+                tmpFile,
+                file,
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.ATOMIC_MOVE
+        );
     }
 
-    public LauncherConfig withVersions(Version launcherVersion, Version appVersion) {
-        return new LauncherConfig(serverUrl, nettyHost, nettyPort, clientId, launcherVersion, appVersion, autoUpdateEnabled);
-    }
 
-    public LauncherConfig withLauncher(Version launcher) {
-        return new LauncherConfig(serverUrl, nettyHost, nettyPort, clientId, launcher, app, autoUpdateEnabled);
-    }
-
-    public LauncherConfig withApp(Version app) {
-        return new LauncherConfig(serverUrl, nettyHost, nettyPort, clientId, launcher, app, autoUpdateEnabled);
+    public LauncherConfig with(Artifact artifact, Version version) {
+        versions.put(artifact, version);
+        return new LauncherConfig(url, host, port, buildId, clientId, versions, channel, autoUpdateEnabled);
     }
 
     public LauncherInfo info() {
-        return new LauncherInfo(clientId, launcher, app);
+        return new LauncherInfo(buildId, clientId, versions, channel);
     }
 
     private static LauncherConfig normalize(LauncherConfig loaded) {
         final LauncherConfig def = defaults();
         if (loaded == null) return def;
 
-        String serverUrl = loaded.serverUrl() == null || loaded.serverUrl().isBlank() ? def.serverUrl() : loaded.serverUrl();
-        String nettyHost = loaded.nettyHost() == null || loaded.nettyHost().isBlank() ? def.nettyHost() : loaded.nettyHost();
-        int nettyPort = loaded.nettyPort <= 0 || loaded.nettyPort > 65535 ? def.nettyPort : loaded.nettyPort;
+        String serverUrl = loaded.url() == null || loaded.url().isBlank() ? def.url() : loaded.url();
+        String nettyHost = loaded.host() == null || loaded.host().isBlank() ? def.host() : loaded.host();
+        int nettyPort = loaded.port <= 0 || loaded.port > 65535 ? def.port : loaded.port;
+        UUID buildId = loaded.buildId() == null ? def.buildId() : loaded.buildId();
         UUID clientId = loaded.clientId() == null ? def.clientId() : loaded.clientId();
-        Version launcherVersion = loaded.launcher() == null ? def.launcher() : loaded.launcher();
-        Version appVersion = loaded.app() == null ? def.app() : loaded.app();
 
-        return new LauncherConfig(serverUrl, nettyHost, nettyPort, clientId, launcherVersion, appVersion, loaded.autoUpdateEnabled());
+        EnumMap<Artifact, Version> versions = new EnumMap<>(Artifact.class);
+
+        for (Artifact artifact : Artifact.values()) {
+            versions.put(artifact, loaded.versions().getOrDefault(artifact, def.versions().getOrDefault(artifact, Version.ZERO)));
+        }
+
+        return new LauncherConfig(serverUrl, nettyHost, nettyPort, buildId, clientId, versions, loaded.channel(), loaded.autoUpdateEnabled());
     }
-
 
 }

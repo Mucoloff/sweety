@@ -1,6 +1,6 @@
 package dev.sweety.versioning.server.download;
 
-import dev.sweety.versioning.server.util.Garbage;
+import dev.sweety.versioning.server.util.ExpirableGarbage;
 import dev.sweety.versioning.version.Artifact;
 import dev.sweety.versioning.exception.*;
 import dev.sweety.versioning.version.Version;
@@ -11,7 +11,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
 
-public class DownloadManager extends Garbage<UUID, Token> {
+public class DownloadManager extends ExpirableGarbage<UUID, Token> {
     /**
      * expire in millis
      */

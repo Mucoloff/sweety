@@ -498,7 +498,10 @@ public class PacketBuffer {
     }
 
     public <K extends Enum<K>, V> EnumMap<K, V> readEnumMap(Class<K> keyClass, CallableDecoder<V> vDecoder) {
-        return (EnumMap<K, V>) readMap(buffer -> buffer.readEnum(keyClass), vDecoder, i-> new EnumMap<>(keyClass));
+        final Map<K, V> tmp = readMap(buffer -> buffer.readEnum(keyClass), vDecoder, HashMap::new);
+        final EnumMap<K, V> map = new EnumMap<>(keyClass);
+        if (!tmp.isEmpty()) map.putAll(tmp);
+        return map;
     }
 
     public boolean release() {

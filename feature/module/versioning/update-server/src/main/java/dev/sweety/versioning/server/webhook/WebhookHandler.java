@@ -9,6 +9,7 @@ import dev.sweety.versioning.version.ReleaseInfo;
 import lombok.Setter;
 
 import java.io.IOException;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import static dev.sweety.versioning.server.util.HttpUtils.sendText;
@@ -24,7 +25,7 @@ public class WebhookHandler implements HttpHandler {
     private final WebhookRateLimiter rateLimiter;
 
     @Setter
-    private Consumer<ReleaseInfo> broadcast; //todo artifact
+    private BiConsumer<Artifact, ReleaseInfo> broadcast;
 
     public WebhookHandler(
             String secret,
@@ -79,8 +80,8 @@ public class WebhookHandler implements HttpHandler {
             Artifact artifact;
             try {
                 artifact = Artifact.valueOf(art);
-            } catch (IllegalArgumentException e) {
-                sendText(exchange, 400, "Invalid artifact: " + art);
+            } catch (NullPointerException | IllegalArgumentException e) {
+                sendText(exchange, 404, "Invalid artifact: " + art);
                 return;
             }
 
@@ -92,12 +93,12 @@ public class WebhookHandler implements HttpHandler {
             boolean updated = release != null;
 
             if (updated) {
-                if (broadcast != null) this.broadcast.accept(release);
+                if (broadcast != null) this.broadcast.accept(artifact, release);
             }
 
             sendText(exchange, 200, updated ? "updated" : "no changes");
         } catch (Exception e) {
-            sendText(exchange, 500, "Webhook error");
+            sendText(exchange, 500, "Webhook error: "  + e.getMessage());
         } finally {
 
             exchange.close();

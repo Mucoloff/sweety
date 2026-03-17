@@ -5,13 +5,13 @@ import dev.sweety.netty.messaging.impl.SimpleClient;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import dev.sweety.versioning.protocol.update.ReleasePacket;
+import dev.sweety.versioning.version.Artifact;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.LauncherInfo;
 import dev.sweety.versioning.protocol.handshake.*;
-import dev.sweety.versioning.version.Version;
 import io.netty.channel.ChannelHandlerContext;
 
-import java.util.Optional;
+import java.util.EnumMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
@@ -29,7 +29,7 @@ public class UpdaterClient extends SimpleClient {
             sendPacket(ctx, new HandshakeTransaction(new HandshakeRequest(info)));
 
     public UpdaterClient(AtomicReference<LauncherConfig> config, IPacketRegistry packetRegistry, int localPort, UpdateManager updateManager, Runnable stop) {
-        super(config.get().nettyHost(), config.get().nettyPort(), packetRegistry, localPort);
+        super(config.get().host(), config.get().port(), packetRegistry, localPort);
         this.config = config;
         this.updateManager = updateManager;
         this.stop = stop;
@@ -51,45 +51,34 @@ public class UpdaterClient extends SimpleClient {
             final HandshakeResponse response = transaction.getResponse();
 
             final State state = response.getState();
-            final Optional<String> appToken = response.getAppToken();
-            final Optional<Version> appVersion = response.getAppVersion();
-            final Optional<String> launcherToken = response.getLauncherToken();
-            final Optional<Version> launcherVersion = response.getLauncherVersion();
+            EnumMap<Artifact, ResponseData> versions = response.getVersions();
 
             switch (state) {
-                case APP -> {
-                    appToken.ifPresent(updateManager::downloadAppUpdate);
-                    appVersion.ifPresent(version -> config.getAndUpdate(conf -> conf.withApp(version)));
-                }
-                case LAUNCHER -> {
-                    launcherToken.ifPresent(updateManager::downloadLauncherUpdate);
-                    launcherVersion.ifPresent(version -> config.getAndUpdate(conf -> conf.withLauncher(version)));
-                }
-                case BOTH -> {
-                    appToken.ifPresent(updateManager::downloadAppUpdate);
-                    launcherToken.ifPresent(updateManager::downloadLauncherUpdate);
+                case UPDATED -> {
 
-                    this.config.getAndUpdate(config -> {
-                        if (appVersion.isPresent() && launcherVersion.isPresent())
-                            return config.withVersions(launcherVersion.get(), appVersion.get());
-                        return appVersion.map(config::withApp).orElseGet(() -> launcherVersion.map(config::withLauncher).orElse(config));
-                    });
+                    for (Artifact artifact : Artifact.values()) {
+                        ResponseData data = versions.get(artifact);
+                        if (data == null) continue;
+                        updateManager.downloadUpdate(artifact, data.token());
+                        config.getAndUpdate(conf -> conf.with(artifact, data.version()));
+                    }
+
                 }
                 case UP_TO_DATE -> updateManager.upToDate();
                 case UNAVAILABLE -> updateManager.unavailable();
             }
         } else if (packet instanceof ReleasePacket releasePacket) {
-            final ReleaseInfo state = releasePacket.state();
+            final ReleaseInfo info = releasePacket.info();
             final LauncherConfig config = this.config.get();
+
+            Artifact artifact = releasePacket.artifact();
 
             if (releasePacket.forced()) {
                 System.out.println("forced rollback detected!");
-                System.out.println("Current versions: " + config.info());
-                System.out.println("Target rollback versions: " + state);
-            } else {
-                boolean updateApp = state.app().newerThan(config.app());
-                boolean updateLauncher = state.launcher().newerThan(config.launcher());
-                if (!updateApp && !updateLauncher) return;
+                System.out.println("Current version: " + config.versions().get(artifact) + " " + config.channel());
+                System.out.println("Target rollback version: " + info);
+
+
             }
 
             this.requestDownload.accept(ctx, config.info());
