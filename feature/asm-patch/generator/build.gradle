@@ -1,0 +1,3 @@
+dependencies {
+    implementation(project(":feature:asm-patch:core"))
+}

@@ -11,6 +11,10 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/core" />
             <option value="$PROJECT_DIR$/feature" />
+            <option value="$PROJECT_DIR$/feature/asm-patch" />
+            <option value="$PROJECT_DIR$/feature/asm-patch/applier" />
+            <option value="$PROJECT_DIR$/feature/asm-patch/core" />
+            <option value="$PROJECT_DIR$/feature/asm-patch/generator" />
             <option value="$PROJECT_DIR$/feature/event" />
             <option value="$PROJECT_DIR$/feature/event/api" />
             <option value="$PROJECT_DIR$/feature/event/impl" />
