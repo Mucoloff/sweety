@@ -1,5 +1,12 @@
 package dev.sweety.patch.model;
 
+import lombok.Builder;
+import lombok.Getter;
+import lombok.AllArgsConstructor;
+
+@Getter
+@Builder
+@AllArgsConstructor
 public class PatchOperation {
 
     public enum Type {

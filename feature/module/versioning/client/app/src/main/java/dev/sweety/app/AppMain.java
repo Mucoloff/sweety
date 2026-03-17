@@ -10,5 +10,6 @@ public class AppMain {
         System.out.println("ClientId=" + BuildInfo.CLIENT_ID);
         System.out.println("Version=" + BuildInfo.VERSION);
         System.out.println("Timestamp=" + BuildInfo.TIMESTAMP);
+        new ExampleDiff().exampleMethod();
     }
 }

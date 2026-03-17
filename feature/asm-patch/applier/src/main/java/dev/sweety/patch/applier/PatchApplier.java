@@ -1,6 +1,17 @@
 package dev.sweety.patch.applier;
 
-import java.io.InputStream;
+import dev.sweety.patch.archive.Archive;
+import dev.sweety.patch.archive.JarArchive;
+import dev.sweety.patch.format.PatchReader;
+import dev.sweety.patch.hash.HashFunction;
+import dev.sweety.patch.model.Patch;
+import dev.sweety.patch.model.PatchOperation;
+
+import java.io.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
 
 public class PatchApplier {
 
@@ -37,6 +48,15 @@ public class PatchApplier {
     }
 
     private void writeJar(Map<String, byte[]> entries, File file) {
-        // ZipOutputStream
+        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(file))) {
+            for (Map.Entry<String, byte[]> entry : entries.entrySet()) {
+                JarEntry jarEntry = new JarEntry(entry.getKey());
+                jos.putNextEntry(jarEntry);
+                jos.write(entry.getValue());
+                jos.closeEntry();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to write output JAR: " + file.getAbsolutePath(), e);
+        }
     }
 }
