@@ -32,9 +32,18 @@ public class PatchApplier {
 
         for (PatchOperation op : patch.getOperations()) {
             switch (op.getType()) {
-
                 case ADD:
                 case MODIFY:
+                    if (op.getData() == null)
+                        throw new RuntimeException("Invalid patch: Data is missing for ADD/MODIFY operation on " + op.getPath());
+                    
+                    // Verify patch integrity
+                    String calculatedHash = bytesToHex(hashFunction.hash(op.getData()));
+                    if (op.getHash() != null && !calculatedHash.equalsIgnoreCase(op.getHash())) {
+                        throw new RuntimeException("Patch corruption detected for " + op.getPath() 
+                            + ". Expected hash: " + op.getHash() + ", Actual: " + calculatedHash);
+                    }
+
                     entries.put(op.getPath(), op.getData());
                     break;
 
@@ -45,6 +54,18 @@ public class PatchApplier {
         }
 
         writeJar(entries, outputJar);
+    }
+
+    private static String bytesToHex(byte[] bytes) {
+        StringBuilder hexString = new StringBuilder(2 * bytes.length);
+        for (byte b : bytes) {
+            String hex = Integer.toHexString(0xff & b);
+            if (hex.length() == 1) {
+                hexString.append('0');
+            }
+            hexString.append(hex);
+        }
+        return hexString.toString();
     }
 
     private void writeJar(Map<String, byte[]> entries, File file) {
