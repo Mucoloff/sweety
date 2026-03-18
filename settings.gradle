@@ -19,8 +19,6 @@ include 'feature:asm-patch:core'
 include 'feature:asm-patch:generator'
 include 'feature:asm-patch:applier'
 
-project(':feature:asm-patch:core').name = 'asm-patch-core'//todo remove
-
 include 'feature:module:versioning'
 include 'feature:module:versioning:protocol'
 
