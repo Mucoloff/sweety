@@ -19,9 +19,9 @@ import java.util.function.Consumer;
 public class MainLauncher {
 
     public static void main(String[] args) throws Exception {
-        final Path configFile = Path.of("run/launcher/config.json");
-        final Path appJar = Path.of("run/launcher/dest-app.jar"); //todo
-        final Path selfJar = Path.of("run/launcher/dest-launcher.jar");
+        final Path configFile = Path.of("launcher/config.json");
+        final Path appJar = Path.of("launcher/dest-app.jar"); //todo
+        final Path selfJar = Path.of("launcher/dest-launcher.jar");
 
         final AtomicReference<LauncherConfig> config = new AtomicReference<>(LauncherConfig.load(configFile));
 

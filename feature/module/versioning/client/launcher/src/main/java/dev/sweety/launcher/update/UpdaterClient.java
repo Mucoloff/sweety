@@ -55,14 +55,12 @@ public class UpdaterClient extends SimpleClient {
 
             switch (state) {
                 case UPDATED -> {
-
                     for (Artifact artifact : Artifact.values()) {
                         ResponseData data = versions.get(artifact);
                         if (data == null) continue;
                         updateManager.downloadUpdate(artifact, data.token(), data.version(), data.type());
                         config.getAndUpdate(conf -> conf.with(artifact, data.version()));
                     }
-
                 }
                 case UP_TO_DATE -> updateManager.upToDate();
                 case UNAVAILABLE -> updateManager.unavailable();

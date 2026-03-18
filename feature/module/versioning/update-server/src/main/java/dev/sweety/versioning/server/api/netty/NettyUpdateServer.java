@@ -24,6 +24,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
@@ -68,6 +69,7 @@ public class NettyUpdateServer extends SimpleServer {
             final LauncherInfo info = request.getInfo();
 
             final EnumMap<Artifact, Version> versions = info.versions();
+            
             //todo client trust based !!!
             final UUID buildId = info.buildId();
             final UUID clientId = info.clientId();
@@ -80,7 +82,19 @@ public class NettyUpdateServer extends SimpleServer {
             State state = State.UP_TO_DATE;
 
             for (Artifact artifact : Artifact.values()) {
-                final ReleaseInfo latest = releaseManager.latest(artifact, channel);
+
+                ReleaseInfo latest = null;
+
+                for (Channel ch : Channel.values()) {
+                    if (channel.accepts(ch)) {
+                        ReleaseInfo candidate = releaseManager.latest(artifact, ch);
+                        if (latest == null || candidate.updatedAt().isAfter(latest.updatedAt())) {
+                            latest = candidate;
+                        }
+                    }
+                }
+
+                if (latest == null) latest = releaseManager.latest(artifact, channel);
 
                 final Channel releaseChannel = latest.channel();
                 final Version current = versions.get(artifact);
@@ -133,6 +147,7 @@ public class NettyUpdateServer extends SimpleServer {
 
     private boolean isForced(ChannelHandlerContext ctx, Artifact artifact, Channel channel, Version current) {
         final @NotNull ForcedUpdate update;
+
         try {
             update = this.forcedUpdates.get(artifact).consume(ctx);
         } catch (TokenExpiredException | InvalidTokenException e) {
@@ -167,7 +182,7 @@ public class NettyUpdateServer extends SimpleServer {
         this.clientInfos.entrySet()
                 .stream()
                 .filter((entry) -> {
-                    boolean accepts = channel.accepts(entry.getValue().channel());
+                    boolean accepts = entry.getValue().channel().accepts(channel);
                     System.out.println("channel " + channel + " accepts " + entry.getValue().channel() + ": " + accepts);
                     return accepts;
                 })
@@ -184,7 +199,7 @@ public class NettyUpdateServer extends SimpleServer {
         this.clientInfos.entrySet()
                 .stream()
                 .filter((entry) -> {
-                    boolean accepts = channel.accepts(entry.getValue().channel());
+                    boolean accepts = entry.getValue().channel().accepts(channel);
                     System.out.println("channel " + channel + " accepts " + entry.getValue().channel() + ": " + accepts);
                     return accepts;
                 })

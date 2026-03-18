@@ -15,7 +15,7 @@ public class Storage {
     private final EnumMap<Artifact, Path> artifacts = new EnumMap<>(Artifact.class);
 
     public Storage() throws IOException {
-        this.root = Path.of(System.getenv().getOrDefault("UPDATE_SERVER_ROOT", "run/storage"));
+        this.root = Path.of(System.getenv().getOrDefault("UPDATE_SERVER_ROOT", "storage"));
 
         for (Artifact value : Artifact.values()) {
             final String artifact = value.prettyName();
