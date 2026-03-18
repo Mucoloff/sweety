@@ -7,7 +7,7 @@ dependencies {
     implementation(project(":network:netty"))
     implementation(project(":util:thread"))
     implementation(project(":feature:module:versioning:protocol"))
-    implementation(project(":feature:asm-patch:core"))
+    implementation(project(":feature:asm-patch:asm-patch-core"))
     implementation(project(":feature:asm-patch:applier"))
 }
 

@@ -15,7 +15,8 @@ include 'feature:module:extension:common'
 include 'feature:module:extension:manager'
 
 include 'feature:asm-patch'
-include 'feature:asm-patch:core'
+include 'feature:asm-patch:asm-patch-core'
+project(':feature:asm-patch:asm-patch-core').projectDir = file('feature/asm-patch/core')
 include 'feature:asm-patch:generator'
 include 'feature:asm-patch:applier'
 

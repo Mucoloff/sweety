@@ -15,7 +15,7 @@ dependencies {
     implementation(project(":network:netty"))
 
     implementation(project(":feature:module:versioning:protocol"))
-    implementation(project(":feature:asm-patch:core"))
+    implementation(project(":feature:asm-patch:asm-patch-core"))
     implementation(project(":feature:asm-patch:generator"))
 
     testImplementation("org.junit.platform:junit-platform-suite:1.9.3")
@@ -36,8 +36,3 @@ jar {
     }
 }
 
-task printClasspath {
-    doLast {
-        configurations.compileClasspath.each { println it }
-    }
-}

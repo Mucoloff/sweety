@@ -19,9 +19,9 @@ import java.util.function.Consumer;
 public class MainLauncher {
 
     public static void main(String[] args) throws Exception {
-        final Path configFile = Path.of("launcher/config.json");
-        final Path appJar = Path.of("launcher/dest-app.jar"); //todo
-        final Path selfJar = Path.of("launcher/dest-launcher.jar");
+        final Path configFile = Path.of("config.json");
+        final Path appJar = Path.of("app.jar");
+        final Path selfJar = Path.of("launcher.jar");
 
         final AtomicReference<LauncherConfig> config = new AtomicReference<>(LauncherConfig.load(configFile));
 
@@ -50,6 +50,18 @@ public class MainLauncher {
         )), applier, handshake);
         final UpdaterClient updater = new UpdaterClient(config, PacketRegistry.REGISTRY, updateManager, save);
 
+        if (appJar.toFile().exists()) {
+            new ProcessBuilder(Path.of(System.getProperty("java.home"), "bin", "java").toString(), "-jar", appJar.toAbsolutePath().toString())
+                    .inheritIO()
+                    .start()
+                    .onExit().thenRun(() -> {
+                        updater.stop();
+                        save.run();
+                        System.exit(0);
+                    });
+        }
+
+        
         Messenger.init(updater);
     }
 
