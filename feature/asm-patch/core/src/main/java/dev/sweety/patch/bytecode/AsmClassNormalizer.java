@@ -7,7 +7,7 @@ public class AsmClassNormalizer implements ClassNormalizer {
     public byte[] normalize(byte[] classBytes) {
         try {
             ClassReader reader = new ClassReader(classBytes);
-            ClassWriter writer = new ClassWriter(0);
+            ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
 
             // Normalize by removing debug info and frames to ensure deterministic comparison
             // SKIP_DEBUG: Removes source file, line numbers, local variables, etc.

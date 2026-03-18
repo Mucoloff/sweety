@@ -101,6 +101,16 @@ public class ZipUtils {
         throw new IOException("ZIP contains no file entries");
     }
 
+    @SneakyThrows
+    public byte[] zipBytes(byte[] data, String entryName) {
+        return zipByteArray(data, entryName);
+    }
+
+    @SneakyThrows
+    public byte[] unzipBytes(byte[] zipData) {
+        return unzipFirstFileFromZip(zipData);
+    }
+
     public File unzip(byte[] bytes, File outputDir) throws IOException{
         if (!outputDir.exists() && !outputDir.mkdirs())
             throw new IOException("Cannot create output dir: " + outputDir);
@@ -143,15 +153,5 @@ public class ZipUtils {
         }
 
         return outputDir;
-    }
-
-    @SneakyThrows
-    public byte[] zipBytes(byte[] data, String entryName) {
-        return zipByteArray(data, entryName);
-    }
-
-    @SneakyThrows
-    public byte[] unzipBytes(byte[] zipData) {
-        return unzipFirstFileFromZip(zipData);
     }
 }

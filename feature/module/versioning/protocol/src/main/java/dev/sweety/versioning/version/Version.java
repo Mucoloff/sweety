@@ -39,7 +39,7 @@ public record Version(int major, int minor, int patch) implements Encoder {
     }
 
     public Path resolve(Path parent) {
-        return parent.resolve(major+"").resolve(major+"").resolve(patch+"");
+        return parent.resolve(major+"").resolve(minor+"").resolve(patch+"");
     }
 
     @Override

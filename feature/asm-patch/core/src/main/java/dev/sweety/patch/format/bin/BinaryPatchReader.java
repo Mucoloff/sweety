@@ -1,5 +1,6 @@
 package dev.sweety.patch.format.bin;
 
+import dev.sweety.patch.format.Header;
 import dev.sweety.patch.format.PatchReader;
 import dev.sweety.patch.model.Patch;
 import dev.sweety.patch.model.PatchOperation;
@@ -14,15 +15,13 @@ import java.util.List;
 
 public class BinaryPatchReader implements PatchReader {
 
-    private static final byte[] HEADER = "PAT1".getBytes(StandardCharsets.UTF_8);
-
     @Override
     public Patch read(InputStream in) {
         try (DataInputStream dataIn = new DataInputStream(in)) {
             // Read Header
-            byte[] header = new byte[4];
+            byte[] header = new byte[readVarInt(dataIn)];
             dataIn.readFully(header);
-            if (!Arrays.equals(HEADER, header)) {
+            if (!Arrays.equals(Header.V1.headerBytes(), header)) {
                 throw new RuntimeException("Invalid patch file format");
             }
 
@@ -31,9 +30,9 @@ public class BinaryPatchReader implements PatchReader {
             String toVersion = readString(dataIn);
 
             // Read Operations
-            int opCount = dataIn.readInt();
+            int opCount = readVarInt(dataIn);
             final List<PatchOperation> ops = new ArrayList<>((int) (opCount * 1.25)); //allow a minimal treshold for edits
-            
+
             for (int i = 0; i < opCount; i++) {
                 ops.add(readOperation(dataIn));
             }
@@ -58,10 +57,13 @@ public class BinaryPatchReader implements PatchReader {
 
         // Data
         byte[] data = null;
-        int dataLen = in.readInt();
+        int dataLen = readVarInt(in);
         if (dataLen != -1) {
+            boolean zip = (in.readByte() & 0x1) == 0x1;
+
             data = new byte[dataLen];
             in.readFully(data);
+            if (zip) data = Header.unzipFirstFileFromZip(data);
         }
 
         return PatchOperation.builder()
@@ -73,13 +75,28 @@ public class BinaryPatchReader implements PatchReader {
     }
 
     private String readString(DataInputStream in) throws IOException {
-        int len = in.readInt();
-        if (len == -1) {
-            return null;
-        }
+        int len = readVarInt(in);
+        if (len == -1) return null;
         byte[] bytes = new byte[len];
         in.readFully(bytes);
         return new String(bytes, StandardCharsets.UTF_8);
     }
-}
 
+    private int readVarInt(DataInputStream in) throws IOException {
+        int numRead = 0;
+        int result = 0;
+        byte read;
+        do {
+            read = in.readByte();
+            int value = (read & 0x7F);
+            result |= (value << (7 * numRead));
+
+            numRead++;
+            if (numRead > 5) {
+                throw new RuntimeException("VarInt is too big");
+            }
+        } while ((read & 0x80) != 0);
+
+        return result;
+    }
+}

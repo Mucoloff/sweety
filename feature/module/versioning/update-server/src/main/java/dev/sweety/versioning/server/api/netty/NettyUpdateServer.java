@@ -92,9 +92,7 @@ public class NettyUpdateServer extends SimpleServer {
                 final boolean update = version.newerThan(current) || forced;
 
                 if (update) {
-
                     DownloadType type = chooseType(artifact, releaseChannel, version, current);
-
                     String token = downloadManager.generate(clientId, artifact, releaseChannel, version, current, type);
                     state = State.UPDATED;
                     responseData.put(artifact, new ResponseData(token, version, type));
@@ -108,17 +106,27 @@ public class NettyUpdateServer extends SimpleServer {
     }
 
     private @NotNull DownloadType chooseType(Artifact artifact, Channel releaseChannel, Version version, Version current) {
+        if (Version.ZERO.equals(current)) {
+            System.out.println("zero!");
+            return DownloadType.FULL;
+        }
         final long size;
         try {
             size = this.releaseManager.resolveBaseJar(artifact, releaseChannel, version).toFile().length();
         } catch (Exception e) {
+            System.out.println("cant resolve jar" + e);
             return DownloadType.FULL;
         }
 
-        Optional<File> cachedPatch = this.patchManager.cached(artifact, releaseChannel, version, current);
+        final Optional<File> cachedPatch = this.patchManager.cached(artifact, releaseChannel, version, current);
 
-        if (cachedPatch.isEmpty() || cachedPatch.get().length() >= size * Settings.PERCENT_SIZE)
+        if (cachedPatch.isEmpty()) {
+            System.out.println("no cached patch for " + version + " " + current);
             return DownloadType.FULL;
+        } else if (cachedPatch.get().length() >= size * Settings.PERCENT_SIZE) {
+            System.out.println("size exceeds threshold: " + cachedPatch.get().length() + " >= " + (size * Settings.PERCENT_SIZE));
+            return DownloadType.FULL;
+        }
 
         return DownloadType.PATCH;
     }
@@ -128,7 +136,6 @@ public class NettyUpdateServer extends SimpleServer {
         try {
             update = this.forcedUpdates.get(artifact).consume(ctx);
         } catch (TokenExpiredException | InvalidTokenException e) {
-            System.out.println("not present in forced");
             return false;
         }
 
@@ -159,7 +166,11 @@ public class NettyUpdateServer extends SimpleServer {
 
         this.clientInfos.entrySet()
                 .stream()
-                .filter((entry) -> channel.accepts(entry.getValue().channel()))
+                .filter((entry) -> {
+                    boolean accepts = channel.accepts(entry.getValue().channel());
+                    System.out.println("channel " + channel + " accepts " + entry.getValue().channel() + ": " + accepts);
+                    return accepts;
+                })
                 .map(Map.Entry::getKey)
                 .forEach((ctx) -> sendPacket(ctx, packet));
     }
@@ -172,7 +183,11 @@ public class NettyUpdateServer extends SimpleServer {
 
         this.clientInfos.entrySet()
                 .stream()
-                .filter((entry) -> channel.accepts(entry.getValue().channel()))
+                .filter((entry) -> {
+                    boolean accepts = channel.accepts(entry.getValue().channel());
+                    System.out.println("channel " + channel + " accepts " + entry.getValue().channel() + ": " + accepts);
+                    return accepts;
+                })
                 .map(Map.Entry::getKey)
                 .forEach((ctx) -> {
                     garbage.add(ctx, update);

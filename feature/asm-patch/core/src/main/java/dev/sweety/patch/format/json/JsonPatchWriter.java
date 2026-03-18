@@ -46,8 +46,22 @@ public class JsonPatchWriter implements PatchWriter {
 
         byte[] data = op.getData();
         if (data != null) {
+
+            boolean zip = false;
+            if (data.length >= Header.ZIP_THRESHOLD) {
+                try {
+                    data = Header.zipByteArray(data, "data");
+                    zip = true;
+                } catch (Exception ignored) {
+                }
+            }
+
             String encoded = Base64.getEncoder().encodeToString(data);
+
+            if (zip) encoded = "zip:" + encoded;
+
             operation.addProperty("data", encoded);
+
         } else {
             operation.add("data", null);
         }

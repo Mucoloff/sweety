@@ -3,7 +3,7 @@ package dev.sweety.versioning.server.logic.patch;
 import dev.sweety.patch.bytecode.AsmClassNormalizer;
 import dev.sweety.patch.diff.PatchFilter;
 import dev.sweety.patch.filter.DefaultPatchFilter;
-import dev.sweety.patch.generator.Generator;
+import dev.sweety.patch.generator.PatchGenerator;
 import dev.sweety.patch.hash.Sha256Hash;
 import dev.sweety.patch.model.type.PatchTypes;
 import dev.sweety.versioning.server.Settings;
@@ -35,24 +35,22 @@ public class PatchManager {
         return ONLY_JAVA.or(info.not()).exclude(path);
     };
 
-    private final Generator generator = new Generator(new Sha256Hash(), new AsmClassNormalizer(), PatchTypes.JSON);
+    private final PatchGenerator generator = new PatchGenerator(new Sha256Hash(), new AsmClassNormalizer(), PatchTypes.BIN);
 
-    private final EnumMap<Artifact, Path> patches;
+    private final EnumMap<Artifact, Path> artifacts;
     private final ReleaseManager releaseManager;
-    private final EnumMap<Artifact, Path> caches;
 
     public PatchManager(Storage storage, ReleaseManager releaseManager) {
-        this.patches = storage.patch();
-        this.caches = storage.cache();
+        this.artifacts = storage.artifacts();
         this.releaseManager = releaseManager;
     }
 
     public File generatePatch(CacheKey key, Version from) throws IOException {
-        File cachedPath = key.toPath(caches.get(key.artifact())).toFile();
-        File dir = key.toPath(caches.get(key.artifact()), "v" + from.toString()).toFile();
-
+        File cachedPath = key.toPath(artifacts.get(key.artifact())).toFile();
+        File dir = key.toPath(artifacts.get(key.artifact()), "v" + from.toString()).toFile();
+        dir.mkdirs();
         CacheKey oldKey = new CacheKey(key.artifact(), key.channel(), from, key.clientId());
-        File oldPath = oldKey.toPath(caches.get(oldKey.artifact())).toFile();
+        File oldPath = oldKey.toPath(artifacts.get(oldKey.artifact())).toFile();
 
         return generator.generate(oldPath, cachedPath, dir, key.clientId().toString(), from.toString(), key.version().toString(), ONLY_SIGNATURE);
     }
@@ -80,8 +78,8 @@ public class PatchManager {
         final String fromVer = old.toString();
         final String toVer = latest.toString();
 
-        //patch/artifact/channel/new/
-        File path = latest.resolve(this.patches.get(artifact).resolve(channel.prettyName())).toFile();
+        Path versionRoot = latest.resolve(this.artifacts.get(artifact).resolve(channel.prettyName()));
+        File path = versionRoot.resolve("patch").toFile();
         path.mkdirs();
         File patch = generator.generate(oldJar, newJar, path, "v" + fromVer, fromVer, toVer, EXCLUDE_SIGNATURE);
 

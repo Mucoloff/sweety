@@ -11,15 +11,14 @@ import java.util.*;
 public class PatchDiffEngine {
 
     private final HashFunction hashFunction;
-    private final ClassNormalizer classNormalizer;
+    private final ClassNormalizer normalizer;
 
     public PatchDiffEngine(HashFunction hashFunction, ClassNormalizer classNormalizer) {
         this.hashFunction = hashFunction;
-        this.classNormalizer = classNormalizer;
+        this.normalizer = classNormalizer;
     }
 
-    public Patch diff(Archive oldArchive, Archive newArchive,
-                      String fromVersion, String toVersion, PatchFilter filter) {
+    public Patch diff(Archive oldArchive, Archive newArchive, String fromVersion, String toVersion) {
 
         Map<String, byte[]> oldEntries = oldArchive.entries();
         Map<String, byte[]> newEntries = newArchive.entries();
@@ -31,8 +30,6 @@ public class PatchDiffEngine {
         allPaths.addAll(newEntries.keySet());
 
         for (String path : allPaths) {
-            if (filter.exclude(path)) continue;
-
             byte[] oldData = oldEntries.get(path);
             byte[] newData = newEntries.get(path);
 
@@ -42,7 +39,7 @@ public class PatchDiffEngine {
             } else if (oldData != null && newData == null) {
                 // DELETE
                 ops.add(delete(path));
-            } else if (oldData != null && newData != null) {
+            } else if (oldData != null) {
                 // MODIFY
                 if (shouldModify(path, oldData, newData)) {
                     ops.add(modify(path, newData));
@@ -53,31 +50,25 @@ public class PatchDiffEngine {
         return new Patch(fromVersion, toVersion, ops);
     }
 
+    public ClassNormalizer normalizer() {
+        return normalizer;
+    }
+
     private boolean shouldModify(String path, byte[] oldData, byte[] newData) {
-        // Optimization: Check raw equality first to avoid expensive normalization
         if (Arrays.equals(oldData, newData)) return false;
 
-        // For .class files, normalize bytecode before hashing to ignore non-functional changes
-        if (path.endsWith(".class")) {
-            try {
-                byte[] normOld = classNormalizer.normalize(oldData);
-                byte[] normNew = classNormalizer.normalize(newData);
-
-                return !Arrays.equals(
-                        hashFunction.hash(normOld),
-                        hashFunction.hash(normNew)
-                );
-            } catch (Exception e) {
-                // Graceful fallback: if normalization fails, rely on raw comparison
-                // Proceed to checks below
-            }
-        }
-
-        // Default: raw comparison using hash function
-        return !Arrays.equals(
+        if (Arrays.equals(
                 hashFunction.hash(oldData),
                 hashFunction.hash(newData)
-        );
+        )) return false;
+
+        if (path.endsWith(".class") && normalizer != null) {
+            byte[] normOld = normalizer.normalize(oldData);
+            byte[] normNew = normalizer.normalize(newData);
+            return !Arrays.equals(normOld, normNew);
+        }
+
+        return true;
     }
 
     private PatchOperation add(String path, byte[] data) {

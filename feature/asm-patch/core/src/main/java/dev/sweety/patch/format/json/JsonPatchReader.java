@@ -16,13 +16,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
+import java.util.function.Function;
 
 public class JsonPatchReader implements PatchReader {
 
     @Override
     public Patch read(InputStream in) {
         try (DataInputStream dataIn = new DataInputStream(in)) {
-            final JsonObject root = Header.GSON.fromJson(new String(dataIn.readAllBytes(), StandardCharsets.UTF_8), JsonObject.class);
+            String plain = new String(dataIn.readAllBytes(), StandardCharsets.UTF_8);
+            final JsonObject root = Header.GSON.fromJson(plain, JsonObject.class);
 
             final String header = root.get("header").getAsString();
             if (!Header.V1.header().equals(header)) throw new RuntimeException("Invalid patch file format");
@@ -52,16 +54,13 @@ public class JsonPatchReader implements PatchReader {
     }
 
     private PatchOperation readOperation(JsonObject operation) {
-
         String typeName = operation.get("type").getAsString().toUpperCase();
 
         PatchOperation.Type type = PatchOperation.Type.valueOf(typeName);
-        String path = operation.get("path").getAsString();
-        String hash = operation.get("hash").getAsString();
 
-        JsonElement dataElement = operation.get("data");
-
-        byte[] data = dataElement == null || dataElement.isJsonNull() ? null : Base64.getDecoder().decode(dataElement.getAsString());
+        String path = getOrElse(operation, "path");
+        String hash = getOrElse(operation, "hash");
+        byte[] data = getOrElse(operation, "data", this::decode);
 
         return PatchOperation.builder()
                 .type(type)
@@ -71,14 +70,32 @@ public class JsonPatchReader implements PatchReader {
                 .build();
     }
 
-    private String readString(DataInputStream in) throws IOException {
-        int len = in.readInt();
-        if (len == -1) {
-            return null;
+    private byte[] decode(String zippedBase64) {
+        boolean zip = false;
+        if (zippedBase64.startsWith("zip:")) {
+            zip = true;
+            zippedBase64 = zippedBase64.substring(4);
         }
-        byte[] bytes = new byte[len];
-        in.readFully(bytes);
-        return new String(bytes, StandardCharsets.UTF_8);
+        byte[] data = Base64.getDecoder().decode(zippedBase64);
+        if (zip) {
+            try {
+                data = Header.unzipFirstFileFromZip(data);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to unzip operation data", e);
+            }
+        }
+        return data;
     }
+
+    private static String getOrElse(JsonObject operation, String path) {
+        return getOrElse(operation, path, s -> s);
+    }
+
+    private static <T> T getOrElse(JsonObject operation, String path, Function<String, T> mapper) {
+        JsonElement element = operation.get(path);
+        if (element == null || element.isJsonNull()) return null;
+        return mapper.apply(element.getAsString());
+    }
+
 }
 

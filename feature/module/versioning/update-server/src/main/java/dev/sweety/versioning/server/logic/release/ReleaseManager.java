@@ -103,7 +103,8 @@ public class ReleaseManager {
             root.add(channel.prettyName(), channelEntry);
         }
 
-        Path tmpFile = s.tmp().resolve("metadata.tmp");
+
+        Path tmpFile = Storage.temp(s.metadata());
         Files.writeString(tmpFile, Utils.GSON.toJson(root));
 
         Files.move(
@@ -140,11 +141,12 @@ public class ReleaseManager {
     }
 
     private Path resolveTempJar(ReleaseState s, @NotNull Artifact artifact, Channel channel, Version version) throws IOException {
-        return resolveFile(s.tmp(), artifact, channel, version, ".jar.tmp");
+        Path base = resolveBaseJar(s, artifact, channel, version);
+        return Storage.temp(base);
     }
 
     private Path resolveBaseJar(ReleaseState s, @NotNull Artifact artifact, Channel channel, Version version) throws IOException {
-        return resolveFile(s.base(), artifact, channel, version, ".jar");
+        return resolveFile(s.root(), artifact, channel, version, ".jar");
     }
 
     public Path resolveBaseJar(@NotNull Artifact artifact, Channel channel, Version version) throws IOException {
@@ -204,7 +206,7 @@ public class ReleaseManager {
 
             ReleaseInfo next = new ReleaseInfo(nextVer, ch);
 
-            if (Objects.equals(next, current))
+            if (next.version().equals(current.version()) && next.channel().equals(current.channel()))
                 return null;
 
             s.history(ch).addFirst(current);

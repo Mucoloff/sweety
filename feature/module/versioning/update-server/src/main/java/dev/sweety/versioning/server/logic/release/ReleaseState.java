@@ -18,17 +18,11 @@ public class ReleaseState {
     private final EnumMap<Channel, ReleaseInfo> latest = new EnumMap<>(Channel.class);
 
     private final Path metadata;
-    private final Path base;
-    private final Path cache;
-    private final Path tmp;
-    private final Path patch;
+    private final Path root;
 
     ReleaseState(Artifact artifact, Storage storage) {
         this.metadata = storage.metadata().get(artifact);
-        this.base = storage.artifacts().get(artifact);
-        this.cache = storage.cache().get(artifact);
-        this.tmp = storage.tmp().get(artifact);
-        this.patch = storage.patch().get(artifact);
+        this.root = storage.artifacts().get(artifact);
         for (Channel channel : Channel.values()) {
             history.put(channel, new ArrayDeque<>());
         }
@@ -50,19 +44,7 @@ public class ReleaseState {
         return metadata;
     }
 
-    public Path base() {
-        return base;
-    }
-
-    public Path cache() {
-        return cache;
-    }
-
-    public Path tmp() {
-        return tmp;
-    }
-
-    public Path patch() {
-        return patch;
+    public Path root() {
+        return root;
     }
 }

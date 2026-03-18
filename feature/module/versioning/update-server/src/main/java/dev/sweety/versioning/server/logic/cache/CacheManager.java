@@ -12,17 +12,17 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class CacheManager {
 
-    private final EnumMap<Artifact, Path> cache, temp;
+    private final EnumMap<Artifact, Path> artifacts;
     private final ConcurrentHashMap<CacheKey, Object> locks = new ConcurrentHashMap<>();
 
     public CacheManager(Storage storage) {
-        this.cache = storage.cache();
-        this.temp = storage.tmp();
+        this.artifacts = storage.artifacts();
     }
 
     public byte[] getOrCreate(CacheKey key, CacheProducer producer) throws IOException {
-        Path cachedPath = key.toPath(cache.get(key.artifact()));
-        Path tempPath = key.toPath(temp.get(key.artifact()), ".jar.tmp");
+        Path artifactRoot = artifacts.get(key.artifact());
+        Path cachedPath = key.toPath(artifactRoot);
+        Path tempPath = cachedPath.resolveSibling(cachedPath.getFileName() + ".tmp");
 
         if (Files.exists(cachedPath)) return Files.readAllBytes(cachedPath);
 

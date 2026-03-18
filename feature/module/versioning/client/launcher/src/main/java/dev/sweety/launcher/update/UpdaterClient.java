@@ -59,7 +59,7 @@ public class UpdaterClient extends SimpleClient {
                     for (Artifact artifact : Artifact.values()) {
                         ResponseData data = versions.get(artifact);
                         if (data == null) continue;
-                        updateManager.downloadUpdate(artifact, data.token(), data.type());
+                        updateManager.downloadUpdate(artifact, data.token(), data.version(), data.type());
                         config.getAndUpdate(conf -> conf.with(artifact, data.version()));
                     }
 

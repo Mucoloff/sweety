@@ -36,9 +36,9 @@ public record LauncherConfig(String url,
         versions.put(Artifact.LAUNCHER, Version.parse(BuildInfo.VERSION));
 
         return new LauncherConfig(
-                "http://localhost:8081",
+                "http://localhost:8080",
                 "localhost",
-                9901,
+                9900,
                 UUID.nameUUIDFromBytes(BuildInfo.BUILD_ID.getBytes(StandardCharsets.UTF_8)),
                 UUID.nameUUIDFromBytes(BuildInfo.CLIENT_ID.getBytes(StandardCharsets.UTF_8)),
                 versions,
@@ -150,6 +150,10 @@ public record LauncherConfig(String url,
 
     public LauncherConfig with(Artifact artifact, Version version) {
         versions.put(artifact, version);
+        return new LauncherConfig(url, host, port, buildId, clientId, versions, channel, autoUpdateEnabled);
+    }
+
+    public LauncherConfig with(EnumMap<Artifact, Version> versions) {
         return new LauncherConfig(url, host, port, buildId, clientId, versions, channel, autoUpdateEnabled);
     }
 

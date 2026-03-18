@@ -22,10 +22,10 @@ import java.nio.file.StandardCopyOption;
 public class MainServer {
 
     public static void main(String[] args) throws IOException {
-        int port = 8081;//Integer.parseInt(System.getenv().getOrDefault("UPDATE_SERVER_PORT", "8080"));
+        int port = 8080;//Integer.parseInt(System.getenv().getOrDefault("UPDATE_SERVER_PORT", "8080"));
 
         final Storage storage = new Storage();
-        loadSettings(storage.settings(), storage.temp());
+        loadSettings(storage.settings());
 
         final ReleaseManager releaseManager = new ReleaseManager(storage);
         final PatchManager patchManager = new PatchManager(storage, releaseManager);
@@ -41,7 +41,7 @@ public class MainServer {
             t.shutdown();
         };
 
-        final NettyUpdateServer nettyServer = new NettyUpdateServer("localhost", 9901, PacketRegistry.REGISTRY, downloadManager, releaseManager, patchManager, stop);
+        final NettyUpdateServer nettyServer = new NettyUpdateServer("localhost", 9900, PacketRegistry.REGISTRY, downloadManager, releaseManager, patchManager, stop);
 
         httpServer.setRelease(nettyServer::broadcastRelease);
         httpServer.setRollback(nettyServer::broadcastRollback);
@@ -51,7 +51,7 @@ public class MainServer {
         Messenger.init(nettyServer);
     }
 
-    private static void loadSettings(final Path settingFile, final Path tempDir) throws IOException {
+    private static void loadSettings(final Path settingFile) throws IOException {
         if (!Files.exists(settingFile)) {
             final JsonObject root = new JsonObject();
 
@@ -61,7 +61,7 @@ public class MainServer {
             root.addProperty("PERCENT_SIZE", Settings.PERCENT_SIZE);
             root.addProperty("MAX_PATCH_VER_DISTANCE", Settings.MAX_PATCH_VER_DISTANCE);
 
-            Path tmp = tempDir.resolve(settingFile.getFileName() + ".tmp");
+            Path tmp = Storage.temp(settingFile);
             Files.writeString(tmp, Utils.GSON.toJson(root));
             Files.move(tmp, settingFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             return;

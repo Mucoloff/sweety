@@ -9,10 +9,14 @@ import java.util.UUID;
 
 public record CacheKey(Artifact artifact, Channel channel, Version version, UUID clientId) {
 
-    public Path toPath(Path root, String extension) {
-        final Path channelDir = root.resolve(channel().prettyName());
+    public Path resolve(Path artifactRoot) {
+        final Path channelDir = artifactRoot.resolve(channel().prettyName());
         final Path versionDir = version().resolve(channelDir);
-        return versionDir.resolve(clientId() + extension);
+        return versionDir.resolve("patch").resolve("cache").resolve(clientId().toString());
+    }
+
+    public Path toPath(Path root, String extension) {
+        return resolve(root).resolve(artifact.prettyName() + extension);
     }
 
     public Path toPath(Path root) {

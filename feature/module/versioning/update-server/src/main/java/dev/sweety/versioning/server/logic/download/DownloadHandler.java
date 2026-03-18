@@ -131,7 +131,7 @@ public class DownloadHandler implements HttpHandler {
 
                     File file = this.patchManager.generatePatch(key, from);
 
-                    PatchEditor editor = new PatchEditor(PatchTypes.JSON);
+                    PatchEditor editor = new PatchEditor(PatchTypes.BIN);
 
                     Patch jarPatch = editor.read(cached.get());
 
@@ -142,7 +142,6 @@ public class DownloadHandler implements HttpHandler {
                     yield Files.readAllBytes(file.toPath());
                 }
             };
-
 
             exchange.sendResponseHeaders(200, data.length);
             try (OutputStream os = exchange.getResponseBody()) {
