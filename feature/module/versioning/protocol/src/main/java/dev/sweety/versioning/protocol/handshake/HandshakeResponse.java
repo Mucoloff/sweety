@@ -2,7 +2,7 @@ package dev.sweety.versioning.protocol.handshake;
 
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.PacketTransaction;
-import dev.sweety.versioning.version.Artifact;
+import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.Version;
 import lombok.AllArgsConstructor;
 import lombok.Data;

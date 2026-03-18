@@ -1,7 +1,7 @@
 package dev.sweety.versioning.protocol.update;
 
 import dev.sweety.netty.packet.model.Packet;
-import dev.sweety.versioning.version.Artifact;
+import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.ReleaseInfo;
 
 public class ReleasePacket extends Packet {

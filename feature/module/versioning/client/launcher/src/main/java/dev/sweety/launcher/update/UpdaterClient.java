@@ -5,7 +5,7 @@ import dev.sweety.netty.messaging.impl.SimpleClient;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import dev.sweety.versioning.protocol.update.ReleasePacket;
-import dev.sweety.versioning.version.Artifact;
+import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.LauncherInfo;
 import dev.sweety.versioning.protocol.handshake.*;
@@ -59,7 +59,7 @@ public class UpdaterClient extends SimpleClient {
                     for (Artifact artifact : Artifact.values()) {
                         ResponseData data = versions.get(artifact);
                         if (data == null) continue;
-                        updateManager.downloadUpdate(artifact, data.token());
+                        updateManager.downloadUpdate(artifact, data.token(), data.type());
                         config.getAndUpdate(conf -> conf.with(artifact, data.version()));
                     }
 

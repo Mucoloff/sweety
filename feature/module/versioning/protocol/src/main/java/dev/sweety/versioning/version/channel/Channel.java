@@ -1,6 +1,8 @@
 package dev.sweety.versioning.version.channel;
 
-public enum Channel {
+import dev.sweety.versioning.version.PrettyEnum;
+
+public enum Channel implements PrettyEnum {
 
     STABLE(0),
     BETA(1),

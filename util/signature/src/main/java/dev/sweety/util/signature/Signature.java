@@ -9,92 +9,26 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.jar.Attributes;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
-import java.util.jar.JarInputStream;
-import java.util.jar.JarOutputStream;
-import java.util.jar.Manifest;
+import java.util.jar.*;
 import java.util.zip.CRC32C;
 
 public class Signature {
 
+    public static final String BUILD_INFO_CLASS = "dev/sweety/build/BuildInfo.class";
+    public static final int WATERMARK_SIGNATURE = 0xDEADBEEF;
+    private static final int MIN_SIZE = 4 + 4 + 4 + 8; // waterSig + nameLen + dataLen + crc
+
     private static final ThreadLocal<CRC32C> crc32ThreadLocal = ThreadLocal.withInitial(CRC32C::new);
 
-    public static void applySignature(Path inputJar, String TARGET_CLASS, Consumer<Manifest> editManifest, Map<String, Object> fields, List<Watermark> watermarks, int watermarkSignature) throws Exception {
-        try (FileSystem zfs = FileSystems.newFileSystem(inputJar, (ClassLoader) null)) {
-            // MANIFEST
-            Path manifestPath = zfs.getPath("META-INF/MANIFEST.MF");
-            Manifest manifest;
-            if (Files.exists(manifestPath)) {
-                manifest = new Manifest(Files.newInputStream(manifestPath));
-            } else {
-                Path metaInf = zfs.getPath("META-INF");
-                if (!Files.exists(metaInf)) {
-                    Files.createDirectories(metaInf);
-                }
-                manifest = new Manifest();
-            }
-            if (editManifest != null) editManifest.accept(manifest);
-            try (OutputStream os = Files.newOutputStream(manifestPath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
-                manifest.write(os);
-            }
-
-            // Classe target
-            String targetClassPathString = toClassResourcePathOrPassThrough(TARGET_CLASS);
-            Path targetPath = zfs.getPath(targetClassPathString);
-            if (Files.exists(targetPath)) {
-                byte[] data = Files.readAllBytes(targetPath);
-                byte[] patched = FieldInjector.inject(data, fields != null ? fields : Map.of());
-                Files.write(targetPath, patched, StandardOpenOption.TRUNCATE_EXISTING);
-            }
-
-            // Watermarks
-            List<Watermark> wm = watermarks == null ? List.of() : watermarks;
-            for (Watermark watermark : wm) {
-                String name = watermark.name();
-                byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
-                byte[] data = watermark.data();
-
-                final CRC32C crc32 = crc32ThreadLocal.get();
-                crc32.reset();
-                crc32.update(watermarkSignature);
-                crc32.update(nameBytes);
-                crc32.update(data);
-                long crc = crc32.getValue();
-
-                int size = MIN_SIZE + nameBytes.length + data.length;
-                ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.BIG_ENDIAN);
-                buffer.putInt(watermarkSignature);
-                buffer.putInt(nameBytes.length);
-                buffer.put(nameBytes);
-                buffer.putInt(data.length);
-                buffer.put(data);
-                buffer.putLong(crc);
-
-                byte[] array = buffer.array();
-
-                UUID uuid = UUID.nameUUIDFromBytes(array);
-                crc32.update(ByteBuffer.allocate(16).putLong(uuid.getMostSignificantBits()).putLong(uuid.getLeastSignificantBits()).array());
-
-                long idx = crc32.getValue();
-
-                String fileName = genMixedFilename(
-                        watermarkSignature,
-                        nameBytes,
-                        data
-                );
-
-                writeWatermark(
-                        zfs,
-                        PATHS[(int) (crc % PATHS.length)]
-                                + PATHS[(int) (idx % PATHS.length)]
-                                + fileName,
-                        array
-                );
-
-            }
-        }
+    public static void applySignature(Path inputJar, String targetClass, Consumer<Manifest> editManifest, Map<String, Object> fields, List<Watermark> watermarks) throws IOException {
+        applySignature(inputJar, targetClass, editManifest, fields, watermarks, WATERMARK_SIGNATURE);
+    }
+    
+    // Legacy overload for backward compatibility if needed, but updated to call in-memory
+    public static void applySignature(Path inputJar, String targetClass, Consumer<Manifest> editManifest, Map<String, Object> fields, List<Watermark> watermarks, int watermarkSignature) throws IOException {
+        byte[] inputBytes = Files.readAllBytes(inputJar);
+        byte[] patchedBytes = applySignatureInMemory(inputBytes, targetClass, editManifest, fields, watermarks, watermarkSignature);
+        Files.write(inputJar, patchedBytes, StandardOpenOption.TRUNCATE_EXISTING);
     }
 
     public static byte[] applySignatureInMemory(byte[] inputJar,
@@ -106,6 +40,7 @@ public class Signature {
         final Map<String, byte[]> entries = new LinkedHashMap<>();
         Manifest manifest;
 
+        // Read JAR
         try (JarInputStream jis = new JarInputStream(new ByteArrayInputStream(inputJar))) {
             manifest = jis.getManifest();
             JarEntry entry;
@@ -118,6 +53,7 @@ public class Signature {
             }
         }
 
+        // Handle Manifest
         if (manifest == null) {
             manifest = new Manifest();
         }
@@ -129,50 +65,28 @@ public class Signature {
             editManifest.accept(manifest);
         }
 
+        // Handle Target Class Injection
         String targetClassPath = toClassResourcePathOrPassThrough(targetClass);
         if (targetClassPath != null && entries.containsKey(targetClassPath)) {
             entries.compute(targetClassPath, (k, original) -> FieldInjector.inject(original, fields != null ? fields : Map.of()));
         }
 
+        // Generate Watermarks using shared logic
         List<Watermark> wm = watermarks == null ? List.of() : watermarks;
         for (Watermark watermark : wm) {
-            String name = watermark.name();
-            byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
-            byte[] data = watermark.data();
-
-            final CRC32C crc32 = crc32ThreadLocal.get();
-            crc32.reset();
-            crc32.update(watermarkSignature);
-            crc32.update(nameBytes);
-            crc32.update(data);
-            long crc = crc32.getValue();
-
-            int size = MIN_SIZE + nameBytes.length + data.length;
-            ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.BIG_ENDIAN);
-            buffer.putInt(watermarkSignature);
-            buffer.putInt(nameBytes.length);
-            buffer.put(nameBytes);
-            buffer.putInt(data.length);
-            buffer.put(data);
-            buffer.putLong(crc);
-
-            byte[] array = buffer.array();
-
-            UUID uuid = UUID.nameUUIDFromBytes(array);
-            crc32.reset();
-            crc32.update(ByteBuffer.allocate(16).putLong(uuid.getMostSignificantBits()).putLong(uuid.getLeastSignificantBits()).array());
-            long idx = crc32.getValue();
-
-            String fileName = genMixedFilename(watermarkSignature, nameBytes, data);
-            String fullName = "META-INF/"
-                    + PATHS[(int) (crc % PATHS.length)]
-                    + PATHS[(int) (idx % PATHS.length)]
-                    + fileName;
-            entries.put(fullName, array);
+            WatermarkEntry entry = generateWatermarkEntry(watermark, watermarkSignature);
+            entries.put(entry.path, entry.data);
         }
 
+        // Write JAR
+        return writeJar(manifest, entries);
+    }
+
+    private static byte[] writeJar(Manifest manifest, Map<String, byte[]> entries) throws IOException {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              JarOutputStream jos = new JarOutputStream(baos)) {
+            
+            // Prioritize Manifest
             JarEntry manifestEntry = new JarEntry("META-INF/MANIFEST.MF");
             jos.putNextEntry(manifestEntry);
             manifest.write(jos);
@@ -190,6 +104,60 @@ public class Signature {
             jos.finish();
             return baos.toByteArray();
         }
+    }
+
+    private record WatermarkEntry(String path, byte[] data) {
+    }
+
+    private static WatermarkEntry generateWatermarkEntry(Watermark watermark, int watermarkSignature) {
+        String name = watermark.name();
+        byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
+        byte[] data = watermark.data();
+
+        // Checksum calculation
+        long crc = calculateChecksum(watermarkSignature, nameBytes, data);
+
+        // buffer construction
+        int size = MIN_SIZE + nameBytes.length + data.length;
+        ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.BIG_ENDIAN);
+        buffer.putInt(watermarkSignature);
+        buffer.putInt(nameBytes.length);
+        buffer.put(nameBytes);
+        buffer.putInt(data.length);
+        buffer.put(data);
+        buffer.putLong(crc);
+
+        byte[] array = buffer.array();
+
+        // Filename generation
+        long idx = calculateUuidIndex(array);
+
+        String fileName = genMixedFilename(watermarkSignature, nameBytes, data);
+        
+        // Path construction logic from original applySignatureInMemory
+        String fullName = "META-INF/"
+                + PATHS[(int) (crc % PATHS.length)]
+                + PATHS[(int) (idx % PATHS.length)]
+                + fileName;
+        
+        return new WatermarkEntry(fullName, array);
+    }
+
+    private static long calculateChecksum(int watermarkSignature, byte[] nameBytes, byte[] data) {
+        final CRC32C crc32 = crc32ThreadLocal.get();
+        crc32.reset();
+        crc32.update(watermarkSignature);
+        crc32.update(nameBytes);
+        crc32.update(data);
+        return crc32.getValue();
+    }
+
+    private static long calculateUuidIndex(byte[] data) {
+        UUID uuid = UUID.nameUUIDFromBytes(data);
+        final CRC32C crc32 = crc32ThreadLocal.get();
+        crc32.reset();
+        crc32.update(ByteBuffer.allocate(16).putLong(uuid.getMostSignificantBits()).putLong(uuid.getLeastSignificantBits()).array());
+        return crc32.getValue();
     }
 
     private static final String[] PATHS = {
@@ -226,9 +194,6 @@ public class Signature {
 
         return base + suffix + ext;
     }
-
-    // watermarkSignature + nameBytes.length + data.length + crc
-    private static final int MIN_SIZE = 4 + 4 + 4 + 8;
 
     public static Map<String, byte[]> testWatermarkResult(@NotNull Path inputJar, @NotNull List<String> watermarks, int watermarkSignature) throws Exception {
         final Map<String, byte[]> watermarkResults = new HashMap<>(watermarks.size());
@@ -267,12 +232,8 @@ public class Signature {
                     if (buffer.remaining() < 8) continue;
                     long crc = buffer.getLong();
 
-                    final CRC32C crc32 = crc32ThreadLocal.get();
-                    crc32.reset();
-                    crc32.update(watermarkSignature);
-                    crc32.update(nameBytes);
-                    crc32.update(data);
-                    if (crc != crc32.getValue()) continue;
+                    long calculatedCrc = calculateChecksum(watermarkSignature, nameBytes, data);
+                    if (crc != calculatedCrc) continue;
 
                     watermarkResults.put(name, data);
                 }

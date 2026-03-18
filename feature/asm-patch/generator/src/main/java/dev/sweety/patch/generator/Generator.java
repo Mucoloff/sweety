@@ -15,18 +15,20 @@ public class Generator {
     private final String extension;
     private final PatchGenerator generator;
 
-    public Generator(HashFunction hashFunction, ClassNormalizer normalizer, PatchFilter filter, PatchType patchType){
+    public Generator(HashFunction hashFunction, ClassNormalizer normalizer, PatchType patchType) {
         this.extension = patchType.extension();
-        PatchDiffEngine diffEngine = new PatchDiffEngine(hashFunction, normalizer, filter);
+        PatchDiffEngine diffEngine = new PatchDiffEngine(hashFunction, normalizer);
         generator = new PatchGenerator(diffEngine, patchType.writer());
     }
 
-    public void generate(File input, File output, File patchDir, String patch) throws IOException {
+    public File generate(File input, File output, File patchDir, String patch, String fromVersion, String toVersion, PatchFilter filter) throws IOException {
         final File patchFile = new File(patchDir, patch + this.extension);
 
         try (FileOutputStream out = new FileOutputStream(patchFile)) {
-            generator.generate(input, output, out, "1.0", "2.0");
+            generator.generate(input, output, out, fromVersion, toVersion, filter);
         }
+
+        return patchFile;
     }
 
 }

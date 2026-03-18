@@ -1,11 +1,8 @@
 package dev.sweety.patch.model.type;
 
-import dev.sweety.patch.format.PatchReader;
-import dev.sweety.patch.format.PatchWriter;
-import dev.sweety.patch.format.bin.BinaryPatchReader;
-import dev.sweety.patch.format.bin.BinaryPatchWriter;
-import dev.sweety.patch.format.json.JsonPatchReader;
-import dev.sweety.patch.format.json.JsonPatchWriter;
+import dev.sweety.patch.format.*;
+import dev.sweety.patch.format.bin.*;
+import dev.sweety.patch.format.json.*;
 
 public enum PatchTypes implements PatchType {
     BIN(".patch.bin", new BinaryPatchReader(), new BinaryPatchWriter()),

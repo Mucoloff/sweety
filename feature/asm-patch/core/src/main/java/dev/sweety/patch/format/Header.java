@@ -9,7 +9,7 @@ public enum Header {
 
     ;
 
-    public static final Gson GSON = new Gson().newBuilder().disableHtmlEscaping().setPrettyPrinting().create();
+    public static final Gson GSON = new Gson().newBuilder().disableHtmlEscaping().create();
 
     private final String header;
 

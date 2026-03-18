@@ -1,8 +1,9 @@
 package dev.sweety.launcher.update;
 
 import dev.sweety.launcher.config.LauncherConfig;
+import dev.sweety.versioning.protocol.handshake.DownloadType;
 import dev.sweety.versioning.protocol.handshake.State;
-import dev.sweety.versioning.version.Artifact;
+import dev.sweety.versioning.version.artifact.Artifact;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -32,8 +33,9 @@ public class UpdateManager {
         this.handshakeState = handshakeState;
     }
 
-    public void downloadUpdate(Artifact artifact, String token) {
+    public void downloadUpdate(Artifact artifact, String token, DownloadType type) {
         try {
+            //todo patch
             downloadArtifact(token, artifactPathMap.get(artifact));
             complete(State.UPDATED);
         } catch (Exception e) {

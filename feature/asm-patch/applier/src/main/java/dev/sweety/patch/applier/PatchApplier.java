@@ -23,49 +23,43 @@ public class PatchApplier {
         this.hashFunction = hashFunction;
     }
 
-    public void apply(File originalJar, InputStream patchStream, File outputJar) {
+    public void apply(File original, InputStream patchStream, File output) {
 
         Patch patch = reader.read(patchStream);
 
-        Archive archive = new JarArchive(originalJar);
+        Archive archive = new JarArchive(original);
         Map<String, byte[]> entries = new HashMap<>(archive.entries());
 
         for (PatchOperation op : patch.getOperations()) {
             switch (op.getType()) {
-                case ADD:
-                case MODIFY:
+                case ADD, MODIFY -> {
                     if (op.getData() == null)
-                        throw new RuntimeException("Invalid patch: Data is missing for ADD/MODIFY operation on " + op.getPath());
-                    
-                    // Verify patch integrity
-                    String calculatedHash = bytesToHex(hashFunction.hash(op.getData()));
-                    if (op.getHash() != null && !calculatedHash.equalsIgnoreCase(op.getHash())) {
-                        throw new RuntimeException("Patch corruption detected for " + op.getPath() 
-                            + ". Expected hash: " + op.getHash() + ", Actual: " + calculatedHash);
+                        throw new RuntimeException("Invalid patch: Data is missing for " + op.getType() + " operation on " + op.getPath());
+
+                    // Retrieve original data for patching or replacement verification
+                    byte[] originalData = entries.get(op.getPath());
+                    if (originalData == null && op.getType().equals(PatchOperation.Type.MODIFY))
+                        throw new RuntimeException("Original file not found for patch: " + op.getPath());
+
+                    // Delegate application logic to the Reader (handles binary replacement or text diffs)
+                    byte[] data = op.getData();
+
+                    // Verify hash if available
+                    if (op.getHash() != null) {
+                        String calculatedHash = hashFunction.calculateHash(data);
+                        if (!calculatedHash.equalsIgnoreCase(op.getHash())) {
+                            throw new RuntimeException("Patch integrity check failed for " + op.getPath()
+                                    + ". Expected hash: " + op.getHash() + ", Actual: " + calculatedHash);
+                        }
                     }
 
-                    entries.put(op.getPath(), op.getData());
-                    break;
-
-                case DELETE:
-                    entries.remove(op.getPath());
-                    break;
+                    entries.put(op.getPath(), data);
+                }
+                case DELETE -> entries.remove(op.getPath());
             }
         }
 
-        writeJar(entries, outputJar);
-    }
-
-    private static String bytesToHex(byte[] bytes) {
-        StringBuilder hexString = new StringBuilder(2 * bytes.length);
-        for (byte b : bytes) {
-            String hex = Integer.toHexString(0xff & b);
-            if (hex.length() == 1) {
-                hexString.append('0');
-            }
-            hexString.append(hex);
-        }
-        return hexString.toString();
+        writeJar(entries, output);
     }
 
     private void writeJar(Map<String, byte[]> entries, File file) {

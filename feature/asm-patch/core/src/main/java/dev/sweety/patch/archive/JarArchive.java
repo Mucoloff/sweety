@@ -20,11 +20,9 @@ public class JarArchive implements Archive {
 
     @Override
     public Map<String, byte[]> entries() {
-        Map<String, byte[]> entries = new HashMap<>();
+        final Map<String, byte[]> entries = new HashMap<>();
         
-        if (!file.exists()) {
-            throw new RuntimeException("Archive file does not exist: " + file.getAbsolutePath());
-        }
+        if (!file.exists()) throw new RuntimeException("Archive file does not exist: " + file.getAbsolutePath());
 
         try (JarFile jar = new JarFile(file)) {
             Enumeration<JarEntry> jarEntries = jar.entries();
@@ -33,9 +31,7 @@ public class JarArchive implements Archive {
                 JarEntry entry = jarEntries.nextElement();
                 
                 // Skip directories
-                if (entry.isDirectory()) {
-                    continue;
-                }
+                if (entry.isDirectory()) continue;
 
                 // Read file content
                 try (InputStream is = jar.getInputStream(entry)) {
@@ -43,7 +39,7 @@ public class JarArchive implements Archive {
                 }
             }
         } catch (IOException e) {
-            throw new RuntimeException("Failed to read JAR archive: " + file.getAbsolutePath(), e);
+            throw new RuntimeException("Failed to read JAR archive: " + file.getAbsolutePath() + " " + e.getMessage(), e);
         }
 
         return entries;

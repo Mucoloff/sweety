@@ -1,6 +1,5 @@
 package dev.sweety.patch.format.bin;
 
-import dev.sweety.patch.format.Header;
 import dev.sweety.patch.format.PatchReader;
 import dev.sweety.patch.model.Patch;
 import dev.sweety.patch.model.PatchOperation;
@@ -15,13 +14,15 @@ import java.util.List;
 
 public class BinaryPatchReader implements PatchReader {
 
+    private static final byte[] HEADER = "PAT1".getBytes(StandardCharsets.UTF_8);
+
     @Override
     public Patch read(InputStream in) {
         try (DataInputStream dataIn = new DataInputStream(in)) {
             // Read Header
             byte[] header = new byte[4];
             dataIn.readFully(header);
-            if (!Arrays.equals(Header.V1.headerBytes(), header)) {
+            if (!Arrays.equals(HEADER, header)) {
                 throw new RuntimeException("Invalid patch file format");
             }
 
@@ -31,7 +32,7 @@ public class BinaryPatchReader implements PatchReader {
 
             // Read Operations
             int opCount = dataIn.readInt();
-            List<PatchOperation> ops = new ArrayList<>(opCount);
+            final List<PatchOperation> ops = new ArrayList<>((int) (opCount * 1.25)); //allow a minimal treshold for edits
             
             for (int i = 0; i < opCount; i++) {
                 ops.add(readOperation(dataIn));

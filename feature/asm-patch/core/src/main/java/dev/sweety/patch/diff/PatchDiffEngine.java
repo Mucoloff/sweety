@@ -12,16 +12,14 @@ public class PatchDiffEngine {
 
     private final HashFunction hashFunction;
     private final ClassNormalizer classNormalizer;
-    private final PatchFilter filter;
 
-    public PatchDiffEngine(HashFunction hashFunction, ClassNormalizer classNormalizer, PatchFilter filter) {
+    public PatchDiffEngine(HashFunction hashFunction, ClassNormalizer classNormalizer) {
         this.hashFunction = hashFunction;
         this.classNormalizer = classNormalizer;
-        this.filter = filter;
     }
 
     public Patch diff(Archive oldArchive, Archive newArchive,
-                      String fromVersion, String toVersion) {
+                      String fromVersion, String toVersion, PatchFilter filter) {
 
         Map<String, byte[]> oldEntries = oldArchive.entries();
         Map<String, byte[]> newEntries = newArchive.entries();
@@ -87,7 +85,7 @@ public class PatchDiffEngine {
                 .type(PatchOperation.Type.ADD)
                 .path(path)
                 .data(data)
-                .hash(calculateHash(data))
+                .hash(hashFunction.calculateHash(data))
                 .build();
     }
 
@@ -96,7 +94,7 @@ public class PatchDiffEngine {
                 .type(PatchOperation.Type.MODIFY)
                 .path(path)
                 .data(data)
-                .hash(calculateHash(data))
+                .hash(hashFunction.calculateHash(data))
                 .build();
     }
 
@@ -109,20 +107,4 @@ public class PatchDiffEngine {
                 .build();
     }
 
-    private String calculateHash(byte[] data) {
-        if (data == null) return null;
-        return bytesToHex(hashFunction.hash(data));
-    }
-
-    private static String bytesToHex(byte[] bytes) {
-        StringBuilder hexString = new StringBuilder(2 * bytes.length);
-        for (byte b : bytes) {
-            String hex = Integer.toHexString(0xff & b);
-            if (hex.length() == 1) {
-                hexString.append('0');
-            }
-            hexString.append(hex);
-        }
-        return hexString.toString();
-    }
 }

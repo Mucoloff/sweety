@@ -6,7 +6,7 @@ import dev.sweety.launcher.update.UpdaterClient;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.versioning.protocol.PacketRegistry;
 import dev.sweety.versioning.protocol.handshake.State;
-import dev.sweety.versioning.version.Artifact;
+import dev.sweety.versioning.version.artifact.Artifact;
 
 import java.nio.file.Path;
 import java.util.EnumMap;

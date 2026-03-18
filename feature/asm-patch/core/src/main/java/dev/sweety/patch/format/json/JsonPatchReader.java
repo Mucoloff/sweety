@@ -37,8 +37,8 @@ public class JsonPatchReader implements PatchReader {
             if (operations == null) throw new RuntimeException("Invalid patch file format: missing operations");
 
             // Read Operations
-            int opCount = operations.size();
-            List<PatchOperation> ops = new ArrayList<>(opCount);
+            final int opCount = operations.size();
+            final List<PatchOperation> ops = new ArrayList<>((int) (opCount * 1.25)); //allow a minimal treshold for edits
 
             for (JsonElement operation : operations) {
                 ops.add(readOperation(operation.getAsJsonObject()));

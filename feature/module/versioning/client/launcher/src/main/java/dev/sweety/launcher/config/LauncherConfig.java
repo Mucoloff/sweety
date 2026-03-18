@@ -3,7 +3,7 @@ package dev.sweety.launcher.config;
 import com.google.gson.JsonObject;
 import dev.sweety.build.BuildInfo;
 import dev.sweety.versioning.util.Utils;
-import dev.sweety.versioning.version.Artifact;
+import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.LauncherInfo;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.channel.Channel;
@@ -36,9 +36,9 @@ public record LauncherConfig(String url,
         versions.put(Artifact.LAUNCHER, Version.parse(BuildInfo.VERSION));
 
         return new LauncherConfig(
-                "http://localhost:8080",
+                "http://localhost:8081",
                 "localhost",
-                9900,
+                9901,
                 UUID.nameUUIDFromBytes(BuildInfo.BUILD_ID.getBytes(StandardCharsets.UTF_8)),
                 UUID.nameUUIDFromBytes(BuildInfo.CLIENT_ID.getBytes(StandardCharsets.UTF_8)),
                 versions,
@@ -71,14 +71,27 @@ public record LauncherConfig(String url,
         int port = root.get("port").getAsInt();
         //String uuid = root.get("clientId").getAsString();
 
-        UUID buildId = Utils.parseUuid(BuildInfo.BUILD_ID);
-        UUID clientId = Utils.parseUuid(BuildInfo.CLIENT_ID);
+        UUID buildId;
+
+        try {
+            buildId = Utils.parseUuid(BuildInfo.BUILD_ID);
+        } catch (IllegalArgumentException e) {
+            buildId = UUID.nameUUIDFromBytes(BuildInfo.BUILD_ID.getBytes(StandardCharsets.UTF_8));
+        }
+
+        UUID clientId;
+        try {
+            clientId = Utils.parseUuid(BuildInfo.CLIENT_ID);
+        } catch (IllegalArgumentException e) {
+            clientId = UUID.nameUUIDFromBytes(BuildInfo.CLIENT_ID.getBytes(StandardCharsets.UTF_8));
+        }
+
 
         EnumMap<Artifact, Version> versions = new EnumMap<>(Artifact.class);
         JsonObject versionsJson = root.getAsJsonObject("versions");
         for (Artifact artifact : Artifact.values()) {
             final Version ver;
-            final String artifactName = artifact.name().toLowerCase();
+            final String artifactName = artifact.prettyName();
             if (versionsJson.has(artifactName)) {
                 String versionStr = versionsJson.get(artifactName).getAsString();
                 ver = Version.parse(versionStr);
@@ -112,14 +125,14 @@ public record LauncherConfig(String url,
 
         JsonObject versions = new JsonObject();
         for (Map.Entry<Artifact, Version> entry : config.versions.entrySet()) {
-            versions.addProperty(entry.getKey().name().toLowerCase(), entry.getValue().toString());
+            versions.addProperty(entry.getKey().prettyName(), entry.getValue().toString());
         }
 
         versions.remove("launcher");
 
         root.add("versions", versions);
 
-        //root.addProperty("channel", config.channel.name().toLowerCase());
+        //root.addProperty("channel", config.channel.prettyName());
         root.addProperty("autoUpdate", config.autoUpdateEnabled);
 
 
