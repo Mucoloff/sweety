@@ -72,8 +72,8 @@ public enum Balancers {
         return balancer;
     }
 
-    @SuppressWarnings("unchecked")
     private static <T> T[] slice(T[] array, int start, int limit) {
+        //noinspection unchecked
         T[] result = (T[]) java.lang.reflect.Array.newInstance(array.getClass().getComponentType(), limit);
         for (int i = 0; i < limit; i++) {
             result[i] = array[(start + i) % array.length];

@@ -20,7 +20,6 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
     private static final String DATA_IGNORE = "dev.sweety.record.annotations.DataIgnore";
 
     @Override
-    @SuppressWarnings("unchecked")
     protected @NotNull <Psi extends PsiElement> List<Psi> getAugments(@NotNull PsiElement element,
                                                                       @NotNull Class<Psi> type,
                                                                       @Nullable String nameHint) {
@@ -119,6 +118,7 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
                 }
 
                 if (shouldGenGetter) {
+                    //noinspection unchecked
                     result.add((Psi) createGetter(field, psiClass));
                 }
 
@@ -152,6 +152,7 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
                             builderType = JavaPsiFacade.getElementFactory(psiClass.getProject()).createType(psiClass);
                         }
 
+                        //noinspection unchecked
                         result.add((Psi) createSetter(field, psiClass, !fluent, builder, builderType));
                     }
                 }

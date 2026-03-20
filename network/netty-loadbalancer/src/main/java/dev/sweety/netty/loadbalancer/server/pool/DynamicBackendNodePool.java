@@ -101,10 +101,10 @@ public class DynamicBackendNodePool<T extends BackendNode> implements IDynamicBa
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public T next(Packet packet, ChannelHandlerContext ctx) {
         if (this.nodes.isEmpty()) return null;
 
+        //noinspection unchecked
         final T[] activeNodes = (T[]) this.nodes.values().stream()
                 .filter(BackendNode::canAcceptPacket)
                 .filter(predicate(packet, ctx))

@@ -10,11 +10,11 @@ public final class QueryCache {
 
     private static final ConcurrentMap<String, Query<?>> CACHE = new ConcurrentHashMap<>();
 
-    @SuppressWarnings("unchecked")
     public static <T> Query<T> get(
             String key,
             Supplier<Query<T>> supplier
     ) {
+        //noinspection unchecked
         return (Query<T>) CACHE.computeIfAbsent(key, k -> supplier.get());
     }
 

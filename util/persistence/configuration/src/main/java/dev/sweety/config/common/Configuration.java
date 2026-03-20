@@ -566,7 +566,6 @@ public abstract class Configuration {
        INTERNAL
        ======================= */
 
-    @SuppressWarnings("unchecked")
     private Object get(String path) {
         String[] parts = path.split("\\.");
         Map<String, Object> current = map;
@@ -578,6 +577,8 @@ public abstract class Configuration {
             if (i == parts.length - 1) return value;
 
             if (!(value instanceof Map)) return null;
+
+            //noinspection unchecked
             current = (Map<String, Object>) value;
         }
         return null;

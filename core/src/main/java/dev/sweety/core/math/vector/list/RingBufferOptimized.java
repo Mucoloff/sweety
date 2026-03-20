@@ -9,10 +9,10 @@ public class RingBufferOptimized<E> {
 
     private final int capacity;
 
-    @SuppressWarnings("unchecked")
     public RingBufferOptimized(int capacity) {
         this.capacity = capacity;
         if (this.capacity % 2 != 0) throw new IllegalArgumentException("[!] Capacity must be a power of 2");
+        //noinspection unchecked
         this.buffer = (E[]) new Object[capacity];
     }
 

@@ -122,9 +122,9 @@ public final class AsyncScheduler {
         private final Callable<T> originalCallable;
         private final Callable<T> decoratedCallable;
 
-        @SuppressWarnings("unchecked")
         public DecoratedCallable(Callable<T> originalCallable) {
             this.originalCallable = originalCallable;
+            //noinspection unchecked
             this.decoratedCallable = (Callable<T>) hotfixDecorator.apply(originalCallable);
         }
 

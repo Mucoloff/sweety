@@ -97,8 +97,7 @@ public class TomlConfiguration extends TextConfiguration {
 
     private boolean hasDirectValues(Map<String, Object> map) {
         for (Object value : map.values()) {
-            if (value == null) continue;
-            if (value instanceof Map) continue;
+            if (value == null || value instanceof Map) continue;
             if (value instanceof List) {
                 if (isListOfMaps((List<?>) value)) continue;
                 return true;
@@ -109,7 +108,7 @@ public class TomlConfiguration extends TextConfiguration {
     }
 
     private boolean isListOfMaps(List<?> list) {
-        return !list.isEmpty() && list.get(0) instanceof Map;
+        return !list.isEmpty() && list.getFirst() instanceof Map;
     }
 
     private Map<String, Object> castMap(Map<?, ?> map) {
@@ -178,12 +177,12 @@ public class TomlConfiguration extends TextConfiguration {
         return output;
     }
 
-    @SuppressWarnings("unchecked")
     private Object convertValue(Object value) {
         
         if (value instanceof org.tomlj.TomlTable table) return convert(table.toMap());
 
         if (value instanceof Map<?, ?> map) {
+            //noinspection unchecked
             return convert((Map<String, Object>) map);
         }
 

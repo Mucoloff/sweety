@@ -1,5 +1,9 @@
 package dev.sweety.core.math.vector.list;
 
+import lombok.Getter;
+import lombok.Setter;
+import org.jetbrains.annotations.NotNull;
+
 import java.util.*;
 
 public class CircularlyLinkedList<E> implements List<E> {
@@ -100,7 +104,7 @@ public class CircularlyLinkedList<E> implements List<E> {
     }
 
     @Override
-    public Iterator<E> iterator() {
+    public @NotNull Iterator<E> iterator() {
         return new Iterator<E>() {
             private Node<E> current = tail != null ? tail.getNext() : null;
             private int remaining = size;
@@ -122,7 +126,7 @@ public class CircularlyLinkedList<E> implements List<E> {
     }
 
     @Override
-    public Object[] toArray() {
+    public Object @NotNull [] toArray() {
         Object[] array = new Object[this.size];
         if (this.isEmpty()) return array;
         Node<E> current = this.tail.getNext();
@@ -134,9 +138,9 @@ public class CircularlyLinkedList<E> implements List<E> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public <T> T[] toArray(T[] a) {
+    public <T> T @NotNull [] toArray(T[] a) {
         if (a.length < this.size) {
+            //noinspection unchecked
             a = (T[]) java.lang.reflect.Array.newInstance(a.getClass().getComponentType(), this.size);
         }
         Object[] result = a;
@@ -224,7 +228,7 @@ public class CircularlyLinkedList<E> implements List<E> {
     }
 
     @Override
-    public boolean retainAll(Collection<?> c) {
+    public boolean retainAll(@NotNull Collection<?> c) {
         boolean modified = false;
         Iterator<E> it = iterator();
         List<E> toRemove = new ArrayList<>();
@@ -324,12 +328,12 @@ public class CircularlyLinkedList<E> implements List<E> {
     }
 
     @Override
-    public ListIterator<E> listIterator() {
+    public @NotNull ListIterator<E> listIterator() {
         return listIterator(0);
     }
 
     @Override
-    public ListIterator<E> listIterator(int index) {
+    public @NotNull ListIterator<E> listIterator(int index) {
         checkPositionIndex(index);
         return new ListIterator<E>() {
             private int cursor = index;
@@ -392,7 +396,7 @@ public class CircularlyLinkedList<E> implements List<E> {
     }
 
     @Override
-    public List<E> subList(int fromIndex, int toIndex) {
+    public @NotNull List<E> subList(int fromIndex, int toIndex) {
         checkPositionIndex(fromIndex);
         checkPositionIndex(toIndex);
         if (fromIndex > toIndex) {
@@ -444,28 +448,14 @@ public class CircularlyLinkedList<E> implements List<E> {
         return sb.toString();
     }
 
+    @Setter
+    @Getter
     public static class Node<E> {
         private E element;
         private Node<E> next;
 
         public Node(E element, Node<E> next) {
             this.element = element;
-            this.next = next;
-        }
-
-        public E getElement() {
-            return element;
-        }
-
-        public void setElement(E element) {
-            this.element = element;
-        }
-
-        public Node<E> getNext() {
-            return next;
-        }
-
-        public void setNext(Node<E> next) {
             this.next = next;
         }
 

@@ -70,10 +70,14 @@ public class Pair<T> implements Collection<T> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public @NotNull <T1> T1 @NotNull [] toArray(@NotNull T1 @NotNull [] a) {
-        if (a.length < size()) return (T1[]) new Object[]{this.first, this.second};
+
+        if (a.length < size())
+            //noinspection unchecked
+            return (T1[]) new Object[]{this.first, this.second};
+        //noinspection unchecked
         a[0] = (T1) this.first;
+        //noinspection unchecked
         a[1] = (T1) this.second;
         return a;
     }
