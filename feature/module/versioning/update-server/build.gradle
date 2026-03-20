@@ -1,0 +1,38 @@
+plugins {
+    id 'application'
+}
+
+dependencies {
+    implementation 'org.ow2.asm:asm-commons:9.6'
+    implementation 'org.java-websocket:Java-WebSocket:1.5.6'
+    implementation 'com.google.code.gson:gson:2.11.0'
+
+    implementation(project(":core"))
+    implementation(project(':util:signature'))
+    implementation(project(":util:thread"))
+    implementation project(':util:logger')
+    implementation project(':util:time')
+    implementation(project(":network:netty"))
+
+    implementation(project(":feature:module:versioning:protocol"))
+    implementation(project(":feature:asm-patch:asm-patch-core"))
+    implementation(project(":feature:asm-patch:generator"))
+
+    testImplementation("org.junit.platform:junit-platform-suite:1.9.3")
+    testImplementation("org.junit.platform:junit-platform-suite-api:1.9.3")
+}
+
+application {
+    mainClass = 'dev.sweety.versioning.server.MainServer'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'dev.sweety.versioning.server.MainServer'
+    }
+    duplicatesStrategy = 'exclude'
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+

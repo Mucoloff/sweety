@@ -5,14 +5,14 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public class MaskUtil {
     public static final byte[] INDEXES = {
-            0x1,
-            0x2,
-            0x4,
-            0x8,
-            0x10,
-            0x20,
-            0x40,
-            0xffffff80
+            0b0001,
+            0b0010,
+            0b0100,
+            0b1000,
+            0b10000,
+            0b100000,
+            0b1000000,
+            (byte) 0b10000000
     };
 
     public static byte index(int index) {

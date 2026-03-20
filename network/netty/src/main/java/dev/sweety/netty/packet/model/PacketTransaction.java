@@ -1,0 +1,99 @@
+package dev.sweety.netty.packet.model;
+
+import dev.sweety.core.crypt.ChecksumUtils;
+import dev.sweety.core.math.RandomUtils;
+import dev.sweety.netty.packet.buffer.PacketBuffer;
+import dev.sweety.netty.packet.buffer.io.Codec;
+import lombok.Getter;
+
+import java.util.Optional;
+import java.util.zip.CRC32C;
+
+@Getter
+public abstract class PacketTransaction<R extends PacketTransaction.Transaction, S extends PacketTransaction.Transaction> extends Packet {
+
+    private final long requestId;
+    private final R request;
+    private final S response;
+
+    public PacketTransaction(final R request) {
+        super();
+        this.buffer().writeVarLong(this.requestId = generateId());
+        this.buffer().writeBoolean(true);
+        this.buffer().writeObject(this.request = request);
+        this.response = null;
+        //this.buffer().writeObject(this.response = null);
+    }
+
+    public PacketTransaction(final long id, final S response) {
+        super();
+        this.buffer().writeVarLong(this.requestId = id);
+        this.buffer().writeBoolean(false);
+        //this.buffer().writeObject(this.request = null);
+        this.request = null;
+        this.buffer().writeObject(this.response = response);
+    }
+
+    public PacketTransaction(final int _id, final long _timestamp, final byte[] _data) {
+        super(_id, _timestamp, _data);
+        this.requestId = this.buffer().readVarLong();
+        boolean isRequest = this.buffer().readBoolean();
+        if (isRequest) {
+            this.request = this.buffer().readObject(this::request);
+            this.response = null;
+        }
+        else {
+            this.request = null;
+            this.response = this.buffer().readObject(this::response);
+        }
+    }
+
+    private static long generateId() {
+        CRC32C crc = ChecksumUtils.crc32(true);
+        byte[] randomBytes = new byte[RandomUtils.range(8, 32)];
+        RandomUtils.RANDOM.nextBytes(randomBytes);
+        crc.update(randomBytes);
+        return crc.getValue();
+    }
+
+    public String requestCode() {
+        return "#" + Long.toHexString(requestId);
+    }
+
+    public boolean hasRequest() {
+        return this.request != null;
+    }
+
+    public boolean hasResponse() {
+        return this.response != null;
+    }
+
+    public Optional<R> requestOptional() {
+        return Optional.ofNullable(this.request);
+    }
+
+    public Optional<S> responseOptional() {
+        if (this.response == null) return Optional.empty();
+        return Optional.of(this.response);
+    }
+
+    protected abstract R request();
+
+    protected abstract S response();
+
+
+    public abstract static class Transaction implements Codec {
+
+        @Override
+        public void write(final PacketBuffer buffer) {
+
+        }
+
+        @Override
+        public void read(final PacketBuffer buffer) {
+
+        }
+
+    }
+
+}

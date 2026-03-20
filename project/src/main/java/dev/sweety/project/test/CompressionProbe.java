@@ -1,7 +1,6 @@
-
 package dev.sweety.project.test;
 
-import dev.sweety.core.file.ZipUtils;
+import dev.sweety.core.file.ArchiveUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ThreadLocalRandom;
@@ -51,7 +50,7 @@ public final class CompressionProbe {
             System.arraycopy(backing, 0, raw, 0, size);
 
             long t0 = System.nanoTime();
-            byte[] zipped = ZipUtils.zipByteArray(raw, "entry");
+            byte[] zipped = ArchiveUtils.zipBytes(raw, "entry");
             long t1 = System.nanoTime();
             long micros = (t1 - t0) / 1_000;
 
@@ -67,7 +66,7 @@ public final class CompressionProbe {
         for (int size : SIZES) {
             byte[] raw = new byte[size];
             System.arraycopy(backing, 0, raw, 0, size);
-            byte[] zipped = ZipUtils.zipByteArray(raw, "entry");
+            byte[] zipped = ArchiveUtils.zipBytes(raw, "entry");
             if (zipped.length < raw.length) {
                 return name + ": " + size + " bytes (compressed " + zipped.length + " < raw " + raw.length + ")";
             }
@@ -100,4 +99,3 @@ public final class CompressionProbe {
         return b;
     }
 }
-

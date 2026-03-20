@@ -1,7 +1,7 @@
 package dev.sweety.project.netty.loadbalancer.impl;
 
 import dev.sweety.core.color.AnsiColor;
-import dev.sweety.core.logger.SimpleLogger;
+import dev.sweety.logger.SimpleLogger;
 import dev.sweety.netty.feature.AutoReconnect;
 import dev.sweety.netty.messaging.Client;
 import dev.sweety.netty.packet.model.Packet;
