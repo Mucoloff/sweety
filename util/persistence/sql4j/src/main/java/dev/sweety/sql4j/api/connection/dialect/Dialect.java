@@ -1,4 +1,4 @@
-package dev.sweety.sql4j.api.connection;
+package dev.sweety.sql4j.api.connection.dialect;
 
 import dev.sweety.sql4j.api.obj.ForeignKey;
 

@@ -1,28 +1,40 @@
 package dev.sweety.sql4j.impl;
 
-import dev.sweety.sql4j.api.connection.Dialect;
+import dev.sweety.sql4j.api.configuration.DatabaseConfig;
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.connection.SqlConnection;
 import dev.sweety.sql4j.impl.connection.ConnectionType;
 
 import java.util.Collection;
 import java.util.IdentityHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
-public class Database {
+public class Database implements AutoCloseable {
 
     private final IdentityHashMap<Class<?>, Repository<?>> repositories = new IdentityHashMap<>();
-    private final ConnectionType connectionType;
-    private final String[] params;
-
+    private final SqlConnection connection;
     private final Dialect dialect;
 
+    public Database(final SqlConnection connection) {
+        this.connection = connection;
+        this.dialect = connection.dialect();
+    }
+
+    public Database(final DatabaseConfig config, final Executor executor) {
+        this(ConnectionType.valueOf(config.dialectType().name()).create(config, executor));
+    }
+
+    /**
+     * @deprecated Use {@link #Database(DatabaseConfig, Executor)} or {@link #Database(SqlConnection)} instead.
+     */
+    @Deprecated
     public Database(final ConnectionType connectionType, final String... params) {
-        this.connectionType = connectionType;
-        this.params = params;
-        this.dialect = this.getConnection().dialect();
+        this(connectionType.create(Executors.newCachedThreadPool(), params));
     }
 
     public SqlConnection getConnection() {
-        return connectionType.getConnection(params);
+        return connection;
     }
 
     public <R extends Repository<E>, E> R createRepository(final Class<E> entityClass) {
@@ -43,5 +55,10 @@ public class Database {
 
     public Collection<Repository<?>> repositories() {
         return repositories.values();
+    }
+
+    @Override
+    public void close() {
+        connection.close();
     }
 }

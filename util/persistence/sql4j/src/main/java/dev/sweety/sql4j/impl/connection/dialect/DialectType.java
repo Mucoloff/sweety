@@ -1,16 +1,13 @@
-package dev.sweety.sql4j.impl.connection;
+package dev.sweety.sql4j.impl.connection.dialect;
 
-import dev.sweety.sql4j.api.connection.Dialect;
-import dev.sweety.sql4j.impl.connection.mysql.MySqlDialect;
-import dev.sweety.sql4j.impl.connection.mysql.maria.MariaDbDialect;
-import dev.sweety.sql4j.impl.connection.sqlite.SqliteDialect;
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
 
 public enum DialectType {
     SQLITE(new SqliteDialect()),
-    //H2(),
+    H2(new H2Dialect()),
     MYSQL(new MySqlDialect()),
     MARIADB(new MariaDbDialect()),
-    //POSTGRESQL(),
+    POSTGRESQL(new PostgreSQLDialect()),
     ;
 
     public static final DialectType[] VALUES = values();

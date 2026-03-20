@@ -1,44 +1,31 @@
 package dev.sweety.sql4j.api.connection;
 
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
+import dev.sweety.sql4j.api.connection.provider.ConnectionProvider;
 import dev.sweety.sql4j.api.query.Query;
-import dev.sweety.sql4j.impl.connection.DialectType;
+import dev.sweety.sql4j.impl.connection.dialect.DialectType;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 
-public abstract class SqlConnection {
+public class SqlConnection implements AutoCloseable {
 
-    private static Executor EXECUTOR;
-    private static volatile boolean initialized = false;
-
-    private final String database, user, password;
     private final DialectType dialectType;
+    private final ConnectionProvider connectionProvider;
+    private final Executor executor;
 
-    public SqlConnection(final String database, final String user, final String password, DialectType dialectType) {
-        this.database = database;
-        this.user = user;
-        this.password = password;
+    public SqlConnection(final DialectType dialectType, final ConnectionProvider connectionProvider, final Executor executor) {
         this.dialectType = dialectType;
+        this.connectionProvider = connectionProvider;
+        this.executor = executor;
     }
-
-    public abstract String url();
 
     public Connection connection() throws SQLException {
-        //todo hikari
-        final Connection connection = DriverManager.getConnection(url(), this.user, this.password);
-        if (this.dialectType.equals(DialectType.SQLITE)) {
-            try (var st = connection.createStatement()) {
-                st.execute("PRAGMA foreign_keys = ON");
-            }
-        }
-
-        return connection;
-    }
-
-    public String database() {
-        return this.database;
+        return connectionProvider.get();
     }
 
     public DialectType dialectType() {
@@ -49,6 +36,9 @@ public abstract class SqlConnection {
         return dialectType.dialect();
     }
 
+    public Executor executor() {
+        return executor;
+    }
 
     public <T> CompletableFuture<T> executeAsync(Query<T> query) {
         try {
@@ -58,42 +48,14 @@ public abstract class SqlConnection {
                 } catch (SQLException e) {
                     throw new CompletionException(e);
                 }
-            }, executor(this.dialectType));
-        }catch (RejectedExecutionException e){
+            }, executor);
+        } catch (RejectedExecutionException e) {
             return CompletableFuture.failedFuture(e);
         }
     }
 
-    private static void init() {
-        if (initialized) return;
-        Runtime.getRuntime().addShutdownHook(new Thread(SqlConnection::shutdownExecutor));
-        initialized = true;
+    @Override
+    public void close() {
+        connectionProvider.close();
     }
-
-    //todo virtual thread
-    public static synchronized Executor executor(DialectType dialectType) {
-        if (EXECUTOR == null) {
-            init();
-            int threads = dialectType == DialectType.SQLITE ? 1 : Runtime.getRuntime().availableProcessors();
-            EXECUTOR = new ThreadPoolExecutor(
-                    threads,
-                    threads,
-                    0L,
-                    TimeUnit.MILLISECONDS,
-                    new ArrayBlockingQueue<>(100),
-                    new ThreadPoolExecutor.AbortPolicy()
-            );
-        }
-        return EXECUTOR;
-    }
-
-
-    public static void shutdownExecutor() {
-        if (EXECUTOR instanceof ExecutorService service) {
-            service.shutdown();
-            EXECUTOR = null;
-        }
-    }
-
-
 }

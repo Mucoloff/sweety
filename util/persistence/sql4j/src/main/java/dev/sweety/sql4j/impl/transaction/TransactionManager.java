@@ -56,7 +56,7 @@ public class TransactionManager {
             } catch (final SQLException e) {
                 throw new CompletionException(e);
             }
-        }, SqlConnection.executor(sqlConnection.dialectType()));
+        }, sqlConnection.executor());
     }
 
 
@@ -77,6 +77,6 @@ public class TransactionManager {
             } catch (SQLException e) {
                 throw new CompletionException(e);
             }
-        }, SqlConnection.executor(sqlConnection.dialectType()));
+        }, sqlConnection.executor());
     }
 }

@@ -46,7 +46,7 @@ public class DependentQueryChain<I, O>
             } catch (final SQLException e) {
                 throw new CompletionException(e);
             }
-        }, SqlConnection.executor(connection.dialectType()));
+        }, connection.executor());
     }
 
     @Override

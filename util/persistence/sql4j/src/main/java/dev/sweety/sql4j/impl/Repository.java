@@ -1,6 +1,6 @@
 package dev.sweety.sql4j.impl;
 
-import dev.sweety.sql4j.api.connection.Dialect;
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.connection.SqlConnection;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.obj.table.TableRegistry;

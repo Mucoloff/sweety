@@ -35,7 +35,7 @@ public final class SimpleQueryChain<T> implements QueryChain<T> {
             } catch (final SQLException e) {
                 throw new CompletionException(e);
             }
-        }, SqlConnection.executor(connection.dialectType()));
+        }, connection.executor());
     }
 
     @Override

@@ -1,6 +1,6 @@
 package dev.sweety.sql4j.impl.query.table;
 
-import dev.sweety.sql4j.api.connection.Dialect;
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.ForeignKey;
 import dev.sweety.sql4j.api.obj.Table;

@@ -1,6 +1,4 @@
-package dev.sweety.sql4j.impl.connection.mysql.maria;
-
-import dev.sweety.sql4j.impl.connection.mysql.MySqlDialect;
+package dev.sweety.sql4j.impl.connection.dialect;
 
 public final class MariaDbDialect extends MySqlDialect {
 

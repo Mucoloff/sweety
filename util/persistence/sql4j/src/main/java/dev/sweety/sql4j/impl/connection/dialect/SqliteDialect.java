@@ -1,6 +1,6 @@
-package dev.sweety.sql4j.impl.connection.sqlite;
+package dev.sweety.sql4j.impl.connection.dialect;
 
-import dev.sweety.sql4j.api.connection.Dialect;
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.obj.ForeignKey;
 
 public final class SqliteDialect implements Dialect {
