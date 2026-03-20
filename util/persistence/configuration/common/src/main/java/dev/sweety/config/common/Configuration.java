@@ -1,9 +1,9 @@
-package dev.sweety.core.config.yml;
+package dev.sweety.config.common;
 
+import dev.sweety.config.common.serialization.ConfigSerializable;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -11,13 +11,28 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class FileConfiguration {
+public abstract class Configuration {
 
-    private final Yaml yaml = new Yaml();
+    protected abstract String dumpAsMap(Map<String, Object> map);
+
+    protected abstract Map<String, Object> loadAsMap(Reader reader);
 
     public void save(Appendable writer) {
         try {
-            writer.append(yaml.dumpAsMap(map));
+            writer.append(dumpAsMap(map));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void load(Reader reader) {
+        map.clear();
+        this.map.putAll(loadAsMap(reader));
+    }
+
+    public void load(File file) {
+        try (FileReader reader = new FileReader(file)) {
+            load(reader);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -26,19 +41,6 @@ public class FileConfiguration {
     public void save(File file) {
         try (FileWriter writer = new FileWriter(file)) {
             save(writer);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public void load(Reader reader) {
-        map.clear();
-        map.putAll(yaml.loadAs(reader, Map.class));
-    }
-
-    public void load(File file) {
-        try (FileReader reader = new FileReader(file)) {
-            load(reader);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -420,7 +422,7 @@ public class FileConfiguration {
 
         for (Map.Entry<String, Object> entry : map.entrySet()) {
             //noinspection unchecked
-            result.put(entry.getKey(), ConfigSerializables.construct(clazz, (Map<String, Object>) entry.getValue()));
+            result.put(entry.getKey(), dev.sweety.config.common.serialization.SerializableRegistry.construct(clazz, (Map<String, Object>) entry.getValue()));
         }
 
         return result;
@@ -434,7 +436,7 @@ public class FileConfiguration {
         final List<T> result = new ArrayList<>(list.size());
         for (Map<?, ?> map : list) {
             //noinspection unchecked
-            result.add(ConfigSerializables.construct(clazz, (Map<String, Object>) map));
+            result.add(dev.sweety.config.common.serialization.SerializableRegistry.construct(clazz, (Map<String, Object>) map));
         }
         return result;
     }
@@ -481,7 +483,7 @@ public class FileConfiguration {
 
         final Object val;
         if (value instanceof ConfigSerializable serializable) {
-            ConfigSerializables.register(serializable.getClass());
+            dev.sweety.config.common.serialization.SerializableRegistry.register(serializable.getClass());
             val = serializable.serialize();
         } else if (value instanceof List<?> l) {
             val = serializeList(l);
@@ -497,7 +499,7 @@ public class FileConfiguration {
         for (Object item : list) {
             switch (item) {
                 case ConfigSerializable serializable -> {
-                    ConfigSerializables.register(serializable.getClass());
+                    dev.sweety.config.common.serialization.SerializableRegistry.register(serializable.getClass());
                     result.add(serializable.serialize());
                 }
                 case List<?> l -> result.add(serializeList(l));
@@ -516,7 +518,7 @@ public class FileConfiguration {
 
             switch (value) {
                 case ConfigSerializable serializable -> {
-                    ConfigSerializables.register(serializable.getClass());
+                    dev.sweety.config.common.serialization.SerializableRegistry.register(serializable.getClass());
                     serializedValue = serializable.serialize();
                 }
                 case List<?> l -> serializedValue = serializeList(l);
@@ -564,6 +566,6 @@ public class FileConfiguration {
     }
 
     public <T extends ConfigSerializable> T getSerializable(String path, Class<T> clazz) {
-        return ConfigSerializables.construct(clazz, getMap(path));
+        return dev.sweety.config.common.serialization.SerializableRegistry.construct(clazz, getMap(path));
     }
 }

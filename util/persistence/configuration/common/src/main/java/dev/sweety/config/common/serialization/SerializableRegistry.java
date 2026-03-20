@@ -1,4 +1,4 @@
-package dev.sweety.core.config.yml;
+package dev.sweety.config.common.serialization;
 
 import java.lang.reflect.*;
 import java.util.Arrays;
@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class ConfigSerializables {
+public class SerializableRegistry {
 
     private static final Map<Class<? extends ConfigSerializable>, SerializableConstructor> SERIALIZABLES = new HashMap<>();
 
@@ -23,7 +23,7 @@ public class ConfigSerializables {
     }
 
     public static <T extends ConfigSerializable> T construct(Class<T> clazz, Map<String, Object> data) {
-        final SerializableConstructor constructor = SERIALIZABLES.computeIfAbsent(clazz, ConfigSerializables::create);
+        final SerializableConstructor constructor = SERIALIZABLES.computeIfAbsent(clazz, SerializableRegistry::create);
         try {
             return constructor.create(data);
         } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
