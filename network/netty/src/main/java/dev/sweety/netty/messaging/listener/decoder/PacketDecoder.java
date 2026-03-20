@@ -2,7 +2,7 @@ package dev.sweety.netty.messaging.listener.decoder;
 
 import dev.sweety.core.crypt.ChecksumUtils;
 import dev.sweety.core.file.ResourceUtils;
-import dev.sweety.core.file.ZipUtils;
+import dev.sweety.core.file.ArchiveUtils;
 import dev.sweety.netty.messaging.exception.PacketDecodeException;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
@@ -82,7 +82,12 @@ public class PacketDecoder {
                 if (compressed) {
                     final byte[] data = new byte[payloadLength];
                     nioView.getBytes(nioView.readerIndex(), data);
-                    final byte[] unzipped = ZipUtils.unzipBytes(data);
+                    final byte[] unzipped;
+                    try {
+                        unzipped = ArchiveUtils.unzipFirstFile(data);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
                     payloadBuf = Unpooled.wrappedBuffer(unzipped);
                     slice.release();
                 } else {

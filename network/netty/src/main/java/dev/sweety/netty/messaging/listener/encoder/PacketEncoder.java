@@ -2,7 +2,7 @@ package dev.sweety.netty.messaging.listener.encoder;
 
 import dev.sweety.core.crypt.ChecksumUtils;
 import dev.sweety.core.file.ResourceUtils;
-import dev.sweety.core.file.ZipUtils;
+import dev.sweety.core.file.ArchiveUtils;
 import dev.sweety.netty.messaging.exception.PacketEncodeException;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
@@ -11,6 +11,7 @@ import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.zip.CRC32C;
@@ -57,7 +58,12 @@ public class PacketEncoder {
                 // Attempt compression; only accept if beneficial
                 byte[] src = new byte[readable];
                 payloadNetty.getBytes(payloadNetty.readerIndex(), src);
-                byte[] zipped = ZipUtils.zipBytes(src, "zipped-buffer");
+                byte[] zipped;
+                try {
+                    zipped = ArchiveUtils.zipBytes(src, "zipped-buffer");
+                } catch (IOException e) {
+                    zipped = src;
+                }
                 if (zipped.length >= src.length) {
                     compressed = false;
                 } else {

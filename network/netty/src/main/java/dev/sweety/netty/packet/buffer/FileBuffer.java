@@ -1,6 +1,6 @@
 package dev.sweety.netty.packet.buffer;
 
-import dev.sweety.core.file.ZipUtils;
+import dev.sweety.core.file.ArchiveUtils;
 import dev.sweety.netty.packet.buffer.io.callable.CallableDecoder;
 import dev.sweety.netty.packet.buffer.io.Encoder;
 import lombok.SneakyThrows;
@@ -25,12 +25,12 @@ public record FileBuffer(String fileName, boolean isDir, byte[] bytes) implement
 
     // --- ZIP SOLO UN FILE SINGOLO ---
     private static FileBuffer zipFile(File file) throws IOException {
-        return new FileBuffer(file.getName() + EXTENSION, false, ZipUtils.zipFile(file));
+        return new FileBuffer(file.getName() + EXTENSION, false, ArchiveUtils.zipFile(file));
     }
 
     // --- ZIP RICORSIVO PER DIRECTORY ---
     private static FileBuffer zipDirectory(File dir) throws IOException {
-        return new FileBuffer(dir.getName() + EXTENSION, true, ZipUtils.zipDirectory(dir));
+        return new FileBuffer(dir.getName() + EXTENSION, true, ArchiveUtils.zipDirectory(dir));
     }
 
     // --- LETTURA DA PACKETBUFFER ---
@@ -55,7 +55,7 @@ public record FileBuffer(String fileName, boolean isDir, byte[] bytes) implement
     // --- UNZIP SICURO ---
     @SneakyThrows
     public File unzip(File outputDir) {
-        return ZipUtils.unzip(bytes, outputDir);
+        return ArchiveUtils.unzip(bytes, outputDir);
     }
 
     // --- SALVA FILE BUFFER SU DISCO (GESTISCE ZIP AUTOMATICAMENTE) ---

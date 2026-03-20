@@ -39,12 +39,12 @@ public class ResourceUtils {
     @SneakyThrows
     public void zipDirectory(Path sourceDir, Path targetZip) {
         File dir = sourceDir.toFile();
-        Files.write(targetZip, ZipUtils.fromFile(dir));
+        Files.write(targetZip, ArchiveUtils.zipSmart(dir));
     }
 
     @SneakyThrows
     public File unzipFile(Path zipFile, Path targetDir) {
-        return ZipUtils.unzip(Files.readAllBytes(zipFile), targetDir.toFile());
+        return ArchiveUtils.unzip(Files.readAllBytes(zipFile), targetDir.toFile());
     }
 
 }
