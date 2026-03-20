@@ -1,10 +1,10 @@
-package dev.sweety.logger.backend;
+package dev.sweety.util.logger.backend;
 
 import dev.sweety.core.color.AnsiColor;
-import dev.sweety.logger.LogEvent;
-import dev.sweety.logger.formatter.LogFormatter;
-import dev.sweety.logger.level.LogLevel;
-import dev.sweety.logger.formatter.SimpleLogFormatter;
+import dev.sweety.util.logger.LogEvent;
+import dev.sweety.util.logger.formatter.LogFormatter;
+import dev.sweety.util.logger.level.LogLevel;
+import dev.sweety.util.logger.formatter.SimpleLogFormatter;
 
 import java.io.File;
 import java.io.FileWriter;

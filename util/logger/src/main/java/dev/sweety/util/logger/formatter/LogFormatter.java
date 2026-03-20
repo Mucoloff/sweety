@@ -1,7 +1,7 @@
-package dev.sweety.logger.formatter;
+package dev.sweety.util.logger.formatter;
 
-import dev.sweety.logger.level.LogLevel;
-import dev.sweety.logger.profile.LogProfile;
+import dev.sweety.util.logger.level.LogLevel;
+import dev.sweety.util.logger.profile.LogProfile;
 
 public interface LogFormatter {
     /**

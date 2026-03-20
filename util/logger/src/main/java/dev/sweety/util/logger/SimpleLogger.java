@@ -1,12 +1,12 @@
-package dev.sweety.logger;
+package dev.sweety.util.logger;
 
-import dev.sweety.logger.backend.ConsoleBackend;
-import dev.sweety.logger.backend.FileBackend;
-import dev.sweety.logger.backend.LoggerBackend;
-import dev.sweety.logger.formatter.SimpleLogFormatter;
-import dev.sweety.logger.level.LogLevel;
-import dev.sweety.logger.profile.LogProfile;
-import dev.sweety.logger.profile.ProfileScope;
+import dev.sweety.util.logger.backend.ConsoleBackend;
+import dev.sweety.util.logger.backend.FileBackend;
+import dev.sweety.util.logger.backend.LoggerBackend;
+import dev.sweety.util.logger.formatter.SimpleLogFormatter;
+import dev.sweety.util.logger.level.LogLevel;
+import dev.sweety.util.logger.profile.LogProfile;
+import dev.sweety.util.logger.profile.ProfileScope;
 import lombok.Getter;
 
 import java.util.ArrayDeque;

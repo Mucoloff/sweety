@@ -1,8 +1,8 @@
-package dev.sweety.logger;
+package dev.sweety.util.logger;
 
-import dev.sweety.logger.level.LogLevel;
-import dev.sweety.logger.profile.LogProfile;
-import dev.sweety.logger.util.LogArguments;
+import dev.sweety.util.logger.level.LogLevel;
+import dev.sweety.util.logger.profile.LogProfile;
+import dev.sweety.util.logger.util.LogArguments;
 import lombok.Getter;
 
 @Getter

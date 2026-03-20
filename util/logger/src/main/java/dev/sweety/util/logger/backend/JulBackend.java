@@ -1,7 +1,7 @@
-package dev.sweety.logger.backend;
+package dev.sweety.util.logger.backend;
 
-import dev.sweety.logger.LogEvent;
-import dev.sweety.logger.level.LogLevel;
+import dev.sweety.util.logger.LogEvent;
+import dev.sweety.util.logger.level.LogLevel;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;

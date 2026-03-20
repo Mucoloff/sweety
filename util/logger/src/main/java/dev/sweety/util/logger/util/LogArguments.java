@@ -1,4 +1,4 @@
-package dev.sweety.logger.util;
+package dev.sweety.util.logger.util;
 
 public final class LogArguments {
 

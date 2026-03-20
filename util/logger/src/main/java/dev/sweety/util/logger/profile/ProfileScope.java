@@ -1,6 +1,6 @@
-package dev.sweety.logger.profile;
+package dev.sweety.util.logger.profile;
 
-import dev.sweety.logger.SimpleLogger;
+import dev.sweety.util.logger.SimpleLogger;
 
 public class ProfileScope implements AutoCloseable {
     private final SimpleLogger logger;

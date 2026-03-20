@@ -1,4 +1,4 @@
-package dev.sweety.logger.profile;
+package dev.sweety.util.logger.profile;
 
 import lombok.Getter;
 

@@ -1,7 +1,7 @@
-package dev.sweety.logger.backend;
+package dev.sweety.util.logger.backend;
 
-import dev.sweety.logger.LogEvent;
-import dev.sweety.logger.level.LogLevel;
+import dev.sweety.util.logger.LogEvent;
+import dev.sweety.util.logger.level.LogLevel;
 
 /**
  * Backend che non fa nulla: utile per disabilitare l'output di log.

@@ -1,4 +1,4 @@
-package dev.sweety.logger;
+package dev.sweety.util.logger;
 
 public interface LogHelper {
 

@@ -1,4 +1,4 @@
-package dev.sweety.logger.level;
+package dev.sweety.util.logger.level;
 
 public enum LogLevel {
     INFO,

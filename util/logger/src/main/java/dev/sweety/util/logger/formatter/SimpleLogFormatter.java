@@ -1,8 +1,9 @@
-package dev.sweety.logger.formatter;
+package dev.sweety.util.logger.formatter;
 
 import dev.sweety.core.color.AnsiColor;
 import dev.sweety.core.exception.ExceptionUtils;
-import dev.sweety.logger.level.LogLevel;
+import dev.sweety.util.logger.level.LogLevel;
+import dev.sweety.util.logger.profile.LogProfile;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -14,7 +15,7 @@ public class SimpleLogFormatter implements LogFormatter {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     @Override
-    public String format(LogLevel level, String loggerName, dev.sweety.logger.profile.LogProfile profile, Object[] args) {
+    public String format(LogLevel level, String loggerName, LogProfile profile, Object[] args) {
         final String time = LocalDateTime.now().format(TIME_FORMATTER);
         final String suffix = (profile != null) ? ("@" + profile.getFullPath()) : "";
         final String prefix = "[" + time + "][" + level + "][" + loggerName + suffix + "]";
