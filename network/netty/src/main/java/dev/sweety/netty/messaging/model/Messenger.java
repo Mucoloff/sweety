@@ -17,7 +17,9 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.EventExecutor;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.CompletableFuture;
@@ -47,7 +49,6 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
     protected int port;
     protected String host;
 
-
     @DataIgnore
     private final AtomicBoolean running = new AtomicBoolean();
 
@@ -56,13 +57,13 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
     private final IPacketRegistry packetRegistry;
 
     public Messenger(B bootstrap, String host, int port, IPacketRegistry packetRegistry, int localPort) {
+        this(bootstrap, host, port, packetRegistry, localPort, null);
+    }
+
+    public Messenger(B bootstrap, String host, int port, IPacketRegistry packetRegistry, int localPort, @Nullable Function<SocketChannel, SslHandler> sslProvider) {
         this.bootstrap = bootstrap;
         this.boss = new NioEventLoopGroup();
         this.worker = new NioEventLoopGroup(16);
-
-        //
-        // Handlers are now created per-connection in initChannel()
-        //
 
         this.port = port;
         this.host = host;
@@ -72,6 +73,12 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
             @Override
             protected void initChannel(SocketChannel ch) {
                 ChannelPipeline p = ch.pipeline();
+
+                if (sslProvider != null) {
+                    SslHandler sslHandler = sslProvider.apply(ch);
+                    if (sslHandler != null) p.addFirst("ssl", sslHandler);
+                }
+
                 p.addLast(
                         new NettyDecoder(Messenger.this.packetRegistry, Messenger.this),
                         new NettyWatcher(Messenger.this),
