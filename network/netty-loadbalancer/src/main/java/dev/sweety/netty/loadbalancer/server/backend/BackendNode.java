@@ -1,7 +1,7 @@
 package dev.sweety.netty.loadbalancer.server.backend;
 
 import dev.sweety.core.color.AnsiColor;
-import dev.sweety.logger.SimpleLogger;
+import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.core.math.MathUtils;
 import dev.sweety.core.math.RandomUtils;
 import dev.sweety.netty.loadbalancer.common.backend.BackendSettings;

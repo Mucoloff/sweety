@@ -1,6 +1,6 @@
 package dev.sweety.netty.loadbalancer.server.balancer;
 
-import dev.sweety.logger.LogHelper;
+import dev.sweety.util.logger.LogHelper;
 import dev.sweety.netty.loadbalancer.server.backend.BackendNode;
 
 import dev.sweety.netty.packet.model.Packet;

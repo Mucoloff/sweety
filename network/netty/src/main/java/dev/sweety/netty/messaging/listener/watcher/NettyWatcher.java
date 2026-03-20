@@ -1,7 +1,7 @@
 package dev.sweety.netty.messaging.listener.watcher;
 
-import dev.sweety.logger.level.LogLevel;
-import dev.sweety.logger.SimpleLogger;
+import dev.sweety.util.logger.level.LogLevel;
+import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
 import io.netty.channel.ChannelHandler.Sharable;

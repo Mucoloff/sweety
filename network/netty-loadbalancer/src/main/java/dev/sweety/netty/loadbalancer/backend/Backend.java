@@ -1,7 +1,7 @@
 package dev.sweety.netty.loadbalancer.backend;
 
 import dev.sweety.core.color.AnsiColor;
-import dev.sweety.logger.SimpleLogger;
+import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.core.math.function.TriFunction;
 import dev.sweety.thread.ProfileThread;
 import dev.sweety.thread.ThreadManager;

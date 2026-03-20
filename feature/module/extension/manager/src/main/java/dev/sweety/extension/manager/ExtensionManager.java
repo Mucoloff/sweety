@@ -1,6 +1,6 @@
 package dev.sweety.extension.manager;
 
-import dev.sweety.logger.SimpleLogger;
+import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.extension.Extension;
 import dev.sweety.extension.ExtensionInfo;
 import dev.sweety.extension.manager.loader.DownloadFile;

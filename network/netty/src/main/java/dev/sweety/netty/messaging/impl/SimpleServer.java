@@ -1,7 +1,7 @@
 package dev.sweety.netty.messaging.impl;
 
 import dev.sweety.core.color.AnsiColor;
-import dev.sweety.logger.SimpleLogger;
+import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.netty.messaging.Server;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.channel.ChannelHandlerContext;

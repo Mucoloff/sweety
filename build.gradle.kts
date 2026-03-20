@@ -56,6 +56,8 @@ subprojects {
         add("testRuntimeOnly", "org.junit.platform:junit-platform-launcher")
 
         add("implementation", "com.sun.mail:javax.mail:1.6.2")
+
+        add("implementation", "com.github.ben-manes.caffeine:caffeine:3.1.8")
     }
 
     tasks.withType<Test>().configureEach {
