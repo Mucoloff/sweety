@@ -5,9 +5,9 @@ import dev.sweety.event.api.IEvent;
 import dev.sweety.event.api.IEventSystem;
 import dev.sweety.event.api.listener.LinkEvent;
 import dev.sweety.event.api.listener.Listener;
-import dev.sweety.core.math.function.Operation;
 import dev.sweety.event.api.info.State;
 import it.unimi.dsi.fastutil.Pair;
+import dev.sweety.event.util.Operation;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;

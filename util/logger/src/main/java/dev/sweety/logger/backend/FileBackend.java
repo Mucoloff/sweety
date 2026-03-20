@@ -1,23 +1,40 @@
 package dev.sweety.logger.backend;
 
 import dev.sweety.core.color.AnsiColor;
-import dev.sweety.logger.LogLevel;
+import dev.sweety.logger.LogEvent;
+import dev.sweety.logger.formatter.LogFormatter;
+import dev.sweety.logger.level.LogLevel;
+import dev.sweety.logger.formatter.SimpleLogFormatter;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
-public record FileBackend(FileWriter fileWriter) implements LoggerBackend {
+public class FileBackend implements LoggerBackend {
+
+    private final FileWriter fileWriter;
+    private final LogFormatter formatter;
 
     public FileBackend(File file) throws IOException {
-        this(new FileWriter(file));
+        this(new FileWriter(file), new SimpleLogFormatter());
+    }
+
+    public FileBackend(FileWriter fileWriter, LogFormatter formatter) {
+        this.fileWriter = fileWriter;
+        this.formatter = formatter;
     }
 
     @Override
-    public void log(LogLevel level, String loggerName, String profile, String formattedLine) {
-        try {
+    public boolean isEnabled(LogLevel level) {
+        return true;
+    }
 
-            fileWriter.append(AnsiColor.clear(formattedLine));
+    @Override
+    public void log(LogEvent event) {
+        try {
+            String formattedLine = formatter.format(event.getLevel(), event.getLoggerName(), event.getProfile(), event.getRawArgs());
+            fileWriter.append(AnsiColor.clear(formattedLine)).append('\n');
+            fileWriter.flush();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

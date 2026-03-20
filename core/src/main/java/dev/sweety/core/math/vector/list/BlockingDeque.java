@@ -1,10 +1,11 @@
 package dev.sweety.core.math.vector.list;
 
-import java.util.Objects;
+import lombok.experimental.Delegate;
+
 import java.util.concurrent.LinkedBlockingDeque;
 
-public class BlockingDeque<E> implements Queue<E>, Stack<E> {
-
+public class BlockingDeque<E> implements java.util.concurrent.BlockingDeque<E> {
+    @Delegate
     private final LinkedBlockingDeque<E> deque;
 
     public BlockingDeque() {
@@ -15,77 +16,9 @@ public class BlockingDeque<E> implements Queue<E>, Stack<E> {
         this.deque = new LinkedBlockingDeque<>(capacity);
     }
 
-    /* ================= QUEUE (FIFO) ================= */
-
-    @Override
-    public boolean enqueue(E e) {
-        Objects.requireNonNull(e);
-        return deque.offerLast(e);
-    }
-
-    @Override
-    public E dequeue() {
-        return deque.pollFirst();
-    }
-
-    /* ================= STACK (LIFO) ================= */
-
-    @Override
-    public void push(E frame) {
-        Objects.requireNonNull(frame);
-        deque.offerFirst(frame);
-    }
-
-    @Override
-    public E pop() {
-        return deque.pollFirst();
-    }
-
-    @Override
-    public E top() {
-        return deque.peekFirst();
-    }
-
-    /* ================= COMMON ================= */
-
-    @Override
-    public E peek() {
-        return deque.peekFirst();
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return deque.isEmpty();
-    }
-
-    @Override
-    public int size() {
-        return deque.size();
-    }
-
-    @Override
-    public void clear() {
-        deque.clear();
-    }
-
-    /* ================= BLOCKING (opzionali) ================= */
-
-    public E take() throws InterruptedException {
-        return deque.takeFirst();
-    }
-
-    public void put(E e) throws InterruptedException {
-        Objects.requireNonNull(e);
-        deque.putLast(e);
-    }
-
     public void addFixed(E e) {
-        while (!enqueue(e)) {
-            pop();
+        while (!deque.offerLast(e)) {
+            deque.pollFirst();
         }
-    }
-
-    public E[] toArray(E[] a) {
-        return deque.toArray(a);
     }
 }

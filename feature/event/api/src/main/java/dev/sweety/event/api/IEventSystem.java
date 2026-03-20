@@ -1,8 +1,8 @@
 package dev.sweety.event.api;
 
-import dev.sweety.core.math.function.Operation;
 import dev.sweety.event.api.info.State;
 import dev.sweety.event.api.listener.Listener;
+import dev.sweety.event.util.Operation;
 import it.unimi.dsi.fastutil.Pair;
 
 import java.util.function.Function;

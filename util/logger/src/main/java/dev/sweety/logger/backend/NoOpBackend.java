@@ -1,13 +1,19 @@
 package dev.sweety.logger.backend;
 
-import dev.sweety.logger.LogLevel;
+import dev.sweety.logger.LogEvent;
+import dev.sweety.logger.level.LogLevel;
 
 /**
  * Backend che non fa nulla: utile per disabilitare l'output di log.
  */
 public record NoOpBackend() implements LoggerBackend {
     @Override
-    public void log(LogLevel level, String loggerName, String profile, String formattedLine) {
+    public boolean isEnabled(LogLevel level) {
+        return false;
+    }
+
+    @Override
+    public void log(LogEvent event) {
         // no-op
     }
 }

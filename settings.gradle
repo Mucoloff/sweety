@@ -70,3 +70,6 @@ include 'util:signature'
 include 'util:thread'
 include 'util:time'
 include 'util:vector'
+
+include 'animation'
+include 'util:system'

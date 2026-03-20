@@ -9,6 +9,7 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/animation" />
             <option value="$PROJECT_DIR$/core" />
             <option value="$PROJECT_DIR$/feature" />
             <option value="$PROJECT_DIR$/feature/asm-patch" />
@@ -58,6 +59,7 @@
             <option value="$PROJECT_DIR$/util/processor/packet-processor" />
             <option value="$PROJECT_DIR$/util/processor/record-getter-processor" />
             <option value="$PROJECT_DIR$/util/signature" />
+            <option value="$PROJECT_DIR$/util/system" />
             <option value="$PROJECT_DIR$/util/thread" />
             <option value="$PROJECT_DIR$/util/time" />
             <option value="$PROJECT_DIR$/util/vector" />

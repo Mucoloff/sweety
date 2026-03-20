@@ -70,7 +70,7 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
         final OrderedResponseQueue queue = this.reorder.enqueue(ctx, this::sendPacket);
         long sequenceId = queue.nextSequenceId();
 
-        this.pendingPackets.enqueue(new PacketContext(packet.retain().rewind(), ctx, sequenceId));
+        this.pendingPackets.offerLast(new PacketContext(packet.retain().rewind(), ctx, sequenceId));
         drainPending();
     }
 
@@ -103,7 +103,7 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
         if (this.pendingPackets.isEmpty()) return;
         PacketContext pq;
 
-        while ((pq = this.pendingPackets.dequeue()) != null) {
+        while ((pq = this.pendingPackets.pollFirst()) != null) {
             final Packet packet = pq.packet();
             final ChannelHandlerContext ctx = pq.ctx();
             final long sequenceId = pq.sequenceId();

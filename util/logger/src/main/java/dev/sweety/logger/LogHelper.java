@@ -12,6 +12,4 @@ public interface LogHelper {
 
     LogHelper trace(Object... input);
 
-    String getMessage(Object[] input);
-
 }

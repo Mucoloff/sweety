@@ -1,27 +1,24 @@
 package dev.sweety.logger;
 
-import dev.sweety.core.color.AnsiColor;
-import dev.sweety.core.exception.ExceptionUtils;
 import dev.sweety.logger.backend.ConsoleBackend;
 import dev.sweety.logger.backend.FileBackend;
 import dev.sweety.logger.backend.LoggerBackend;
+import dev.sweety.logger.formatter.SimpleLogFormatter;
+import dev.sweety.logger.level.LogLevel;
+import dev.sweety.logger.profile.LogProfile;
 import dev.sweety.logger.profile.ProfileScope;
-import dev.sweety.core.math.vector.list.BlockingDeque;
-import dev.sweety.core.math.vector.list.Stack;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Collection;
-import java.util.StringJoiner;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 public class SimpleLogger implements LogHelper {
 
     protected final String name;
+    private final ThreadLocal<Deque<LogProfile>> profiles = ThreadLocal.withInitial(ArrayDeque::new);
 
-    private final ThreadLocal<Stack<String>> profiles = ThreadLocal.withInitial(BlockingDeque::new);
     // Pluggable backend support
     @Getter
     private volatile LoggerBackend backend = new ConsoleBackend();
@@ -51,102 +48,85 @@ public class SimpleLogger implements LogHelper {
     }
 
     public static void log(LogLevel level, BiConsumer<LogLevel, String> logger, Object... input) {
-        final String color = level.color().getColor();
-        final String message = parseMessage(input) + AnsiColor.RESET.getColor();
-
-        logger.accept(level, color + message);
+        // Legacy support: Use temporary formatter
+        String msg = new SimpleLogFormatter().format(level, "STATIC", null, input);
+        logger.accept(level, msg);
     }
 
     public static void log(LogLevel level, String name, Object... input) {
-        final String color = level.color().getColor();
-        final String message = parseMessage(input) + AnsiColor.RESET.getColor();
-
-        System.out.printf("%s(!)%s [%s] %s\n", AnsiColor.RED.getColor(), color, name, message);
+        // Legacy support: direct console write
+        new ConsoleBackend().log(new LogEvent(level, name, null, input));
     }
 
     public SimpleLogger log(LogLevel level, Object... input) {
-        final String prefix = formatPrefix(level);
-        final String color = level.color().getColor();
-        final String message = parseMessage(input) + AnsiColor.RESET.getColor();
-        final String line = color + prefix + " " + color + message;
+        if (!backend.isEnabled(level)) {
+            return this;
+        }
 
-        backend.log(level, name, profiles.get().top(), line);
-        if (fileBackend != null) fileBackend.log(level, name, profiles.get().top(), line);
+        LogProfile profile = profiles.get().peek();
+        LogEvent event = new LogEvent(level, name, profile, input);
+        
+        backend.log(event);
+        
+        if (fileBackend != null) {
+            fileBackend.log(event);
+        }
+        
         return this;
     }
 
-    private String formatPrefix(LogLevel level) {
-        final String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
-        final String top = profiles.get().top();
-        final String suffix = (top != null && !top.isEmpty()) ? ("@" + top) : "";
-        return "[" + time + "][" + level + "][" + name + suffix + "]";
-    }
-
+    // Deprecated internal helper if external calls relied on it, simplified to simple join
+    // But since we removed it from usage, we can probably remove it.
+    // Keeping public API 'push', 'pop' mostly unchanged but fixing types.
 
     public SimpleLogger push(String profile, String color) {
-        return push(color + profile + AnsiColor.RESET.getColor());
+        // Colors no longer supported in profile key directly as logic is stripped
+        // Just push the profile name
+        return push(profile); 
     }
 
-    public SimpleLogger push(String profile, AnsiColor color) {
-        return push(profile, color.getColor());
+    public SimpleLogger push(String profile, dev.sweety.core.color.AnsiColor color) {
+        return push(profile);
     }
 
     // Profile management (thread-local) with hierarchical composition
     public SimpleLogger push(String profile) {
-        final Stack<String> stack = profiles.get();
-        final String suffix = (stack.top() != null && !stack.top().isEmpty()) ? (stack.top() + "@") : "";
-        stack.push(suffix + profile);
+        final Deque<LogProfile> stack = profiles.get();
+        final LogProfile current = stack.peek();
+        
+        final LogProfile newProfile = LogProfile.of(profile, current);
+        stack.push(newProfile);
         return this;
     }
 
     public SimpleLogger pop() {
-        profiles.get().pop();
+        Deque<LogProfile> stack = profiles.get();
+        if (!stack.isEmpty()) stack.pop();
         return this;
     }
 
     public String popProfile() {
-        return profiles.get().pop();
+        Deque<LogProfile> stack = profiles.get();
+        LogProfile p = stack.poll(); // poll() returns null if empty, pop() throws
+        return p != null ? p.getName() : null;
     }
 
     public String switchProfile(String profile) {
-        final Stack<String> stack = profiles.get();
-        String old = stack.pop();
-        stack.push(profile);
-        return old;
+        final Deque<LogProfile> stack = profiles.get();
+        
+        // Safe pop
+        LogProfile old = stack.poll(); 
+        
+        LogProfile parent = stack.peek();
+        // If stack was empty (old == null), parent is null, which is valid for root profile
+        stack.push(LogProfile.of(profile, parent));
+        
+        return old != null ? old.getName() : null;
     }
 
     public ProfileScope withProfile(String profile) {
         push(profile);
         return new ProfileScope(this);
-    }
-
-    @Override
-    public String getMessage(Object... input) {
-        return parseMessage(input);
-    }
-
-    private static String parseMessage(Object... input) {
-        final StringJoiner joiner = new StringJoiner(" ");
-        for (Object part : input) {
-
-            joiner.add(switch (part) {
-                case null -> "<null>";
-                case String s -> s;
-                case AnsiColor color -> color.getColor();
-                case Class<?> clazz -> clazz.getSimpleName();
-                case Throwable e -> ExceptionUtils.getStackTrace(e);
-                case Object[] arr -> parseMessage(arr);
-                /*
-                case List<?> l -> getMessage(l.toArray());
-                case Set<?> s -> getMessage(s.toArray());
-                -- handled by Collection<?>
-                */
-                case Collection<?> c -> parseMessage(c.toArray());
-                default -> part.toString();
-            });
-
-        }
-        return joiner.toString();
     }
 
     public String name() {

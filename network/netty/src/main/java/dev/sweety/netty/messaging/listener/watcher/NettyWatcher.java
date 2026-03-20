@@ -1,6 +1,6 @@
 package dev.sweety.netty.messaging.listener.watcher;
 
-import dev.sweety.logger.LogLevel;
+import dev.sweety.logger.level.LogLevel;
 import dev.sweety.logger.SimpleLogger;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
