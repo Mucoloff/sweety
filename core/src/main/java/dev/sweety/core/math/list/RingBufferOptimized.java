@@ -1,4 +1,4 @@
-package dev.sweety.core.math.vector.list;
+package dev.sweety.core.math.list;
 
 public class RingBufferOptimized<E> {
     private final E[] buffer;

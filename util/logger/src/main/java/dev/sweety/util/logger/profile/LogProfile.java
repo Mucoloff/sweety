@@ -1,54 +1,44 @@
 package dev.sweety.util.logger.profile;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.Getter;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Getter
 public final class LogProfile {
     private static final int MAX_CACHE_SIZE = 1000;
-    
-    // LRU Cache: Removes eldest entry when size > MAX_CACHE_SIZE
-    private static final Map<ProfileKey, LogProfile> CACHE = Collections.synchronizedMap(
-        new LinkedHashMap<>(16, 0.75f, true) {
-            @Override
-            protected boolean removeEldestEntry(Map.Entry<ProfileKey, LogProfile> eldest) {
-                return size() > MAX_CACHE_SIZE;
-            }
-        }
-    );
+
+    private static final Cache<ProfileKey, LogProfile> CACHE = Caffeine.newBuilder()
+            .maximumSize(MAX_CACHE_SIZE)
+            .expireAfterAccess(10, TimeUnit.MINUTES)
+            .build();
 
     private final String name;
     private final LogProfile parent;
     private final String fullPath;
 
+    private LogProfile(ProfileKey key) {
+        this(key.name(), key.parent());
+    }
+
     private LogProfile(String name, LogProfile parent) {
         this.name = name;
         this.parent = parent;
-        if (parent == null) {
-            this.fullPath = name;
-        } else {
-            // Calculated once, immutable, thread-safe by default
-            this.fullPath = parent.fullPath + "@" + name;
-        }
+        this.fullPath = parent == null ? name : parent.fullPath + "@" + name;
     }
 
     public static LogProfile of(String name) {
         return of(name, null);
     }
-    
+
     public static LogProfile of(String name, LogProfile parent) {
-        if (name == null || name.isEmpty()) {
-             throw new IllegalArgumentException("Profile name cannot be null or empty");
-        }
-        
-        // Use composite key (identity of parent + string name)
-        ProfileKey key = new ProfileKey(name, parent);
-        
-        // computeIfAbsent is thread-safe in synchronizedMap and handles the check-then-act
-        return CACHE.computeIfAbsent(key, k -> new LogProfile(k.name, k.parent));
+        if (name == null || name.isEmpty()) throw new IllegalArgumentException("Profile name cannot be null or empty");
+        return CACHE.get(new ProfileKey(name, parent), LogProfile::new);
     }
 
     @Override
@@ -61,9 +51,9 @@ public final class LogProfile {
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
-            if (!(o instanceof ProfileKey that)) return false;
+            if (!(o instanceof ProfileKey(String name1, LogProfile parent1))) return false;
             // String comparison + Strict Reference Identity for parent
-            return name.equals(that.name) && parent == that.parent;
+            return name.equals(name1) && parent == parent1;
         }
 
         @Override

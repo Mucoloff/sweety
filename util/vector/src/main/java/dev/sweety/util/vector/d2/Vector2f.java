@@ -1,25 +1,25 @@
-package dev.sweety.core.math.vector.d2;
+package dev.sweety.util.vector.d2;
 
 /**
- * 2D double Vector.
+ * 2D float Vector.
  * This vector can represent coordinates, angles, or anything you want.
  * You can use this to represent an array if you really want.
- * Converted from Vector3d to 2d
+ * Converted from Vector3f to 2f
  *
  * @param x X (coordinate/angle/whatever you wish)
  * @param y Y (coordinate/angle/whatever you wish)
  * @author retrooper, mksweety
  * @since 1.8
  */
-public record Vector2d(double x, double y) {
+public record Vector2f(float x, float y) {
 
-    private static final Vector2d ZERO = new Vector2d();
+    private static final Vector2f ZERO = new Vector2f();
 
     /**
      * Default constructor setting all coordinates/angles/values to their default values (=0).
      */
-    public Vector2d() {
-        this(0.0, 0.0);
+    public Vector2f() {
+        this(0.0f, 0.0f);
     }
 
     /**
@@ -28,7 +28,7 @@ public record Vector2d(double x, double y) {
      * @param x X
      * @param y Y
      */
-    public Vector2d {
+    public Vector2f {
     }
 
     /**
@@ -39,10 +39,10 @@ public record Vector2d(double x, double y) {
      *
      * @param array Array.
      */
-    public Vector2d(double[] array) {
+    public Vector2f(float[] array) {
         this(
-                array.length > 0 ? array[0] : 0.0,
-                array.length > 1 ? array[1] : 0.0
+                array.length > 0 ? array[0] : 0.0f,
+                array.length > 1 ? array[1] : 0.0f
         );
     }
 
@@ -63,79 +63,56 @@ public record Vector2d(double x, double y) {
         };
     }
 
-    public Vector2d add(double x, double y) {
-        return new Vector2d(this.x + x, this.y + y);
+    public Vector2f add(float x, float y) {
+        return new Vector2f(this.x + x, this.y + y);
     }
 
-    public Vector2d add(Vector2d other) {
+    public Vector2f add(Vector2f other) {
         return add(other.x, other.y);
     }
 
-    public Vector2d subtract(double x, double y) {
-        return new Vector2d(this.x - x, this.y - y);
+    public Vector2f subtract(float x, float y) {
+        return new Vector2f(this.x - x, this.y - y);
     }
 
-    public Vector2d subtract(Vector2d other) {
+    public Vector2f subtract(Vector2f other) {
         return subtract(other.x, other.y);
     }
 
-    public Vector2d multiply(double x, double y) {
-        return new Vector2d(this.x * x, this.y * y);
+    public Vector2f multiply(float x, float y) {
+        return new Vector2f(this.x * x, this.y * y);
     }
 
-    public Vector2d multiply(Vector2d other) {
+    public Vector2f multiply(Vector2f other) {
         return multiply(other.x, other.y);
     }
 
-    public Vector2d multiply(double value) {
+    public Vector2f multiply(float value) {
         return multiply(value, value);
     }
 
-    public double dot(Vector2d other) {
+    public float dot(Vector2f other) {
         return this.x * other.x + this.y * other.y;
     }
 
-    public Vector2d with(Double x, Double y) {
-        return new Vector2d(x == null ? this.x : x, y == null ? this.y : y);
+    public Vector2f with(Float x, Float y) {
+        return new Vector2f(x == null ? this.x : x, y == null ? this.y : y);
     }
 
-    public Vector2d withX(double x) {
-        return new Vector2d(x, this.y);
+    public Vector2f withX(float x) {
+        return new Vector2f(x, this.y);
     }
 
-    public Vector2d withY(double y) {
-        return new Vector2d(this.x, y);
+    public Vector2f withY(float y) {
+        return new Vector2f(this.x, y);
     }
 
-    public double distance(Vector2d other) {
-        return Math.sqrt(distanceSquared(other));
-    }
-
-    public double length() {
-        return Math.sqrt(lengthSquared());
-    }
-
-    public double lengthSquared() {
-        return (x * x) + (y * y);
-    }
-
-    public Vector2d normalize() {
-        double length = length();
-        return new Vector2d(x / length, y / length);
-    }
-
-    public Vector2f toVector2f() {
-        return new Vector2f((float) x, (float) y);
+    public Vector2d toVector2d() {
+        return new Vector2d(x, y);
     }
 
     public Vector2i toVector2i() {
         return new Vector2i((int) x, (int) y);
-    }
-
-    public double distanceSquared(Vector2d other) {
-        double distX = (x - other.x) * (x - other.x);
-        double distY = (y - other.y) * (y - other.y);
-        return distX + distY;
     }
 
     public Polar toPolar() {

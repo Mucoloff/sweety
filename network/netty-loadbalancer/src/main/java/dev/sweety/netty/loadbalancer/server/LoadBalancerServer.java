@@ -3,7 +3,7 @@ package dev.sweety.netty.loadbalancer.server;
 import dev.sweety.core.color.AnsiColor;
 import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.core.math.function.TriFunction;
-import dev.sweety.core.math.vector.list.BlockingDeque;
+import dev.sweety.core.math.list.BlockingDeque;
 import dev.sweety.thread.ProfileThread;
 import dev.sweety.thread.ThreadManager;
 import dev.sweety.netty.feature.AutoReconnect;

@@ -1,6 +1,6 @@
 package dev.sweety.netty.messaging;
 
-import dev.sweety.core.math.vector.list.BlockingDeque;
+import dev.sweety.core.math.list.BlockingDeque;
 import dev.sweety.netty.feature.QueueContext;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
@@ -78,13 +78,13 @@ public abstract class Client extends Messenger<Bootstrap> {
 
     private <T> CompletableFuture<T> enqueue(Packet... packets) {
         final CompletableFuture<T> future = new CompletableFuture<>();
-        pendingPackets.enqueue(new QueueContext<>(future, packets));
+        pendingPackets.offerLast(new QueueContext<>(future, packets));
         return future;
     }
 
     private void drainPending() {
         while (!pendingPackets.isEmpty()) {
-            final QueueContext<?> context = pendingPackets.dequeue();
+            final QueueContext<?> context = pendingPackets.pollFirst();
             final Packet[] packets = context.packets();
             //noinspection unchecked
             final CompletableFuture<Object> future = (CompletableFuture<Object>) context.future();

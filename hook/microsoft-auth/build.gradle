@@ -1,3 +1,5 @@
 dependencies {
     implementation(project(":core"))
+    implementation(project(":util:system"))
+    implementation(project(":util:persistence:configuration"))
 }

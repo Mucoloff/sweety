@@ -3,7 +3,7 @@ package dev.sweety.spotify;
 import com.sun.net.httpserver.HttpServer;
 import dev.sweety.core.file.ResourceUtils;
 import dev.sweety.util.logger.LogHelper;
-import dev.sweety.core.system.OperatingSystem;
+import dev.sweety.util.system.OperatingSystem;
 import dev.sweety.time.StopWatch;
 import dev.sweety.core.util.ObjectUtils;
 import dev.sweety.spotify.auth.AuthToken;

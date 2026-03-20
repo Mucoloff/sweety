@@ -65,7 +65,7 @@ public class ExtensionManager<T extends Extension> {
      */
     public T loadExtension(final File jarFile) {
         try {
-            final ExtensionInfo info = ExtensionInfo.get(jarFile, this.extensionName.toLowerCase(Locale.ROOT));
+            final ExtensionInfo info = ExtensionInfo.of(jarFile, this.extensionName.toLowerCase(Locale.ROOT));
 
             if (extensions.containsKey(info.name())) {
                 logger.error("Impossibile caricare " + this.extensionName + " " + jarFile.getName() + ": Un " + this.extensionName + " con il nome '" + info.name() + "' esiste già.");

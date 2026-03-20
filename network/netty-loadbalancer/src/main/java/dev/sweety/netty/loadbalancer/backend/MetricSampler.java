@@ -43,7 +43,7 @@ public class MetricSampler {
     private volatile long[] prevCpuTicks;
 
     static {
-        if (dev.sweety.core.system.OperatingSystem.WINDOWS.isThis()) {
+        if (dev.sweety.util.system.OperatingSystem.WINDOWS.isThis()) {
             //System.setProperty("oshi.os.windows.loadaverage", "true");
             GlobalConfig.set("oshi.os.windows.loadaverage", true);
         }

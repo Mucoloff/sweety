@@ -1,7 +1,6 @@
 package dev.sweety.versioning.server.logic.patch;
 
 import dev.sweety.util.signature.Signature;
-import dev.sweety.versioning.server.logic.cache.CacheKey;
 
 import java.io.IOException;
 import java.nio.file.Files;

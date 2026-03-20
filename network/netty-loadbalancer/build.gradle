@@ -6,6 +6,7 @@ dependencies {
     implementation project(':util:thread')
     implementation project(':util:time')
     implementation project(':network:netty')
+    implementation(project(":util:system"))
 
     var proc = project(':util:processor:record-getter-processor')
     implementation proc

@@ -1,4 +1,4 @@
-package dev.sweety.core.math.vector.d2;
+package dev.sweety.util.vector.d2;
 
 public record PolarF(float r, float phi) {
 

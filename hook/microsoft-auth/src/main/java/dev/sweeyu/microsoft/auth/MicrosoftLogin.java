@@ -4,9 +4,10 @@ import com.google.gson.Gson;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import dev.sweety.config.json.GsonUtils;
 import dev.sweety.core.file.ResourceUtils;
-import dev.sweety.core.config.GsonUtils;
-import dev.sweety.core.system.OperatingSystem;
+
+import dev.sweety.util.system.OperatingSystem;
 import lombok.SneakyThrows;
 import lombok.ToString;
 import org.apache.http.NameValuePair;

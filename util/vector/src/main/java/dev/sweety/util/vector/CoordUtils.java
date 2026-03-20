@@ -1,7 +1,6 @@
-package dev.sweety.core.math.vector;
+package dev.sweety.util.vector;
 
-import dev.sweety.core.math.vector.d2.Polar;
-import dev.sweety.core.math.vector.d2.Vector2f;
+import dev.sweety.util.vector.d2.*;
 
 public class CoordUtils {
 

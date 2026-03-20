@@ -1,24 +1,25 @@
 package dev.sweety.sql4j.impl.query;
 
 import dev.sweety.sql4j.api.query.Query;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 public final class QueryCache {
 
-    private static final ConcurrentMap<String, Query<?>> CACHE = new ConcurrentHashMap<>();
+    private static final Cache<String, Query<?>> CACHE = Caffeine.newBuilder()
+            .maximumSize(10_000)
+            .expireAfterAccess(30, TimeUnit.MINUTES)
+            .build();
 
-    public static <T> Query<T> get(
-            String key,
-            Supplier<Query<T>> supplier
-    ) {
+    public static <T> Query<T> get(String key, Supplier<Query<T>> supplier) {
         //noinspection unchecked
-        return (Query<T>) CACHE.computeIfAbsent(key, k -> supplier.get());
+        return (Query<T>) CACHE.get(key, k -> supplier.get());
     }
 
     public static void clear() {
-        CACHE.clear();
+        CACHE.invalidateAll();
     }
 }

@@ -1,4 +1,4 @@
-package dev.sweety.core.math.vector.list;
+package dev.sweety.core.math.list;
 
 import lombok.experimental.Delegate;
 

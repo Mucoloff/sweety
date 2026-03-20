@@ -1,5 +1,6 @@
 package dev.sweety.versioning.server.logic.patch;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
 import dev.sweety.patch.bytecode.AsmClassNormalizer;
 import dev.sweety.patch.diff.PatchFilter;
 import dev.sweety.patch.filter.DefaultPatchFilter;
@@ -19,13 +20,19 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.*;
+
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 
 public class PatchManager {
 
     private static final String BUILD_INFO = "dev/sweety/build/BuildInfo.class";
 
-    private final Map<Artifact, Map<Channel, Map<Version, Map<Version, File>>>> patchCache = new EnumMap<>(Artifact.class);
+    private final Cache<LatestKey, PatchBucket> buckets = Caffeine.newBuilder()
+            .maximumSize(1_000)
+            .build();
 
     private static final PatchFilter info = BUILD_INFO::equals;
     public static final PatchFilter ONLY_JAVA = new DefaultPatchFilter();
@@ -57,22 +64,36 @@ public class PatchManager {
 
     public void generatePatch(Artifact artifact, Channel channel, Version latest) throws IOException {
         int distance = Settings.MAX_PATCH_VER_DISTANCE;
-        final Deque<ReleaseInfo> history = new ArrayDeque<>(releaseManager.history(artifact, channel));
 
+        final Deque<ReleaseInfo> history = new ArrayDeque<>(releaseManager.history(artifact, channel));
         File newJar = this.releaseManager.resolveBaseJar(artifact, channel, latest).toFile();
 
         while (distance > 0 && !history.isEmpty()) {
-            final Version to = history.pollFirst().version();
-            try {
-                generatePatch(newJar, artifact, channel, latest, to);
-            } catch (IllegalArgumentException ignored) {
+            Version old = history.pollFirst().version();
 
+            try {
+                generatePatch(newJar, artifact, channel, latest, old);
+            } catch (IllegalArgumentException ignored) {
             }
+
             distance--;
         }
     }
 
+    public Optional<File> cached(Artifact artifact, Channel channel, Version latest, Version current) {
+        PatchBucket bucket = bucket(artifact, channel, latest);
+        return Optional.ofNullable(bucket.get(current));
+    }
+
     private void generatePatch(File newJar, Artifact artifact, Channel channel, Version latest, Version old) throws IOException {
+
+        PatchBucket bucket = bucket(artifact, channel, latest);
+
+        File existing = bucket.get(old);
+        if (existing != null) {
+            return;
+        }
+
         File oldJar = this.releaseManager.resolveBaseJar(artifact, channel, old).toFile();
 
         final String fromVer = old.toString();
@@ -81,30 +102,45 @@ public class PatchManager {
         Path versionRoot = latest.resolve(this.artifacts.get(artifact).resolve(channel.prettyName()));
         File path = versionRoot.resolve("patch").toFile();
         path.mkdirs();
-        File patch = generator.generate(oldJar, newJar, path, "v" + fromVer, fromVer, toVer, EXCLUDE_SIGNATURE);
 
-        versionFileMap(artifact, channel, latest).put(old, patch);
+        File patch = generator.generate(
+                oldJar,
+                newJar,
+                path,
+                "v" + fromVer,
+                fromVer,
+                toVer,
+                EXCLUDE_SIGNATURE
+        );
+
+        bucket.put(old, patch);
     }
 
-    private @NotNull Map<Version, File> versionFileMap(Artifact artifact, Channel channel, Version latest) {
-        return this.patchCache
-                .computeIfAbsent(artifact, _ignored -> new EnumMap<>(Channel.class))
-                .computeIfAbsent(channel, _ignored -> new HashMap<>())
-                .computeIfAbsent(latest, _ignored -> cache());
+    private PatchBucket bucket(Artifact artifact, Channel channel, Version latest) {
+        LatestKey key = new LatestKey(artifact, channel, latest);
+
+        return buckets.get(key, _k -> new PatchBucket());
     }
 
-    private static Map<Version, File> cache() {
-        return new LinkedHashMap<>() {
-            @Override
-            protected boolean removeEldestEntry(Map.Entry<Version, File> eldest) {
-                return size() > Settings.MAX_PATCH_VER_DISTANCE;
-            }
-        };
+    public record LatestKey(
+            Artifact artifact,
+            Channel channel,
+            Version latest
+    ) {
     }
 
+    public static class PatchBucket {
+        private final Cache<Version, File> cache = Caffeine.newBuilder()
+                .maximumSize(Settings.MAX_PATCH_VER_DISTANCE)
+                .expireAfterAccess(Duration.ofMinutes(30))
+                .build();
 
-    public Optional<File> cached(Artifact artifact, Channel channel, Version latest, Version current) {
-        File file = versionFileMap(artifact, channel, latest).get(current);
-        return Optional.ofNullable(file);
+        public File get(Version from) {
+            return cache.getIfPresent(from);
+        }
+
+        public void put(Version from, File file) {
+            cache.put(from, file);
+        }
     }
 }

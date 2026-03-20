@@ -1,4 +1,4 @@
-package dev.sweety.core.math.vector.d3;
+package dev.sweety.util.vector.d3;
 
 public record Spherical(double r, double theta, double phi) {
 

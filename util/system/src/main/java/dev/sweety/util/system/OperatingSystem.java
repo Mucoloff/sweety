@@ -1,4 +1,4 @@
-package dev.sweety.core.system;
+package dev.sweety.util.system;
 
 import lombok.Getter;
 
