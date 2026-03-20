@@ -20,15 +20,11 @@ public class YamlUtils {
         yamlDumperOptions.setIndent(2);
         yamlDumperOptions.setWidth(80);
 
-        Representer representer = new Representer(yamlDumperOptions);
-        representer.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-
         LoaderOptions yamlLoaderOptions = new LoaderOptions();
         yamlLoaderOptions.setMaxAliasesForCollections(Integer.MAX_VALUE);
         yamlLoaderOptions.setCodePointLimit(Integer.MAX_VALUE);
 
-        // Use SafeConstructor to avoid arbitrary code execution, we only want maps/lists
-        return new Yaml(new SafeConstructor(yamlLoaderOptions), representer, yamlDumperOptions, yamlLoaderOptions);
+        return new Yaml(yamlLoaderOptions, yamlDumperOptions);
     });
 
     public Yaml yaml() {

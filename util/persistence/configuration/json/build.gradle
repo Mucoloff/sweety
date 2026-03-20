@@ -1,3 +1,0 @@
-dependencies {
-    implementation(project(":util:persistence:configuration:common"))
-}

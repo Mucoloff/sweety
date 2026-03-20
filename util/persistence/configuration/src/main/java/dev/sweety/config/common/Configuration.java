@@ -1,6 +1,7 @@
 package dev.sweety.config.common;
 
 import dev.sweety.config.common.serialization.ConfigSerializable;
+import dev.sweety.config.common.serialization.SerializableRegistry;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -13,40 +14,63 @@ import java.util.Map;
 
 public abstract class Configuration {
 
-    protected abstract String dumpAsMap(Map<String, Object> map);
+    private final Map<String, Object> map = new HashMap<>();
 
-    protected abstract Map<String, Object> loadAsMap(Reader reader);
+    protected abstract void dumpToStream(Map<String, Object> map, OutputStream out) throws IOException;
 
-    public void save(Appendable writer) {
+    protected abstract Map<String, Object> loadFromStream(InputStream in) throws IOException;
+
+    public void save(OutputStream out) {
         try {
-            writer.append(dumpAsMap(map));
+            dumpToStream(map, out);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public void load(Reader reader) {
-        map.clear();
-        this.map.putAll(loadAsMap(reader));
-    }
-
-    public void load(File file) {
-        try (FileReader reader = new FileReader(file)) {
-            load(reader);
+    public void load(InputStream in) {
+        try {
+            map.clear();
+            map.putAll(loadFromStream(in));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     public void save(File file) {
-        try (FileWriter writer = new FileWriter(file)) {
-            save(writer);
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            save(out);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private final Map<String, Object> map = new HashMap<>();
+    public void load(File file) {
+        try (FileInputStream in = new FileInputStream(file)) {
+            load(in);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // 👉 opzionale compatibilità testo
+    public void save(Writer writer) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            save(baos);
+            writer.write(baos.toString());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void load(Reader reader) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            reader.transferTo(new OutputStreamWriter(baos));
+            load(new ByteArrayInputStream(baos.toByteArray()));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
 
     /* =======================
@@ -422,7 +446,7 @@ public abstract class Configuration {
 
         for (Map.Entry<String, Object> entry : map.entrySet()) {
             //noinspection unchecked
-            result.put(entry.getKey(), dev.sweety.config.common.serialization.SerializableRegistry.construct(clazz, (Map<String, Object>) entry.getValue()));
+            result.put(entry.getKey(), SerializableRegistry.construct(clazz, (Map<String, Object>) entry.getValue()));
         }
 
         return result;
@@ -436,7 +460,7 @@ public abstract class Configuration {
         final List<T> result = new ArrayList<>(list.size());
         for (Map<?, ?> map : list) {
             //noinspection unchecked
-            result.add(dev.sweety.config.common.serialization.SerializableRegistry.construct(clazz, (Map<String, Object>) map));
+            result.add(SerializableRegistry.construct(clazz, (Map<String, Object>) map));
         }
         return result;
     }
@@ -481,15 +505,15 @@ public abstract class Configuration {
             }
         }
 
-        final Object val;
-        if (value instanceof ConfigSerializable serializable) {
-            dev.sweety.config.common.serialization.SerializableRegistry.register(serializable.getClass());
-            val = serializable.serialize();
-        } else if (value instanceof List<?> l) {
-            val = serializeList(l);
-        } else if (value instanceof Map<?, ?> m) {
-            val = serializeMap(m);
-        } else val = value;
+        final Object val = switch (value) {
+            case ConfigSerializable serializable -> {
+                SerializableRegistry.register(serializable.getClass());
+                yield serializable.serialize();
+            }
+            case List<?> l -> serializeList(l);
+            case Map<?, ?> m -> serializeMap(m);
+            case null, default -> value;
+        };
 
         current.put(parts[parts.length - 1], val);
     }
@@ -499,7 +523,7 @@ public abstract class Configuration {
         for (Object item : list) {
             switch (item) {
                 case ConfigSerializable serializable -> {
-                    dev.sweety.config.common.serialization.SerializableRegistry.register(serializable.getClass());
+                    SerializableRegistry.register(serializable.getClass());
                     result.add(serializable.serialize());
                 }
                 case List<?> l -> result.add(serializeList(l));
@@ -518,7 +542,7 @@ public abstract class Configuration {
 
             switch (value) {
                 case ConfigSerializable serializable -> {
-                    dev.sweety.config.common.serialization.SerializableRegistry.register(serializable.getClass());
+                    SerializableRegistry.register(serializable.getClass());
                     serializedValue = serializable.serialize();
                 }
                 case List<?> l -> serializedValue = serializeList(l);
@@ -566,6 +590,6 @@ public abstract class Configuration {
     }
 
     public <T extends ConfigSerializable> T getSerializable(String path, Class<T> clazz) {
-        return dev.sweety.config.common.serialization.SerializableRegistry.construct(clazz, getMap(path));
+        return SerializableRegistry.construct(clazz, getMap(path));
     }
 }

@@ -2,6 +2,7 @@ package dev.sweety.config.common;
 
 import lombok.Getter;
 import lombok.SneakyThrows;
+import org.tomlj.Toml;
 
 import java.io.File;
 import java.util.function.Consumer;

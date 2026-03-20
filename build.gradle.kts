@@ -35,6 +35,7 @@ subprojects {
         add("implementation", "org.jetbrains.kotlin:kotlin-stdlib")
         add("implementation", "com.google.code.gson:gson:2.13.1")
         add("implementation", "org.yaml:snakeyaml:2.3")
+        add("implementation", "org.tomlj:tomlj:1.1.1")
 
         add("runtimeOnly", "org.joml:joml:1.10.5")
         add("implementation", "org.apache.commons:commons-lang3:3.18.0")
