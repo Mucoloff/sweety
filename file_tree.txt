@@ -22,7 +22,6 @@
   │           │               │   ├── 📄 AnsiColor.java
   │           │               │   ├── 📄 ColorUtils.java
   │           │               │   └── 📄 EColor.java
-  │           │               ├── 📁 config/
   │           │               ├── 📁 crypt/
   │           │               │   ├── 📄 ByteCrypt.java
   │           │               │   └── 📄 ChecksumUtils.java
@@ -56,17 +55,14 @@
   │           │               │   ├── 📁 mask/
   │           │               │   │   ├── 📄 Mask.java
   │           │               │   │   └── 📄 MaskUtil.java
-  │           │               │   ├── 📁 splitstate/
-  │           │               │   │   ├── 📄 ConfirmableState.java
-  │           │               │   │   ├── 📄 SplitState.java
-  │           │               │   │   └── 📄 SplitStateBoolean.java
-  │           │               │   └── 📁 vector/
+  │           │               │   └── 📁 splitstate/
+  │           │               │       ├── 📄 ConfirmableState.java
+  │           │               │       ├── 📄 SplitState.java
+  │           │               │       └── 📄 SplitStateBoolean.java
   │           │               └── 📁 util/
   │           │                   ├── 📄 DataUtils.java
   │           │                   ├── 📄 HasId.java
-  │           │                   ├── 📄 Loadable.java
-  │           │                   ├── 📄 ObjectUtils.java
-  │           │                   └── 📄 UUIDUtils.java
+  │           │                   └── 📄 ObjectUtils.java
   │           └── 📁 kotlin/
   ├── 📁 feature/
   │   ├── 📁 asm-patch/

@@ -1,10 +1,10 @@
 package dev.sweety.versioning.server.logic.webhook;
 
+import dev.sweety.versioning.server.Settings;
+
 import java.util.concurrent.ConcurrentHashMap;
 
 public class WebhookIdempotencyStore {
-
-    private static final long DEFAULT_TTL = 60 * 60 * 1000 * 1000L;
 
     private final ConcurrentHashMap<String, Long> deliveries = new ConcurrentHashMap<>();
     private final long ttl;
@@ -14,7 +14,7 @@ public class WebhookIdempotencyStore {
     }
 
     public WebhookIdempotencyStore() {
-        this(DEFAULT_TTL);
+        this(Settings.DEFAULT_TTL);
     }
 
     public boolean isProcessed(String id) {
@@ -33,11 +33,7 @@ public class WebhookIdempotencyStore {
     }
 
     public void mark(String id) {
-
-        if (id != null) {
-            deliveries.put(id, System.currentTimeMillis());
-        }
-
+        if (id != null) deliveries.put(id, System.currentTimeMillis());
     }
 
     private void lazyCleanup() {

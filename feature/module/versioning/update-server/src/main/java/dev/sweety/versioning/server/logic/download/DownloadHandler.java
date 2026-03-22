@@ -1,11 +1,13 @@
 package dev.sweety.versioning.server.logic.download;
 
+import com.google.common.util.concurrent.RateLimiter;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import dev.sweety.patch.format.PatchEditor;
 import dev.sweety.patch.model.Patch;
 import dev.sweety.patch.model.type.PatchTypes;
 import dev.sweety.versioning.exception.*;
+import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.server.logic.patch.PatchManager;
 import dev.sweety.versioning.server.logic.release.ReleaseManager;
 import dev.sweety.versioning.server.logic.cache.CacheKey;
@@ -144,8 +146,20 @@ public class DownloadHandler implements HttpHandler {
             };
 
             exchange.sendResponseHeaders(200, data.length);
+
+            RateLimiter limiter = RateLimiter.create(Settings.DOWNLOAD_SPEED); // 50 KB/s
+
             try (OutputStream os = exchange.getResponseBody()) {
-                os.write(data);
+                int offset = 0;
+
+                while (offset < data.length) {
+                    int len = Math.min(1024, data.length - offset);
+
+                    limiter.acquire(len);
+
+                    os.write(data, offset, len);
+                    offset += len;
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();

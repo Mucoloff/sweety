@@ -1,6 +1,7 @@
 package dev.sweety.versioning.server.logic.download;
 
 import dev.sweety.versioning.protocol.handshake.DownloadType;
+import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.server.util.garbage.ExpirableGarbage;
 import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.exception.*;
@@ -16,11 +17,9 @@ public class DownloadManager extends ExpirableGarbage<UUID, Token> {
     /**
      * expire in millis
      */
-    private static final long EXPIRE_DELAY_MS = 30_000L;
-    private static final int MAX_GARBAGE = 50;
 
     public DownloadManager() {
-        super(MAX_GARBAGE);
+        super(Settings.MAX_CONCURRENT_DOWNLOADS);
     }
 
     /**
@@ -28,7 +27,7 @@ public class DownloadManager extends ExpirableGarbage<UUID, Token> {
      */
     public synchronized String generate(UUID clientId, Artifact artifact, Channel channel, Version version, Version from, DownloadType downloadType) {
 
-        final Token token = new Token(clientId, artifact, channel, version, from, downloadType, EXPIRE_DELAY_MS);
+        final Token token = new Token(clientId, artifact, channel, version, from, downloadType, Settings.DOWNLOAD_EXPIRE_DELAY_MS);
         final UUID tokenId = token.token();
 
         add(tokenId, token);

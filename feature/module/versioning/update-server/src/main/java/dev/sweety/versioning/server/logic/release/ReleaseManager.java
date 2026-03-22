@@ -3,6 +3,7 @@ package dev.sweety.versioning.server.logic.release;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.server.logic.storage.Storage;
 import dev.sweety.versioning.util.Utils;
 import dev.sweety.versioning.version.artifact.Artifact;
@@ -21,8 +22,6 @@ import java.util.EnumMap;
 import java.util.Objects;
 
 public class ReleaseManager {
-
-    private static final int HISTORY_LIMIT = 20;
 
     private final EnumMap<Artifact, ReleaseState> states = new EnumMap<>(Artifact.class);
 
@@ -211,7 +210,7 @@ public class ReleaseManager {
 
             s.history(ch).addFirst(current);
 
-            while (s.history(ch).size() > HISTORY_LIMIT)
+            while (s.history(ch).size() > Settings.HISTORY_LIMIT)
                 s.history(ch).removeLast();
 
             s.latest(ch, next);

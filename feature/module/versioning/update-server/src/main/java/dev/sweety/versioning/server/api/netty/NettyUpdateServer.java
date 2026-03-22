@@ -33,9 +33,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class NettyUpdateServer extends SimpleServer {
 
-    private static final long EXPIRE_DELAY_MS = 30_000L;
-    private static final int MAX_GARBAGE = 50;
-
     private final DownloadManager downloadManager;
     private final ReleaseManager releaseManager;
     private final Runnable stop;
@@ -53,7 +50,7 @@ public class NettyUpdateServer extends SimpleServer {
         this.patchManager = patchManager;
         this.stop = stop;
 
-        for (Artifact value : Artifact.values()) forcedUpdates.put(value, new ExpirableGarbage<>(MAX_GARBAGE));
+        for (Artifact value : Artifact.values()) forcedUpdates.put(value, new ExpirableGarbage<>(Settings.MAX_CONCURRENT_DOWNLOADS));
     }
 
     @Override
@@ -193,7 +190,7 @@ public class NettyUpdateServer extends SimpleServer {
     public void broadcastRollback(Artifact artifact, Channel channel, ReleaseInfo rolled, ReleaseInfo prev) {
         //rolled = new
         final ReleasePacket packet = new ReleasePacket(artifact, rolled, true);
-        final ForcedUpdate update = new ForcedUpdate(channel, prev.version(), rolled.version(), System.currentTimeMillis() + EXPIRE_DELAY_MS);
+        final ForcedUpdate update = new ForcedUpdate(channel, prev.version(), rolled.version(), System.currentTimeMillis() + Settings.DOWNLOAD_EXPIRE_DELAY_MS);
         final ExpirableGarbage<ChannelHandlerContext, ForcedUpdate> garbage = this.forcedUpdates.get(artifact);
 
         this.clientInfos.entrySet()

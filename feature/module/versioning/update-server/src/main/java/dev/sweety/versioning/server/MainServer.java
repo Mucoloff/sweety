@@ -13,11 +13,15 @@ import dev.sweety.versioning.server.logic.release.ReleaseManager;
 import dev.sweety.versioning.server.logic.storage.Storage;
 import dev.sweety.versioning.server.api.netty.NettyUpdateServer;
 import dev.sweety.versioning.util.Utils;
+import org.jetbrains.annotations.NotNull;
 
+import javax.swing.text.NumberFormatter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.text.NumberFormat;
+import java.util.Locale;
 
 public class MainServer {
 
@@ -33,7 +37,7 @@ public class MainServer {
         final ClientRegistry clientRegistry = new ClientRegistry();
         final DownloadManager downloadManager = new DownloadManager();
 
-        final HttpUpdateServer httpServer = new HttpUpdateServer(port, Settings.ROLLBACK_TOKEN, Settings.WEBHOOK_SECRET, releaseManager,patchManager, downloadManager, cacheManager, clientRegistry);
+        final HttpUpdateServer httpServer = new HttpUpdateServer(port, Settings.ROLLBACK_TOKEN, Settings.WEBHOOK_SECRET, releaseManager, patchManager, downloadManager, cacheManager, clientRegistry);
         final ProfileThread t = new ProfileThread("http");
 
         Runnable stop = () -> {
@@ -53,27 +57,54 @@ public class MainServer {
 
     private static void loadSettings(final Path settingFile) throws IOException {
         if (!Files.exists(settingFile)) {
-            final JsonObject root = new JsonObject();
-
-            root.addProperty("ROLLBACK_TOKEN", Settings.ROLLBACK_TOKEN);
-            root.addProperty("WEBHOOK_SECRET", Settings.WEBHOOK_SECRET);
-            root.addProperty("TOKEN_GEN_SALT", Settings.TOKEN_GEN_SALT);
-            root.addProperty("PERCENT_SIZE", Settings.PERCENT_SIZE);
-            root.addProperty("MAX_PATCH_VER_DISTANCE", Settings.MAX_PATCH_VER_DISTANCE);
-
             Path tmp = Storage.temp(settingFile);
-            Files.writeString(tmp, Utils.GSON.toJson(root));
+            Files.writeString(tmp, root());
             Files.move(tmp, settingFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             return;
         }
 
         final JsonObject root = Utils.GSON.fromJson(Files.readString(settingFile), JsonObject.class);
+        load(root);
+    }
 
+    private static void load(@NotNull JsonObject root) {
         Settings.ROLLBACK_TOKEN = root.get("ROLLBACK_TOKEN").getAsString();
         Settings.WEBHOOK_SECRET = root.get("WEBHOOK_SECRET").getAsString();
         Settings.TOKEN_GEN_SALT = root.get("TOKEN_GEN_SALT").getAsString();
         Settings.PERCENT_SIZE = root.get("PERCENT_SIZE").getAsFloat();
         Settings.MAX_PATCH_VER_DISTANCE = root.get("MAX_PATCH_VER_DISTANCE").getAsInt();
+        Settings.DOWNLOAD_SPEED = root.get("DOWNLOAD_SPEED").getAsFloat();
+        Settings.DEFAULT_TTL = root.get("DEFAULT_TTL").getAsLong();
+        Settings.DOWNLOAD_EXPIRE_DELAY_MS = root.get("DOWNLOAD_EXPIRE_DELAY_MS").getAsLong();
+        Settings.MAX_CONCURRENT_DOWNLOADS = root.get("MAX_CONCURRENT_DOWNLOADS").getAsInt();
+        Settings.HISTORY_LIMIT = root.get("HISTORY_LIMIT").getAsInt();
+        Settings.GLOBAL_RATE_LIMIT = root.get("GLOBAL_RATE_LIMIT").getAsInt();
+        Settings.PER_IP_RATE_LIMIT = root.get("PER_IP_RATE_LIMIT").getAsInt();
+        Settings.RATE_LIMIT_WINDOW = root.get("RATE_LIMIT_WINDOW").getAsLong();
+    }
+
+    private static @NotNull String root() {
+        final JsonObject root = new JsonObject();
+
+        root.addProperty("ROLLBACK_TOKEN", Settings.ROLLBACK_TOKEN);
+        root.addProperty("WEBHOOK_SECRET", Settings.WEBHOOK_SECRET);
+        root.addProperty("TOKEN_GEN_SALT", Settings.TOKEN_GEN_SALT);
+
+        root.addProperty("PERCENT_SIZE", Settings.PERCENT_SIZE);
+        root.addProperty("MAX_PATCH_VER_DISTANCE", Settings.MAX_PATCH_VER_DISTANCE);
+        root.addProperty("DOWNLOAD_SPEED", Settings.DOWNLOAD_SPEED);
+        root.addProperty("DEFAULT_TTL", Settings.DEFAULT_TTL);
+
+        root.addProperty("DOWNLOAD_EXPIRE_DELAY_MS", Settings.DOWNLOAD_EXPIRE_DELAY_MS);
+        root.addProperty("MAX_CONCURRENT_DOWNLOADS", Settings.MAX_CONCURRENT_DOWNLOADS);
+
+        root.addProperty("HISTORY_LIMIT", Settings.HISTORY_LIMIT);
+
+        root.addProperty("GLOBAL_RATE_LIMIT", Settings.GLOBAL_RATE_LIMIT);
+        root.addProperty("PER_IP_RATE_LIMIT", Settings.PER_IP_RATE_LIMIT);
+        root.addProperty("RATE_LIMIT_WINDOW", Settings.RATE_LIMIT_WINDOW);
+
+        return Utils.GSON.toJson(root);
     }
 
 }
