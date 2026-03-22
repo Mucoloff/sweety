@@ -9,6 +9,8 @@ public class InvalidPacketDataException extends NetworkException {
     }
 
     private static String constructError(String c, int[] p) {
-        return p != null && p.length > 0 ? String.format("%s (Problematic frame: %s)", c, Arrays.stream(p).mapToObj((operand) -> String.format("%02X", operand)).collect(Collectors.joining(" "))) : c;
+        if (p == null || p.length == 0) return c;
+
+        return String.format("%s (Problematic frame: %s)", c, Arrays.stream(p).mapToObj((operand) -> String.format("%02X", operand)).collect(Collectors.joining(" ")));
     }
 }

@@ -1,6 +1,6 @@
 package dev.sweety.versioning.version.channel;
 
-import dev.sweety.versioning.version.PrettyEnum;
+import dev.sweety.core.util.PrettyEnum;
 
 public enum Channel implements PrettyEnum {
 
@@ -18,7 +18,4 @@ public enum Channel implements PrettyEnum {
         return this.level >= releaseChannel.level;
     }
 
-    public boolean canBeUpdatedTo(Channel releaseChannel) {
-        return this.level <= releaseChannel.level;
-    }
 }

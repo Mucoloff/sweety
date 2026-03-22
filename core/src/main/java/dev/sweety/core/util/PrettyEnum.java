@@ -1,4 +1,4 @@
-package dev.sweety.versioning.version;
+package dev.sweety.core.util;
 
 public interface PrettyEnum {
 

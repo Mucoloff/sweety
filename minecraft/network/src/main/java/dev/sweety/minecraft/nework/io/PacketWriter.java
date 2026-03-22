@@ -1,67 +1,59 @@
 package dev.sweety.minecraft.nework.io;
 
+import dev.sweety.minecraft.nework.PingUtils;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 public class PacketWriter {
-    public static final int SIZE_BITS_Y = 12;
-    private static final int SEGMENT_BITS = 127;
-    private static final int CONTINUE_BIT = 128;
-    private static final int SIZE_BITS_X = 26;
-    private static final int SIZE_BITS_Z = 26;
-    private static final long BITS_X = 67108863L;
-    private static final long BITS_Y = 4095L;
-    private static final long BITS_Z = 67108863L;
-    private static final int BIT_SHIFT_Z = 12;
-    private static final int BIT_SHIFT_X = 38;
-    private final byte[] writeBuffer = new byte[1];
-    int writer = 0;
-    private byte[] buffer = new byte[0];
+    private ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 
     public PacketWriter() {
     }
 
     public void reset() {
-        this.writer = 0;
-        this.buffer = new byte[0];
+        this.buffer.reset();
     }
 
-    private void grow(int i) {
-        int existingLength = this.buffer.length;
-        byte[] newBuffer = new byte[existingLength + i];
-        System.arraycopy(this.buffer, 0, newBuffer, 0, this.buffer.length);
-        this.buffer = newBuffer;
+    public byte[] getBuffer() {
+        return this.buffer.toByteArray();
     }
 
     public PacketWriter writeByte(int i) {
-        this.writeBuffer[0] = (byte) i;
-        this.writeBytes(this.writeBuffer);
+        this.buffer.write(i);
         return this;
     }
 
     public PacketWriter insertBytes(int index, byte... b) {
-        if (index >= this.buffer.length) {
-            throw new IndexOutOfBoundsException(index);
-        } else {
-            this.grow(b.length);
-            byte[] f = new byte[this.buffer.length];
-            int i = 0;
-            System.arraycopy(this.buffer, 0, f, 0, index);
-            i += index;
-            System.arraycopy(b, 0, f, i, b.length);
-            i += b.length;
-            System.arraycopy(this.buffer, index, f, i, this.buffer.length - i);
-            this.buffer = f;
-            return this;
+        byte[] current = this.buffer.toByteArray();
+        if (index > current.length || index < 0) {
+            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + current.length);
         }
+
+        ByteArrayOutputStream newBuffer = new ByteArrayOutputStream(current.length + b.length);
+        newBuffer.write(current, 0, index);
+        try {
+            newBuffer.write(b);
+            newBuffer.write(current, index, current.length - index);
+        } catch (IOException e) {
+            // Should not happen with ByteArrayOutputStream
+            throw new RuntimeException(e);
+        }
+        this.buffer = newBuffer;
+        return this;
     }
 
     public PacketWriter writeBytes(byte... b) {
-        this.grow(b.length);
-        System.arraycopy(b, 0, this.buffer, this.writer, b.length);
-        this.writer += b.length;
+        try {
+            this.buffer.write(b);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         return this;
     }
+
 
     public PacketWriter writeBoolean(boolean b) {
         this.writeByte(b ? 1 : 0);
@@ -94,8 +86,8 @@ public class PacketWriter {
     }
 
     public PacketWriter writeVarInt(int value) {
-        while ((value & -128) != 0) {
-            this.writeByte(value & 127 | 128);
+        while ((value & -PingUtils.CONTINUE_BIT) != 0) {
+            this.writeByte(value & PingUtils.SEGMENT_BITS | PingUtils.CONTINUE_BIT);
             value >>>= 7;
         }
 
@@ -103,20 +95,19 @@ public class PacketWriter {
         return this;
     }
 
-    public PacketWriter insertVarInt(int i, int value) {
-        int ind;
-        for (ind = 0; (value & -128) != 0; value >>>= 7) {
-            this.insertBytes(i + ind, (byte) (value & 127 | 128));
-            ++ind;
+    public PacketWriter insertVarInt(int index, int value) {
+        ByteArrayOutputStream temp = new ByteArrayOutputStream(5);
+        while ((value & -PingUtils.CONTINUE_BIT) != 0) {
+            temp.write((byte) (value & PingUtils.SEGMENT_BITS | PingUtils.CONTINUE_BIT));
+            value >>>= 7;
         }
-
-        this.insertBytes(i + ind, (byte) value);
-        return this;
+        temp.write((byte) value);
+        return this.insertBytes(index, temp.toByteArray());
     }
 
     public PacketWriter writeVarLong(long value) {
-        while ((value & -128L) != 0L) {
-            this.writeByte((int) (value & 127L | 128L));
+        while ((value & -PingUtils.CONTINUE_BIT) != 0L) {
+            this.writeByte((int) (value & PingUtils.SEGMENT_BITS | PingUtils.CONTINUE_BIT));
             value >>>= 7;
         }
 
@@ -125,8 +116,9 @@ public class PacketWriter {
     }
 
     public PacketWriter writeString(String s) {
-        this.writeVarInt(s.length());
-        this.writeBytes(s.getBytes(StandardCharsets.UTF_8));
+        byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+        this.writeVarInt(bytes.length);
+        this.writeBytes(bytes);
         return this;
     }
 
@@ -145,7 +137,4 @@ public class PacketWriter {
         return this;
     }
 
-    public byte[] getBuffer() {
-        return this.buffer;
-    }
 }

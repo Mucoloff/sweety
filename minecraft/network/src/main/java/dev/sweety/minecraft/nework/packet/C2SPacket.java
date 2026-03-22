@@ -6,13 +6,10 @@ import java.io.ByteArrayOutputStream;
 import java.util.function.Consumer;
 import java.util.zip.Deflater;
 
-public class C2SPacket {
-    private final int packetId;
-    private final PacketWriter writer;
+public record C2SPacket(int packetId, PacketWriter writer) {
 
     public C2SPacket(int packetId) {
-        this.packetId = packetId;
-        this.writer = new PacketWriter();
+        this(packetId, new PacketWriter());
     }
 
     public C2SPacket(int packetId, Consumer<PacketWriter> packetConstructor) {
@@ -20,8 +17,11 @@ public class C2SPacket {
         packetConstructor.accept(this.writer);
     }
 
+    private static final ThreadLocal<Deflater> DEFLATER = ThreadLocal.withInitial(Deflater::new);
+
     private static byte[] compress(byte[] in) {
-        Deflater d = new Deflater();
+        Deflater d = DEFLATER.get();
+        d.reset();
         d.setInput(in);
         d.finish();
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -33,14 +33,6 @@ public class C2SPacket {
         }
 
         return baos.toByteArray();
-    }
-
-    public PacketWriter getWriter() {
-        return this.writer;
-    }
-
-    public int getPacketId() {
-        return this.packetId;
     }
 
     public byte[] toRawUncompressed() {

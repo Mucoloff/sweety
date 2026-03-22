@@ -8,8 +8,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 public class PingUtils {
-    private static final int SEGMENT_BITS = 127;
-    private static final int CONTINUE_BIT = 128;
+    public static final int SEGMENT_BITS = 127;
+    public static final int CONTINUE_BIT = 128;
 
     public PingUtils() {
     }
@@ -24,8 +24,8 @@ public class PingUtils {
                 throw new EOFException();
             }
 
-            value |= (currentByte & 127) << position;
-            if ((currentByte & 128) == 0) {
+            value |= (currentByte & SEGMENT_BITS) << position;
+            if ((currentByte & CONTINUE_BIT) == 0) {
                 return value;
             }
 
@@ -45,8 +45,8 @@ public class PingUtils {
                 throw new EOFException();
             }
 
-            value |= (long) (currentByte & 127) << position;
-            if ((currentByte & 128) == 0) {
+            value |= (long) (currentByte & SEGMENT_BITS) << position;
+            if ((currentByte & CONTINUE_BIT) == 0) {
                 return value;
             }
 
@@ -57,8 +57,8 @@ public class PingUtils {
     }
 
     public static void writeVarIntDirectly(OutputStream os, int value) throws IOException {
-        while ((value & -128) != 0) {
-            os.write(value & 127 | 128);
+        while ((value & -CONTINUE_BIT) != 0) {
+            os.write(value & SEGMENT_BITS | CONTINUE_BIT);
             value >>>= 7;
         }
 
@@ -66,8 +66,8 @@ public class PingUtils {
     }
 
     public static void writeVarLongDirectly(OutputStream os, long value) throws IOException {
-        while ((value & -128L) != 0L) {
-            os.write((int) (value & 127L | 128L));
+        while ((value & -CONTINUE_BIT) != 0L) {
+            os.write((int) (value & SEGMENT_BITS | CONTINUE_BIT));
             value >>>= 7;
         }
 

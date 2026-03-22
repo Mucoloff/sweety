@@ -1,5 +1,7 @@
 package dev.sweety.minecraft.nework;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import dev.sweety.minecraft.nework.io.PacketInputStream;
 import dev.sweety.minecraft.nework.io.PacketOutputStream;
 import dev.sweety.minecraft.nework.packet.C2SPacket;
@@ -12,14 +14,14 @@ import java.net.Socket;
 public class MinecraftPing {
 
     public static void main(String[] args) throws Throwable {
-        String address = "play.hypixel.net";
+        String address = "play.coralmc.it";
         int port = 25565;
+        int protocolVersion = 773;
 
-        try (Socket socket = openSock(address, port)) {
-            PacketOutputStream pos = new PacketOutputStream(socket.getOutputStream(), false);
-            PacketInputStream pis = new PacketInputStream(socket.getInputStream(), true, pos::setCompressionEnabled);
-
-            int protocolVersion = 773;//MinecraftVersion.V_1_21_10.getProtocolVersion();
+        try (Socket socket = openSock(address, port);
+             PacketOutputStream pos = new PacketOutputStream(socket.getOutputStream(), false);
+             PacketInputStream pis = new PacketInputStream(socket.getInputStream(), true, pos::setCompressionEnabled)
+        ) {
 
             // Handshake
             pos.write(new C2SPacket(0x00, w -> w
@@ -34,8 +36,11 @@ public class MinecraftPing {
 
             // Leggi Status Response
             S2CPacket status = pis.read();
-            String json = status.getPacketReader().readString();
-            System.out.println("Status JSON:\n" + json);
+            String json = status.packetReader().readString();
+
+            Gson gson = new Gson().newBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+
+            System.out.println("Status JSON:\n" + gson.toJson(gson.fromJson(json, JsonObject.class)));
 
             // Ping
             long timestamp = System.currentTimeMillis();
@@ -43,21 +48,16 @@ public class MinecraftPing {
 
             // Leggi Pong
             S2CPacket pong = pis.read();
-            long returned = pong.getPacketReader().readLong();
+            long returned = pong.packetReader().readLong();
             System.out.println("Ping: " + (System.currentTimeMillis() - returned) + "ms");
-
-            pis.close();
-            pos.close();
-        } catch (Exception e) {
-            e.printStackTrace(System.err);
         }
     }
 
-    static Socket openSock(String a, int b) throws IOException {
+    static Socket openSock(String host, int port) throws IOException {
         Socket s = new Socket();
         s.setSoLinger(false, 0);
         s.setSoTimeout(3000);
-        s.connect(new InetSocketAddress(a, b));
+        s.connect(new InetSocketAddress(host, port));
         return s;
     }
 }

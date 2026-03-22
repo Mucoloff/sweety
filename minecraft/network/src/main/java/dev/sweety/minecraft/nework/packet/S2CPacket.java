@@ -9,22 +9,23 @@ import java.io.InputStream;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
-public class S2CPacket {
-    private final PacketReader pr;
-    private final int id;
-
-    public S2CPacket(PacketReader pr) {
-        int i = pr.readVarInt();
-        byte[] b = new byte[pr.getRemaining()];
-        pr.readBytes(b);
-        this.pr = new PacketReader(b);
-        this.id = i;
-    }
+public record S2CPacket(int id, PacketReader packetReader) {
 
     public S2CPacket(int id, byte[] data) {
-        this.pr = new PacketReader(data);
-        this.id = id;
+        this(id, new PacketReader(data));
     }
+
+    public S2CPacket(PacketReader packetReader) {
+        this(packetReader.readVarInt(), f(packetReader));
+    }
+
+    private static PacketReader f(PacketReader reader) {
+        byte[] b = new byte[reader.getRemaining()];
+        reader.readBytes(b);
+        return new PacketReader(b);
+    }
+
+    private static final ThreadLocal<Inflater> INFLATER = ThreadLocal.withInitial(Inflater::new);
 
     public static S2CPacket readCompressedFromStream(InputStream is) throws IOException, DataFormatException {
         DataInputStream dis = new DataInputStream(is);
@@ -38,7 +39,8 @@ public class S2CPacket {
         } else {
             byte[] compressed = new byte[pr.getRemaining()];
             pr.readBytes(compressed);
-            Inflater i = new Inflater();
+            Inflater i = INFLATER.get();
+            i.reset();
             i.setInput(compressed);
             byte[] decompressed = new byte[decompressedLength];
             i.inflate(decompressed);
@@ -54,15 +56,7 @@ public class S2CPacket {
         return new S2CPacket(new PacketReader(buffer));
     }
 
-    public int getId() {
-        return this.id;
-    }
-
-    public PacketReader getPacketReader() {
-        return this.pr;
-    }
-
     public String toString() {
-        return String.format("%s{id=0x%02X,data=%s}", this.getClass().getSimpleName(), this.id, this.pr.toString());
+        return String.format("%s{id=0x%02X,data=%s}", this.getClass().getSimpleName(), this.id, this.packetReader.toString());
     }
 }
