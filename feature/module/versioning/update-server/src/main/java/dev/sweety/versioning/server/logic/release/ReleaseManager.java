@@ -3,6 +3,7 @@ package dev.sweety.versioning.server.logic.release;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.server.logic.storage.Storage;
 import dev.sweety.versioning.util.Utils;
@@ -22,6 +23,7 @@ import java.util.Deque;
 import java.util.EnumMap;
 
 public class ReleaseManager {
+    private static final SimpleLogger LOGGER = new SimpleLogger(ReleaseManager.class);
 
     private final EnumMap<Artifact, ReleaseState> states = new EnumMap<>(Artifact.class);
 
@@ -71,8 +73,7 @@ public class ReleaseManager {
                 for (JsonElement el : hist) {
                     final ReleaseInfo info = deserialize(el.getAsJsonObject());
                     if (info.channel() != channel) {
-                        //todo
-                        System.out.println("invalid channel for release " + info + "should be " + channel);
+                        LOGGER.warn("Invalid channel for release " + info + ", expected " + channel);
                         continue;
                     }
                     s.history(channel).addLast(info);
@@ -179,20 +180,8 @@ public class ReleaseManager {
 
         synchronized (s.lock) {
             ReleaseInfo current = s.latest(channel);
-
             ReleaseInfo next = current.withRollout(rollout);
-
-            //todo this should be the same logic as applyRelease
-            s.history(channel).addFirst(current);
-
-            while (s.history(channel).size() > Settings.HISTORY_LIMIT)
-                s.history(channel).removeLast();
-
-            s.latest(channel, next);
-
-            persist(s);
-
-            return next;
+            return applyNextRelease(s, channel, current, next);
         }
     }
 
@@ -203,24 +192,22 @@ public class ReleaseManager {
             @Nullable Float rollout,
             byte[] jar
     ) throws IOException {
-        //todo move validation
-        Channel ch;
-        try {
-            ch = Channel.valueOf(channel.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new IOException("Invalid channel: " + channel, e);
+        final Channel ch = parseChannel(channel);
+        final Version ver = parseVersion(version);
+
+        if (ver != null && jar == null) {
+            throw new IllegalArgumentException(artifact + ".jar missing");
         }
+
+        if (ver == null && jar != null) {
+            throw new IllegalArgumentException("Version is required when jar is provided");
+        }
+
         ReleaseState s = states.get(artifact);
 
         synchronized (s.lock) {
 
-            Version ver = null;
-
-            if (version != null) {
-                if (jar == null)
-                    throw new IllegalArgumentException(artifact + ".jar missing");
-
-                ver = Version.parse(version);
+            if (ver != null) {
                 writeJar(s, artifact, ver, ch, jar);
             }
 
@@ -229,24 +216,56 @@ public class ReleaseManager {
             Version nextVer = ver != null ? ver : current.version();
 
             ReleaseInfo next = ReleaseInfo.of(nextVer, ch, rollout);
-
-            if (next.version().equals(current.version())
-                    && next.channel().equals(current.channel())
-                    && Float.compare(next.rollout(), current.rollout()) == 0) {
-                return null;
-            }
-
-            s.history(ch).addFirst(current);
-
-            while (s.history(ch).size() > Settings.HISTORY_LIMIT)
-                s.history(ch).removeLast();
-
-            s.latest(ch, next);
-
-            persist(s);
-
-            return next;
+            return applyNextRelease(s, ch, current, next);
         }
+    }
+
+    private Channel parseChannel(String channel) throws IOException {
+        if (channel == null || channel.isBlank()) {
+            throw new IOException("Invalid channel: " + channel);
+        }
+
+        try {
+            return Channel.valueOf(channel.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IOException("Invalid channel: " + channel, e);
+        }
+    }
+
+    private @Nullable Version parseVersion(@Nullable String version) throws IOException {
+        if (version == null || version.isBlank()) {
+            return null;
+        }
+
+        try {
+            return Version.parse(version);
+        } catch (RuntimeException e) {
+            throw new IOException("Invalid version: " + version, e);
+        }
+    }
+
+    private ReleaseInfo applyNextRelease(
+            ReleaseState s,
+            Channel channel,
+            ReleaseInfo current,
+            ReleaseInfo next
+    ) throws IOException {
+        if (next.version().equals(current.version())
+                && next.channel().equals(current.channel())
+                && Float.compare(next.rollout(), current.rollout()) == 0) {
+            return null;
+        }
+
+        s.history(channel).addFirst(current);
+
+        while (s.history(channel).size() > Settings.HISTORY_LIMIT)
+            s.history(channel).removeLast();
+
+        s.latest(channel, next);
+
+        persist(s);
+
+        return next;
     }
 
     private void writeJar(

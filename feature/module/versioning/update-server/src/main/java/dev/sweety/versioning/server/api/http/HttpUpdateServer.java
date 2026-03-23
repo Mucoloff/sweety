@@ -1,6 +1,8 @@
 package dev.sweety.versioning.server.api.http;
 
 import com.sun.net.httpserver.HttpServer;
+import dev.sweety.versioning.server.api.http.handler.RollbackHandler;
+import dev.sweety.versioning.server.api.http.handler.WebhookHandler;
 import dev.sweety.versioning.server.logic.cache.CacheManager;
 import dev.sweety.versioning.server.logic.client.ClientRegistry;
 import dev.sweety.versioning.server.logic.download.DownloadHandler;
@@ -8,8 +10,6 @@ import dev.sweety.versioning.server.logic.download.DownloadManager;
 import dev.sweety.versioning.server.logic.patch.PatchManager;
 import dev.sweety.versioning.server.logic.actions.ReleaseBroadcastConsumer;
 import dev.sweety.versioning.server.logic.release.ReleaseManager;
-import dev.sweety.versioning.server.logic.release.RollbackHandler;
-import dev.sweety.versioning.server.logic.webhook.WebhookHandler;
 import dev.sweety.versioning.server.logic.webhook.WebhookIdempotencyStore;
 import dev.sweety.versioning.server.logic.webhook.WebhookRateLimiter;
 
