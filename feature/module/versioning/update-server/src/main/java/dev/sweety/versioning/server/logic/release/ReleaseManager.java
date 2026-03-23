@@ -20,7 +20,6 @@ import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.Deque;
 import java.util.EnumMap;
-import java.util.Objects;
 
 public class ReleaseManager {
 
@@ -130,16 +129,15 @@ public class ReleaseManager {
         return new ReleaseInfo(
                 Version.parse(obj.get("version").getAsString()),
                 Channel.valueOf(obj.get("channel").getAsString().toUpperCase()),
-                Instant.parse(obj.get("updatedAt").getAsString()),
-                Float.parseFloat(obj.get("rollout").getAsString())
+                Float.parseFloat(obj.get("rollout").getAsString()), Instant.parse(obj.get("updatedAt").getAsString())
         );
     }
 
-    private Path resolveFile(Path path, Artifact artifact, Channel channel, Version version, String extension) throws IOException {
+    private Path resolveFile(Path path, Artifact artifact, Channel channel, Version version) throws IOException {
         final String name = artifact.prettyName();
         final Path dir = version.resolve(path.resolve(channel.prettyName()));
         Files.createDirectories(dir);
-        return dir.resolve(name + "-" + version + extension);
+        return dir.resolve(name + "-" + version + ".jar");
     }
 
     private Path resolveTempJar(ReleaseState s, @NotNull Artifact artifact, Channel channel, Version version) throws IOException {
@@ -148,7 +146,7 @@ public class ReleaseManager {
     }
 
     private Path resolveBaseJar(ReleaseState s, @NotNull Artifact artifact, Channel channel, Version version) throws IOException {
-        return resolveFile(s.root(), artifact, channel, version, ".jar");
+        return resolveFile(s.root(), artifact, channel, version);
     }
 
     public Path resolveBaseJar(@NotNull Artifact artifact, Channel channel, Version version) throws IOException {
@@ -176,6 +174,28 @@ public class ReleaseManager {
         }
     }
 
+    public ReleaseInfo updateRollout(Artifact artifact, Channel channel, float rollout) throws IOException {
+        ReleaseState s = states.get(artifact);
+
+        synchronized (s.lock) {
+            ReleaseInfo current = s.latest(channel);
+
+            ReleaseInfo next = current.withRollout(rollout);
+
+            //todo this should be the same logic as applyRelease
+            s.history(channel).addFirst(current);
+
+            while (s.history(channel).size() > Settings.HISTORY_LIMIT)
+                s.history(channel).removeLast();
+
+            s.latest(channel, next);
+
+            persist(s);
+
+            return next;
+        }
+    }
+
     public ReleaseInfo applyRelease(
             Artifact artifact,
             String channel,
@@ -183,6 +203,7 @@ public class ReleaseManager {
             @Nullable Float rollout,
             byte[] jar
     ) throws IOException {
+        //todo move validation
         Channel ch;
         try {
             ch = Channel.valueOf(channel.toUpperCase());

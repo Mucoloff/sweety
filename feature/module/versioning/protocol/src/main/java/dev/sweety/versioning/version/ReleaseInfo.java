@@ -11,23 +11,22 @@ import java.time.Instant;
 public record ReleaseInfo(
         Version version,
         Channel channel,
-        Instant updatedAt,
-        float rollout
+        float rollout, Instant updatedAt
 ) implements Encoder {
 
     public ReleaseInfo(Version version, Channel channel, float rollout) {
-        this(version, channel, Instant.now(), rollout);
+        this(version, channel, rollout, Instant.now());
     }
 
     public static ReleaseInfo DEFAULT(Channel channel) {
-        return new ReleaseInfo(Version.ZERO, channel, Instant.MIN, 0f);
+        return new ReleaseInfo(Version.ZERO, channel, 0f, Instant.MIN);
     }
 
     public static final CallableDecoder<ReleaseInfo> DECODER = buffer -> new ReleaseInfo(
             buffer.readObject(Version.DECODER),
             buffer.readEnum(Channel.class),
-            Instant.ofEpochMilli(buffer.readVarLong()),
-            buffer.readFloat());
+            buffer.readFloat(), Instant.ofEpochMilli(buffer.readVarLong())
+    );
 
     public static ReleaseInfo of(Version version, Channel channel, @Nullable Float rollout) {
         return new ReleaseInfo(version, channel, rollout != null ? rollout : 1f);
@@ -41,5 +40,9 @@ public record ReleaseInfo(
     @Override
     public void write(PacketBuffer buffer) {
         buffer.writeObject(this.version).writeEnum(this.channel).writeVarLong(updatedAt.toEpochMilli()).writeFloat(rollout);
+    }
+
+    public ReleaseInfo withRollout(float rollout) {
+        return new ReleaseInfo(version, channel, rollout);
     }
 }
