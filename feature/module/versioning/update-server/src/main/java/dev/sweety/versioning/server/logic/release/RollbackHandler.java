@@ -2,7 +2,8 @@ package dev.sweety.versioning.server.logic.release;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import dev.sweety.versioning.server.logic.actions.RollbackConsumer;
+import dev.sweety.versioning.protocol.update.ReleaseBroadcastType;
+import dev.sweety.versioning.server.logic.actions.ReleaseBroadcastConsumer;
 import dev.sweety.versioning.server.util.http.HttpUtils;
 import dev.sweety.versioning.server.util.http.Multipart;
 import dev.sweety.versioning.version.artifact.Artifact;
@@ -21,7 +22,7 @@ public class RollbackHandler implements HttpHandler {
     private final ReleaseManager releaseManager;
 
     @Setter
-    private RollbackConsumer broadcast;
+    private ReleaseBroadcastConsumer broadcast;
 
     public RollbackHandler(String rollbackToken, ReleaseManager releaseManager) {
         this.rollbackToken = rollbackToken;
@@ -75,7 +76,9 @@ public class RollbackHandler implements HttpHandler {
                 return;
             }
 
-            if (this.broadcast != null) this.broadcast.rollback(artifact, channel, rolled, prev);
+            if (this.broadcast != null) {
+                this.broadcast.broadcast(artifact, rolled, channel, ReleaseBroadcastType.ROLLBACK, prev);
+            }
 
             sendText(exchange, 200, "Rollback applied!");
             System.out.println("Rollback applied!");

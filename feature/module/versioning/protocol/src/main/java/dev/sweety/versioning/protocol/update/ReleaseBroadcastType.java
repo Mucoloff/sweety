@@ -1,8 +1,7 @@
-package dev.sweety.versioning.server.logic.release;
+package dev.sweety.versioning.protocol.update;
 
 public enum ReleaseBroadcastType {
     NORMAL,
-    ROLLOUT,
     FORCED,
     ROLLBACK
 }

@@ -2,8 +2,9 @@ package dev.sweety.versioning.server.logic.webhook;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import dev.sweety.versioning.protocol.update.ReleaseBroadcastType;
 import dev.sweety.versioning.server.logic.patch.PatchManager;
-import dev.sweety.versioning.server.logic.actions.ReleaseConsumer;
+import dev.sweety.versioning.server.logic.actions.ReleaseBroadcastConsumer;
 import dev.sweety.versioning.server.logic.release.ReleaseManager;
 import dev.sweety.versioning.server.util.http.Multipart;
 import dev.sweety.versioning.version.artifact.Artifact;
@@ -26,7 +27,7 @@ public class WebhookHandler implements HttpHandler {
     private final PatchManager patchManager;
 
     @Setter
-    private ReleaseConsumer broadcast;
+    private ReleaseBroadcastConsumer broadcast;
 
     public WebhookHandler(
             String secret,
@@ -111,7 +112,9 @@ public class WebhookHandler implements HttpHandler {
 
             if (updated) {
                 this.patchManager.generatePatch(artifact, release.channel(), release.version());
-                if (broadcast != null) this.broadcast.release(artifact, release);
+                if (broadcast != null) {
+                    this.broadcast.broadcast(artifact, release, release.channel(), ReleaseBroadcastType.NORMAL, null);
+                }
             }
 
             sendText(exchange, 200, updated ? "updated" : "no changes");
