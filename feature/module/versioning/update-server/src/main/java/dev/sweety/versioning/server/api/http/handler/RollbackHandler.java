@@ -19,6 +19,7 @@ import static dev.sweety.versioning.server.util.http.HttpUtils.constantTimeEqual
 import static dev.sweety.versioning.server.util.http.HttpUtils.sendText;
 
 public class RollbackHandler implements HttpHandler {
+
     private static final SimpleLogger LOGGER = new SimpleLogger(RollbackHandler.class);
 
     private final String rollbackToken;

@@ -187,60 +187,26 @@ public class ReleaseManager {
 
     public ReleaseInfo applyRelease(
             Artifact artifact,
-            String channel,
-            String version,
+            Channel channel,
+            Version version,
             @Nullable Float rollout,
             byte[] jar
     ) throws IOException {
-        final Channel ch = parseChannel(channel);
-        final Version ver = parseVersion(version);
-
-        if (ver != null && jar == null) {
-            throw new IllegalArgumentException(artifact + ".jar missing");
-        }
-
-        if (ver == null && jar != null) {
-            throw new IllegalArgumentException("Version is required when jar is provided");
-        }
+        if (version != null && jar == null) throw new IllegalArgumentException(artifact + ".jar missing");
+        if (version == null && jar != null) throw new IllegalArgumentException("Version is required when jar is provided");
 
         ReleaseState s = states.get(artifact);
 
         synchronized (s.lock) {
 
-            if (ver != null) {
-                writeJar(s, artifact, ver, ch, jar);
-            }
+            if (version != null) writeJar(s, artifact, version, channel, jar);
 
-            ReleaseInfo current = s.latest(ch);
+            final ReleaseInfo current = s.latest(channel);
 
-            Version nextVer = ver != null ? ver : current.version();
+            final Version nextVer = version != null ? version : current.version();
 
-            ReleaseInfo next = ReleaseInfo.of(nextVer, ch, rollout);
-            return applyNextRelease(s, ch, current, next);
-        }
-    }
-
-    private Channel parseChannel(String channel) throws IOException {
-        if (channel == null || channel.isBlank()) {
-            throw new IOException("Invalid channel: " + channel);
-        }
-
-        try {
-            return Channel.valueOf(channel.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new IOException("Invalid channel: " + channel, e);
-        }
-    }
-
-    private @Nullable Version parseVersion(@Nullable String version) throws IOException {
-        if (version == null || version.isBlank()) {
-            return null;
-        }
-
-        try {
-            return Version.parse(version);
-        } catch (RuntimeException e) {
-            throw new IOException("Invalid version: " + version, e);
+            final ReleaseInfo next = ReleaseInfo.of(nextVer, channel, rollout);
+            return applyNextRelease(s, channel, current, next);
         }
     }
 

@@ -11,6 +11,7 @@ import dev.sweety.versioning.server.logic.webhook.WebhookIdempotencyStore;
 import dev.sweety.versioning.server.logic.webhook.WebhookRateLimiter;
 import dev.sweety.versioning.server.util.http.Multipart;
 import dev.sweety.versioning.version.ReleaseInfo;
+import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.channel.Channel;
 import lombok.Setter;
@@ -96,10 +97,35 @@ public class WebhookHandler implements HttpHandler {
                 return;
             }
 
-            final String channel = form.getField("channel");
-            final String version = form.getField("version");
+            final String channelStr = form.getField("channel");
+            final String versionStr = form.getField("version");
             final String rollout = form.getField("rollout");
             final byte[] jar = form.getFile("jar");
+
+            final Channel channel;
+            try {
+                if (channelStr == null || channelStr.isBlank()) {
+                    throw new IllegalArgumentException("Channel is required");
+                }
+                channel = Channel.valueOf(channelStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                LOGGER.warn("Invalid webhook channel value: " + channelStr);
+                sendText(exchange, 400, "Invalid channel: " + channelStr);
+                return;
+            }
+
+            final Version version;
+            try {
+                if (versionStr != null && !versionStr.isBlank()) {
+                    version = Version.parse(versionStr);
+                } else {
+                    version = null;
+                }
+            } catch (RuntimeException e) {
+                LOGGER.warn("Invalid webhook version value: " + versionStr);
+                sendText(exchange, 400, "Invalid version: " + versionStr);
+                return;
+            }
 
             Float rolloutFloat;
             if (rollout != null && !rollout.isBlank()) {
@@ -115,28 +141,13 @@ public class WebhookHandler implements HttpHandler {
 
             } else rolloutFloat = null;
 
-            ReleaseInfo release;
-            if ((version == null || version.isBlank()) && rolloutFloat != null) {
-                Channel parsedChannel;
-                try {
-                    parsedChannel = Channel.valueOf(channel.toUpperCase());
-                } catch (NullPointerException | IllegalArgumentException e) {
-                    LOGGER.warn("Invalid webhook rollout channel value: " + channel);
-                    sendText(exchange, 400, "Invalid channel: " + channel);
-                    return;
-                }
-
-                release = releaseManager.updateRollout(artifact, parsedChannel, rolloutFloat);
-            } else {
-                release = releaseManager.applyRelease(artifact, channel, version, rolloutFloat, jar);
-            }
+            final ReleaseInfo release = version != null || rolloutFloat == null ? releaseManager.applyRelease(artifact, channel, version, rolloutFloat, jar) : releaseManager.updateRollout(artifact, channel, rolloutFloat);
             boolean updated = release != null;
 
             if (updated) {
                 this.patchManager.generatePatch(artifact, release.channel(), release.version());
-                if (broadcast != null) {
+                if (broadcast != null)
                     this.broadcast.broadcast(artifact, release, release.channel(), ReleaseBroadcastType.NORMAL, null);
-                }
                 LOGGER.info("Webhook release updated: artifact=" + artifact + ", target=" + release);
             }
 

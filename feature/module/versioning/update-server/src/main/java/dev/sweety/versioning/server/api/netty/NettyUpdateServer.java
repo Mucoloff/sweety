@@ -81,14 +81,13 @@ public class NettyUpdateServer extends SimpleServer {
             State state = State.UP_TO_DATE;
 
             for (Artifact artifact : Artifact.values()) {
-
                 ReleaseInfo latest = releaseManager.resolveLatest(artifact, channel);
 
                 final Version current = versions.get(artifact);
 
                 ForcedUpdate forcedUpdate = null;
 
-                var garbage = forcedUpdates.get(artifact);
+                final ExpirableGarbage<UUID, ForcedUpdate> garbage = forcedUpdates.get(artifact);
                 try {
                     forcedUpdate = garbage.get(clientId);
                 } catch (InvalidTokenException | TokenExpiredException ignored) {}
