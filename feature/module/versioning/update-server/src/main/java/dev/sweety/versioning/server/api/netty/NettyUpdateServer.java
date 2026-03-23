@@ -6,12 +6,12 @@ import dev.sweety.netty.packet.registry.IPacketRegistry;
 import dev.sweety.versioning.exception.InvalidTokenException;
 import dev.sweety.versioning.exception.TokenExpiredException;
 import dev.sweety.versioning.protocol.handshake.*;
+import dev.sweety.versioning.protocol.update.ReleaseBroadcastType;
 import dev.sweety.versioning.protocol.update.ReleasePacket;
 import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.server.logic.decision.UpdateDecision;
 import dev.sweety.versioning.server.logic.decision.UpdateResolver;
 import dev.sweety.versioning.server.logic.patch.PatchManager;
-import dev.sweety.versioning.server.logic.release.ReleaseBroadcastType;
 import dev.sweety.versioning.server.util.garbage.ExpirableGarbage;
 import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.ReleaseInfo;
@@ -130,15 +130,7 @@ public class NettyUpdateServer extends SimpleServer {
         }
     }
 
-    public void release(Artifact artifact, ReleaseInfo releaseInfo) {
-        this.broadcastRelease(artifact, releaseInfo, releaseInfo.channel(), ReleaseBroadcastType.NORMAL, null);
-    }
-
-    public void rollback(Artifact artifact, Channel channel, ReleaseInfo rolled, ReleaseInfo prev) {
-        this.broadcastRelease(artifact, rolled, channel, ReleaseBroadcastType.ROLLBACK, prev);
-    }
-
-    public void broadcastRelease(
+    public void broadcast(
             Artifact artifact,
             ReleaseInfo target,
             Channel channel,
@@ -148,7 +140,7 @@ public class NettyUpdateServer extends SimpleServer {
 
         final boolean isForced = type == ReleaseBroadcastType.FORCED || type == ReleaseBroadcastType.ROLLBACK;
 
-        final ReleasePacket packet = new ReleasePacket(artifact, target, isForced);
+        final ReleasePacket packet = new ReleasePacket(artifact, target, type);
 
         // forced update solo per alcuni casi
         final ForcedUpdate forcedUpdate;

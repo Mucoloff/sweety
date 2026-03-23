@@ -6,9 +6,8 @@ import dev.sweety.versioning.server.logic.client.ClientRegistry;
 import dev.sweety.versioning.server.logic.download.DownloadHandler;
 import dev.sweety.versioning.server.logic.download.DownloadManager;
 import dev.sweety.versioning.server.logic.patch.PatchManager;
-import dev.sweety.versioning.server.logic.actions.ReleaseConsumer;
+import dev.sweety.versioning.server.logic.actions.ReleaseBroadcastConsumer;
 import dev.sweety.versioning.server.logic.release.ReleaseManager;
-import dev.sweety.versioning.server.logic.actions.RollbackConsumer;
 import dev.sweety.versioning.server.logic.release.RollbackHandler;
 import dev.sweety.versioning.server.logic.webhook.WebhookHandler;
 import dev.sweety.versioning.server.logic.webhook.WebhookIdempotencyStore;
@@ -55,11 +54,8 @@ public class HttpUpdateServer {
         return server.getAddress().getPort();
     }
 
-    public void setRelease(ReleaseConsumer broadcast) {
+    public void setBroadcast(ReleaseBroadcastConsumer broadcast) {
         this.webhookHandler.setBroadcast(broadcast);
-    }
-
-    public void setRollback(RollbackConsumer broadcast) {
         this.rollbackHandler.setBroadcast(broadcast);
     }
 }

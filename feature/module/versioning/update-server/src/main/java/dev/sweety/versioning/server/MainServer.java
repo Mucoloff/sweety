@@ -47,8 +47,7 @@ public class MainServer {
 
         final NettyUpdateServer nettyServer = new NettyUpdateServer("localhost", 9900, PacketRegistry.REGISTRY, downloadManager, releaseManager, patchManager, stop);
 
-        httpServer.setRelease(nettyServer::release);
-        httpServer.setRollback(nettyServer::rollback);
+        httpServer.setBroadcast(nettyServer::broadcast);
 
         t.execute(httpServer::start);
 

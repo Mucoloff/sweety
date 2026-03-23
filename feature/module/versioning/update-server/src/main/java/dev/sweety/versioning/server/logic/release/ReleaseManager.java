@@ -230,8 +230,11 @@ public class ReleaseManager {
 
             ReleaseInfo next = ReleaseInfo.of(nextVer, ch, rollout);
 
-            if (next.version().equals(current.version()) && next.channel().equals(current.channel()))
+            if (next.version().equals(current.version())
+                    && next.channel().equals(current.channel())
+                    && Float.compare(next.rollout(), current.rollout()) == 0) {
                 return null;
+            }
 
             s.history(ch).addFirst(current);
 
