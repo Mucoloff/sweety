@@ -1,4 +1,4 @@
-package dev.sweety.versioning.server.logic.token;
+package dev.sweety.versioning.server.logic.download.token;
 
 import dev.sweety.time.Expirable;
 import dev.sweety.versioning.protocol.handshake.DownloadType;

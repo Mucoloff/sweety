@@ -57,10 +57,6 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
     private final IPacketRegistry packetRegistry;
 
     public Messenger(B bootstrap, String host, int port, IPacketRegistry packetRegistry, int localPort) {
-        this(bootstrap, host, port, packetRegistry, localPort, null);
-    }
-
-    public Messenger(B bootstrap, String host, int port, IPacketRegistry packetRegistry, int localPort, @Nullable Function<SocketChannel, SslHandler> sslProvider) {
         this.bootstrap = bootstrap;
         this.boss = new NioEventLoopGroup();
         this.worker = new NioEventLoopGroup(16);
@@ -73,12 +69,7 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
             @Override
             protected void initChannel(SocketChannel ch) {
                 ChannelPipeline p = ch.pipeline();
-
-                if (sslProvider != null) {
-                    SslHandler sslHandler = sslProvider.apply(ch);
-                    if (sslHandler != null) p.addFirst("ssl", sslHandler);
-                }
-
+                Messenger.this.configurePipeline(p);
                 p.addLast(
                         new NettyDecoder(Messenger.this.packetRegistry, Messenger.this),
                         new NettyWatcher(Messenger.this),
@@ -241,10 +232,12 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
         return "remote[%s] local[%s]".formatted(channel.remoteAddress(), channel.localAddress());
     }
 
-
     public void stop() {
         this.boss.shutdownGracefully();
         this.worker.shutdownGracefully();
+    }
+
+    protected void configurePipeline(ChannelPipeline pipeline) {
     }
 
     public abstract void onPacketReceive(ChannelHandlerContext ctx, Packet packet);

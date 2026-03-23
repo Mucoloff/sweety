@@ -72,11 +72,10 @@ public class UpdaterClient extends SimpleClient {
             Artifact artifact = releasePacket.artifact();
 
             if (releasePacket.forced()) {
-                System.out.println("forced rollback detected!");
+                System.out.println("forced update detected!");
                 System.out.println("Current version: " + config.versions().get(artifact) + " " + config.channel());
-                System.out.println("Target rollback version: " + info);
-
-
+                System.out.println("Target update version: " + info);
+                //todo remove
             }
 
             this.requestDownload.accept(ctx, config.info());

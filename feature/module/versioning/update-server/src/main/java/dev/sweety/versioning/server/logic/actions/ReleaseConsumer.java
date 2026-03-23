@@ -1,4 +1,4 @@
-package dev.sweety.versioning.server.logic.release;
+package dev.sweety.versioning.server.logic.actions;
 
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.artifact.Artifact;

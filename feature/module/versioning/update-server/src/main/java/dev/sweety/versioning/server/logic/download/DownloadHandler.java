@@ -15,7 +15,7 @@ import dev.sweety.versioning.server.logic.cache.CacheManager;
 import dev.sweety.versioning.server.logic.client.ClientRegistry;
 import dev.sweety.versioning.server.logic.patch.JarInjector;
 import dev.sweety.versioning.server.logic.patch.PatchDefinition;
-import dev.sweety.versioning.server.logic.token.Token;
+import dev.sweety.versioning.server.logic.download.token.Token;
 import dev.sweety.versioning.server.util.http.HttpUtils;
 import dev.sweety.versioning.util.Utils;
 import dev.sweety.versioning.version.artifact.Artifact;
@@ -163,7 +163,8 @@ public class DownloadHandler implements HttpHandler {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            HttpUtils.sendText(exchange, 500, "download error: " + e.getMessage());
+            //todo remove all exceptions from requests
+            HttpUtils.sendText(exchange, 500, "download error");
         }
     }
 }

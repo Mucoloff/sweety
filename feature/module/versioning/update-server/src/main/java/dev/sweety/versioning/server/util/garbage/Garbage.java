@@ -25,6 +25,11 @@ public class Garbage<Key, Value> implements IGarbage<Key, Value> {
     }
 
     @Override
+    public Value get(Key key) throws TokenExpiredException, InvalidTokenException {
+        return internal.get(key).value();
+    }
+
+    @Override
     public Value consume(Key key) throws TokenExpiredException, InvalidTokenException {
         return internal.consume(key).value();
     }

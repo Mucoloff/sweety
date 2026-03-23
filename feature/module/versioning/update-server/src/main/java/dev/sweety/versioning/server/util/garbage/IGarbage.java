@@ -6,6 +6,8 @@ import dev.sweety.versioning.exception.TokenExpiredException;
 public interface IGarbage<Key, Value> {
     Value add(Key key, Value value);
 
+    Value get(Key key) throws TokenExpiredException, InvalidTokenException;
+
     Value consume(Key key) throws TokenExpiredException, InvalidTokenException;
 
     void lazyClear();

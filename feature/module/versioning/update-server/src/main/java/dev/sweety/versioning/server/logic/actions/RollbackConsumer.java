@@ -1,4 +1,4 @@
-package dev.sweety.versioning.server.logic.rollback;
+package dev.sweety.versioning.server.logic.actions;
 
 import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.ReleaseInfo;

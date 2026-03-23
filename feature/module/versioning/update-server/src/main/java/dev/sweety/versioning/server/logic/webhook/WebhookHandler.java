@@ -3,7 +3,7 @@ package dev.sweety.versioning.server.logic.webhook;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import dev.sweety.versioning.server.logic.patch.PatchManager;
-import dev.sweety.versioning.server.logic.release.ReleaseConsumer;
+import dev.sweety.versioning.server.logic.actions.ReleaseConsumer;
 import dev.sweety.versioning.server.logic.release.ReleaseManager;
 import dev.sweety.versioning.server.util.http.Multipart;
 import dev.sweety.versioning.version.artifact.Artifact;
@@ -87,11 +87,26 @@ public class WebhookHandler implements HttpHandler {
                 return;
             }
 
-            String channel = form.getField("channel");
-            String version = form.getField("version");
-            byte[] jar = form.getFile("jar");
+            final String channel = form.getField("channel");
+            final String version = form.getField("version");
+            final String rollout = form.getField("rollout");
+            final byte[] jar = form.getFile("jar");
 
-            ReleaseInfo release = releaseManager.applyRelease(artifact, channel, version, jar);
+            Float rolloutFloat;
+            if (rollout != null && !rollout.isBlank()) {
+                try {
+                    rolloutFloat = Float.parseFloat(rollout.trim());
+                    if (rolloutFloat < 0 || rolloutFloat > 1) {
+                        sendText(exchange, 400, "Invalid rollout percentage: " + rollout);
+                        return;
+                    }
+                } catch (NumberFormatException ignored) {
+                    rolloutFloat = null;
+                }
+
+            } else rolloutFloat = null;
+
+            ReleaseInfo release = releaseManager.applyRelease(artifact, channel, version, rolloutFloat, jar);
             boolean updated = release != null;
 
             if (updated) {
@@ -101,6 +116,7 @@ public class WebhookHandler implements HttpHandler {
 
             sendText(exchange, 200, updated ? "updated" : "no changes");
         } catch (Exception e) {
+            //todo remove all exceptions from requests
             sendText(exchange, 500, "Webhook error: " + e.getMessage());
         } finally {
 

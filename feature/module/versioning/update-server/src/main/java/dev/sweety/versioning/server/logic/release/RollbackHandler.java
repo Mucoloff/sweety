@@ -1,8 +1,8 @@
-package dev.sweety.versioning.server.logic.rollback;
+package dev.sweety.versioning.server.logic.release;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import dev.sweety.versioning.server.logic.release.ReleaseManager;
+import dev.sweety.versioning.server.logic.actions.RollbackConsumer;
 import dev.sweety.versioning.server.util.http.HttpUtils;
 import dev.sweety.versioning.server.util.http.Multipart;
 import dev.sweety.versioning.version.artifact.Artifact;

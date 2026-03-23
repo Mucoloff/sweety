@@ -11,6 +11,7 @@ import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.channel.Channel;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -120,6 +121,7 @@ public class ReleaseManager {
         obj.addProperty("version", state.version().toString());
         obj.addProperty("channel", state.channel().prettyName());
         obj.addProperty("updatedAt", state.updatedAt().toString());
+        obj.addProperty("rollout", state.rollout());
 
         return obj;
     }
@@ -128,7 +130,8 @@ public class ReleaseManager {
         return new ReleaseInfo(
                 Version.parse(obj.get("version").getAsString()),
                 Channel.valueOf(obj.get("channel").getAsString().toUpperCase()),
-                Instant.parse(obj.get("updatedAt").getAsString())
+                Instant.parse(obj.get("updatedAt").getAsString()),
+                Float.parseFloat(obj.get("rollout").getAsString())
         );
     }
 
@@ -177,6 +180,7 @@ public class ReleaseManager {
             Artifact artifact,
             String channel,
             String version,
+            @Nullable Float rollout,
             byte[] jar
     ) throws IOException {
         Channel ch;
@@ -203,7 +207,7 @@ public class ReleaseManager {
 
             Version nextVer = ver != null ? ver : current.version();
 
-            ReleaseInfo next = new ReleaseInfo(nextVer, ch);
+            ReleaseInfo next = ReleaseInfo.of(nextVer, ch, rollout);
 
             if (next.version().equals(current.version()) && next.channel().equals(current.channel()))
                 return null;
@@ -242,4 +246,18 @@ public class ReleaseManager {
         );
     }
 
+    public ReleaseInfo resolveLatest(Artifact artifact, Channel channel) {
+        ReleaseInfo latest = null;
+        for (Channel ch : Channel.values()) {
+            if (channel.accepts(ch)) {
+                ReleaseInfo candidate = latest(artifact, ch);
+                if (latest == null || candidate.updatedAt().isAfter(latest.updatedAt())) {
+                    latest = candidate;
+                }
+            }
+        }
+
+        if (latest == null) latest = latest(artifact, channel);
+        return latest;
+    }
 }

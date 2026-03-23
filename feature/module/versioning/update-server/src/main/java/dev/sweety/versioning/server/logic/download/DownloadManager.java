@@ -6,7 +6,7 @@ import dev.sweety.versioning.server.util.garbage.ExpirableGarbage;
 import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.exception.*;
 import dev.sweety.versioning.version.Version;
-import dev.sweety.versioning.server.logic.token.Token;
+import dev.sweety.versioning.server.logic.download.token.Token;
 import dev.sweety.versioning.util.Utils;
 import dev.sweety.versioning.version.channel.Channel;
 import org.jetbrains.annotations.NotNull;
