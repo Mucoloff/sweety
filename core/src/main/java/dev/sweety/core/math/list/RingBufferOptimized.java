@@ -1,37 +1,55 @@
 package dev.sweety.core.math.list;
 
+/**
+ * A high-performance, optimized ring buffer implementation.
+ * <p>
+ * This class is a thin wrapper around {@link RingBufferCore}, providing a streamlined Queue-like API.
+ * It is designed for high-frequency producer/consumer scenarios.
+ * </p>
+ *
+ * @param <E> the type of elements in the buffer
+ */
 public class RingBufferOptimized<E> {
-    private final E[] buffer;
+    private final RingBufferCore<E> core;
 
-    private int head = 0;
-    private int tail = 0;
-    private int size = 0;
-
-    private final int capacity;
-
+    /**
+     * Constructs a new RingBufferOptimized with the specified capacity.
+     * <p>
+     * Note: While the underlying core supports any capacity, using a power-of-two capacity
+     * will enable slightly faster bitwise index wrapping.
+     * </p>
+     *
+     * @param capacity the maximum number of elements the buffer can hold
+     */
     public RingBufferOptimized(int capacity) {
-        this.capacity = capacity;
-        if (this.capacity % 2 != 0) throw new IllegalArgumentException("[!] Capacity must be a power of 2");
-        //noinspection unchecked
-        this.buffer = (E[]) new Object[capacity];
+        this.core = new RingBufferCore<>(capacity);
     }
 
+    /**
+     * Adds an element to the buffer.
+     *
+     * @param packet the element to add
+     * @return true if the element was added, false if the buffer is full
+     */
     public boolean add(E packet) {
-        if (this.size == this.capacity) return false;
-        
-        this.buffer[this.tail] = packet;
-        this.tail = (this.tail + 1) & (this.capacity - 1);
-        this.size++;
-        return true;
+        return core.offer(packet, false);
     }
 
+    /**
+     * Retrieves and removes the head of the buffer.
+     *
+     * @return the head element, or null if empty
+     */
     public E poll() {
-        if (this.size == 0) return null;
-        
-        E packet = this.buffer[this.head];
-        this.buffer[this.head] = null;
-        this.head = (this.head + 1) & (this.capacity - 1);
-        this.size--;
-        return packet;
+        return core.poll();
+    }
+
+    /**
+     * Retrieves but does not remove the head of the buffer.
+     *
+     * @return the head element, or null if empty
+     */
+    public E peek() {
+        return core.peek();
     }
 }

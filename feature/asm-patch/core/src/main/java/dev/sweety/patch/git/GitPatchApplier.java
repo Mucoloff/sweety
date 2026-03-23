@@ -1,4 +1,4 @@
-package dev.sweety.patch.applier;
+package dev.sweety.patch.git;
 
 import com.github.difflib.DiffUtils;
 import com.github.difflib.UnifiedDiffUtils;
