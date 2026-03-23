@@ -4,6 +4,7 @@ import dev.sweety.launcher.config.LauncherConfig;
 import dev.sweety.netty.messaging.impl.SimpleClient;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.versioning.protocol.update.ReleaseBroadcastType;
 import dev.sweety.versioning.protocol.update.ReleasePacket;
 import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.ReleaseInfo;
@@ -71,10 +72,11 @@ public class UpdaterClient extends SimpleClient {
 
             Artifact artifact = releasePacket.artifact();
 
-            if (releasePacket.forced()) {
+            if (releasePacket.type() != ReleaseBroadcastType.NORMAL) {
                 System.out.println("forced update detected!");
                 System.out.println("Current version: " + config.versions().get(artifact) + " " + config.channel());
                 System.out.println("Target update version: " + info);
+                System.out.println("Broadcast type: " + releasePacket.type());
                 //todo remove
             }
 

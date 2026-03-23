@@ -6,6 +6,7 @@ import com.sun.net.httpserver.HttpHandler;
 import dev.sweety.patch.format.PatchEditor;
 import dev.sweety.patch.model.Patch;
 import dev.sweety.patch.model.type.PatchTypes;
+import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.versioning.exception.*;
 import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.server.logic.patch.PatchManager;
@@ -32,6 +33,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public class DownloadHandler implements HttpHandler {
+    private static final SimpleLogger LOGGER = new SimpleLogger(DownloadHandler.class);
 
     private final DownloadManager downloadManager;
     private final CacheManager cacheManager;
@@ -82,8 +84,8 @@ public class DownloadHandler implements HttpHandler {
             try {
                 token = this.downloadManager.search(_token);
             } catch (InvalidTokenException | TokenExpiredException e) {
-                System.out.println("error: " + e.getMessage());
-                HttpUtils.sendText(exchange, 400, "Invalid or expired token " + e);
+                LOGGER.warn("Invalid or expired download token for clientId=" + id);
+                HttpUtils.sendText(exchange, 400, "Invalid or expired token");
                 return;
             }
 
@@ -112,7 +114,7 @@ public class DownloadHandler implements HttpHandler {
                         baseJar,
                         patch
                 );
-                System.out.println("Patched artifact=" + k.artifact() + " clientId=" + k.clientId() + " version=" + k.version() + " bytes=" + patched.length);
+                LOGGER.info("Patched artifact=" + k.artifact() + " clientId=" + k.clientId() + " version=" + k.version() + " bytes=" + patched.length);
                 return patched;
             });
 
@@ -162,8 +164,7 @@ public class DownloadHandler implements HttpHandler {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            //todo remove all exceptions from requests
+            LOGGER.error("Download processing failed", e);
             HttpUtils.sendText(exchange, 500, "download error");
         }
     }
