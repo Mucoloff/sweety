@@ -8,12 +8,16 @@ import dev.sweety.patch.model.Patch;
 import dev.sweety.patch.model.PatchOperation;
 import dev.sweety.patch.model.type.PatchType;
 import dev.sweety.patch.verify.PatchValidator;
+import com.github.difflib.UnifiedDiffUtils;
+import java.nio.charset.StandardCharsets;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.List;
+import java.util.Arrays;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 import java.util.zip.ZipEntry;
@@ -71,8 +75,33 @@ public class PatchApplier {
                     if (originalData == null && op.getType().equals(PatchOperation.Type.MODIFY))
                         throw new RuntimeException("Original file not found for patch: " + op.getPath());
 
-                    // Delegate application logic to the Reader (handles binary replacement or text diffs)
-                    byte[] data = op.getData();
+                    byte[] data;
+
+                    if (op.getMethod() == PatchOperation.Method.TEXT_DIFF) {
+                        try {
+                            List<String> originalLines = toLines(originalData);
+                            List<String> diffLines = toLines(op.getData());
+                            com.github.difflib.patch.Patch<String> patchObj = UnifiedDiffUtils.parseUnifiedDiff(diffLines);
+                            List<String> patchedLines = com.github.difflib.DiffUtils.patch(originalLines, patchObj);
+
+                            // Ricostruisci il file usando newline standard UNIX
+                            StringBuilder sb = new StringBuilder();
+                            for (int i = 0; i < patchedLines.size(); i++) {
+                                sb.append(patchedLines.get(i));
+                                if (i < patchedLines.size() - 1) { // Evita newline extra alla fine se non necessario, ma standard diff di solito ha newline finale
+                                    sb.append("\n");
+                                }
+                            }
+                            // Aggiungi un newline finale se era comune nel formato
+                            sb.append("\n");
+                            
+                            data = sb.toString().getBytes(StandardCharsets.UTF_8);
+                        } catch (Exception e) {
+                            throw new RuntimeException("Failed to apply text diff for " + op.getPath(), e);
+                        }
+                    } else {
+                        data = op.getData();
+                    }
 
                     // Verify hash if available
                     if (op.getHash() != null) {
@@ -94,6 +123,11 @@ public class PatchApplier {
         }
 
         writeJar(entries, output);
+    }
+
+    private java.util.List<String> toLines(byte[] data) {
+         String content = new String(data, java.nio.charset.StandardCharsets.UTF_8);
+         return java.util.Arrays.asList(content.split("\\r?\\n", -1));
     }
 
     private void writeJar(Map<String, byte[]> entries, File file) {

@@ -15,7 +15,14 @@ public class PatchOperation {
         DELETE
     }
 
+    public enum Method {
+        REPLACEMENT,
+        TEXT_DIFF
+    }
+
     private Type type;
+    @lombok.Builder.Default
+    private Method method = Method.REPLACEMENT;
     private String path;
     private byte[] data;   // null per DELETE
     private String hash;

@@ -49,6 +49,10 @@ public class BinaryPatchReader implements PatchReader {
         int typeOrdinal = in.readByte();
         PatchOperation.Type type = PatchOperation.Type.values()[typeOrdinal];
 
+        // Method
+        int methodOrdinal = in.readByte();
+        PatchOperation.Method method = PatchOperation.Method.values()[methodOrdinal];
+
         // Path
         String path = readString(in);
 
@@ -68,6 +72,7 @@ public class BinaryPatchReader implements PatchReader {
 
         return PatchOperation.builder()
                 .type(type)
+                .method(method)
                 .path(path)
                 .hash(hash)
                 .data(data)

@@ -30,7 +30,7 @@ public class Pair<T> implements Collection<T> {
     public void set(int index, @Nullable T t) {
         if (index != 0 && index != 1) throw new IndexOutOfBoundsException("Index: " + index + ", Size: 2");
 
-        T old = this.data[index];
+        final T old = this.data[index];
         if (Objects.equals(old, t)) return; // No change
 
         this.data[index] = t;

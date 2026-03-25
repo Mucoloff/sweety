@@ -40,6 +40,9 @@ public class BinaryPatchWriter implements PatchWriter {
         // Type
         out.writeByte(op.getType().ordinal());
 
+        // Method
+        out.writeByte(op.getMethod().ordinal());
+
         // Path
         writeString(out, op.getPath());
 
