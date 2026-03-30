@@ -1,17 +1,9 @@
 package dev.sweety.event.api;
 
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
-
-@EqualsAndHashCode
 public class Event implements IEvent {
 
-    @Setter
-    @Getter
     boolean cancelled = false;
 
-    @Getter
     volatile boolean changed = false;
 
     @Override
@@ -19,7 +11,6 @@ public class Event implements IEvent {
         setCancelled(true);
     }
 
-    @Getter
     boolean pre = true;
 
     @Override
@@ -34,4 +25,34 @@ public class Event implements IEvent {
         return !this.pre;
     }
 
+    public void setCancelled(boolean cancelled) {
+        this.cancelled = cancelled;
+    }
+
+    public boolean isCancelled() {
+        return cancelled;
+    }
+
+    public boolean isChanged() {
+        return changed;
+    }
+
+    public boolean isPre() {
+        return pre;
+    }
+
+    @Override
+    public final boolean equals(Object o) {
+        if (!(o instanceof Event event)) return false;
+
+        return isCancelled() == event.isCancelled() && isChanged() == event.isChanged() && isPre() == event.isPre();
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Boolean.hashCode(isCancelled());
+        result = 31 * result + Boolean.hashCode(isChanged());
+        result = 31 * result + Boolean.hashCode(isPre());
+        return result;
+    }
 }

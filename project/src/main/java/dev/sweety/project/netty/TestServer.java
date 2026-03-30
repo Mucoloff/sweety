@@ -1,8 +1,8 @@
 package dev.sweety.project.netty;
 
-import dev.sweety.core.color.AnsiColor;
+import dev.sweety.color.AnsiColor;
 import dev.sweety.logger.SimpleLogger;
-import dev.sweety.core.math.function.TriFunction;
+import dev.sweety.math.function.TriFunction;
 import dev.sweety.netty.messaging.Server;
 import dev.sweety.netty.packet.model.BatchPacket;
 import dev.sweety.netty.packet.model.Packet;

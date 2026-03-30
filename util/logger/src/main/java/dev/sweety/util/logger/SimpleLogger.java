@@ -1,5 +1,6 @@
 package dev.sweety.util.logger;
 
+import dev.sweety.color.AnsiColor;
 import dev.sweety.util.logger.backend.ConsoleBackend;
 import dev.sweety.util.logger.backend.FileBackend;
 import dev.sweety.util.logger.backend.LoggerBackend;
@@ -7,7 +8,6 @@ import dev.sweety.util.logger.formatter.SimpleLogFormatter;
 import dev.sweety.util.logger.level.LogLevel;
 import dev.sweety.util.logger.profile.LogProfile;
 import dev.sweety.util.logger.profile.ProfileScope;
-import lombok.Getter;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -20,7 +20,6 @@ public class SimpleLogger implements LogHelper {
     private final ThreadLocal<Deque<LogProfile>> profiles = ThreadLocal.withInitial(ArrayDeque::new);
 
     // Pluggable backend support
-    @Getter
     private volatile LoggerBackend backend = new ConsoleBackend();
     private volatile FileBackend fileBackend;
 
@@ -85,7 +84,7 @@ public class SimpleLogger implements LogHelper {
         return push(profile); 
     }
 
-    public SimpleLogger push(String profile, dev.sweety.core.color.AnsiColor color) {
+    public SimpleLogger push(String profile, AnsiColor color) {
         return push(profile);
     }
 
@@ -108,7 +107,7 @@ public class SimpleLogger implements LogHelper {
     public String popProfile() {
         Deque<LogProfile> stack = profiles.get();
         LogProfile p = stack.poll(); // poll() returns null if empty, pop() throws
-        return p != null ? p.getName() : null;
+        return p != null ? p.name() : null;
     }
 
     public String switchProfile(String profile) {
@@ -121,7 +120,7 @@ public class SimpleLogger implements LogHelper {
         // If stack was empty (old == null), parent is null, which is valid for root profile
         stack.push(LogProfile.of(profile, parent));
         
-        return old != null ? old.getName() : null;
+        return old != null ? old.name() : null;
     }
 
     public ProfileScope withProfile(String profile) {
@@ -131,6 +130,10 @@ public class SimpleLogger implements LogHelper {
 
     public String name() {
         return name;
+    }
+
+    public LoggerBackend backend() {
+        return backend;
     }
 
     public SimpleLogger info(Object... input) {

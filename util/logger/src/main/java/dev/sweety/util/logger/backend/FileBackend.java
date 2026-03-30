@@ -1,6 +1,6 @@
 package dev.sweety.util.logger.backend;
 
-import dev.sweety.core.color.AnsiColor;
+import dev.sweety.color.AnsiColor;
 import dev.sweety.util.logger.LogEvent;
 import dev.sweety.util.logger.formatter.LogFormatter;
 import dev.sweety.util.logger.level.LogLevel;
@@ -32,7 +32,7 @@ public class FileBackend implements LoggerBackend {
     @Override
     public void log(LogEvent event) {
         try {
-            String formattedLine = formatter.format(event.getLevel(), event.getLoggerName(), event.getProfile(), event.getRawArgs());
+            String formattedLine = formatter.format(event.level(), event.loggerName(), event.profile(), event.rawArgs());
             fileWriter.append(AnsiColor.clear(formattedLine)).append('\n');
             fileWriter.flush();
         } catch (IOException e) {

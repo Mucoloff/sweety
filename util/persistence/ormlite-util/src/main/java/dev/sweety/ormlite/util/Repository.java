@@ -1,28 +1,37 @@
 package dev.sweety.ormlite.util;
 
 import com.j256.ormlite.dao.Dao;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.SneakyThrows;
 
 import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-@Getter
-@AllArgsConstructor
 public abstract class Repository<Entity extends Table<ID>, ID> {
 
     protected final Dao<Entity, ID> dao;
 
-    @SneakyThrows
-    public Entity create(final Entity entity) {
-        return this.dao.createIfNotExists(entity);
+    public Repository(final Dao<Entity, ID> dao) {
+        this.dao = dao;
     }
 
-    @SneakyThrows
+    public Dao<Entity, ID> getDao() {
+        return dao;
+    }
+
+    public Entity create(final Entity entity) {
+        try {
+            return this.dao.createIfNotExists(entity);
+        } catch (SQLException e) {
+            return throwUnchecked(e);
+        }
+    }
+
     public boolean exits(final ID id) {
-        return this.dao.idExists(id);
+        try {
+            return this.dao.idExists(id);
+        } catch (SQLException e) {
+            return throwUnchecked(e);
+        }
     }
 
     public Entity findById(final ID id) throws SQLException {
@@ -33,24 +42,41 @@ public abstract class Repository<Entity extends Table<ID>, ID> {
         return CompletableFuture.supplyAsync(() -> update(stats));
     }
 
-    @SneakyThrows
     public Entity update(final Entity stats) {
-        this.dao.createOrUpdate(stats);
-        return stats;
+        try {
+            this.dao.createOrUpdate(stats);
+            return stats;
+        } catch (SQLException e) {
+            return throwUnchecked(e);
+        }
     }
 
-    @SneakyThrows
     public void clear() {
-        for (Entity entity : this.dao) this.dao.delete(entity);
+        try {
+            for (Entity entity : this.dao) this.dao.delete(entity);
+        } catch (SQLException e) {
+            throwUnchecked(e);
+        }
     }
 
-    @SneakyThrows
     public List<Entity> findAll() {
-        return this.dao.queryForAll();
+        try {
+            return this.dao.queryForAll();
+        } catch (SQLException e) {
+            return throwUnchecked(e);
+        }
     }
 
-    @SneakyThrows
     public void delete(ID id) {
-        this.dao.deleteById(id);
+        try {
+            this.dao.deleteById(id);
+        } catch (SQLException e) {
+            throwUnchecked(e);
+        }
+    }
+
+    private static <T, E extends Throwable> T throwUnchecked(final Throwable throwable) throws E {
+        //noinspection unchecked
+        throw (E) throwable;
     }
 }

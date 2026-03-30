@@ -1,8 +1,6 @@
 package dev.sweety.minecraft.nework.io;
 
 import dev.sweety.minecraft.nework.packet.C2SPacket;
-import lombok.Getter;
-import lombok.Setter;
 
 import java.io.Closeable;
 import java.io.Flushable;
@@ -13,8 +11,6 @@ public class PacketOutputStream implements Closeable, Flushable {
 
     private final OutputStream parent;
 
-    @Setter
-    @Getter
     private boolean compressionEnabled;
 
     public PacketOutputStream(OutputStream parent, boolean compress) {
@@ -34,5 +30,14 @@ public class PacketOutputStream implements Closeable, Flushable {
     @Override
     public void flush() throws IOException {
         this.parent.flush();
+    }
+
+    public boolean compressionEnabled() {
+        return compressionEnabled;
+    }
+
+    public PacketOutputStream setCompressionEnabled(boolean compressionEnabled) {
+        this.compressionEnabled = compressionEnabled;
+        return this;
     }
 }

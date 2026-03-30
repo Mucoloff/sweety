@@ -226,9 +226,7 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
     }
 
     private String resolveEnumName(PsiAnnotationMemberValue value) {
-        if (value instanceof PsiReferenceExpression ref) {
-            return ref.getReferenceName();
-        }
+        if (value instanceof PsiReferenceExpression ref) return ref.getReferenceName();
         return "";
     }
 
@@ -291,7 +289,6 @@ public class RecordAugmentProvider extends PsiAugmentProvider {
         for (PsiClassType type : method.getThrowsList().getReferencedTypes()) {
             builder.addException(type);
         }
-
 
         return builder;
     }

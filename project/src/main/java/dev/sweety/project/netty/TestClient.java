@@ -1,6 +1,6 @@
 package dev.sweety.project.netty;
 
-import dev.sweety.core.color.AnsiColor;
+import dev.sweety.color.AnsiColor;
 import dev.sweety.logger.SimpleLogger;
 import dev.sweety.event.Event;
 import dev.sweety.event.EventSystem;

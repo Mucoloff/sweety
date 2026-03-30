@@ -6,7 +6,8 @@ dependencies {
     implementation("org.ow2.asm:asm-commons:9.6")
     implementation("com.google.code.gson:gson:2.11.0")
 
-    implementation(project(":core"))
+    implementation(project(':util:data'))
+    implementation(project(':util:exception'))
     implementation(project(':util:signature'))
     implementation(project(":util:thread"))
     implementation project(':util:logger')

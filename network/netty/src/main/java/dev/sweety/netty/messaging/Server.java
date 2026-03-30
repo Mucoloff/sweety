@@ -10,11 +10,9 @@ import java.net.SocketAddress;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import dev.sweety.record.annotations.RecordGetter;
 
 public abstract class Server extends Messenger<ServerBootstrap> {
 
-    @RecordGetter
     private final Map<SocketAddress, ChannelHandlerContext> clients;
 
     public Server(String host, int port, IPacketRegistry packetRegistry, Map<SocketAddress, ChannelHandlerContext> clients) {
@@ -45,4 +43,7 @@ public abstract class Server extends Messenger<ServerBootstrap> {
         this.clients.remove(address);
     }
 
+    public Map<SocketAddress, ChannelHandlerContext> clients() {
+        return clients;
+    }
 }

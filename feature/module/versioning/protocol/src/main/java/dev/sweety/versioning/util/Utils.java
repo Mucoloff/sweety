@@ -2,23 +2,25 @@ package dev.sweety.versioning.util;
 
 import com.google.gson.Gson;
 import dev.sweety.versioning.version.Version;
-import lombok.experimental.UtilityClass;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;
 
-@UtilityClass
-public class Utils {
+public final class Utils {
 
-    public final Gson GSON =  new Gson().newBuilder().disableHtmlEscaping().setPrettyPrinting().create();
+    private static final ThreadLocal<Gson> GSON = ThreadLocal.withInitial(new Gson().newBuilder().disableHtmlEscaping().setPrettyPrinting()::create);
 
-    public String formatUuid(String uuidStr) {
+    public static Gson gson() {
+        return GSON.get();
+    }
+
+    public static String formatUuid(String uuidStr) {
         return uuidStr.contains("-")
                 ? uuidStr
                 : uuidStr.replaceFirst("(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}+)", "$1-$2-$3-$4-$5");
     }
 
-    public UUID parseUuid(String uuidStr) {
+    public static UUID parseUuid(String uuidStr) {
         return UUID.fromString(formatUuid(uuidStr));
     }
 
@@ -40,4 +42,6 @@ public class Utils {
     public static byte[] toBytes(int value) {
         return ByteBuffer.allocate(4).putInt(value).array();
     }
+
+    private Utils() {}
 }

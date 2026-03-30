@@ -1,9 +1,9 @@
 package dev.sweety.netty.loadbalancer.server;
 
-import dev.sweety.core.color.AnsiColor;
+import dev.sweety.color.AnsiColor;
 import dev.sweety.util.logger.SimpleLogger;
-import dev.sweety.core.math.function.TriFunction;
-import dev.sweety.core.math.list.BlockingDeque;
+import dev.sweety.math.function.TriFunction;
+import dev.sweety.math.list.BlockingDeque;
 import dev.sweety.thread.ProfileThread;
 import dev.sweety.thread.ThreadManager;
 import dev.sweety.netty.feature.AutoReconnect;
@@ -20,8 +20,6 @@ import dev.sweety.netty.messaging.Server;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
-import dev.sweety.record.annotations.DataIgnore;
-import dev.sweety.record.annotations.RecordGetter;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
@@ -31,7 +29,6 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Arrays;
 
-@RecordGetter
 public class LoadBalancerServer<Node extends BackendNode> extends Server {
 
     protected final SimpleLogger logger = new SimpleLogger(LoadBalancerServer.class);
@@ -74,7 +71,6 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
         drainPending();
     }
 
-    @DataIgnore
     private volatile boolean useThreadManager = false;
 
     private static final long REQUEST_TIMEOUT_SECONDS = 20L;
@@ -132,7 +128,7 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
                     backend.timeout(internal.getRequestId());
                     this.logger.push("transaction", AnsiColor.RED_BRIGHT).error(internal.requestCode(), throwable.getMessage()).pop();
 
-                    if (responseQueue != null && sequenceId >= 0) responseQueue.complete(sequenceId, Packer.EMPTY);
+                    if (responseQueue != null && sequenceId >= 0) responseQueue.complete(sequenceId, Packer.EMPTY());
                     return;
                 }
 
@@ -213,4 +209,36 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
         promise.setSuccess();
     }
 
+    public SimpleLogger logger() {
+        return logger;
+    }
+
+    public IDynamicBackendNodePool<Node> backendPool() {
+        return backendPool;
+    }
+
+    public ThreadManager queueScheduler() {
+        return queueScheduler;
+    }
+
+    public BlockingDeque<PacketContext> pendingPackets() {
+        return pendingPackets;
+    }
+
+    public TransactionManager transactionManager() {
+        return transactionManager;
+    }
+
+    public PacketReorder reorder() {
+        return reorder;
+    }
+
+    public TriFunction<Packet, Integer, Long, byte[]> constructor() {
+        return constructor;
+    }
+
+    public LoadBalancerServer<Node> setUseThreadManager(boolean useThreadManager) {
+        this.useThreadManager = useThreadManager;
+        return this;
+    }
 }

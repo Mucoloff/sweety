@@ -58,7 +58,7 @@ public class ReleaseManager {
             return;
         }
 
-        JsonObject root = Utils.GSON.fromJson(
+        JsonObject root = Utils.gson().fromJson(
                 Files.readString(s.metadata()),
                 JsonObject.class
         );
@@ -105,7 +105,7 @@ public class ReleaseManager {
 
 
         Path tmpFile = Storage.temp(s.metadata());
-        Files.writeString(tmpFile, Utils.GSON.toJson(root));
+        Files.writeString(tmpFile, Utils.gson().toJson(root));
 
         Files.move(
                 tmpFile,

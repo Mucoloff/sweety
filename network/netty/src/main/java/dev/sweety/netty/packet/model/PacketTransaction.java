@@ -1,15 +1,13 @@
 package dev.sweety.netty.packet.model;
 
-import dev.sweety.core.crypt.ChecksumUtils;
-import dev.sweety.core.math.RandomUtils;
+import dev.sweety.data.ChecksumUtils;
+import dev.sweety.math.RandomUtils;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.buffer.io.Codec;
-import lombok.Getter;
 
 import java.util.Optional;
 import java.util.zip.CRC32C;
 
-@Getter
 public abstract class PacketTransaction<R extends PacketTransaction.Transaction, S extends PacketTransaction.Transaction> extends Packet {
 
     private final long requestId;
@@ -96,4 +94,15 @@ public abstract class PacketTransaction<R extends PacketTransaction.Transaction,
 
     }
 
+    public long getRequestId() {
+        return requestId;
+    }
+
+    public R getRequest() {
+        return request;
+    }
+
+    public S getResponse() {
+        return response;
+    }
 }

@@ -1,15 +1,12 @@
 package dev.sweety.thread;
 
-import lombok.experimental.UtilityClass;
-
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 
-@UtilityClass
-public class ThreadUtil {
+public final class ThreadUtil {
 
-    private ThreadFactory factory(String name) {
+    private static ThreadFactory factory(String name) {
         return r -> {
             final Thread t = new Thread(r, name);
             t.setDaemon(true);
@@ -19,11 +16,11 @@ public class ThreadUtil {
         };
     }
 
-    public ScheduledExecutorService singleThreadScheduler(final String name) {
+    public static ScheduledExecutorService singleThreadScheduler(final String name) {
         return Executors.newSingleThreadScheduledExecutor(factory(name));
     }
 
-    public ScheduledExecutorService poolThreadScheduler(final int pool, final String name) {
+    public static ScheduledExecutorService poolThreadScheduler(final int pool, final String name) {
         return Executors.newScheduledThreadPool(pool, factory(name));
     }
 

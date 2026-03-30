@@ -1,7 +1,7 @@
 package dev.sweety.netty.packet.buffer;
 
-import dev.sweety.core.math.MathUtils;
-import dev.sweety.core.util.HasId;
+import dev.sweety.math.MathUtils;
+import dev.sweety.data.HasId;
 import dev.sweety.netty.messaging.exception.PacketDecodeException;
 import dev.sweety.netty.packet.buffer.io.*;
 import dev.sweety.netty.packet.buffer.io.callable.CallableDecoder;

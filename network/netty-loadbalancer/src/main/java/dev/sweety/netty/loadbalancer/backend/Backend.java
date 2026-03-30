@@ -1,8 +1,8 @@
 package dev.sweety.netty.loadbalancer.backend;
 
-import dev.sweety.core.color.AnsiColor;
+import dev.sweety.color.AnsiColor;
 import dev.sweety.util.logger.SimpleLogger;
-import dev.sweety.core.math.function.TriFunction;
+import dev.sweety.math.function.TriFunction;
 import dev.sweety.thread.ProfileThread;
 import dev.sweety.thread.ThreadManager;
 import dev.sweety.thread.ThreadUtil;
@@ -17,8 +17,6 @@ import dev.sweety.netty.messaging.Client;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
-import dev.sweety.record.annotations.DataIgnore;
-import dev.sweety.record.annotations.RecordGetter;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
@@ -42,11 +40,13 @@ public abstract class Backend extends Client implements IBackend {
     private final ScheduledExecutorService metricsScheduler = ThreadUtil.singleThreadScheduler("metrics-sampler");
     private final MetricSampler sampler = new MetricSampler();
 
-    @DataIgnore
     private final AutoReconnect reconnect = new AutoReconnect(2500L, TimeUnit.MILLISECONDS, this::start);
 
-    @RecordGetter
     protected final Transactions transactions = new Transactions(this);
+
+    public Transactions transactions() {
+        return transactions;
+    }
 
     public Backend(final String hubHost, final int hubPort, final IPacketRegistry packetRegistry) {
         this(hubHost, hubPort, packetRegistry, -1);
@@ -61,7 +61,7 @@ public abstract class Backend extends Client implements IBackend {
         this.constructor = (i, ts, data) -> packetRegistry.construct(i, ts, data, this.backendLogger);
 
         this.sampler.startSampling();
-        this.metricsScheduler.scheduleAtFixedRate(this::sendMetrics, BackendSettings.METRICS_DELAY_MS, BackendSettings.METRICS_DELAY_MS, TimeUnit.MILLISECONDS);
+        this.metricsScheduler.scheduleAtFixedRate(this::sendMetrics, BackendSettings.METRICS_DELAY_MS(), BackendSettings.METRICS_DELAY_MS(), TimeUnit.MILLISECONDS);
     }
 
     private void sendMetrics() {
@@ -77,7 +77,7 @@ public abstract class Backend extends Client implements IBackend {
         final ArrayList<Packet> results = new ArrayList<>(1);
         handleInternal(sender, receiver, packet, results);
         final float duration = System.nanoTime() - start;
-        float ignored = packetTimings.computeIfAbsent(packet.id(), id -> new EMA(BackendSettings.EMA_ALPHA)).update(duration / 1_000_000f);
+        float ignored = packetTimings.computeIfAbsent(packet.id(), id -> new EMA(BackendSettings.EMA_ALPHA())).update(duration / 1_000_000f);
         //backendLogger.info("cputime for " + packet.id() + ": " + ignored);
         return results.stream();
     }
@@ -89,7 +89,7 @@ public abstract class Backend extends Client implements IBackend {
     }
 
     public static long requestTimeout() {
-        return BackendSettings.REQUEST_TIMEOUT_SECONDS * 1000L;
+        return BackendSettings.REQUEST_TIMEOUT_SECONDS() * 1000L;
     }
 
     @Override

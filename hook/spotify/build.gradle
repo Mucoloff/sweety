@@ -1,6 +1,11 @@
+plugins {
+    id("io.freefair.lombok") version "9.0.0"
+}
+
 dependencies {
-    implementation project(':core')
     implementation project(':util:logger')
     implementation project(':util:time')
+    implementation project(':util:file')
+    implementation project(':util:data')
     implementation(project(":util:system"))
 }

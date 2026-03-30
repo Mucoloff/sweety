@@ -11,8 +11,6 @@ import dev.sweety.versioning.server.util.http.Multipart;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.channel.Channel;
-import lombok.Setter;
-
 import java.io.IOException;
 
 import static dev.sweety.versioning.server.util.http.HttpUtils.constantTimeEquals;
@@ -25,8 +23,12 @@ public class RollbackHandler implements HttpHandler {
     private final String rollbackToken;
     private final ReleaseManager releaseManager;
 
-    @Setter
     private ReleaseBroadcastConsumer broadcast;
+
+    public RollbackHandler setBroadcast(ReleaseBroadcastConsumer broadcast) {
+        this.broadcast = broadcast;
+        return this;
+    }
 
     public RollbackHandler(String rollbackToken, ReleaseManager releaseManager) {
         this.rollbackToken = rollbackToken;

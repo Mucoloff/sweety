@@ -1,6 +1,6 @@
 package dev.sweety.util.system;
 
-import lombok.Getter;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
@@ -10,7 +10,6 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Locale;
 
-@Getter
 public enum OperatingSystem {
     LINUX("linux"),
     SOLARIS("solaris"),
@@ -29,6 +28,10 @@ public enum OperatingSystem {
     public static final OperatingSystem[] VALUES = values();
 
     private final String name;
+
+    public @NotNull String getName() {
+        return name;
+    }
 
     OperatingSystem(String name) {
         this.name = name;

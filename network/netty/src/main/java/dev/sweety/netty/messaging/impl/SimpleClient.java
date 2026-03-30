@@ -1,6 +1,6 @@
 package dev.sweety.netty.messaging.impl;
 
-import dev.sweety.core.color.AnsiColor;
+import dev.sweety.color.AnsiColor;
 import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.netty.feature.AutoReconnect;
 import dev.sweety.netty.messaging.Client;

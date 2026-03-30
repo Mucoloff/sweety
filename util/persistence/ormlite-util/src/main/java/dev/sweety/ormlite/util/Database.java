@@ -4,13 +4,13 @@ import com.j256.ormlite.dao.Dao;
 import com.j256.ormlite.dao.DaoManager;
 import com.j256.ormlite.support.ConnectionSource;
 import com.j256.ormlite.table.TableUtils;
-import lombok.Getter;
-import lombok.SneakyThrows;
 
+import java.lang.reflect.InvocationTargetException;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
-@Getter
+
 public class Database {
     protected final Map<Class<?>, Repository<?, ?>> repositories = new HashMap<>();
     protected final ConnectionSource connectionSource;
@@ -19,16 +19,28 @@ public class Database {
         this.connectionSource = connectionType.getConnection(params);
     }
 
-    @SneakyThrows
+
     public <T, ID> Dao<T, ID> createDao(Class<T> clazz) {
-        TableUtils.createTableIfNotExists(this.connectionSource, clazz);
-        return DaoManager.createDao(this.connectionSource, clazz);
+        try {
+            TableUtils.createTableIfNotExists(this.connectionSource, clazz);
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to create table for " + clazz.getSimpleName(), e);
+        }
+        try {
+            return DaoManager.createDao(this.connectionSource, clazz);
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to create DAO for " + clazz.getSimpleName(), e);
+        }
     }
 
-    @SneakyThrows
     public <REPO extends Repository<TABLE, ID>, TABLE extends Table<ID>, ID> REPO createRepository(Class<REPO> repo, Class<TABLE> table) {
         final Dao<TABLE, ID> dao = createDao(table);
-        final REPO repository = repo.getDeclaredConstructor(Dao.class).newInstance(dao);
+        final REPO repository;
+        try {
+            repository = repo.getDeclaredConstructor(Dao.class).newInstance(dao);
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
         this.repositories.put(repo, repository);
         return repository;
     }

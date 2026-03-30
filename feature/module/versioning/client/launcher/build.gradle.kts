@@ -3,8 +3,8 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":core"))
     implementation(project(":network:netty"))
+    implementation(project(":util:data"))
     implementation(project(":util:thread"))
     implementation(project(":feature:module:versioning:protocol"))
     implementation(project(":feature:asm-patch:asm-patch-core"))

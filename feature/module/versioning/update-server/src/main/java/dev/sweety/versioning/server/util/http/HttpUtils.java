@@ -1,7 +1,6 @@
 package dev.sweety.versioning.server.util.http;
 
 import com.sun.net.httpserver.HttpExchange;
-import lombok.experimental.UtilityClass;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -10,7 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
-public class HttpUtils {
+public final class HttpUtils {
 
     private HttpUtils() {}
 

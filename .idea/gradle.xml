@@ -9,8 +9,6 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/animation" />
-            <option value="$PROJECT_DIR$/core" />
             <option value="$PROJECT_DIR$/feature" />
             <option value="$PROJECT_DIR$/feature/asm-patch" />
             <option value="$PROJECT_DIR$/feature/asm-patch/applier" />
@@ -45,12 +43,16 @@
             <option value="$PROJECT_DIR$/network/netty-loadbalancer" />
             <option value="$PROJECT_DIR$/network/netty-saas" />
             <option value="$PROJECT_DIR$/util" />
+            <option value="$PROJECT_DIR$/util/animation" />
+            <option value="$PROJECT_DIR$/util/color" />
+            <option value="$PROJECT_DIR$/util/data" />
+            <option value="$PROJECT_DIR$/util/exception" />
+            <option value="$PROJECT_DIR$/util/file" />
+            <option value="$PROJECT_DIR$/util/filter" />
             <option value="$PROJECT_DIR$/util/logger" />
+            <option value="$PROJECT_DIR$/util/math" />
             <option value="$PROJECT_DIR$/util/persistence" />
             <option value="$PROJECT_DIR$/util/persistence/configuration" />
-            <option value="$PROJECT_DIR$/util/persistence/configuration/common" />
-            <option value="$PROJECT_DIR$/util/persistence/configuration/json" />
-            <option value="$PROJECT_DIR$/util/persistence/configuration/yaml" />
             <option value="$PROJECT_DIR$/util/persistence/ormlite-util" />
             <option value="$PROJECT_DIR$/util/persistence/sql4j" />
             <option value="$PROJECT_DIR$/util/processor" />

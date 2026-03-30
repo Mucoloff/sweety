@@ -42,7 +42,7 @@ public enum VersionComparison {
     }
 
     public boolean compareByProtocol(@NotNull MinecraftVersion a, @NotNull MinecraftVersion b) {
-        return comparator.test(a.getProtocolVersion(), b.getProtocolVersion());
+        return comparator.test(a.protocolVersion(), b.protocolVersion());
     }
 
     public boolean compareByOrdinal(@NotNull MinecraftVersion a, @NotNull MinecraftVersion b) {

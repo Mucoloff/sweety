@@ -2,14 +2,8 @@ package dev.sweety.util.logger.profile;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import lombok.Getter;
-
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-@Getter
 public final class LogProfile {
     private static final int MAX_CACHE_SIZE = 1000;
 
@@ -61,6 +55,18 @@ public final class LogProfile {
             // Mix string hash with system identity hash of parent
             return 31 * name.hashCode() + (parent == null ? 0 : System.identityHashCode(parent));
         }
+    }
+
+    public String name() {
+        return name;
+    }
+
+    public LogProfile parent() {
+        return parent;
+    }
+
+    public String fullPath() {
+        return fullPath;
     }
 }
 

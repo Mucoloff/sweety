@@ -4,24 +4,21 @@ import com.google.gson.JsonObject;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.thread.ProfileThread;
 import dev.sweety.versioning.protocol.PacketRegistry;
+import dev.sweety.versioning.server.api.http.HttpUpdateServer;
+import dev.sweety.versioning.server.api.netty.NettyUpdateServer;
 import dev.sweety.versioning.server.logic.cache.CacheManager;
 import dev.sweety.versioning.server.logic.client.ClientRegistry;
 import dev.sweety.versioning.server.logic.download.DownloadManager;
-import dev.sweety.versioning.server.api.http.HttpUpdateServer;
 import dev.sweety.versioning.server.logic.patch.PatchManager;
 import dev.sweety.versioning.server.logic.release.ReleaseManager;
 import dev.sweety.versioning.server.logic.storage.Storage;
-import dev.sweety.versioning.server.api.netty.NettyUpdateServer;
 import dev.sweety.versioning.util.Utils;
 import org.jetbrains.annotations.NotNull;
 
-import javax.swing.text.NumberFormatter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.text.NumberFormat;
-import java.util.Locale;
 
 public class MainServer {
 
@@ -62,7 +59,7 @@ public class MainServer {
             return;
         }
 
-        final JsonObject root = Utils.GSON.fromJson(Files.readString(settingFile), JsonObject.class);
+        final JsonObject root = Utils.gson().fromJson(Files.readString(settingFile), JsonObject.class);
         load(root);
     }
 
@@ -103,7 +100,7 @@ public class MainServer {
         root.addProperty("PER_IP_RATE_LIMIT", Settings.PER_IP_RATE_LIMIT);
         root.addProperty("RATE_LIMIT_WINDOW", Settings.RATE_LIMIT_WINDOW);
 
-        return Utils.GSON.toJson(root);
+        return Utils.gson().toJson(root);
     }
 
 }

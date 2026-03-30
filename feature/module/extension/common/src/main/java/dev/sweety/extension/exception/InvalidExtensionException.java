@@ -1,6 +1,6 @@
 package dev.sweety.extension.exception;
 
-import dev.sweety.core.exception.Except;
+import dev.sweety.exception.Except;
 import dev.sweety.extension.Extension;
 
 public class InvalidExtensionException extends Except {

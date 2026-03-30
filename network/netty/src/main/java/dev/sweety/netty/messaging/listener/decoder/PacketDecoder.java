@@ -1,8 +1,8 @@
 package dev.sweety.netty.messaging.listener.decoder;
 
-import dev.sweety.core.crypt.ChecksumUtils;
-import dev.sweety.core.file.ResourceUtils;
-import dev.sweety.core.file.ArchiveUtils;
+import dev.sweety.data.ChecksumUtils;
+import dev.sweety.file.ResourceUtils;
+import dev.sweety.file.ArchiveUtils;
 import dev.sweety.netty.messaging.exception.PacketDecodeException;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.buffer.PacketBuffer;

@@ -1,9 +1,9 @@
 package dev.sweety.netty.loadbalancer.server.backend;
 
-import dev.sweety.core.color.AnsiColor;
+import dev.sweety.color.AnsiColor;
 import dev.sweety.util.logger.SimpleLogger;
-import dev.sweety.core.math.MathUtils;
-import dev.sweety.core.math.RandomUtils;
+import dev.sweety.math.MathUtils;
+import dev.sweety.math.RandomUtils;
 import dev.sweety.netty.loadbalancer.common.backend.BackendSettings;
 import dev.sweety.netty.loadbalancer.common.backend.IBackend;
 import dev.sweety.netty.loadbalancer.common.metrics.state.NodeState;
@@ -12,15 +12,12 @@ import dev.sweety.netty.loadbalancer.common.packet.MetricsUpdatePacket;
 import dev.sweety.netty.loadbalancer.server.LoadBalancerServer;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
-import dev.sweety.record.annotations.DataIgnore;
-import dev.sweety.record.annotations.RecordGetter;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-@RecordGetter
 public class BackendNode implements IBackend {
 
     protected final LoadBalancerServer<? extends BackendNode> loadBalancer;
@@ -30,14 +27,13 @@ public class BackendNode implements IBackend {
 
     protected ChannelHandlerContext ctx;
 
-    @DataIgnore
     private final RequestMatrics requestMatrics = new RequestMatrics();
 
     public BackendNode(final LoadBalancerServer<? extends BackendNode> loadBalancer, int port, int type) {
         this.loadBalancer = loadBalancer;
         this.typeId = type;
         this.port = port;
-        final String color = AnsiColor.fromColor(RandomUtils.RANDOM.nextInt() * type * port) + port + AnsiColor.RESET.getColor();
+        final String color = AnsiColor.fromColor(RandomUtils.RANDOM.nextInt() * type * port) + port + AnsiColor.RESET.color();
         this.logger = new SimpleLogger("Node#" + color).info("Backend connected!");
     }
 
@@ -56,7 +52,6 @@ public class BackendNode implements IBackend {
     private volatile float maxObservedPacketTime = 1f;
     private final Map<Integer, Float> packetTimings = new ConcurrentHashMap<>();
 
-    @DataIgnore
     private volatile float maxObservedAvgLoad = 1f, maxObservedCurrentLoad = 1f;
 
     synchronized void updateMaxObserved(float avgLoad, float currentLoad, float currentTime) {
@@ -102,7 +97,7 @@ public class BackendNode implements IBackend {
                             + 0.10f * metrics.systemLoad()
             );
 
-            latencyScore = MathUtils.clamp(requestMatrics.getAverageLatency() / BackendSettings.MAX_EXPECTED_LATENCY);
+            latencyScore = MathUtils.clamp(requestMatrics.getAverageLatency() / BackendSettings.MAX_EXPECTED_LATENCY());
             bandwidthScore = avgLoad / maxObservedAvgLoad;
             currentBandwidthScore = currentLoad / maxObservedCurrentLoad;
             packetTimeScore = currentTime / maxObservedPacketTime;
@@ -151,11 +146,10 @@ public class BackendNode implements IBackend {
         return ((T) this);
     }
 
-    @DataIgnore
     private volatile int inFlight = 0;
 
     public synchronized boolean canAcceptPacket() {
-        return this.inFlight < BackendSettings.MAX_IN_FLIGHT;
+        return this.inFlight < BackendSettings.MAX_IN_FLIGHT();
     }
 
     public synchronized void incrementInFlight() {
@@ -164,7 +158,7 @@ public class BackendNode implements IBackend {
 
     public synchronized void decrementInFlight() {
         this.inFlight--;
-        if (inFlight < BackendSettings.IN_FLIGHT_ACCEPTABLE) {
+        if (inFlight < BackendSettings.IN_FLIGHT_ACCEPTABLE()) {
             loadBalancer.drainPending();
         }
         if (this.inFlight < 0) this.inFlight = 0;
@@ -181,5 +175,79 @@ public class BackendNode implements IBackend {
 
     public String typeName() {
         return typeId + ":" + port;
+    }
+
+    public LoadBalancerServer<? extends BackendNode> loadBalancer() {
+        return loadBalancer;
+    }
+
+    public SimpleLogger logger() {
+        return logger;
+    }
+
+    @Override
+    public int typeId() {
+        return typeId;
+    }
+
+    @Override
+    public int port() {
+        return port;
+    }
+
+    public ChannelHandlerContext ctx() {
+        return ctx;
+    }
+
+    public RequestMatrics requestMatrics() {
+        return requestMatrics;
+    }
+
+    public NodeState state() {
+        return state;
+    }
+
+    public float usageScore() {
+        return usageScore;
+    }
+
+    public float latencyScore() {
+        return latencyScore;
+    }
+
+    public float bandwidthScore() {
+        return bandwidthScore;
+    }
+
+    public float currentBandwidthScore() {
+        return currentBandwidthScore;
+    }
+
+    public float packetTimeScore() {
+        return packetTimeScore;
+    }
+
+    public float totalScore() {
+        return totalScore;
+    }
+
+    public float maxObservedPacketTime() {
+        return maxObservedPacketTime;
+    }
+
+    public Map<Integer, Float> packetTimings() {
+        return packetTimings;
+    }
+
+    public float maxObservedAvgLoad() {
+        return maxObservedAvgLoad;
+    }
+
+    public float maxObservedCurrentLoad() {
+        return maxObservedCurrentLoad;
+    }
+
+    public int inFlight() {
+        return inFlight;
     }
 }

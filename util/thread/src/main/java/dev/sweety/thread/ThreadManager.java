@@ -1,16 +1,13 @@
 package dev.sweety.thread;
 
-//import dev.sweety.core.math.MathUtils; todo
-//import dev.sweety.core.math.RandomUtils;
+import dev.sweety.math.MathUtils;
+import dev.sweety.math.RandomUtils;
 
 import lombok.Getter;
 import lombok.SneakyThrows;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
-
 
 public class ThreadManager {
 
@@ -34,9 +31,7 @@ public class ThreadManager {
         ProfileThread profileThread;
 
         if (this.profileThreads.size() < MAX_THREADS) this.profileThreads.add(profileThread = new ProfileThread(name));
-        else profileThread =
-                profileThreads.get(new Random().nextInt(profileThreads.size()));
-        //MathUtils.findBest(profileThreads, (a, b) -> a.getProfileCount() < b.getProfileCount(), RandomUtils.randomElement(this.profileThreads)); todo
+        else profileThread = MathUtils.findBest(profileThreads, (a, b) -> a.getProfileCount() < b.getProfileCount(), RandomUtils.randomElement(this.profileThreads));
 
         if (profileThread == null)
             throw new Exception("Encountered a null profile thread, Please restart the server to avoid any issues.");
@@ -52,7 +47,6 @@ public class ThreadManager {
     }
 
     public void shutdown() {
-        this.profileThreads.forEach(this::shutdown);
-        //MathUtils.parallel(this.profileThreads).forEach(this::shutdown); todo
+        MathUtils.parallel(this.profileThreads).forEach(this::shutdown);
     }
 }

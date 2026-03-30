@@ -3,7 +3,6 @@ package dev.sweety.netty.loadbalancer.common.packet.queue;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
 import io.netty.channel.ChannelHandlerContext;
-import lombok.Synchronized;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,16 +50,17 @@ public class OrderedResponseQueue {
      * @param sequenceId il sequence number della richiesta originale
      * @param responses  i pacchetti di risposta
      */
-    @Synchronized("sendLock")
     public void complete(long sequenceId, Packet[] responses) {
-        if (sequenceId != nextToSend) {
-            pendingResponses.put(sequenceId, responses);
-            //re-enqueue
-            return;
+        synchronized (sendLock) {
+            if (sequenceId != nextToSend) {
+                pendingResponses.put(sequenceId, responses);
+                //re-enqueue
+                return;
+            }
+            sendResponse(responses);
+            nextToSend++;
+            drainReady();
         }
-        sendResponse(responses);
-        nextToSend++;
-        drainReady();
     }
 
     /**
@@ -83,11 +83,12 @@ public class OrderedResponseQueue {
     /**
      * Resetta la coda (da chiamare quando il client si disconnette).
      */
-    @Synchronized("sendLock")
     public void reset() {
-        nextSequence.reset();
-        nextToSend = 0;
-        pendingResponses.clear();
+        synchronized (sendLock) {
+            nextSequence.reset();
+            nextToSend = 0;
+            pendingResponses.clear();
+        }
     }
 
     /**

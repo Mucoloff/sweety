@@ -1,6 +1,6 @@
 package dev.sweety.netty.feature.batch;
 
-import dev.sweety.core.math.function.TriFunction;
+import dev.sweety.math.function.TriFunction;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.buffer.io.Codec;
 import dev.sweety.netty.packet.model.Packet;

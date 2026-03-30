@@ -1,6 +1,6 @@
 package dev.sweety.util.logger.backend;
 
-import dev.sweety.core.color.AnsiColor;
+import dev.sweety.color.AnsiColor;
 import dev.sweety.util.logger.LogEvent;
 import dev.sweety.util.logger.formatter.LogFormatter;
 import dev.sweety.util.logger.level.LogLevel;
@@ -42,23 +42,23 @@ public class ConsoleBackend implements LoggerBackend {
 
     @Override
     public void log(LogEvent event) {
-        String formatted = formatter.format(event.getLevel(), event.getLoggerName(), event.getProfile(), event.getRawArgs());
-        String color = getColor(event.getLevel());
+        String formatted = formatter.format(event.level(), event.loggerName(), event.profile(), event.rawArgs());
+        String color = getColor(event.level());
         
         // Add color: Color + Message + Reset
-        String line = color + formatted + AnsiColor.RESET.getColor();
+        String line = color + formatted + AnsiColor.RESET.color();
 
-        if (event.getLevel() == LogLevel.ERROR) System.err.println(line);
+        if (event.level() == LogLevel.ERROR) System.err.println(line);
         else System.out.println(line);
     }
     
     private String getColor(LogLevel level) {
         return switch (level) {
-            case INFO -> AnsiColor.WHITE_BRIGHT.getColor();
-            case WARN -> AnsiColor.YELLOW_BRIGHT.getColor();
-            case ERROR -> AnsiColor.RED_BRIGHT.getColor();
-            case DEBUG -> AnsiColor.PURPLE_BRIGHT.getColor();
-            case TRACE -> AnsiColor.RESET.getColor();
+            case INFO -> AnsiColor.WHITE_BRIGHT.color();
+            case WARN -> AnsiColor.YELLOW_BRIGHT.color();
+            case ERROR -> AnsiColor.RED_BRIGHT.color();
+            case DEBUG -> AnsiColor.PURPLE_BRIGHT.color();
+            case TRACE -> AnsiColor.RESET.color();
         };
     }
 }

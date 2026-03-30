@@ -61,7 +61,7 @@ public record LauncherConfig(String url,
             return def;
         }
 
-        JsonObject root = Utils.GSON.fromJson(
+        JsonObject root = Utils.gson().fromJson(
                 Files.readString(file),
                 JsonObject.class
         );
@@ -137,7 +137,7 @@ public record LauncherConfig(String url,
 
 
         Path tmpFile = file.resolveSibling(file.getFileName() + ".tmp");
-        Files.writeString(tmpFile, Utils.GSON.toJson(root));
+        Files.writeString(tmpFile, Utils.gson().toJson(root));
 
         Files.move(
                 tmpFile,

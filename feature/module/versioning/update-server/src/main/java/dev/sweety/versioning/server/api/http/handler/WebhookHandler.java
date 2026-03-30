@@ -14,7 +14,6 @@ import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.channel.Channel;
-import lombok.Setter;
 
 import java.io.IOException;
 
@@ -32,8 +31,12 @@ public class WebhookHandler implements HttpHandler {
     private final WebhookRateLimiter rateLimiter;
     private final PatchManager patchManager;
 
-    @Setter
     private ReleaseBroadcastConsumer broadcast;
+
+    public WebhookHandler setBroadcast(ReleaseBroadcastConsumer broadcast) {
+        this.broadcast = broadcast;
+        return this;
+    }
 
     public WebhookHandler(
             String secret,

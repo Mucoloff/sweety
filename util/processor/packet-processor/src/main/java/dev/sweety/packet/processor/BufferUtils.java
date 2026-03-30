@@ -2,20 +2,28 @@ package dev.sweety.packet.processor;
 
 import dev.sweety.netty.packet.buffer.io.callable.CallableDecoder;
 import dev.sweety.netty.packet.buffer.io.callable.CallableEncoder;
-import lombok.SneakyThrows;
-import lombok.experimental.UtilityClass;
 
-@UtilityClass
-public class BufferUtils {
+import java.lang.reflect.InvocationTargetException;
 
-    @SneakyThrows
-    public <T, Encoder extends CallableEncoder<T>> Encoder encoder(Class<Encoder> encoderClass) {
-        return encoderClass.getDeclaredConstructor().newInstance();
+public final class BufferUtils {
+
+    public static <T, Encoder extends CallableEncoder<T>> Encoder encoder(Class<Encoder> encoderClass) {
+        try {
+            return encoderClass.getDeclaredConstructor().newInstance();
+        } catch (InstantiationException | NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    @SneakyThrows
-    public <T, Decoder extends CallableDecoder<T>> Decoder decoder(Class<Decoder> decoderClass) {
-        return decoderClass.getDeclaredConstructor().newInstance();
+
+    public static <T, Decoder extends CallableDecoder<T>> Decoder decoder(Class<Decoder> decoderClass) {
+        try {
+            return decoderClass.getDeclaredConstructor().newInstance();
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
     }
+
+    private BufferUtils() {}
 
 }

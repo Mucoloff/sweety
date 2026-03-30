@@ -1,11 +1,8 @@
 package dev.sweety.minecraft.version;
 
-import lombok.Getter;
-
 import java.util.*;
 import java.util.stream.Collectors;
 
-@Getter
 public enum MinecraftVersion {
     V_1_7_2(4), V_1_7_4(4), V_1_7_5(4),
     V_1_7_6(5), V_1_7_7(5), V_1_7_8(5), V_1_7_9(5), V_1_7_10(5),
@@ -34,13 +31,13 @@ public enum MinecraftVersion {
     private static final MinecraftVersion[] VALUES = values();
     private static final Map<Integer, List<MinecraftVersion>> BY_PROTOCOL =
             Arrays.stream(VALUES)
-                    .collect(Collectors.groupingBy(MinecraftVersion::getProtocolVersion));
+                    .collect(Collectors.groupingBy(MinecraftVersion::protocolVersion));
 
     private static final Map<String, MinecraftVersion> BY_NAME_OR_RELEASE =
             Arrays.stream(VALUES)
                     .flatMap(v -> Arrays.stream(new String[]{
                             v.name().toUpperCase(Locale.ROOT),
-                            v.getReleaseName()
+                            v.releaseName()
                     }).map(key -> new AbstractMap.SimpleEntry<>(key, v)))
                     .collect(Collectors.toMap(
                             Map.Entry::getKey,
@@ -79,4 +76,11 @@ public enum MinecraftVersion {
         return VALUES[0];
     }
 
+    public int protocolVersion() {
+        return protocolVersion;
+    }
+
+    public String releaseName() {
+        return releaseName;
+    }
 }

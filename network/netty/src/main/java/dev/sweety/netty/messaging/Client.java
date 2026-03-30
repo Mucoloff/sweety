@@ -1,6 +1,6 @@
 package dev.sweety.netty.messaging;
 
-import dev.sweety.core.math.list.BlockingDeque;
+import dev.sweety.math.list.BlockingDeque;
 import dev.sweety.netty.feature.QueueContext;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;

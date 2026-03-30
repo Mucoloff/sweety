@@ -1,7 +1,7 @@
 package dev.sweety.project.test;
 
 import dev.sweety.logger.SimpleLogger;
-import dev.sweety.core.math.function.TriFunction;
+import dev.sweety.math.function.TriFunction;
 import dev.sweety.netty.messaging.listener.decoder.PacketDecoder;
 import dev.sweety.netty.messaging.listener.encoder.PacketEncoder;
 import dev.sweety.netty.packet.buffer.PacketBuffer;

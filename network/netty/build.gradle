@@ -1,9 +1,10 @@
 dependencies {
-    implementation project(':core')
-    implementation project(':util:logger')
-    implementation project(':util:time')
-    implementation project(':util:thread')
-    var proc = project(':util:processor:record-getter-processor')
-    implementation proc
-    annotationProcessor proc
+    implementation(project(':util:data'))
+    implementation(project(":util:math"))
+    implementation(project(":util:file"))
+    implementation(project(":util:color"))
+    implementation(project(":util:exception"))
+    implementation(project(':util:logger'))
+    implementation(project(':util:time'))
+    implementation(project(':util:thread'))
 }

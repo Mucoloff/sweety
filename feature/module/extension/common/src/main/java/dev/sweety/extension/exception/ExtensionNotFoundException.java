@@ -1,6 +1,6 @@
 package dev.sweety.extension.exception;
 
-import dev.sweety.core.exception.Except;
+import dev.sweety.exception.Except;
 
 public class ExtensionNotFoundException extends Except {
 

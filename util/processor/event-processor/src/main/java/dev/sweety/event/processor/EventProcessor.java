@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Set;
 
 @SupportedAnnotationTypes("dev.sweety.event.processor.GenerateEvent")
-@SupportedSourceVersion(SourceVersion.RELEASE_21)
+@SupportedSourceVersion(SourceVersion.RELEASE_24)
 @AutoService(Processor.class)
 public class EventProcessor extends AbstractProcessor {
 

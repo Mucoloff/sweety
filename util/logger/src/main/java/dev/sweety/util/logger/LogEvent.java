@@ -3,9 +3,7 @@ package dev.sweety.util.logger;
 import dev.sweety.util.logger.level.LogLevel;
 import dev.sweety.util.logger.profile.LogProfile;
 import dev.sweety.util.logger.util.LogArguments;
-import lombok.Getter;
 
-@Getter
 public class LogEvent {
     private final LogLevel level;
     private final String loggerName;
@@ -28,6 +26,30 @@ public class LogEvent {
             this.pattern = null;
             this.params = new Object[0];
         }
+    }
+
+    public LogLevel level() {
+        return level;
+    }
+
+    public String loggerName() {
+        return loggerName;
+    }
+
+    public LogProfile profile() {
+        return profile;
+    }
+
+    public Object[] rawArgs() {
+        return rawArgs;
+    }
+
+    public String pattern() {
+        return pattern;
+    }
+
+    public Object[] params() {
+        return params;
     }
 }
 

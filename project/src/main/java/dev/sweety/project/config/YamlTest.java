@@ -1,6 +1,6 @@
 package dev.sweety.project.config;
 
-import dev.sweety.core.config.yml.*;
+import dev.sweety.config.yml.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;

@@ -1,6 +1,5 @@
 package dev.sweety.thread;
 
-//import dev.sweety.logger.SimpleLogger;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;

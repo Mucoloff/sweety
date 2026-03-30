@@ -1,19 +1,19 @@
 package dev.sweety.netty.loadbalancer.common.packet;
 
 import dev.sweety.netty.packet.model.Packet;
-import lombok.experimental.UtilityClass;
 
-@UtilityClass
-public class Packer {
+public final class Packer {
 
-    public final Packet[] EMPTY = new Packet[0];
+    public static Packet[] EMPTY() {
+        return new Packet[0];
+    }
 
-    public Packet[] pack(Packet[]... arrays) {
+    public static Packet[] pack(Packet[]... arrays) {
 
         int totalLen = 0;
         for (Packet[] array : arrays) totalLen += array.length;
 
-        if (totalLen == 0) return EMPTY;
+        if (totalLen == 0) return EMPTY();
 
         final Packet[] response = new Packet[totalLen];
 

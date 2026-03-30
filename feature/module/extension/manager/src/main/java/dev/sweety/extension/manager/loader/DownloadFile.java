@@ -1,7 +1,5 @@
 package dev.sweety.extension.manager.loader;
 
-import lombok.experimental.UtilityClass;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -10,10 +8,9 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 
-@UtilityClass
-public class DownloadFile {
+public final class DownloadFile {
 
-    public CompletableFuture<File> downloadFromURL(String urlStr, String fileName, boolean saveToDisk) {
+    public static CompletableFuture<File> downloadFromURL(String urlStr, String fileName, boolean saveToDisk) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 final URL url = new URI(urlStr).toURL();

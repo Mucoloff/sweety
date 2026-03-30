@@ -1,6 +1,6 @@
 package dev.sweety.versioning.version.channel;
 
-import dev.sweety.core.util.PrettyEnum;
+import dev.sweety.data.PrettyEnum;
 
 public enum Channel implements PrettyEnum {
 

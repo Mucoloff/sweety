@@ -1,6 +1,6 @@
 package dev.sweety.project.test;
 
-import dev.sweety.core.file.ArchiveUtils;
+import dev.sweety.file.ArchiveUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ThreadLocalRandom;

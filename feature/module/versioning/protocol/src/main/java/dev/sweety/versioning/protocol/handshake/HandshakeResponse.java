@@ -3,24 +3,38 @@ package dev.sweety.versioning.protocol.handshake;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.PacketTransaction;
 import dev.sweety.versioning.version.artifact.Artifact;
-import dev.sweety.versioning.version.Version;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.EnumMap;
-import java.util.Optional;
+import java.util.Objects;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
 public class HandshakeResponse extends PacketTransaction.Transaction {
 
     private State state;
     private EnumMap<Artifact, ResponseData> versions;
+
+    public HandshakeResponse() {
+    }
+
+    public HandshakeResponse(final State state, final EnumMap<Artifact, ResponseData> versions) {
+        this.state = state;
+        this.versions = versions;
+    }
+
+    public State getState() {
+        return state;
+    }
+
+    public void setState(final State state) {
+        this.state = state;
+    }
+
+    public EnumMap<Artifact, ResponseData> getVersions() {
+        return versions;
+    }
+
+    public void setVersions(final EnumMap<Artifact, ResponseData> versions) {
+        this.versions = versions;
+    }
 
     @Override
     public void write(final PacketBuffer buffer) {
@@ -45,4 +59,24 @@ public class HandshakeResponse extends PacketTransaction.Transaction {
         return empty(State.UNAVAILABLE);
     }
 
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (!(o instanceof HandshakeResponse that)) return false;
+        if (!super.equals(o)) return false;
+        return state == that.state && Objects.equals(versions, that.versions);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), state, versions);
+    }
+
+    @Override
+    public String toString() {
+        return "HandshakeResponse{" +
+                "state=" + state +
+                ", versions=" + versions +
+                '}';
+    }
 }

@@ -6,9 +6,6 @@ import dev.sweety.netty.messaging.listener.watcher.NettyWatcher;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import dev.sweety.time.TimeMode;
-import dev.sweety.record.annotations.DataIgnore;
-import dev.sweety.record.annotations.RecordData;
-import dev.sweety.record.annotations.Setter;
 import io.netty.bootstrap.AbstractBootstrap;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
@@ -17,9 +14,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.EventExecutor;
-import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.CompletableFuture;
@@ -28,33 +23,39 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-@RecordData(setterTypes = Setter.Type.BUILDER_FLUENT)
 public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel>> {
 
     // ==============================/
     // Handlers are now created per-connection instead of shared
     // ==============================/
-    @DataIgnore
     private final B bootstrap;
-    @DataIgnore
     private final NioEventLoopGroup boss;
-    @DataIgnore
     private final NioEventLoopGroup worker;
     // ===================================/
     public static final int SEED = 0x000FFFFF;
 
-    @DataIgnore
     protected Channel channel;
 
     protected int port;
     protected String host;
 
-    @DataIgnore
+    public int port() {
+        return port;
+    }
+
+    public String host() {
+        return host;
+    }
+
     private final AtomicBoolean running = new AtomicBoolean();
 
     public static TimeMode timeMode = TimeMode.MILLIS;
 
     private final IPacketRegistry packetRegistry;
+
+    public IPacketRegistry packetRegistry() {
+        return packetRegistry;
+    }
 
     public Messenger(B bootstrap, String host, int port, IPacketRegistry packetRegistry, int localPort) {
         this.bootstrap = bootstrap;
@@ -103,8 +104,16 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
         return this.connect().join();
     }
 
-    @Setter
     private Consumer<Channel> onConnect;
+
+    public Consumer<Channel> onConnect() {
+        return onConnect;
+    }
+
+    public Messenger<B> onConnect(Consumer<Channel> onConnect) {
+        this.onConnect = onConnect;
+        return this;
+    }
 
     public CompletableFuture<Channel> connect() {
         final CompletableFuture<Channel> future = new CompletableFuture<>();

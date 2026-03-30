@@ -36,7 +36,7 @@ import java.util.Set;
         "dev.sweety.record.annotations.SneakyThrows",
         "dev.sweety.record.annotations.UtilityClass"
 })
-@SupportedSourceVersion(SourceVersion.RELEASE_21)
+@SupportedSourceVersion(SourceVersion.RELEASE_24)
 @AutoService(Processor.class)
 public class RecordProcessor extends AbstractProcessor {
 

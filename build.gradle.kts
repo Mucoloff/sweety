@@ -6,7 +6,7 @@ import org.gradle.api.tasks.testing.Test
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 
 plugins {
-    id("io.freefair.lombok") version "9.0.0" apply false
+    //id("io.freefair.lombok") version "9.0.0" apply false
     kotlin("jvm") version "2.3.20-RC2" apply false
 }
 
@@ -16,7 +16,7 @@ version = "1.0.0"
 subprojects {
     apply(plugin = "java")
     apply(plugin = "org.jetbrains.kotlin.jvm")
-    apply(plugin = "io.freefair.lombok")
+    //apply(plugin = "io.freefair.lombok")
     apply(plugin = "maven-publish")
 
     group = rootProject.group
@@ -67,10 +67,10 @@ subprojects {
 
     extensions.configure<JavaPluginExtension> {
         toolchain {
-            languageVersion.set(JavaLanguageVersion.of(21))
+            languageVersion.set(JavaLanguageVersion.of(24))
         }
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+        sourceCompatibility = JavaVersion.VERSION_24
+        targetCompatibility = JavaVersion.VERSION_24
     }
 
     afterEvaluate {

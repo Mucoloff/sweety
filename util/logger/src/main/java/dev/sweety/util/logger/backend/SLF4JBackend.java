@@ -20,26 +20,26 @@ public record SLF4JBackend(Logger logger) implements LoggerBackend {
 
     @Override
     public void log(LogEvent event) {
-        if (event.getRawArgs() == null || event.getRawArgs().length == 0) {
+        if (event.rawArgs() == null || event.rawArgs().length == 0) {
             return;
         }
 
         // Production-grade safety: Ensure MDC is cleaned up to prevent context bleeding
         // We use MDC.put/remove instead of addKeyValue ensures compatibility with standard %X{profile} layouts
-        if (event.getProfile() != null) {
-            MDC.put("profile", event.getProfile().getFullPath());
+        if (event.profile() != null) {
+            MDC.put("profile", event.profile().fullPath());
         }
         
         try {
-            var builder = logger.atLevel(map(event.getLevel()));
+            var builder = logger.atLevel(map(event.level()));
 
-            if (event.getPattern() != null) {
-                builder.log(event.getPattern(), event.getParams());
+            if (event.pattern() != null) {
+                builder.log(event.pattern(), event.params());
             } else {
-                builder.log(String.valueOf(event.getRawArgs()[0]));
+                builder.log(String.valueOf(event.rawArgs()[0]));
             }
         } finally {
-            if (event.getProfile() != null) {
+            if (event.profile() != null) {
                 MDC.remove("profile");
             }
         }

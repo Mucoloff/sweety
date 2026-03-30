@@ -1,9 +1,8 @@
 package dev.sweety.netty.packet.buffer;
 
-import dev.sweety.core.file.ArchiveUtils;
+import dev.sweety.file.ArchiveUtils;
 import dev.sweety.netty.packet.buffer.io.callable.CallableDecoder;
 import dev.sweety.netty.packet.buffer.io.Encoder;
-import lombok.SneakyThrows;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -53,15 +52,23 @@ public record FileBuffer(String fileName, boolean isDir, byte[] bytes) implement
     }
 
     // --- UNZIP SICURO ---
-    @SneakyThrows
     public File unzip(File outputDir) {
-        return ArchiveUtils.unzip(bytes, outputDir);
+        try {
+            return ArchiveUtils.unzip(bytes, outputDir);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to unzip FileBuffer: " + fileName, e);
+        }
     }
 
     // --- SALVA FILE BUFFER SU DISCO (GESTISCE ZIP AUTOMATICAMENTE) ---
-    @SneakyThrows
     public File read(File directory) {
-        if (!directory.exists()) Files.createDirectories(directory.toPath());
+        if (!directory.exists()) {
+            try {
+                Files.createDirectories(directory.toPath());
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to create directory: " + directory.getAbsolutePath(), e);
+            }
+        }
 
         if (fileName.endsWith(EXTENSION)) {
             File temp = new File(directory, fileName.replace(EXTENSION, ""));
@@ -70,6 +77,8 @@ public record FileBuffer(String fileName, boolean isDir, byte[] bytes) implement
             File out = new File(directory, fileName);
             try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(out))) {
                 bos.write(bytes);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to write FileBuffer to disk: " + out.getAbsolutePath(), e);
             }
             return out;
         }

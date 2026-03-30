@@ -37,9 +37,8 @@ public final class ServiceKey<T> {
     }
 
     public boolean equals(final Object obj) {
-        if (!(obj instanceof ServiceKey<?>)) return false;
-        ServiceKey<?> that = (ServiceKey<?>) obj;
-        return this.type == that.type && Objects.equals(this.name, that.name);
+        if (!(obj instanceof ServiceKey<?> that)) return false;
+        return this.getType() == that.getType() && Objects.equals(this.getName(), that.getName());
     }
 
     public int hashCode() {

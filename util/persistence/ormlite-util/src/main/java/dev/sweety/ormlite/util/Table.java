@@ -1,8 +1,5 @@
 package dev.sweety.ormlite.util;
 
-import lombok.NoArgsConstructor;
-
-@NoArgsConstructor
 public abstract class Table<ID> {
 
     public abstract ID getId();
@@ -10,5 +7,8 @@ public abstract class Table<ID> {
     @Override
     public boolean equals(Object obj) {
         return obj instanceof Table<?> entity && entity.getId().equals(getId());
+    }
+
+    public Table() {
     }
 }

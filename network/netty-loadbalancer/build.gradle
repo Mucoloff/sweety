@@ -1,16 +1,13 @@
 group = 'dev.sweety.netty.loadbalancer'
 
 dependencies {
-    implementation project(':core')
+    implementation(project(":util:color"))
+    implementation(project(":util:math"))
     implementation project(':util:logger')
     implementation project(':util:thread')
     implementation project(':util:time')
     implementation project(':network:netty')
     implementation(project(":util:system"))
-
-    var proc = project(':util:processor:record-getter-processor')
-    implementation proc
-    annotationProcessor proc
 
     implementation 'com.github.oshi:oshi-core:6.6.5'
 }

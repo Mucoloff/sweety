@@ -112,4 +112,6 @@ public final class UpdateResolver {
 
         return DownloadType.PATCH;
     }
+
+    private UpdateResolver(){}
 }

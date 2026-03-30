@@ -2,52 +2,64 @@ package dev.sweety.ormlite.util;
 
 import com.j256.ormlite.db.*;
 import com.j256.ormlite.jdbc.JdbcConnectionSource;
-import lombok.Getter;
 
 import java.sql.SQLException;
-import java.util.function.Function;
 
-@Getter
 public enum ConnectionType {
-    SQLITE(path -> {
-        String dbPath = path[0].endsWith(".db") ? path[0] : path[0] + ".db";
-        return new JdbcConnectionSource("jdbc:sqlite:" + dbPath, new SqliteDatabaseType());
-    }),
-    H2(path -> {
-        String dbPath = path[0].startsWith("mem:") ? path[0] : path[0] + ".mv.db";
-        return new JdbcConnectionSource("jdbc:h2:" + dbPath, new H2DatabaseType());
-    }),
-    MYSQL(params -> new JdbcConnectionSource("jdbc:mysql://" + params[1] + ":" + params[2] + "/" + params[0] + params[3], params[4], params[5], new MysqlDatabaseType())),
-    MARIADB(params -> new JdbcConnectionSource("jdbc:mariadb://" + params[1] + ":" + params[2] + "/" + params[0] + params[3], params[4], params[5], new MariaDbDatabaseType())),
-    POSTGRESQL(params -> new JdbcConnectionSource("jdbc:postgresql://" + params[1] + ":" + params[2] + "/" + params[0] + params[3], params[4], params[5], new PostgresDatabaseType()))
-    ;
+    SQLITE,
+    H2,
+    MYSQL,
+    MARIADB,
+    POSTGRESQL;
 
     public static final ConnectionType[] VALUES = values();
 
-    private final ConnectionSupplier connectionSupplier;
-
     private JdbcConnectionSource connection;
 
-    ConnectionType(ConnectionSupplier connectionSupplier) {
-        this.connectionSupplier = connectionSupplier;
+    public JdbcConnectionSource create(final String... params) {
+        try {
+            return switch (this) {
+                case SQLITE -> new JdbcConnectionSource("jdbc:sqlite:" + toSqlitePath(params), new SqliteDatabaseType());
+                case H2 -> new JdbcConnectionSource("jdbc:h2:" + toH2Path(params), new H2DatabaseType());
+                case MYSQL -> createJdbc("mysql", params, new MysqlDatabaseType());
+                case MARIADB -> createJdbc("mariadb", params, new MariaDbDatabaseType());
+                case POSTGRESQL -> createJdbc("postgresql", params, new PostgresDatabaseType());
+            };
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public JdbcConnectionSource getConnection(String... params) {
         if (connection != null && connection.isOpen("")) return connection;
-        return connection = connectionSupplier.apply(params);
+        return connection = create(params);
     }
 
-    @FunctionalInterface
-    private interface ConnectionSupplier extends Function<String[], JdbcConnectionSource> {
-        JdbcConnectionSource get(String... params) throws SQLException;
+    private static JdbcConnectionSource createJdbc(final String dialect,
+                                                   final String[] params,
+                                                   final DatabaseType databaseType) throws SQLException {
+        requireSize(params, 6, dialect);
+        final String url = "jdbc:" + dialect + "://" + params[1] + ":" + params[2] + "/" + params[0] + optional(params[3]);
+        return new JdbcConnectionSource(url, params[4], params[5], databaseType);
+    }
 
-        @Override
-        default JdbcConnectionSource apply(String... params) {
-            try {
-                return get(params);
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
+    private static String toSqlitePath(final String[] params) {
+        requireSize(params, 1, "sqlite");
+        return params[0].endsWith(".db") ? params[0] : params[0] + ".db";
+    }
+
+    private static String toH2Path(final String[] params) {
+        requireSize(params, 1, "h2");
+        return params[0].startsWith("mem:") ? params[0] : params[0] + ".mv.db";
+    }
+
+    private static String optional(final String value) {
+        return value == null ? "" : value;
+    }
+
+    private static void requireSize(final String[] params, final int minSize, final String dialect) {
+        if (params == null || params.length < minSize) {
+            throw new IllegalArgumentException("Not enough params for " + dialect + ": expected at least " + minSize);
         }
     }
 }

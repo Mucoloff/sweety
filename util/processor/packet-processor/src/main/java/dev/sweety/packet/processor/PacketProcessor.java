@@ -23,7 +23,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @SupportedAnnotationTypes("dev.sweety.packet.processor.BuildPacket")
-@SupportedSourceVersion(SourceVersion.RELEASE_21)
+@SupportedSourceVersion(SourceVersion.RELEASE_24)
 @AutoService(Processor.class)
 public class PacketProcessor extends AbstractProcessor {
 

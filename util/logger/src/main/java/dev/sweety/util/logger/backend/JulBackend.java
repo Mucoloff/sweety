@@ -23,15 +23,15 @@ public record JulBackend(Logger logger) implements LoggerBackend {
 
     @Override
     public void log(LogEvent event) {
-        final Level level = map(event.getLevel());
+        final Level level = map(event.level());
         if (!logger.isLoggable(level)) return;
 
-        if (event.getRawArgs() == null || event.getRawArgs().length == 0) return;
+        if (event.rawArgs() == null || event.rawArgs().length == 0) return;
 
-        if (event.getPattern() != null) {
-            logger.log(level, event.getPattern(), event.getParams());
+        if (event.pattern() != null) {
+            logger.log(level, event.pattern(), event.params());
         } else {
-            logger.log(level, String.valueOf(event.getRawArgs()[0]));
+            logger.log(level, String.valueOf(event.rawArgs()[0]));
         }
     }
 

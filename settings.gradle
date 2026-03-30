@@ -1,7 +1,5 @@
 rootProject.name = 'sweety'
 
-include 'core' //todo remove
-
 include 'feature'
 
 include 'feature:event'
@@ -53,9 +51,6 @@ include 'util:logger'
 include 'util:persistence'
 
 include 'util:persistence:configuration'
-include 'util:persistence:configuration:common'
-include 'util:persistence:configuration:json'
-include 'util:persistence:configuration:yaml'
 
 include 'util:persistence:ormlite-util'
 include 'util:persistence:sql4j'
@@ -71,5 +66,12 @@ include 'util:thread'
 include 'util:time'
 include 'util:vector'
 
-include 'animation'
+include 'util:animation'
 include 'util:system'
+
+include 'util:math'
+include 'util:color'
+include 'util:file'
+include 'util:data'
+include 'util:exception'
+include 'util:filter'

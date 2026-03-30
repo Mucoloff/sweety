@@ -1,6 +1,6 @@
 package dev.sweety.netty.loadbalancer.backend;
 
-import dev.sweety.core.color.AnsiColor;
+import dev.sweety.color.AnsiColor;
 import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.netty.feature.TransactionManager;
 import dev.sweety.netty.loadbalancer.common.packet.internal.ForwardData;

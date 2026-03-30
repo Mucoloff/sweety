@@ -1,8 +1,5 @@
 package dev.sweety.minecraft.color;
 
-import lombok.Getter;
-
-@Getter
 public enum ChatColor {
     BLACK("0", 0x000000),
     DARK_BLUE("1", 0x0000AA),
@@ -26,6 +23,14 @@ public enum ChatColor {
 
     private final String code;
     private final int hex;
+
+    public String code() {
+        return code;
+    }
+
+    public int hex() {
+        return hex;
+    }
 
     ChatColor(String code, int hex) {
         this.code = ((char) 167) + code;

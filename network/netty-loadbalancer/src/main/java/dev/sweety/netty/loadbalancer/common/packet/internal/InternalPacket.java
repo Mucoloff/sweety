@@ -1,13 +1,9 @@
 package dev.sweety.netty.loadbalancer.common.packet.internal;
 
-import dev.sweety.core.math.function.TriFunction;
-import dev.sweety.netty.feature.batch.Batch;
-import dev.sweety.netty.packet.buffer.PacketBuffer;
-import dev.sweety.netty.packet.model.Packet;
+import dev.sweety.math.function.TriFunction;
 import dev.sweety.netty.packet.model.PacketTransaction;
 
 import java.util.Optional;
-import java.util.function.Function;
 
 public class InternalPacket extends PacketTransaction<ForwardData, ForwardData> {
 

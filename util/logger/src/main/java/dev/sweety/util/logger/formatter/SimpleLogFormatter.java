@@ -1,7 +1,7 @@
 package dev.sweety.util.logger.formatter;
 
-import dev.sweety.core.color.AnsiColor;
-import dev.sweety.core.exception.ExceptionUtils;
+import dev.sweety.color.AnsiColor;
+import dev.sweety.exception.ExceptionUtils;
 import dev.sweety.util.logger.level.LogLevel;
 import dev.sweety.util.logger.profile.LogProfile;
 
@@ -17,7 +17,7 @@ public class SimpleLogFormatter implements LogFormatter {
     @Override
     public String format(LogLevel level, String loggerName, LogProfile profile, Object[] args) {
         final String time = LocalDateTime.now().format(TIME_FORMATTER);
-        final String suffix = (profile != null) ? ("@" + profile.getFullPath()) : "";
+        final String suffix = (profile != null) ? ("@" + profile.fullPath()) : "";
         final String prefix = "[" + time + "][" + level + "][" + loggerName + suffix + "]";
         final String message = parseMessage(args);
         return prefix + " " + message;
@@ -29,7 +29,7 @@ public class SimpleLogFormatter implements LogFormatter {
             joiner.add(switch (part) {
                 case null -> "<null>";
                 case String s -> s;
-                case AnsiColor color -> color.getColor();
+                case AnsiColor color -> color.color();
                 case Class<?> clazz -> clazz.getSimpleName();
                 case Throwable e -> ExceptionUtils.getStackTrace(e);
                 case Object[] arr -> parseMessage(arr);

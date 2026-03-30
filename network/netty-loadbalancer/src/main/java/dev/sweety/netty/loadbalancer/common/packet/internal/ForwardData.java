@@ -1,19 +1,17 @@
 package dev.sweety.netty.loadbalancer.common.packet.internal;
 
-import dev.sweety.core.math.function.TriFunction;
+import dev.sweety.math.function.TriFunction;
 import dev.sweety.netty.feature.batch.Batch;
 import dev.sweety.netty.loadbalancer.common.packet.Packer;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.model.PacketTransaction;
-import dev.sweety.record.annotations.RecordGetter;
 
 import java.util.function.Function;
 
 public class ForwardData extends PacketTransaction.Transaction {
 
     // --- HEADER (always read) ---
-    @RecordGetter
     private int senderId, receiverId;
     private RoutingContext context;
 
@@ -81,7 +79,7 @@ public class ForwardData extends PacketTransaction.Transaction {
             this.batch.read(new PacketBuffer(rawBatchBytes));
             this.decoded = true;
         }
-        return this.batch != null ? this.batch.decode(constructor) : Packer.EMPTY;
+        return this.batch != null ? this.batch.decode(constructor) : Packer.EMPTY();
     }
 
     /**
@@ -91,4 +89,11 @@ public class ForwardData extends PacketTransaction.Transaction {
         return this.context;
     }
 
+    public int senderId() {
+        return senderId;
+    }
+
+    public int receiverId() {
+        return receiverId;
+    }
 }

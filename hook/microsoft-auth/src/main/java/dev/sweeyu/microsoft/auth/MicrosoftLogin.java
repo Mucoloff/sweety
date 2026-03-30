@@ -5,14 +5,13 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import dev.sweety.config.json.GsonUtils;
-import dev.sweety.core.file.ResourceUtils;
+import dev.sweety.file.ResourceUtils;
 
 import dev.sweety.util.system.OperatingSystem;
-import lombok.SneakyThrows;
-import lombok.ToString;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
 
+import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -129,15 +128,18 @@ public class MicrosoftLogin {
                 });
     }
 
-    @SneakyThrows
     private static void startServer(BiConsumer<HttpServer, String> codeCallback) {
 
-        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", PORT), 0);
+        final HttpServer server;
+        try {
+            server = HttpServer.create(new InetSocketAddress("127.0.0.1", PORT), 0);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to start local server for authentication callback: " + e.getMessage(), e);
+        }
         server.createContext("/", new Handler(server, codeCallback));
         server.start();
     }
 
-    @ToString
     public static class LoginData {
         public String accessToken;
         public String newRefreshToken;
@@ -155,6 +157,16 @@ public class MicrosoftLogin {
 
         public boolean isBad() {
             return accessToken == null;
+        }
+
+        @Override
+        public String toString() {
+            return "LoginData{" +
+                    "accessToken='" + accessToken + '\'' +
+                    ", newRefreshToken='" + newRefreshToken + '\'' +
+                    ", uuid='" + uuid + '\'' +
+                    ", username='" + username + '\'' +
+                    '}';
         }
     }
 
@@ -194,13 +206,18 @@ public class MicrosoftLogin {
                     .thenAccept(res -> codeCallback.accept(server, res == null ? null : res.refresh_token));
         }
 
-        @SneakyThrows
+
         private void writeText(HttpExchange req, String text) {
             byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
-            req.sendResponseHeaders(200, bytes.length);
-            try (OutputStream out = req.getResponseBody()) {
-                out.write(bytes);
+            try {
+                req.sendResponseHeaders(200, bytes.length);
+                try (OutputStream out = req.getResponseBody()) {
+                    out.write(bytes);
+                }
+            } catch (Exception e) {
+                e.printStackTrace(System.err);
             }
+
         }
     }
 
