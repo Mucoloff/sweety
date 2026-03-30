@@ -14,24 +14,19 @@ public class Garbage<Key, Value> implements IGarbage<Key, Value> {
         this.delay = delay;
     }
 
-    public Garbage(int maxGarbage, float loadFactor, long delay) {
-        this.internal = new ExpirableGarbage<>(maxGarbage, loadFactor);
-        this.delay = delay;
-    }
-
     @Override
     public Value add(Key key, Value value) {
-        return internal.add(key, new Container<>(value, System.currentTimeMillis() + this.delay)).value();
+        return unwrap(internal.add(key, wrap(value)));
     }
 
     @Override
     public Value get(Key key) throws TokenExpiredException, InvalidTokenException {
-        return internal.get(key).value();
+        return unwrap(internal.get(key));
     }
 
     @Override
     public Value consume(Key key) throws TokenExpiredException, InvalidTokenException {
-        return internal.consume(key).value();
+        return unwrap(internal.consume(key));
     }
 
     @Override
@@ -47,6 +42,14 @@ public class Garbage<Key, Value> implements IGarbage<Key, Value> {
     @Override
     public void remove(Key key) {
         internal.remove(key);
+    }
+
+    private Container<Value> wrap(Value value) {
+        return new Container<>(value, System.currentTimeMillis() + this.delay);
+    }
+
+    private static <Value> Value unwrap(Container<Value> container) {
+        return container == null ? null : container.value();
     }
 
     private record Container<Value>(Value value, long expireAt) implements Expirable {

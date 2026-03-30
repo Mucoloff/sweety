@@ -1,29 +1,40 @@
 package dev.sweety.versioning.server.logic.webhook;
 
-import dev.sweety.versioning.server.Settings;
-
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class WebhookRateLimiter {
 
-    private final RateWindow global = new RateWindow("global");
     private final ConcurrentHashMap<String, RateWindow> ip = new ConcurrentHashMap<>();
+    private final RateWindow global;
+
+    private final long rateLimitWindow;
+    private final int globalRateLimit, perIpRateLimit;
+
+    public WebhookRateLimiter(long rateLimitWindow, int globalRateLimit, int perIpRateLimit) {
+        this.rateLimitWindow = rateLimitWindow;
+        this.globalRateLimit = globalRateLimit;
+        this.perIpRateLimit = perIpRateLimit;
+        this.global = new RateWindow(this.rateLimitWindow);
+    }
 
     static class RateWindow {
 
         private final AtomicInteger count = new AtomicInteger();
         private final AtomicLong start = new AtomicLong(System.nanoTime());
+        private final long rateLimitWindow;
 
-        public RateWindow(String ip) {
+        RateWindow(long rateLimitWindow) {
+            this.rateLimitWindow = rateLimitWindow;
         }
+
 
         boolean allow(int limit) {
             final long now = System.nanoTime();
             final long s = start.get();
 
-            if (now - s > Settings.RATE_LIMIT_WINDOW && start.compareAndSet(s, now)) count.set(0);
+            if (now - s > this.rateLimitWindow && start.compareAndSet(s, now)) count.set(0);
 
             return count.getAndIncrement() < limit;
 
@@ -32,11 +43,11 @@ public class WebhookRateLimiter {
     }
 
     public boolean allow(String ip) {
-        if (!global.allow(Settings.GLOBAL_RATE_LIMIT)) return false;
+        if (!global.allow(this.globalRateLimit)) return false;
 
-        final RateWindow window = this.ip.computeIfAbsent(ip == null ? "unknown" : ip, RateWindow::new);
+        final RateWindow window = this.ip.computeIfAbsent(ip == null ? "unknown" : ip, _ -> new RateWindow(this.rateLimitWindow));
 
-        return window.allow(Settings.PER_IP_RATE_LIMIT);
+        return window.allow(this.perIpRateLimit);
 
     }
 

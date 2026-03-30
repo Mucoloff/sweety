@@ -1,6 +1,7 @@
 package dev.sweety.versioning.server.api.http;
 
 import com.sun.net.httpserver.HttpServer;
+import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.server.api.http.handler.RollbackHandler;
 import dev.sweety.versioning.server.api.http.handler.WebhookHandler;
 import dev.sweety.versioning.server.logic.cache.CacheManager;
@@ -35,7 +36,7 @@ public class HttpUpdateServer {
 
 
         this.rollbackHandler = new RollbackHandler(rollbackToken, releaseManager);
-        this.webhookHandler = new WebhookHandler(webhookSecret, releaseManager, patchManager, new WebhookIdempotencyStore(), new WebhookRateLimiter());
+        this.webhookHandler = new WebhookHandler(webhookSecret, releaseManager, patchManager, new WebhookIdempotencyStore(Settings.DEFAULT_TTL), new WebhookRateLimiter(Settings.RATE_LIMIT_WINDOW, Settings.GLOBAL_RATE_LIMIT, Settings.PER_IP_RATE_LIMIT));
 
         this.server.createContext("/download", new DownloadHandler(downloadManager, cacheManager, clientRegistry, releaseManager, patchManager));
         this.server.createContext("/rollback", this.rollbackHandler);
