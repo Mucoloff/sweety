@@ -21,3 +21,17 @@ tasks.withType(JavaCompile).configureEach {
             "--add-exports", "jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED"
     ]
 }
+
+//group = 'dev.sweety.special' // opzionale, utile per coerenza del modulo
+
+publishing {
+    publications {
+        withType(MavenPublication).configureEach {
+            if (name == "mavenJava") {
+                groupId = 'dev.sweety'      // package Maven diverso
+                artifactId = 'record-getter-processor' // oppure un nome diverso
+                version = '1.0.0' // opzionale override versione
+            }
+        }
+    }
+}

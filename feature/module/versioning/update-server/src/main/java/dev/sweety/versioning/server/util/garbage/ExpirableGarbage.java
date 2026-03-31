@@ -20,7 +20,7 @@ public class ExpirableGarbage<Key, Value extends Expirable> implements IGarbage<
                 .expireAfter(new Expiry<Key, Value>() {
                     @Override
                     public long expireAfterCreate(Key key, Value value, long currentTime) {
-                        if (!value.hasExpiry()) return Long.MAX_VALUE; // eterno
+                        if (!value.hasExpiry()) return Long.MAX_VALUE;
                         return TimeUnit.MILLISECONDS.toNanos(Math.max(0, value.expiryTime()));
                     }
 
