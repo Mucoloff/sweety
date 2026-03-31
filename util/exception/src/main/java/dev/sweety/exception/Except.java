@@ -17,7 +17,25 @@ public abstract class Except extends Exception {
         return new RuntimeException(this);
     }
 
-    public NoStackTraceThrowable noStackTrace(){
-        return new NoStackTraceThrowable(this);
+    private boolean noStackTrace = false;
+
+    public void addStackTrace(StackTraceElement[] trace) {
+        if (noStackTrace) return;
+        StackTraceElement[] preStacktrace = this.getStackTrace();
+        StackTraceElement[] stackTrace = new StackTraceElement[preStacktrace.length + trace.length];
+        System.arraycopy(preStacktrace, 0, stackTrace, 0, preStacktrace.length);
+        System.arraycopy(trace, 0, stackTrace, preStacktrace.length, trace.length);
+        this.setStackTrace(stackTrace);
+    }
+
+    public void noStackTrace() {
+        this.noStackTrace = true;
+        this.setStackTrace(new StackTraceElement[0]);
+    }
+
+    @Override
+    public synchronized Throwable fillInStackTrace() {
+        if (noStackTrace) return super.fillInStackTrace();
+        return this;
     }
 }

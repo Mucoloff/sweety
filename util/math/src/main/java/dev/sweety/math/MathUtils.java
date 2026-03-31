@@ -1,6 +1,7 @@
 package dev.sweety.math;
 
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -30,6 +31,15 @@ public final class MathUtils {
 
     public interface Compare<T> {
         boolean compare(T a, T b);
+
+        static <T> Compare<T> min(Comparator<T> comparator) {
+            return (a, b) -> comparator.compare(a, b) < 0;
+        }
+
+        static <T> Compare<T> max(Comparator<T> comparator) {
+            return (a, b) -> comparator.compare(a, b) > 0;
+        }
+
     }
 
     public static <T> Stream<T> parallel(Collection<T> collection) {

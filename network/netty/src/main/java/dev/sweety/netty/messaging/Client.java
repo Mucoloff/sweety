@@ -55,6 +55,36 @@ public abstract class Client extends Messenger<Bootstrap> {
         super.flush(channelContext());
     }
 
+    /**
+     * Fire-and-forget write: enqueues the packet in the channel's outbound buffer without
+     * allocating a CompletableFuture or attaching a ChannelFutureListener.
+     * Use this for high-frequency writes (e.g., per-tick player packets) where the caller
+     * does not need to track write completion. Call {@link #flush()} once after batching
+     * all writes to trigger the actual I/O.
+     */
+    public void dispatchWrite(Packet packet) {
+        final ChannelHandlerContext ctx = channelContext();
+        if (ctx == null || !ctx.channel().isActive()) return;
+        if (!ctx.channel().isWritable()) return;
+        ctx.channel().write(packet);
+    }
+
+    /**
+     * Submits a single task to the Netty event loop.
+     * Use this to batch many {@code ctx.write()} calls into ONE event-loop task instead
+     * of scheduling one task per write (which causes unbounded task-queue growth under load).
+     * Inside the Runnable, {@code ctx.write()} is synchronous (no extra task allocation).
+     */
+    public void submitEventLoopBatch(Runnable task) {
+        final ChannelHandlerContext ctx = channelContext();
+        if (ctx == null || !ctx.channel().isActive()) return;
+        Messenger.safeRun(ctx, _ -> task.run());
+    }
+
+    public ChannelHandlerContext channelContextDirect() {
+        return channelContext();
+    }
+
     public Channel channel() {
         if (isActive()) return channel;
         throw new IllegalStateException("Channel not connected or inactive.");

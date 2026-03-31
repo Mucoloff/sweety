@@ -7,6 +7,7 @@ import dev.sweety.netty.packet.buffer.io.*;
 import dev.sweety.netty.packet.buffer.io.callable.CallableDecoder;
 import dev.sweety.netty.packet.buffer.io.callable.CallableEncoder;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.Pair;
 import org.jetbrains.annotations.Nullable;
@@ -20,6 +21,8 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
 public class PacketBuffer {
+    private static final int MAX_ARRAY_SIZE = 1 << 20;
+    private static final int MAX_STRING_BYTES = 1 << 20;
 
     private final ByteBuf nettyBuffer;
 
@@ -28,7 +31,7 @@ public class PacketBuffer {
     }
 
     public PacketBuffer() {
-        this(Unpooled.buffer());
+        this(PooledByteBufAllocator.DEFAULT.buffer(256));
     }
 
     public PacketBuffer(byte[] bytes) {
@@ -122,30 +125,31 @@ public class PacketBuffer {
         return this.nettyBuffer.readByte();
     }
 
-    private byte _mask = 0, _maskIndex = 0;
-    private int _posIndex = 0;
+    private byte writeMask = 0, writeMaskIndex = 0;
+    private int writePosIndex = 0;
+    private byte readMask = 0, readMaskIndex = 0;
 
     public PacketBuffer writeBoolean(boolean value) {
-        if (_maskIndex % 8 == 0) {
-            _posIndex = nettyBuffer.writerIndex();
-            nettyBuffer.writeByte(_mask = 0);
+        if (writeMaskIndex % 8 == 0) {
+            writePosIndex = nettyBuffer.writerIndex();
+            nettyBuffer.writeByte(writeMask = 0);
         }
 
-        if (value) _mask |= (byte) (1 << (_maskIndex % 8));
+        if (value) writeMask |= (byte) (1 << (writeMaskIndex % 8));
 
-        nettyBuffer.setByte(_posIndex, _mask);
-        _maskIndex++;
+        nettyBuffer.setByte(writePosIndex, writeMask);
+        writeMaskIndex++;
         return this;
     }
 
     public boolean readBoolean() {
-        if (_maskIndex % 8 == 0) {
+        if (readMaskIndex % 8 == 0) {
             if (!nettyBuffer.isReadable())
                 throw new PacketDecodeException("Unable to read boolean", new EOFException()).runtime();
-            _mask = nettyBuffer.readByte();
+            readMask = nettyBuffer.readByte();
         }
 
-        return ((_mask >> (_maskIndex++ % 8)) & 1) != 0;
+        return ((readMask >> (readMaskIndex++ % 8)) & 1) != 0;
     }
 
     public PacketBuffer writeChar(char value) {
@@ -191,11 +195,8 @@ public class PacketBuffer {
     }
 
     public String readString(Charset charset) {
-        int length = readVarInt();
-
-        if (length < 0) throw new PacketDecodeException("Invalid string length: " + length).runtime();
-        if (nettyBuffer.readableBytes() < length)
-            throw new IndexOutOfBoundsException("Not enough bytes to read string: requested " + length + ", available " + nettyBuffer.readableBytes());
+        int length = readBoundedLength("string", MAX_STRING_BYTES);
+        requireReadable(length, "string");
 
         byte[] bytes = new byte[length];
         nettyBuffer.readBytes(bytes);
@@ -241,8 +242,7 @@ public class PacketBuffer {
     }
 
     public PacketBuffer writeUuid(UUID uuid) {
-        writeVarLong(uuid.getMostSignificantBits());
-        return writeVarLong(uuid.getLeastSignificantBits());
+        return writeVarLong(uuid.getMostSignificantBits()).writeVarLong(uuid.getLeastSignificantBits());
     }
 
     public UUID readUuid() {
@@ -252,12 +252,12 @@ public class PacketBuffer {
     }
 
     public PacketBuffer writeByteArray(byte... bytes) {
-        writeVarInt(bytes.length);
-        return writeBytes(bytes);
+        return writeVarInt(bytes.length).writeBytes(bytes);
     }
 
     public byte[] readByteArray() {
-        int len = readVarInt();
+        int len = readBoundedLength("byte[]", MAX_ARRAY_SIZE);
+        requireReadable(len, "byte[]");
         byte[] bytes = new byte[len];
         this.nettyBuffer.readBytes(bytes);
         return bytes;
@@ -270,7 +270,8 @@ public class PacketBuffer {
     }
 
     public boolean[] readBooleanArray() {
-        int len = readVarInt();
+        int len = readBoundedLength("boolean[]", MAX_ARRAY_SIZE);
+        requireReadable((len + 7) / 8, "boolean[]");
         boolean[] arr = new boolean[len];
         for (int i = 0; i < len; i++) arr[i] = readBoolean();
         return arr;
@@ -283,7 +284,8 @@ public class PacketBuffer {
     }
 
     public char[] readCharArray() {
-        int len = readVarInt();
+        int len = readBoundedLength("char[]", MAX_ARRAY_SIZE);
+        requireReadable((long) len * Character.BYTES, "char[]");
         char[] arr = new char[len];
         for (int i = 0; i < len; i++) arr[i] = readChar();
         return arr;
@@ -296,7 +298,8 @@ public class PacketBuffer {
     }
 
     public int[] readIntArray() {
-        int len = readVarInt();
+        int len = readBoundedLength("int[]", MAX_ARRAY_SIZE);
+        requireReadable((long) len * Integer.BYTES, "int[]");
         int[] arr = new int[len];
         for (int i = 0; i < len; i++) arr[i] = readInt();
         return arr;
@@ -309,7 +312,7 @@ public class PacketBuffer {
     }
 
     public int[] readVarIntArray() {
-        int len = readVarInt();
+        int len = readBoundedLength("varInt[]", MAX_ARRAY_SIZE);
         int[] arr = new int[len];
         for (int i = 0; i < len; i++) arr[i] = readVarInt();
         return arr;
@@ -322,7 +325,8 @@ public class PacketBuffer {
     }
 
     public short[] readShortArray() {
-        int len = readVarInt();
+        int len = readBoundedLength("short[]", MAX_ARRAY_SIZE);
+        requireReadable((long) len * Short.BYTES, "short[]");
         short[] arr = new short[len];
         for (int i = 0; i < len; i++) arr[i] = readShort();
         return arr;
@@ -335,7 +339,8 @@ public class PacketBuffer {
     }
 
     public float[] readFloatArray() {
-        int len = readVarInt();
+        int len = readBoundedLength("float[]", MAX_ARRAY_SIZE);
+        requireReadable((long) len * Float.BYTES, "float[]");
         float[] arr = new float[len];
         for (int i = 0; i < len; i++) arr[i] = readFloat();
         return arr;
@@ -348,7 +353,8 @@ public class PacketBuffer {
     }
 
     public double[] readDoubleArray() {
-        int len = readVarInt();
+        int len = readBoundedLength("double[]", MAX_ARRAY_SIZE);
+        requireReadable((long) len * Double.BYTES, "double[]");
         double[] arr = new double[len];
         for (int i = 0; i < len; i++) arr[i] = readDouble();
         return arr;
@@ -361,15 +367,29 @@ public class PacketBuffer {
     }
 
     public long[] readVarLongArray() {
-        int len = readVarInt();
+        int len = readBoundedLength("varLong[]", MAX_ARRAY_SIZE);
         long[] arr = new long[len];
         for (int i = 0; i < len; i++) arr[i] = readVarLong();
         return arr;
     }
 
+    private PacketBuffer writePresence(boolean present) {
+        return this.writeBoolean(present);
+    }
+
+    private boolean readPresence() {
+        try {
+            return this.readBoolean();
+        } catch (Exception e) {
+            PacketDecodeException ex = new PacketDecodeException("Unable to read presence marker", new EOFException());
+            ex.addStackTrace(e.getStackTrace());
+            throw ex.runtime();
+        }
+    }
+
     private <T> boolean writeNullCheck(T object) {
         boolean notNull = object != null;
-        writeBoolean(notNull);
+        writePresence(notNull);
         return !notNull;
     }
 
@@ -380,20 +400,20 @@ public class PacketBuffer {
     }
 
     public <T> T readObject(CallableDecoder<? extends T> decoder) {
-        if (!readBoolean()) return null;
+        if (!readPresence()) return null;
         return decoder.read(this);
     }
 
     public <T> Optional<T> readOptional(CallableDecoder<? extends T> decoder) {
-        if (!readBoolean()) return Optional.empty();
+        if (!readPresence()) return Optional.empty();
         return Optional.of(decoder.read(this));
     }
 
     public <T> PacketBuffer writeOptional(final Optional<T> optional, CallableEncoder<? super T> encoder) {
         optional.ifPresentOrElse(value -> {
-            writeBoolean(true);
+            writePresence(true);
             encoder.write(this, value);
-        }, () -> writeBoolean(false));
+        }, () -> writePresence(false));
 
         return this;
     }
@@ -436,8 +456,8 @@ public class PacketBuffer {
     }
 
     public <T, C extends Collection<T>> C readCollection(CallableDecoder<? extends T> decoder, IntFunction<C> collectionFactory) {
-        if (!readBoolean()) return null;
-        final int size = readVarInt();
+        if (!readPresence()) return null;
+        final int size = readBoundedLength("collection", MAX_ARRAY_SIZE);
         final C collection = collectionFactory.apply(size);
         for (int i = 0; i < size; i++) collection.add(readObject(decoder));
         return collection;
@@ -448,8 +468,8 @@ public class PacketBuffer {
     }
 
     public <T> T[] readArray(CallableDecoder<? extends T> decoder, IntFunction<T[]> arrayFactory) {
-        if (!readBoolean()) return null;
-        int size = readVarInt();
+        if (!readPresence()) return null;
+        int size = readBoundedLength("array", MAX_ARRAY_SIZE);
         T[] array = arrayFactory.apply(size);
         for (int i = 0; i < size; i++) {
             array[i] = readObject(decoder);
@@ -471,9 +491,9 @@ public class PacketBuffer {
     }
 
     public <K, V> Map<K, V> readMap(CallableDecoder<Pair<K, V>> decoder, IntFunction<Map<K, V>> mapFactory) {
-        if (!readBoolean()) return null;
+        if (!readPresence()) return null;
 
-        int size = readVarInt();
+        int size = readBoundedLength("map", MAX_ARRAY_SIZE);
         Map<K, V> map = mapFactory.apply(size);
         for (int i = 0; i < size; i++) {
             Pair<K, V> pair = readObject(decoder);
@@ -722,5 +742,22 @@ public class PacketBuffer {
         };
     }
 
+    private int readBoundedLength(String label, int max) {
+        final int len = readVarInt();
+        if (len < 0 || len > max) {
+            throw new PacketDecodeException(label + " length out of bounds: " + len).runtime();
+        }
+        return len;
+    }
+
+    private void requireReadable(long bytes, String label) {
+        if (bytes < 0 || bytes > Integer.MAX_VALUE) {
+            throw new PacketDecodeException("Invalid byte length for " + label + ": " + bytes).runtime();
+        }
+        if (this.nettyBuffer.readableBytes() < (int) bytes) {
+            throw new PacketDecodeException("Not enough bytes for " + label + ": requested=" + bytes
+                    + ", available=" + this.nettyBuffer.readableBytes()).runtime();
+        }
+    }
 
 }

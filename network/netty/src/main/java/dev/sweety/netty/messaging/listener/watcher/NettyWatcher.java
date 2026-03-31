@@ -19,7 +19,8 @@ public class NettyWatcher extends ChannelHandlerAdapter {
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof Packet packet) {
             try {
-                SimpleLogger.log(LogLevel.INFO, "netty-watcher", "dispatch packet " + packet.name() + "(" + packet.id() + ") from " + ctx.channel().remoteAddress());
+                //anche questo log consuma risorse
+                //SimpleLogger.log(LogLevel.INFO, "netty-watcher", "dispatch packet " + packet.name() + "(" + packet.id() + ") from " + ctx.channel().remoteAddress());
                 this.messenger.onPacketReceive(ctx, packet);
             } finally {
                 packet.release();

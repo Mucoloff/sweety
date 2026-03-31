@@ -19,6 +19,7 @@ import java.util.zip.CRC32C;
 
 public class PacketDecoder {
 
+    private static final int MAX_PAYLOAD_SIZE = 1 << 20; // 1 MB — reject oversized payloads
     private final IPacketRegistry packetRegistry;
 
     public PacketDecoder(final IPacketRegistry packetRegistry) {

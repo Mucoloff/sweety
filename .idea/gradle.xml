@@ -41,7 +41,13 @@
             <option value="$PROJECT_DIR$/network" />
             <option value="$PROJECT_DIR$/network/netty" />
             <option value="$PROJECT_DIR$/network/netty-loadbalancer" />
+            <option value="$PROJECT_DIR$/network/netty-loadbalancer/backend" />
+            <option value="$PROJECT_DIR$/network/netty-loadbalancer/packet" />
+            <option value="$PROJECT_DIR$/network/netty-loadbalancer/server" />
             <option value="$PROJECT_DIR$/network/netty-saas" />
+            <option value="$PROJECT_DIR$/network/netty-saas/hub" />
+            <option value="$PROJECT_DIR$/network/netty-saas/packet" />
+            <option value="$PROJECT_DIR$/network/netty-saas/service" />
             <option value="$PROJECT_DIR$/util" />
             <option value="$PROJECT_DIR$/util/animation" />
             <option value="$PROJECT_DIR$/util/color" />

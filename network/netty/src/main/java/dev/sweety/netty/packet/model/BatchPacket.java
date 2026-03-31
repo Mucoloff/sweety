@@ -9,21 +9,30 @@ public class BatchPacket extends Packet {
 
     private final Batch batch;
 
-    public BatchPacket(final Function<Class<? extends Packet>, Integer> id, final Packet... packets) {
-        this.batch = new Batch(id, p -> p instanceof BatchPacket, packets);
+    public BatchPacket(final Function<Class<? extends Packet>, Integer> idMap, final Packet... packets) {
+        this.batch = new Batch(idMap, p -> p instanceof BatchPacket, packets);
         this.batch.write(this.buffer());
     }
 
-    int readerIndex;
-
     public BatchPacket(final int _id, final long _timestamp, final byte[] _data) {
         super(_id, _timestamp, _data);
-        this.readerIndex = this.buffer().readerIndex();
         this.batch = new Batch();
+        this.batch.read(this.buffer());
     }
 
     public Packet[] decode(final TriFunction<Packet, Integer, Long, byte[]> constructor) {
-        this.buffer().readerIndex(this.readerIndex);
+        if (this.batch == null) {
+            return new Packet[0];
+        }
+
         return this.batch.decode(constructor);
+    }
+
+    public byte[] rawBatchBytes() {
+        return this.batch != null ? this.batch.rawBatchBytes() : new byte[0];
+    }
+
+    public boolean isDecoded() {
+        return this.batch != null && this.batch.isDecoded();
     }
 }

@@ -3,6 +3,11 @@ package dev.sweety.config.yml;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.Constructor;
+import org.yaml.snakeyaml.nodes.Node;
+import org.yaml.snakeyaml.nodes.SequenceNode;
+import org.yaml.snakeyaml.nodes.Tag;
+import org.yaml.snakeyaml.representer.Representer;
 
 import java.io.Reader;
 import java.io.Writer;
@@ -15,13 +20,40 @@ public final class YamlUtils {
         yamlDumperOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
         yamlDumperOptions.setIndent(2);
         yamlDumperOptions.setWidth(80);
+        yamlDumperOptions.setPrettyFlow(false);
 
         LoaderOptions yamlLoaderOptions = new LoaderOptions();
         yamlLoaderOptions.setMaxAliasesForCollections(Integer.MAX_VALUE);
         yamlLoaderOptions.setCodePointLimit(Integer.MAX_VALUE);
 
-        return new Yaml(yamlLoaderOptions, yamlDumperOptions);
+        return new Yaml(new Constructor(yamlLoaderOptions), new FlowListRepresenter(yamlDumperOptions), yamlDumperOptions);
+
     });
+
+    public static class FlowListRepresenter extends Representer {
+
+        public FlowListRepresenter(DumperOptions options) {
+            super(options);
+        }
+
+        @Override
+        protected Node representScalar(Tag tag, String value, DumperOptions.ScalarStyle style) {
+            if (tag.equals(Tag.STR)) return super.representScalar(tag, value, DumperOptions.ScalarStyle.DOUBLE_QUOTED);
+            return super.representScalar(tag, value, style);
+        }
+
+        @Override
+        protected Node representSequence(Tag tag, Iterable<?> sequence, DumperOptions.FlowStyle flowStyle) {
+            Node node = super.representSequence(tag, sequence, flowStyle);
+
+            if (node instanceof SequenceNode seqNode) {
+                // forza FLOW solo per le liste
+                seqNode.setFlowStyle(DumperOptions.FlowStyle.FLOW);
+            }
+
+            return node;
+        }
+    }
 
     public static Yaml yaml() {
         return yaml.get();

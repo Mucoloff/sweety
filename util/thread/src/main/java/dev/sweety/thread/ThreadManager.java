@@ -6,8 +6,11 @@ import dev.sweety.math.RandomUtils;
 import lombok.Getter;
 import lombok.SneakyThrows;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Function;
 
 public class ThreadManager {
 
@@ -26,12 +29,23 @@ public class ThreadManager {
         this("profile-thread");
     }
 
+    public <T> CompletableFuture<T> fireAndForget(final Function<ProfileThread, CompletableFuture<T>> action) {
+        final ProfileThread thread = getAvailableProfileThread();
+        final CompletableFuture<T> future = action.apply(thread);
+        thread.decrement();
+        return future;
+    }
+
+    private final MathUtils.Compare<ProfileThread> comparator = MathUtils.Compare.min(Comparator.comparingInt(ProfileThread::getProfileCount));
+
     @SneakyThrows
     public synchronized ProfileThread getAvailableProfileThread() {
-        ProfileThread profileThread;
+        final ProfileThread profileThread;
 
-        if (this.profileThreads.size() < MAX_THREADS) this.profileThreads.add(profileThread = new ProfileThread(name));
-        else profileThread = MathUtils.findBest(profileThreads, (a, b) -> a.getProfileCount() < b.getProfileCount(), RandomUtils.randomElement(this.profileThreads));
+        if (this.profileThreads.size() < MAX_THREADS)
+            this.profileThreads.add(profileThread = new ProfileThread(this.name));
+        else
+            profileThread = MathUtils.findBest(profileThreads, comparator, RandomUtils.randomElement(this.profileThreads));
 
         if (profileThread == null)
             throw new Exception("Encountered a null profile thread, Please restart the server to avoid any issues.");
@@ -47,6 +61,6 @@ public class ThreadManager {
     }
 
     public void shutdown() {
-        MathUtils.parallel(this.profileThreads).forEach(this::shutdown);
+        MathUtils.parallel(profileThreads).forEach(this::shutdown);
     }
 }

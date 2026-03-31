@@ -9,6 +9,7 @@ import dev.sweety.time.TimeMode;
 import io.netty.bootstrap.AbstractBootstrap;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -29,8 +30,7 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
     // Handlers are now created per-connection instead of shared
     // ==============================/
     private final B bootstrap;
-    private final NioEventLoopGroup boss;
-    private final NioEventLoopGroup worker;
+    private final NioEventLoopGroup boss, worker;
     // ===================================/
     public static final int SEED = 0x000FFFFF;
 
@@ -43,8 +43,18 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
         return port;
     }
 
+    public Messenger<B> port(int port) {
+        this.port = port;
+        return this;
+    }
+
     public String host() {
         return host;
+    }
+
+    public Messenger<B> host(String host) {
+        this.host = host;
+        return this;
     }
 
     private final AtomicBoolean running = new AtomicBoolean();
@@ -60,7 +70,15 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
     public Messenger(B bootstrap, String host, int port, IPacketRegistry packetRegistry, int localPort) {
         this.bootstrap = bootstrap;
         this.boss = new NioEventLoopGroup();
-        this.worker = new NioEventLoopGroup(16);
+        final int worker_threads = Integer.parseInt(
+                System.getenv().getOrDefault("NETTY_WORKER_THREADS",
+                        String.valueOf(Math.max(4, Runtime.getRuntime().availableProcessors() * 2))));
+        final int so_backlog = Integer.parseInt(System.getenv().getOrDefault("NETTY_SO_BACKLOG", "256"));
+        this.worker = new NioEventLoopGroup(worker_threads);
+
+        //
+        // Handlers are now created per-connection in initChannel()
+        //
 
         this.port = port;
         this.host = host;
@@ -83,19 +101,23 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
         if (bootstrap instanceof ServerBootstrap server) {
             server.group(this.boss, this.worker)
                     .channel(NioServerSocketChannel.class)
-                    .option(ChannelOption.SO_BACKLOG, 128)
+                    .option(ChannelOption.SO_BACKLOG, so_backlog)
+                    .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
                     .childOption(ChannelOption.TCP_NODELAY, true)
                     .childOption(ChannelOption.SO_KEEPALIVE, true)
                     .childHandler(init);
         } else if (bootstrap instanceof Bootstrap client) {
             client.group(this.worker)
                     .channel(NioSocketChannel.class)
+                    .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
                     .option(ChannelOption.TCP_NODELAY, true)
                     .option(ChannelOption.SO_KEEPALIVE, true)
                     .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
                     .option(ChannelOption.SO_REUSEADDR, true)
-                    .localAddress(localPort > 0 ? new InetSocketAddress(localPort) : null)
                     .handler(init);
+            if (localPort > 0) {
+                client.localAddress(new InetSocketAddress(localPort));
+            }
         }
     }
 

@@ -5,105 +5,169 @@ import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.buffer.io.Codec;
 import dev.sweety.netty.packet.model.Packet;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
 public final class Batch implements Codec {
 
-    int packetCount;
-    int[] packetIds;
-    long[] packetTimestamps;
-    byte[][] packetData;
+    private int packetCount;
+    private int[] packetIds;
+    private long[] packetTimestamps;
+    private byte[][] packetData;
 
-    public Batch(final Function<Class<? extends Packet>, Integer> idMap, final Predicate<Packet> exclusion, final Packet... packets) {
+    private byte[] rawBatchBytes;
+    private boolean decoded;
+
+    public Batch(final Function<Class<? extends Packet>, Integer> idMap,
+                 final Predicate<Packet> exclusion,
+                 final Packet... packets) {
+        this();
+
         if (packets == null || packets.length == 0) {
-            this.packetCount = 0;
-            this.packetIds = new int[0];
-            this.packetTimestamps = new long[0];
-            this.packetData = new byte[0][0];
+            this.decoded = true;
+            this.rawBatchBytes = serializePayload();
             return;
         }
 
-        this.packetCount = packets.length;
+        final List<Packet> validPackets = new ArrayList<>(packets.length);
+        for (final Packet packet : packets) {
+            if (packet == null || exclusion.test(packet)) {
+                continue;
+            }
+
+            final Integer mappedId = idMap.apply(packet.getClass());
+            if (mappedId == null || mappedId < 0) {
+                continue;
+            }
+
+            validPackets.add(packet);
+        }
+
+        this.packetCount = validPackets.size();
         this.packetIds = new int[this.packetCount];
         this.packetTimestamps = new long[this.packetCount];
         this.packetData = new byte[this.packetCount][];
 
-        LinkedList<Integer> toRemove = new LinkedList<>();
-        for (int i = 0; i < packetCount; i++) {
-            Packet pkt = packets[i];
-            int id;
-            if (pkt != null && (id = idMap.apply(pkt.getClass())) != -1 && !exclusion.test(pkt)) {
-                packetIds[i] = id;
-                packetTimestamps[i] = pkt.timestamp();
-                packetData[i] = pkt.buffer().getBytes();
-            } else {
-                packetIds[i] = -1;
-                packetTimestamps[i] = 0L;
-                packetData[i] = new byte[0];
-                toRemove.add(i);
-            }
+        for (int i = 0; i < this.packetCount; i++) {
+            final Packet packet = validPackets.get(i);
+            this.packetIds[i] = idMap.apply(packet.getClass());
+            this.packetTimestamps[i] = packet.timestamp();
+            this.packetData[i] = packet.buffer().getBytes();
         }
 
-        // Remove invalid packets
-        if (!toRemove.isEmpty()) {
-            int newCount = packetCount - toRemove.size();
-            int[] newIds = new int[newCount];
-            long[] newTimestamps = new long[newCount];
-            byte[][] newData = new byte[newCount][];
+        this.decoded = true;
+        this.rawBatchBytes = serializePayload();
+    }
 
-            int index = 0;
-            for (int i = 0; i < packetCount; i++) {
-                if (!toRemove.contains(i)) {
-                    newIds[index] = packetIds[i];
-                    newTimestamps[index] = packetTimestamps[i];
-                    newData[index] = packetData[i];
-                    index++;
-                }
-            }
-
-            this.packetCount = newCount;
-            this.packetIds = newIds;
-            this.packetTimestamps = newTimestamps;
-            this.packetData = newData;
-        }
-
+    public Batch() {
+        this.packetCount = 0;
+        this.packetIds = new int[0];
+        this.packetTimestamps = new long[0];
+        this.packetData = new byte[0][];
+        this.rawBatchBytes = null;
+        this.decoded = false;
     }
 
     @Override
     public void write(final PacketBuffer buffer) {
-        buffer.writeVarInt(packetCount);
-        for (int i = 0; i < packetCount; i++) {
-            buffer.writeVarInt(packetIds[i]);
-            buffer.writeVarLong(packetTimestamps[i]);
-            buffer.writeByteArray(packetData[i]);
-        }
-    }
-
-    public Batch() {
-
+        ensureRawPayload();
+        buffer.writeBytes(this.rawBatchBytes);
     }
 
     @Override
     public void read(final PacketBuffer buffer) {
-        this.packetCount = buffer.readVarInt();
-        this.packetIds = new int[packetCount];
-        this.packetTimestamps = new long[packetCount];
-        this.packetData = new byte[packetCount][];
-        for (int i = 0; i < packetCount; i++) {
-            this.packetIds[i] = buffer.readVarInt();
-            this.packetTimestamps[i] = buffer.readVarLong();
-            this.packetData[i] = buffer.readByteArray();
-        }
+        // Keep the payload raw and parse it only when decode() is requested.
+        this.rawBatchBytes = buffer.getBytes();
+        buffer.readerIndex(buffer.writerIndex());
+        this.decoded = false;
     }
 
     public Packet[] decode(final TriFunction<Packet, Integer, Long, byte[]> constructor) {
-        Packet[] packets = new Packet[packetCount];
-        for (int i = 0; i < packetCount; i++) {
-            packets[i] = constructor.apply(packetIds[i], packetTimestamps[i], packetData[i]);
+        ensureDecoded();
+
+        final Packet[] packets = new Packet[this.packetCount];
+        for (int i = 0; i < this.packetCount; i++) {
+            packets[i] = constructor.apply(this.packetIds[i], this.packetTimestamps[i], this.packetData[i]);
         }
         return packets;
     }
 
+    public int packetCount() {
+        ensureDecoded();
+        return this.packetCount;
+    }
+
+    public int[] packetIds() {
+        ensureDecoded();
+        return this.packetIds;
+    }
+
+    public long[] packetTimestamps() {
+        ensureDecoded();
+        return this.packetTimestamps;
+    }
+
+    public byte[][] packetData() {
+        ensureDecoded();
+        return this.packetData;
+    }
+
+    public byte[] rawBatchBytes() {
+        ensureRawPayload();
+        return this.rawBatchBytes;
+    }
+
+    public boolean isDecoded() {
+        return this.decoded;
+    }
+
+    private void ensureRawPayload() {
+        if (this.rawBatchBytes == null) {
+            this.rawBatchBytes = serializePayload();
+        }
+    }
+
+    private void ensureDecoded() {
+        if (this.decoded) {
+            return;
+        }
+
+        if (this.rawBatchBytes == null) {
+            this.packetCount = 0;
+            this.packetIds = new int[0];
+            this.packetTimestamps = new long[0];
+            this.packetData = new byte[0][];
+            this.decoded = true;
+            return;
+        }
+
+        final PacketBuffer payload = new PacketBuffer(this.rawBatchBytes);
+        this.packetCount = payload.readVarInt();
+        this.packetIds = new int[this.packetCount];
+        this.packetTimestamps = new long[this.packetCount];
+        this.packetData = new byte[this.packetCount][];
+
+        for (int i = 0; i < this.packetCount; i++) {
+            this.packetIds[i] = payload.readVarInt();
+            this.packetTimestamps[i] = payload.readVarLong();
+            this.packetData[i] = payload.readByteArray();
+        }
+
+        this.decoded = true;
+    }
+
+    private byte[] serializePayload() {
+        final PacketBuffer payload = new PacketBuffer();
+        payload.writeVarInt(this.packetCount);
+
+        for (int i = 0; i < this.packetCount; i++) {
+            payload.writeVarInt(this.packetIds[i]);
+            payload.writeVarLong(this.packetTimestamps[i]);
+            payload.writeByteArray(this.packetData[i]);
+        }
+
+        return payload.getBytes();
+    }
 }

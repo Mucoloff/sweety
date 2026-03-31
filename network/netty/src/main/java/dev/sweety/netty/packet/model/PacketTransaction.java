@@ -17,33 +17,35 @@ public abstract class PacketTransaction<R extends PacketTransaction.Transaction,
     public PacketTransaction(final R request) {
         super();
         this.buffer().writeVarLong(this.requestId = generateId());
-        this.buffer().writeBoolean(true);
         this.buffer().writeObject(this.request = request);
-        this.response = null;
-        //this.buffer().writeObject(this.response = null);
+        this.buffer().writeObject(this.response = null);
     }
 
     public PacketTransaction(final long id, final S response) {
         super();
         this.buffer().writeVarLong(this.requestId = id);
-        this.buffer().writeBoolean(false);
-        //this.buffer().writeObject(this.request = null);
-        this.request = null;
+        this.buffer().writeObject(this.request = null);
         this.buffer().writeObject(this.response = response);
+    }
+
+    public PacketTransaction(final long id, final R request, final boolean isRequest) {
+        super();
+        this.buffer().writeVarLong(this.requestId = id);
+        if (isRequest) {
+            this.buffer().writeObject(this.request = request);
+            this.buffer().writeObject(this.response = null);
+            return;
+        }
+        this.buffer().writeObject(this.request = null);
+        //noinspection unchecked
+        this.buffer().writeObject(this.response = (S) request);
     }
 
     public PacketTransaction(final int _id, final long _timestamp, final byte[] _data) {
         super(_id, _timestamp, _data);
         this.requestId = this.buffer().readVarLong();
-        boolean isRequest = this.buffer().readBoolean();
-        if (isRequest) {
-            this.request = this.buffer().readObject(this::request);
-            this.response = null;
-        }
-        else {
-            this.request = null;
-            this.response = this.buffer().readObject(this::response);
-        }
+        this.request = this.buffer().readObject(this::request);
+        this.response = this.buffer().readObject(this::response);
     }
 
     private static long generateId() {

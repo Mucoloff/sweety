@@ -6,7 +6,7 @@ import java.util.concurrent.ThreadFactory;
 
 public final class ThreadUtil {
 
-    private static ThreadFactory factory(String name) {
+    public static ThreadFactory factory(String name) {
         return r -> {
             final Thread t = new Thread(r, name);
             t.setDaemon(true);

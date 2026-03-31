@@ -65,9 +65,7 @@ public abstract class Packet {
     public boolean release() {
         try {
             // Avoid double-free: only release if refCnt > 0
-            if (this._buffer.refCnt() > 0) {
-                return this._buffer.release();
-            }
+            if (this._buffer.refCnt() > 0) return this._buffer.release();
             return false;
         } catch (Throwable ignored) {
             return false;

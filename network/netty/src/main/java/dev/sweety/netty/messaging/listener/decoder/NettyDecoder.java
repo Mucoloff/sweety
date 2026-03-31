@@ -42,16 +42,11 @@ public class NettyDecoder extends ByteToMessageDecoder {
             buf.release();
         } catch (PacketDecodeException e) {
             SimpleLogger.log(LogLevel.WARN, "netty-decoder",
-                    "decode exception from " + ctx.channel().remoteAddress() + " -> ", e);
+                    "decode exception from " + ctx.channel().remoteAddress() + " ->", e);
             throw new RuntimeException(e);
         }
-        if (!packets.isEmpty()) {
-            for (Packet packet : packets) {
-                if (packet == null) continue;
-                SimpleLogger.log(LogLevel.INFO, "netty-decoder",
-                        "decoded " + packet.name() + "(" + packet.id() + ") from " + ctx.channel().remoteAddress());
-            }
-        }
+        // Removed: per-packet INFO log — fires for EVERY packet across ALL services.
+        // At 40K pkt/s this single line caused massive CPU waste (string concat + I/O).
         // Fast-path dispatch: deliver packets directly to messenger.
         // This avoids dependency on downstream channelRead propagation in watcher.
         if (this.messenger != null && !packets.isEmpty()) {

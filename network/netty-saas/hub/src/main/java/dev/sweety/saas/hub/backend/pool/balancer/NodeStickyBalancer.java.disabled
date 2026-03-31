@@ -1,0 +1,93 @@
+//todo needs recode
+
+package ac.ecstacy.hub.backend.pool.balancer;
+
+import ac.ecstacy.api.logger.LogHelper;
+import ac.ecstacy.api.service.ServiceType;
+import ac.ecstacy.netty.api.packet.model.Packet;
+import ac.ecstacy.netty.packet.internal.InternalPacket;
+import ac.ecstacy.netty.packet.internal.RoutingContext;
+import ac.ecstacy.netty.server.backend.BackendNode;
+import ac.ecstacy.netty.server.balancer.Balancer;
+import ac.ecstacy.netty.server.balancer.CounterBalancer;
+import io.netty.channel.ChannelHandlerContext;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+/**
+ * Sticky balancer implementation that routes packets based on Player UUID and Packet Type.
+ * It maintains a session mapping to ensure consistent routing, using a fallback balancer
+ * for the first assignment.
+ */
+public class NodeStickyBalancer implements Balancer {
+
+    private final CounterBalancer fallback;
+
+    //todo
+    // Map: Instance -> (Player -> Backend)
+    private final Map<UUID, Map<UUID, ? extends BackendNode>> assignments = new ConcurrentHashMap<>();
+
+    public NodeStickyBalancer(final CounterBalancer fallback) {
+        this.fallback = fallback;
+    }
+
+    @Override
+    public <T extends BackendNode> T nextNode(@NotNull T[] activeNodes, LogHelper logger, Packet packet, ChannelHandlerContext ctx, AtomicInteger roundRobinCounter) {
+        if (packet instanceof InternalPacket internal) {
+
+            final Optional<InternalPacket.Forward> _forward = internal.get();
+
+            if (_forward.isPresent()) {
+                final InternalPacket.Forward forward = _forward.get();
+                final ServiceType receiver = ServiceType.fromId(forward.receiverId());
+                final RoutingContext context = forward.context();
+
+                if (context.hasPlayer()) {
+                    final UUID instanceId = context.instanceId();
+                    final UUID playerId = context.playerId();
+                    final int entityId = context.entityId();
+
+                    // Get or create routing map for this instance
+                    //noinspection unchecked
+                    final Map<UUID, T> playerRoutes = (Map<UUID, T>) assignments.computeIfAbsent(instanceId, k -> new ConcurrentHashMap<>());
+
+                    // Check if we already have a node assigned for this instance + player
+                    final T assigned = playerRoutes.get(playerId);
+
+                    // Verify if the assigned node is still active/online
+                    if (isNodeActive(assigned, activeNodes)) return assigned;
+
+                    // If new route or old node offline, use fallback to pick a new one
+                    final T next = fallback.nextNode(activeNodes, logger, packet, ctx, roundRobinCounter);
+                    playerRoutes.put(playerId, next);
+                    return next;
+                }
+            }
+        }
+
+        // Generic fallback for non-player packets (e.g. Metrics, System messages)
+        return fallback.nextNode(activeNodes, logger, packet, ctx, roundRobinCounter);
+    }
+
+    @Override
+    public <T extends BackendNode> T nextNode(@NotNull T[] activeNodes, LogHelper logger, Packet packet, ChannelHandlerContext ctx) {
+        // This is called if nobody provides a roundRobinCounter, we use a dummy one
+        return nextNode(activeNodes, logger, packet, ctx, new AtomicInteger(0));
+    }
+
+    /**
+     * Checks if a previously assigned node is still present in the list of active backend nodes.
+     */
+    private <T> boolean isNodeActive(T assigned, T[] activeNodes) {
+        if (assigned == null) return false;
+        for (T node : activeNodes) {
+            if (node == assigned) return true;
+        }
+        return false;
+    }
+}

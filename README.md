@@ -122,6 +122,3 @@ Nota: questo modulo sembra disallineato con la struttura moderna dei path Gradle
 ./gradlew :feature:module:versioning:update-server:run
 ./gradlew :feature:module:versioning:client:launcher:run
 ```
-
-Se vuoi, nel prossimo step posso trasformare questo README in una versione "onboarding" (setup locale, ordine consigliato di lettura dei moduli, e mappa dipendenze tra subproject).
-
