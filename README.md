@@ -50,13 +50,20 @@ Infrastruttura di comunicazione.
   - gestione transazioni e reconnect.
 
 - `network:netty-loadbalancer`
-  - bilanciamento backend dinamici,
-  - reorder risposte (`OrderedResponseQueue`),
-  - inoltro packet interni/esterni,
-  - scheduling e timeout request.
+  - architettura a 3 sottoprogetti: `packet` (contratti/metriche/queue), `server` (hub LB), `backend` (nodi worker),
+  - coda ingress con backpressure (`LB_MAX_PENDING`) e path opzionale ad alte prestazioni via LMAX Disruptor,
+  - routing transaction-aware con timeout (`HUB_REQUEST_TIMEOUT_SECONDS`) e reorder risposte per connessione,
+  - pool backend dinamico con recovery ctx/canale, cache su reconnect e selezione round-robin + limiti in-flight,
+  - scoring nodo basato su metriche runtime (CPU/RAM/open files/thread pressure/system load + latenza/banda),
+  - supporto fire-and-forget per bypassare la coda quando non e richiesta una risposta.
 
 - `network:netty-saas`
-  - modulo presente in `settings.gradle`, ma al momento senza implementazione evidente nel tree.
+  - stack SaaS completo su 3 sottoprogetti: `packet` (protocollo/config bootstrap), `hub` (orchestrazione), `service` (runtime servizi),
+  - `ServiceHub` estende il load balancer e instrada per `ServiceType` (`ForwardData.receiverId -> ServicesPool.get(type)`),
+  - handshake di identificazione tra nodo e hub (`SystemConnectionTransaction`) con supporto a placeholder/promozione nodo,
+  - sicurezza in pipeline: rate-limit per IP (`HUB_RATE_LIMIT_MAX_CONN`, `HUB_RATE_LIMIT_WINDOW_SECONDS`) + whitelist IP dinamica,
+  - health HTTP integrata (`HubHealthServer`): `/api/health`, `/api/health/ready`, `/api/health/{TYPE}` su `HUB_HEALTH_PORT`,
+  - monitoring applicativo: i servizi inviano metriche periodiche via `MonitoringMetricReportTransaction`.
 
 ### 3) `util/`
 Librerie trasversali condivise dalla maggior parte dei moduli.
@@ -108,12 +115,14 @@ Nota: questo modulo sembra disallineato con la struttura moderna dei path Gradle
   - `feature/module/versioning/update-server/src/main/java/dev/sweety/versioning/server/MainServer.java`
 - App client esempio:
   - `feature/module/versioning/client/app/src/main/java/dev/sweety/app/AppMain.java`
+- Bootstrap config/service SaaS (demo):
+  - `network/netty-saas/packet/src/main/java/dev/sweety/saas/service/Main.java`
 
 ## Stato qualitativo attuale (quick take)
 - Architettura modulare ampia e ricca di componenti riusabili.
 - Forte focus su networking e pipeline di update/versioning.
 - Molti moduli hanno codice reale in `src/main`; invece risultano pochi/no test in `src/test`.
-- Presenti alcune aree placeholder o legacy (`network:netty-saas`, `minecraft:plugin`, `project/`).
+- Presenti ancora alcune aree placeholder o legacy (`minecraft:plugin`, `project/`).
 
 ## Comandi utili
 ```bash
