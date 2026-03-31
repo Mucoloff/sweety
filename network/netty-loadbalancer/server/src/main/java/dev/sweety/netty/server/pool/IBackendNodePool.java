@@ -1,6 +1,6 @@
 package dev.sweety.netty.server.pool;
 
-import dev.sweety.netty.loadbalancer.server.backend.BackendNode;
+import dev.sweety.netty.server.backend.BackendNode;
 import dev.sweety.netty.packet.model.Packet;
 import io.netty.channel.ChannelHandlerContext;
 

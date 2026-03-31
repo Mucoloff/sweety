@@ -1,6 +1,6 @@
 package dev.sweety.netty.server.backend;
 
-import dev.sweety.netty.loadbalancer.common.metrics.EMA;
+import dev.sweety.netty.metrics.EMA;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

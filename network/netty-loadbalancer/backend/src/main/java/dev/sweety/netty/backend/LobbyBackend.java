@@ -1,10 +1,10 @@
 package dev.sweety.netty.backend;
 
 import dev.sweety.color.AnsiColor;
+import dev.sweety.netty.common.backend.IBackend;
 import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.thread.ProfileThread;
 import dev.sweety.netty.feature.AutoReconnect;
-import dev.sweety.netty.loadbalancer.common.backend.IBackend;
 import dev.sweety.netty.messaging.Server;
 import dev.sweety.netty.messaging.model.Messenger;
 import io.netty.channel.Channel;

@@ -1,7 +1,7 @@
 package dev.sweety.netty.server.balancer;
 
 import dev.sweety.util.logger.LogHelper;
-import dev.sweety.netty.loadbalancer.server.backend.BackendNode;
+import dev.sweety.netty.server.backend.BackendNode;
 import dev.sweety.netty.packet.model.Packet;
 import io.netty.channel.ChannelHandlerContext;
 import org.jetbrains.annotations.NotNull;
