@@ -68,17 +68,29 @@ public class ServiceNode extends BackendNode implements IService {
 
     @Override
     public boolean handled(Packet packet) {
-        if (packet instanceof MetricsUpdatePacket || packet instanceof InternalPacket) return true;
-        if (packet instanceof SystemPing || packet instanceof SystemPong) return true;
-        if (packet instanceof SystemConnectionTransaction) return true;
-        if (packet instanceof MonitoringMetricReportTransaction) return true;
-        if (handler.handled(packet)) return true;
-        return super.handled(packet);
+        return packet instanceof MetricsUpdatePacket ||
+                packet instanceof InternalPacket ||
+                packet instanceof SystemPing ||
+                packet instanceof SystemPong ||
+                packet instanceof SystemConnectionTransaction ||
+                packet instanceof MonitoringMetricReportTransaction ||
+                handler.handled(packet) ||
+                super.handled(packet);
+    }
+
+    @Override
+    public void disconnect() {
+        super.disconnect();
+        handler.disconnect();
     }
 
     @Override
     public void onPacketReceive(final ChannelHandlerContext ctx, final Packet packet) {
-        if (packet instanceof MetricsUpdatePacket || packet instanceof InternalPacket) {
+        if (packet instanceof MetricsUpdatePacket met) {
+            super.onPacketReceive(ctx, packet);
+            handler.metricsUpdate(met.load());
+            return;
+        } else if (packet instanceof InternalPacket) {
             super.onPacketReceive(ctx, packet);
             return;
         }
@@ -86,10 +98,12 @@ public class ServiceNode extends BackendNode implements IService {
 
         final long now = timeMode.now();
         switch (packet) {
-            case SystemPing ping -> sendToSelf(new SystemPong(now));
+            //case SystemPing ping -> sendToSelf(new SystemPong(now));
             case SystemPong pong -> {
                 long time = pong.timestamp();
-                pingEMA.update(now - time);
+
+                float timing = pingEMA.update(now - time);
+                handler.keepAlive(timing);
                 // Schedule next ping after 5s — NOT immediately (was causing infinite tight loop)
                 if (super.ctx != null && super.ctx.channel().isActive()) {
                     super.ctx.channel().eventLoop().schedule(
@@ -98,6 +112,7 @@ public class ServiceNode extends BackendNode implements IService {
                     );
                 }
             }
+
             case SystemConnectionTransaction systemConnection -> {
                 final Optional<SystemConnection> opt = systemConnection.get();
 
@@ -125,8 +140,8 @@ public class ServiceNode extends BackendNode implements IService {
                         sendToSelf(new SystemConnectionTransaction(systemConnection.getRequestId(),
                                 new SystemConnection(connectedType, SystemConnection.State.RESPONSE)));
                     }
-
                 }
+
             }
             case MonitoringMetricReportTransaction monitoring when monitoring.hasRequest() -> {
                 final MonitoringMetricReportRequest request = monitoring.getRequest();
@@ -134,6 +149,7 @@ public class ServiceNode extends BackendNode implements IService {
                 final boolean success;
                 if (request.metrics() != null) {
                     metrics.putAll(request.metrics());
+                    this.handler.metricsUpdate(metrics);
                     success = true;
                 } else success = false;
 
@@ -145,7 +161,6 @@ public class ServiceNode extends BackendNode implements IService {
             }
             case null, default -> handler.handle(ctx, packet);
         }
-
 
     }
 

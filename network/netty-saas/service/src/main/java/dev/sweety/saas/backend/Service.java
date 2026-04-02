@@ -58,7 +58,7 @@ public abstract class Service extends Backend implements IService {
         switch (packet) {
             case SystemPing systemPing -> sendPacket(ctx, new SystemPong(now));
             // Hub drives the ping cycle (5s interval). Service only responds with Pong.
-            case SystemPong systemPong -> { /* Hub-driven — no action needed */ }
+            //case SystemPong systemPong -> { /* Hub-driven — no action needed */ }
             case SystemConnectionTransaction transaction -> transactions.completeHubTransaction(transaction);
             case null, default -> {
                 //todo Process service-specific packets

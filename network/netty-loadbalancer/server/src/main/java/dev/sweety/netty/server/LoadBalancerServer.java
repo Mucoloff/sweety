@@ -150,9 +150,7 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
                     sendPacket(backendCtx, internal).whenComplete((v, t) -> {
                         internal.release();
                         backend.decrementInFlight();
-                        if (t != null) {
-                            this.backendPool.remove(backend);
-                        }
+                        if (t != null) this.backendPool.remove(backend);
                     });
                     return;
                 }

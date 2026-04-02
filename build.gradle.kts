@@ -47,10 +47,10 @@ subprojects {
 
         add("implementation", "org.slf4j:slf4j-api:2.0.7")
         add("implementation", "it.unimi.dsi:fastutil:8.5.13")
-        add("implementation", "io.netty:netty-all:5.0.0.Alpha2")
+        add("implementation", "io.netty:netty-all:4.1.120.Final")
 
-        add("annotationProcessor", "systems.manifold:manifold-preprocessor:2025.1.27")
-        add("implementation", "systems.manifold:manifold-all:2025.1.27")
+        //add("annotationProcessor", "systems.manifold:manifold-preprocessor:2025.1.27")
+        //add("implementation", "systems.manifold:manifold-all:2025.1.27")
 
         add("testImplementation", platform("org.junit:junit-bom:5.10.0"))
         add("testImplementation", "org.junit.jupiter:junit-jupiter")

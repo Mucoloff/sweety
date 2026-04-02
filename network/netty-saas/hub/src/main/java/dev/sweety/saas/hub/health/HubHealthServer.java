@@ -15,6 +15,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.*;
 import io.netty.util.CharsetUtil;
+import lombok.Setter;
 
 import java.util.Map;
 import java.util.Set;
@@ -52,17 +53,11 @@ public final class HubHealthServer {
 
     private NioEventLoopGroup bossGroup;
     private NioEventLoopGroup workerGroup;
+    @Setter
     private volatile IpWhitelistHandler ipWhitelist;
 
-    public HubHealthServer(final ServicesPool pool, final int hubPort) {
-        this.pool = pool;
-        // health port = hubPort + 1 by default, overridable via env
-        this.port = Integer.parseInt(
-                System.getenv().getOrDefault("HUB_HEALTH_PORT", String.valueOf(hubPort + 1)));
-    }
-
-    public void setIpWhitelist(IpWhitelistHandler ipWhitelist) {
-        this.ipWhitelist = ipWhitelist;
+    public HubHealthServer(final ServicesPool pool, final int hubHealthPort) {
+        this.pool = pool;this.port = hubHealthPort + 1;
     }
 
     public void start() {
@@ -101,7 +96,7 @@ public final class HubHealthServer {
     private final class HealthHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
         @Override
-        protected void messageReceived(ChannelHandlerContext ctx, FullHttpRequest req) {
+        protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest req) {
             final String path = req.uri().split("\\?")[0].toLowerCase();
 
             if (path.equals("/api/health")) {

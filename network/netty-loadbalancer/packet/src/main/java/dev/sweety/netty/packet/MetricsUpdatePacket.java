@@ -51,6 +51,10 @@ public class MetricsUpdatePacket extends Packet {
         this.packetTimings = this.buffer().readMap(PacketBuffer::readVarInt, buf -> buf.readPercentual(SCALE), HashMap::new);
     }
 
+    public SmoothedLoad load() {
+        return load;
+    }
+
     public float cpu() {
         return load.cpu();
     }

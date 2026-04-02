@@ -3,7 +3,7 @@ package dev.sweety.saas.service.config;
 import dev.sweety.config.common.Configuration;
 import dev.sweety.config.yml.YamlConfiguration;
 import dev.sweety.saas.service.ServiceType;
-import manifold.ext.rt.api.ExtensionSource;
+
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -11,7 +11,6 @@ import java.io.Writer;
 import java.util.*;
 import java.util.function.Supplier;
 
-import static manifold.ext.rt.api.ExtensionSource.type;
 
 public class ServicesConfig {
 
@@ -102,6 +101,10 @@ public class ServicesConfig {
         return hub != null ? hub.getPort() : 0;
     }
 
+    public int hubHealthPort() {
+        return hub != null ? (hub.getExternalPort() != null ? hub.getExternalPort() : (hub.getPort() + 1)) : 0;
+    }
+
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
@@ -142,4 +145,5 @@ public class ServicesConfig {
     public List<ServiceNodeConfig> getServiceNodes(ServiceType type) {
         return this.services.getOrDefault(type, Collections.emptyList());
     }
+
 }

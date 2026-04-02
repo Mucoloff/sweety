@@ -7,9 +7,12 @@ import dev.sweety.minecraft.nework.io.PacketOutputStream;
 import dev.sweety.minecraft.nework.packet.C2SPacket;
 import dev.sweety.minecraft.nework.packet.S2CPacket;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.Proxy;
 import java.net.Socket;
+import java.util.function.Consumer;
 
 public class MinecraftPing {
 
@@ -54,9 +57,14 @@ public class MinecraftPing {
     }
 
     static Socket openSock(String host, int port) throws IOException {
-        Socket s = new Socket();
+        return openSock(host, port, null, null);
+    }
+
+    static Socket openSock(String host, int port, @Nullable Proxy proxy, @Nullable Consumer<Socket> edit) throws IOException {
+        final Socket s = proxy != null ? new Socket(proxy) : new Socket();
         s.setSoLinger(false, 0);
         s.setSoTimeout(3000);
+        if (edit != null) edit.accept(s);
         s.connect(new InetSocketAddress(host, port));
         return s;
     }

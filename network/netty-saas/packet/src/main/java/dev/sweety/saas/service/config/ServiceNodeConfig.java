@@ -3,6 +3,8 @@ package dev.sweety.saas.service.config;
 import dev.sweety.config.common.serialization.ConfigSerializable;
 import dev.sweety.saas.service.ServiceType;
 import lombok.Data;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -12,15 +14,16 @@ public class ServiceNodeConfig implements ConfigSerializable {
 
     private ServiceType type;
 
-    private String host;
+    @Nullable
+    private final String host;
 
-    private int port;
+    private final int port;
 
-    private Integer externalPort;
+    private final Integer externalPort;
 
     private Integer index;
 
-    public ServiceNodeConfig(ServiceType type, String host, int port, Integer externalPort, Integer index) {
+    public ServiceNodeConfig(ServiceType type, @NotNull String host, int port, Integer externalPort, Integer index) {
         this.type = type;
         this.host = host;
         this.port = port;
@@ -34,6 +37,10 @@ public class ServiceNodeConfig implements ConfigSerializable {
 
     public ServiceNodeConfig(ServiceType type, String host, int port) {
         this(type, host, port, null);
+    }
+
+    public ServiceNodeConfig(ServiceType type, int port) {
+        this(type, null, port, null);
     }
 
     public ServiceNodeConfig(Map<String, Object> me) {
@@ -52,7 +59,7 @@ public class ServiceNodeConfig implements ConfigSerializable {
     @Override
     public Map<String, Object> serialize() {
         final Map<String, Object> me = new HashMap<>(3);
-        me.put("host", this.host);
+        if (this.host != null) me.put("host", this.host);
         me.put("port", this.port);
         if (this.externalPort != null) me.put("externalPort", this.externalPort);
         return me;

@@ -1,5 +1,3 @@
-group = "dev.sweety.netty.packet"
-
 dependencies {
     implementation(project(":util:color"))
     implementation(project(":util:math"))

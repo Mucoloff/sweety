@@ -4,6 +4,7 @@ import dev.sweety.util.logger.SimpleLogger;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -22,7 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Thread-safe: ConcurrentHashMap + AtomicInteger.
  */
 @ChannelHandler.Sharable
-public class ConnectionRateLimiter extends ChannelHandlerAdapter {
+public class ConnectionRateLimiter extends ChannelInboundHandlerAdapter {
 
     private static final SimpleLogger LOG = new SimpleLogger(ConnectionRateLimiter.class);
 

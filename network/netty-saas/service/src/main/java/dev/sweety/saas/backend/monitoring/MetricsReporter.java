@@ -33,6 +33,11 @@ public class MetricsReporter {
         tryReport();
     }
 
+    public void increment(String metricName, long value) {
+        counters.computeIfAbsent(metricName, k -> new AtomicLong(0)).updateAndGet(v -> v + value);
+        tryReport();
+    }
+
     /**
      * Add a value to a metric
      */

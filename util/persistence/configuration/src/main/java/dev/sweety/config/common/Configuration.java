@@ -566,7 +566,7 @@ public abstract class Configuration {
        INTERNAL
        ======================= */
 
-    private Object get(String path) {
+    public Object get(String path) {
         String[] parts = path.split("\\.");
         Map<String, Object> current = map;
 

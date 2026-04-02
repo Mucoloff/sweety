@@ -1,4 +1,3 @@
-group = "dev.sweety.netty.backend"
 
 dependencies {
     implementation(project(":util:color"))

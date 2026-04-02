@@ -5,11 +5,11 @@ import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
 import io.netty.channel.ChannelHandler.Sharable;
-import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 
 @Sharable
-public class NettyWatcher extends ChannelHandlerAdapter {
+public class NettyWatcher extends ChannelInboundHandlerAdapter {
     protected final Messenger<?> messenger;
 
     public NettyWatcher(Messenger<?> messenger) {

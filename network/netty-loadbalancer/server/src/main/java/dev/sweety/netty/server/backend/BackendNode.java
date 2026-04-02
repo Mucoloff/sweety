@@ -40,9 +40,7 @@ public class BackendNode implements IBackend {
     }
 
     public void learnType(int candidate) {
-        if (candidate < 0 || this.typeId == candidate) {
-            return;
-        }
+        if (candidate < 0 || this.typeId == candidate) return;
         // Keep initial compatibility guess, but prefer runtime self-identification.
         this.typeId = candidate;
     }
@@ -76,11 +74,12 @@ public class BackendNode implements IBackend {
     }
 
     public boolean handled(Packet packet) {
-        if (packet instanceof MetricsUpdatePacket) return true;
-        if (packet instanceof InternalPacket) return true;
-        return false;
+        return switch (packet) {
+            case MetricsUpdatePacket metricsUpdatePacket -> true;
+            case InternalPacket internalPacket -> true;
+            case null, default -> false;
+        };
     }
-
 
     @Override
     public void onPacketReceive(final ChannelHandlerContext ctx, final Packet packet) {
@@ -127,7 +126,6 @@ public class BackendNode implements IBackend {
                     + 0.15f * bandwidthScore
                     + 0.10f * currentBandwidthScore
                     + 0.10f * packetTimeScore;
-
         } else if (loadBalancer != null && packet instanceof InternalPacket internal) {
             internal.get().ifPresent(forward -> {
                 if (forward.senderId() >= 0) {
@@ -222,11 +220,6 @@ public class BackendNode implements IBackend {
     @Override
     public int typeId() {
         return typeId;
-    }
-
-    public BackendNode setTypeId(int typeId) {
-        this.typeId = typeId;
-        return this;
     }
 
     @Override
@@ -353,4 +346,5 @@ public class BackendNode implements IBackend {
     public AtomicInteger inFlight() {
         return inFlight;
     }
+
 }

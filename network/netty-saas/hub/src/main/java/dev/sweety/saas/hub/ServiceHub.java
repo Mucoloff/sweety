@@ -1,6 +1,5 @@
 package dev.sweety.saas.hub;
 
-import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.internal.ForwardData;
 import dev.sweety.netty.packet.internal.InternalPacket;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
@@ -13,6 +12,7 @@ import dev.sweety.saas.hub.security.IpWhitelistHandler;
 import dev.sweety.saas.service.ServiceType;
 import dev.sweety.saas.service.config.ServicesConfig;
 import dev.sweety.util.logger.SimpleLogger;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
 
@@ -30,8 +30,7 @@ public class ServiceHub extends LoadBalancerServer<ServiceNode> {
     public ServiceHub(ServicesConfig config, IPacketRegistry packetRegistry, ServicesPool servicesPool) {
         super(config.hubHost(), config.hubPort(), servicesPool, packetRegistry);
         this.config = config;
-        this.healthServer = new HubHealthServer(servicesPool, config.hubPort());
-        this.healthServer.start();
+        this.healthServer = new HubHealthServer(servicesPool, config.hubHealthPort());
     }
 
     public void enableIpWhitelist(IpWhitelistHandler.IpProvider ipProvider, int refreshIntervalSeconds) {
@@ -43,9 +42,13 @@ public class ServiceHub extends LoadBalancerServer<ServiceNode> {
     @Override
     protected void configurePipeline(ChannelPipeline pipeline) {
         pipeline.addLast("rate-limiter", this.rateLimiter);
-        if (this.ipWhitelist != null) {
-            pipeline.addLast("ip-whitelist", this.ipWhitelist);
-        }
+        if (this.ipWhitelist != null) pipeline.addLast("ip-whitelist", this.ipWhitelist);
+    }
+
+    @Override
+    public Channel start() {
+        this.healthServer.start();
+        return super.start();
     }
 
     public IpWhitelistHandler ipWhitelist() {
@@ -63,9 +66,7 @@ public class ServiceHub extends LoadBalancerServer<ServiceNode> {
     @Override
     public ServiceNode next(InternalPacket packet, ChannelHandlerContext ctx) {
         final Optional<ForwardData> _forward = packet.get();
-        if (_forward.isEmpty()) {
-            return null;
-        }
+        if (_forward.isEmpty()) return null;
 
         final ForwardData forward = _forward.get();
 
@@ -76,9 +77,7 @@ public class ServiceHub extends LoadBalancerServer<ServiceNode> {
 
     @Override
     public void stop() {
-        if (this.ipWhitelist != null) {
-            this.ipWhitelist.shutdown();
-        }
+        if (this.ipWhitelist != null) this.ipWhitelist.shutdown();
         this.rateLimiter.shutdown();
         this.healthServer.stop();
         super.stop();

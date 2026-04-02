@@ -4,6 +4,7 @@ import dev.sweety.util.logger.SimpleLogger;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 
 import java.net.InetSocketAddress;
 import java.util.Collections;
@@ -23,7 +24,7 @@ import java.util.concurrent.TimeUnit;
  * Thread-safe: uses ConcurrentHashMap, updated by scheduled executor.
  */
 @ChannelHandler.Sharable
-public class IpWhitelistHandler extends ChannelHandlerAdapter {
+public class IpWhitelistHandler extends ChannelInboundHandlerAdapter {
 
     private static final SimpleLogger LOG = new SimpleLogger(IpWhitelistHandler.class);
 

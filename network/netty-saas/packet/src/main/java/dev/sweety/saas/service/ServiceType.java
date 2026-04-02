@@ -14,8 +14,6 @@ public final class ServiceType implements HasId, Encoder {
     private static final Map<Integer, ServiceType> ID = new HashMap<>();
     private static final Set<ServiceType> BASE = new HashSet<>();
 
-
-
     public static final ServiceType NONE = new ServiceType();
 
     private final int id;
@@ -78,5 +76,10 @@ public final class ServiceType implements HasId, Encoder {
 
     public String name() {
         return this.name;
+    }
+
+    @Override
+    public String toString() {
+        return this.name();
     }
 }
