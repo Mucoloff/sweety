@@ -12,6 +12,9 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Base64;
 import java.util.function.Consumer;
 
 public class MinecraftPing {
@@ -43,7 +46,9 @@ public class MinecraftPing {
 
             Gson gson = new Gson().newBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
-            System.out.println("Status JSON:\n" + gson.toJson(gson.fromJson(json, JsonObject.class)));
+            JsonObject jsonObject = gson.fromJson(json, JsonObject.class);
+
+            System.out.println("Status JSON:\n" + gson.toJson(jsonObject));
 
             // Ping
             long timestamp = System.currentTimeMillis();
@@ -53,6 +58,11 @@ public class MinecraftPing {
             S2CPacket pong = pis.read();
             long returned = pong.packetReader().readLong();
             System.out.println("Ping: " + (System.currentTimeMillis() - returned) + "ms");
+
+            String favicon = jsonObject.get("favicon").getAsString().replace("data:image/png;base64,", "");
+
+            Files.write(Path.of("favicon.png"), Base64.getDecoder().decode(favicon));
+
         }
     }
 

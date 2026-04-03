@@ -51,8 +51,12 @@ public class ForwardData extends PacketTransaction.Transaction {
         buffer.writeVarInt(this.receiverId);
         this.context.write(buffer);
         final PacketBuffer payload = new PacketBuffer();
-        this.batch.write(payload);
-        buffer.writeByteArray(payload.getBytes());
+        try {
+            this.batch.write(payload);
+            buffer.writeByteArray(payload.getBytes());
+        } finally {
+            payload.release();
+        }
     }
 
     @Override
@@ -62,7 +66,12 @@ public class ForwardData extends PacketTransaction.Transaction {
         this.context = new RoutingContext();
         this.context.read(buffer);
         this.batch = new Batch();
-        this.batch.read(new PacketBuffer(buffer.readByteArray()));
+        final PacketBuffer bytes = new PacketBuffer(buffer.readByteArray());
+        try {
+            this.batch.read(bytes);
+        } finally {
+            bytes.release();
+        }
     }
 
     /**

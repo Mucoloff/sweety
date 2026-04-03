@@ -83,8 +83,17 @@ public class MetricsReporter {
 
         // Send metrics report
         final MonitoringMetricReportRequest request = new MonitoringMetricReportRequest(service.type(), metrics);
-        service.sendHubTransaction(new MonitoringMetricReportTransaction(request)).whenComplete((r, t) -> {
-        });
+        final MonitoringMetricReportTransaction transaction = new MonitoringMetricReportTransaction(request);
+        boolean submitted = false;
+        try {
+            if (service.channelContext() == null) return;
+            service.sendHubTransaction(transaction).whenComplete((r, t) -> {
+                if (t != null) transaction.release();
+            });
+            submitted = true;
+        } finally {
+            if (!submitted) transaction.release();
+        }
 
         lastReportTime = System.currentTimeMillis();
     }

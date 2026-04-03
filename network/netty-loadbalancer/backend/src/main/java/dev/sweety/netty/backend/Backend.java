@@ -70,9 +70,24 @@ public abstract class Backend extends Client implements IBackend {
     }
 
     private void sendMetrics() {
-        if (!channel.isActive() || !channel.isOpen() || !channel.isRegistered()) return;
         final MetricsUpdatePacket metricsPacket = new MetricsUpdatePacket(sampler.get(), packetTimings);
-        sendPacket(metricsPacket);
+        boolean submitted = false;
+        try {
+            final ChannelHandlerContext ctx = channelContext();
+            if (ctx == null) return;
+
+            final Channel ch = ctx.channel();
+            if (!ch.isActive() || !ch.isOpen() || !ch.isRegistered()) return;
+
+            ch.writeAndFlush(metricsPacket).addListener(future -> {
+                if (!future.isSuccess()) metricsPacket.release();
+            });
+            submitted = true;
+        } catch (Throwable throwable) {
+            backendLogger.push("metrics", AnsiColor.RED_BRIGHT).error(throwable).pop();
+        } finally {
+            if (!submitted) metricsPacket.release();
+        }
     }
 
     private final Map<Integer, EMA> packetTimings = new ConcurrentHashMap<>();

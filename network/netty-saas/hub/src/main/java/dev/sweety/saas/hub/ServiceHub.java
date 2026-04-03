@@ -1,7 +1,5 @@
 package dev.sweety.saas.hub;
 
-import dev.sweety.netty.packet.internal.ForwardData;
-import dev.sweety.netty.packet.internal.InternalPacket;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import dev.sweety.netty.server.LoadBalancerServer;
 import dev.sweety.saas.hub.backend.ServiceNode;
@@ -9,14 +7,10 @@ import dev.sweety.saas.hub.backend.pool.ServicesPool;
 import dev.sweety.saas.hub.health.HubHealthServer;
 import dev.sweety.saas.hub.security.ConnectionRateLimiter;
 import dev.sweety.saas.hub.security.IpWhitelistHandler;
-import dev.sweety.saas.service.ServiceType;
 import dev.sweety.saas.service.config.ServicesConfig;
 import dev.sweety.util.logger.SimpleLogger;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
-
-import java.util.Optional;
 
 public class ServiceHub extends LoadBalancerServer<ServiceNode> {
 
@@ -63,17 +57,7 @@ public class ServiceHub extends LoadBalancerServer<ServiceNode> {
         return config;
     }
 
-    @Override
-    public ServiceNode next(InternalPacket packet, ChannelHandlerContext ctx) {
-        final Optional<ForwardData> _forward = packet.get();
-        if (_forward.isEmpty()) return null;
-
-        final ForwardData forward = _forward.get();
-
-        final ServiceType receiver = ServiceType.of(forward.receiverId());
-
-        return services().get(receiver);
-    }
+    // inherited natively from LoadBalancerServer.
 
     @Override
     public void stop() {

@@ -1,5 +1,6 @@
 package dev.sweety.saas.hub.health;
 
+import dev.sweety.saas.hub.backend.ServiceNode;
 import dev.sweety.saas.hub.backend.pool.ServicesPool;
 import dev.sweety.saas.hub.security.IpWhitelistHandler;
 import dev.sweety.saas.service.ServiceType;
@@ -57,7 +58,8 @@ public final class HubHealthServer {
     private volatile IpWhitelistHandler ipWhitelist;
 
     public HubHealthServer(final ServicesPool pool, final int hubHealthPort) {
-        this.pool = pool;this.port = hubHealthPort + 1;
+        this.pool = pool;
+        this.port = hubHealthPort;
     }
 
     public void start() {
@@ -153,7 +155,7 @@ public final class HubHealthServer {
 
     private String buildFullHealth() {
         final Set<ServiceType> connected = pool.connectedTypes();
-        final Map<ServiceType, Long> timestamps = pool.connectedAtSnapshot();
+        final Map<ServiceType, ServicesPool.ServiceCluster> clusters = pool.viewClusters();
         final long uptime = System.currentTimeMillis() - startedAt;
         final boolean allUp = allExpectedUp(connected);
 
@@ -171,8 +173,17 @@ public final class HubHealthServer {
             final boolean up = connected.contains(type);
             sb.append("\"").append(type.name()).append("\":{");
             sb.append("\"status\":\"").append(up ? "UP" : "DOWN").append("\"");
-            if (up && timestamps.containsKey(type)) {
-                sb.append(",\"connected_at\":").append(timestamps.get(type));
+            
+            if (up && clusters.containsKey(type)) {
+                ServicesPool.ServiceCluster cluster = clusters.get(type);
+                sb.append(",\"nodes\":[");
+                boolean firstNode = true;
+                for (Map.Entry<ServiceNode, Long> entry : cluster.connectedAt.entrySet()) {
+                    if (!firstNode) sb.append(",");
+                    firstNode = false;
+                    sb.append("{\"host\":\"").append(entry.getKey().host()).append("\",\"connected_at\":").append(entry.getValue()).append("}");
+                }
+                sb.append("]");
             }
             sb.append("}");
         }

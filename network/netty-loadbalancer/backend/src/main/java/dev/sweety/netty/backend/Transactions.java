@@ -36,6 +36,7 @@ public class Transactions {
     public <T> CompletableFuture<T> sendFireAndForget(int sender, int receiver, @Nullable RoutingContext context, Packet... requests) {
         final ForwardData forwardData = new ForwardData(sender, receiver, context, backend.packetRegistry()::getPacketId, requests);
         final InternalPacket internal = InternalPacket.fireAndForget(forwardData);
+        for (Packet request : requests) request.release();
         return backend.sendPacket(internal);
     }
 
@@ -47,6 +48,7 @@ public class Transactions {
     public <T> CompletableFuture<T> sendRequest(int sender, int receiver, @Nullable RoutingContext context, BiConsumer<Packet[], Throwable> responseConsumer, Packet... requests) {
         final ForwardData forwardData = new ForwardData(sender, receiver, context, backend.packetRegistry()::getPacketId, requests);
         final InternalPacket internal = new InternalPacket(forwardData);
+        for (Packet request : requests) request.release();
         return sendInternalRequest(internal, responseConsumer);
     }
 
@@ -74,6 +76,7 @@ public class Transactions {
     public <T> CompletableFuture<T> sendResponse(long request, int sender, int receiver, Packet... responses) {
         final InternalPacket packet = new InternalPacket(request,
                 new ForwardData(sender, receiver, backend.packetRegistry()::getPacketId, responses));
+        for (Packet response : responses) response.release();
         return backend.sendPacket(packet);
     }
 
@@ -87,6 +90,7 @@ public class Transactions {
                 new ForwardData(sender, receiver, context, backend.packetRegistry()::getPacketId, transactionRequest),
                 true
         );
+        transactionRequest.release();
 
         return sendInternalRequest(internal, (responses, t) -> {
             logger.push("transaction", AnsiColor.RED_BRIGHT);
@@ -129,7 +133,10 @@ public class Transactions {
 
     public <R extends PacketTransaction.Transaction, T extends PacketTransaction<?, R>> CompletableFuture<R> sendHubTransaction(T transaction, long timeoutMillis) {
         final ChannelHandlerContext ctx = backend.channelContext();
-        if (ctx == null) return CompletableFuture.completedFuture(null);
+        if (ctx == null) {
+            transaction.release();
+            return CompletableFuture.completedFuture(null);
+        }
         return transactionManager.sendTransaction(ctx, transaction, timeoutMillis);
     }
 

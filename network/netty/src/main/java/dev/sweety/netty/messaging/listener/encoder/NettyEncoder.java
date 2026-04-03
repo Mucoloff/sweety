@@ -22,6 +22,7 @@ public class NettyEncoder extends MessageToByteEncoder<Packet> {
             packetEncoder.encode(packet, buffer);
         } finally {
             buffer.release();
+            packet.release();
         }
     }
 }

@@ -107,6 +107,7 @@ public class TransactionManager {
                 return;
             }
             this.pending.remove(transaction.getRequestId());
+            transaction.release();
             tracked.completeExceptionally(ex);
         }));
         return tracked;

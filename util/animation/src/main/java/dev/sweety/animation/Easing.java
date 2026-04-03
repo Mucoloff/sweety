@@ -17,7 +17,7 @@ public enum Easing {
     EASE_IN_OUT_SINE(x -> -(Math.cos(Math.PI * x) - 1) * 0.5f),
 
     // Quadratic
-    EASE_IN_QUAD(x -> (double) (x * x)),
+    EASE_IN_QUAD(x -> x * x),
     EASE_OUT_QUAD(x -> 1 - (1 - x) * (1 - x)),
     EASE_IN_OUT_QUAD(x -> x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) * 0.5f),
 
