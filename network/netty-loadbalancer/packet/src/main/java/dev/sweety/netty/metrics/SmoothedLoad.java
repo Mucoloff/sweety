@@ -4,19 +4,19 @@ package dev.sweety.netty.metrics;
 import dev.sweety.netty.metrics.state.NodeState;
 
 public record SmoothedLoad(
-        float cpu,
-        float ram,
-        float cpuTotal,
-        float ramTotal,
-        float openFiles,
-        float threadPressure,
-        float systemLoad,
+        double cpu,
+        double ram,
+        double cpuTotal,
+        double ramTotal,
+        double openFiles,
+        double threadPressure,
+        double systemLoad,
         NodeState state
 ) {
     public static final int SIZE = 7;
 
-    public float[] data() {
-        return new float[]{
+    public double[] data() {
+        return new double[]{
                 this.cpu,
                 this.ram,
                 this.cpuTotal,
@@ -27,7 +27,7 @@ public record SmoothedLoad(
         };
     }
 
-    public static SmoothedLoad fromData(final NodeState state,final float... data) {
+    public static SmoothedLoad fromData(final NodeState state,final double... data) {
         if (data == null || data.length != SIZE) throw new IllegalArgumentException("Data array must contain exactly 7 elements.");
         return new SmoothedLoad(
                 data[0],

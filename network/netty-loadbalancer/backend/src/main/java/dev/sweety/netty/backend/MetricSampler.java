@@ -81,7 +81,7 @@ public class MetricSampler {
             long hard = prevProcess.getHardOpenFileLimit();
             LoadGate.Limits openFilesLimits = config.openFilesLimitsCalculator.apply(soft, hard);
 
-            this.gate = new LoadGate(0.35f, 0.55f,
+            this.gate = new LoadGate(0.35, 0.55,
                     config.cpuLimits,
                     config.ramLimits,
                     openFilesLimits,
@@ -125,10 +125,10 @@ public class MetricSampler {
     private void sampleProcessCpu() {
         OSProcess currProcess = os.getProcess(prevProcess.getProcessID());
         if (currProcess == null) currProcess = prevProcess;
-        float cpuProcRawVal = (float) currProcess.getProcessCpuLoadBetweenTicks(prevProcess);
-        float cpuProcRaw = (Float.isNaN(cpuProcRawVal) ? 0f : cpuProcRawVal);
+        double cpuProcRawVal = currProcess.getProcessCpuLoadBetweenTicks(prevProcess);
+        double cpuProcRaw = (Double.isNaN(cpuProcRawVal) ? 0 : cpuProcRawVal);
         final int logicalProcessorCount = Math.max(1, cpu.getLogicalProcessorCount());
-        float cpuProcNorm = cpuProcRaw / logicalProcessorCount;
+        double cpuProcNorm = cpuProcRaw / logicalProcessorCount;
         this.cpuEma.update(cpuProcNorm);
 
         this.prevProcess = currProcess;
@@ -138,19 +138,19 @@ public class MetricSampler {
         OSProcess currProcess = os.getProcess(pid);
         if (currProcess == null) return;
         long rss = currProcess.getResidentSetSize();
-        float ramProcNorm = (float) rss / Math.max(1, mem.getTotal());
+        double ramProcNorm = (double) rss / Math.max(1, mem.getTotal());
         this.ramEma.update(ramProcNorm);
     }
 
     private void sampleTotalCpu() {
         long[] currCpuTicks = cpu.getSystemCpuLoadTicks();
-        float cpuSystemNorm = (float) cpu.getSystemCpuLoadBetweenTicks(prevCpuTicks);
+        double cpuSystemNorm = cpu.getSystemCpuLoadBetweenTicks(prevCpuTicks);
         prevCpuTicks = currCpuTicks;
-        if (cpuSystemNorm > 0f) this.totCpuEma.update(cpuSystemNorm);
+        if (cpuSystemNorm > 0) this.totCpuEma.update(cpuSystemNorm);
     }
 
     private void sampleTotalRam() {
-        float ramSystemNorm = 1f - ((float) mem.getAvailable() / Math.max(1, mem.getTotal()));
+        double ramSystemNorm = 1 - ((double) mem.getAvailable() / Math.max(1, mem.getTotal()));
         this.totRamEma.update(ramSystemNorm);
     }
 
@@ -160,34 +160,34 @@ public class MetricSampler {
         long openFiles = currProcess.getOpenFiles();
         long maxOpenFiles = currProcess.getSoftOpenFileLimit();
         if (maxOpenFiles <= 0) maxOpenFiles = currProcess.getHardOpenFileLimit();
-        float openFilesNorm = maxOpenFiles > 0 ? (float) openFiles / maxOpenFiles : 0f;
+        double openFilesNorm = maxOpenFiles > 0 ? (double) openFiles / maxOpenFiles : 0;
         this.openFilesEma.update(openFilesNorm);
     }
 
     private void sampleThreadPressure() {
         OSProcess process = os.getProcess(pid);
         if (process == null) return;
-        float val = calculatePressure(process);
+        double val = calculatePressure(process);
         this.threadPressureEma.update(val);
     }
 
     private void sampleSystemLoad() {
         double[] loads = cpu.getSystemLoadAverage(3);
-        float systemLoad = (float) (loads[0] * 0.6f + loads[1] * 0.3f + loads[2] * 0.1f);
-        if (systemLoad < 0) systemLoad = 0f;
+        double systemLoad = loads[0] * 0.6f + loads[1] * 0.3f + loads[2] * 0.1;
+        if (systemLoad < 0) systemLoad = 0;
         final int logicalProcessorCount = Math.max(1, cpu.getLogicalProcessorCount());
-        float systemLoadNorm = systemLoad / logicalProcessorCount;
+        double systemLoadNorm = systemLoad / logicalProcessorCount;
         this.systemLoadEma.update(systemLoadNorm);
     }
 
     public synchronized SmoothedLoad get() {
-        float cpuSmooth = cpuEma.get();
-        float ramSmooth = ramEma.get();
-        float totCpuSmooth = totCpuEma.get();
-        float totRamSmooth = totRamEma.get();
-        float openFilesSmooth = openFilesEma.get();
-        float threadPressureSmooth = threadPressureEma.get();
-        float systemLoadSmooth = systemLoadEma.get();
+        double cpuSmooth = cpuEma.get();
+        double ramSmooth = ramEma.get();
+        double totCpuSmooth = totCpuEma.get();
+        double totRamSmooth = totRamEma.get();
+        double openFilesSmooth = openFilesEma.get();
+        double threadPressureSmooth = threadPressureEma.get();
+        double systemLoadSmooth = systemLoadEma.get();
 
         // state
 
@@ -214,12 +214,12 @@ public class MetricSampler {
         );
     }
 
-    private float calculatePressure(OSProcess process) {
+    private double calculatePressure(OSProcess process) {
         int threadCount = process.getThreadCount();
         // Fail-safe if thread count > 0 but details list is empty (OSHI limitation sometimes)
-        if (threadCount == 0) return 0f;
+        if (threadCount == 0) return 0;
 
-        float rawPressureSum = 0f;
+        double rawPressureSum = 0;
 
         // Try to get thread details. If empty, fall back to "smart" estimation
         var threads = process.getThreadDetails();
@@ -227,7 +227,7 @@ public class MetricSampler {
         // Fix: If list is empty but threadCount > 0, it means OSHI didn't fetch details.
         // We can assume normal pressure distribution for a running app if we can't see threads.
         if (threads.isEmpty())
-            return pressure(process.getState()) * 0.55f + 0.05f; // Assume 55% running, 5% sleeping, rest low load
+            return pressure(process.getState()) * 0.55 + 0.05; // Assume 55% running, 5% sleeping, rest low load
 
         for (OSThread thread : threads) {
             rawPressureSum += pressure(thread.getState());
@@ -237,14 +237,14 @@ public class MetricSampler {
         return rawPressureSum / Math.max(1, threads.size());
     }
 
-    private float pressure(OSProcess.State state) {
+    private double pressure(OSProcess.State state) {
         return switch (state) {
-            case RUNNING -> 1.0f;
+            case RUNNING -> 1.0;
             // WAITING implies blocked/waiting, SLEEPING implies timed wait. Both low load.
-            case WAITING, SLEEPING -> 0.15f;
+            case WAITING, SLEEPING -> 0.15;
             // On some OS/JVM combinations, threads might appear as UNKNOWN/OTHER but still consume resources.
             // We apply a safe default.
-            default -> 0.1f;
+            default -> 0.1;
         };
     }
 
@@ -252,19 +252,19 @@ public class MetricSampler {
 
         // use negative values to disable
         public static class EMAConfig {
-            public float cpu = 0.35f;
-            public float ram = 0.25f;
-            public float totCpu = 0.75f;
-            public float totRam = 0.45f;
-            public float threadPressure = 0.5f;
-            public float openFiles = 0.15f;
-            public float systemLoad = 0.5f;
+            public double cpu = 0.35;
+            public double ram = 0.25;
+            public double totCpu = 0.75;
+            public double totRam = 0.45;
+            public double threadPressure = 0.5;
+            public double openFiles = 0.15;
+            public double systemLoad = 0.5;
         }
 
         public static class OverrideConfig {
-            public float cpuThreshold = 0.85f;
-            public float ramThreshold = 0.90f;
-            public float systemLoadThreshold = 0.90f;
+            public double cpuThreshold = 0.85;
+            public double ramThreshold = 0.90;
+            public double systemLoadThreshold = 0.90;
             public long cooldownMs = 5000;
         }
 
@@ -280,12 +280,12 @@ public class MetricSampler {
 
         public LoadGate gate; // If null, built from limits below
 
-        public LoadGate.Limits cpuLimits = new LoadGate.Limits(0.55f, 0.70f, 0.6f);
-        public LoadGate.Limits ramLimits = new LoadGate.Limits(0.60f, 0.75f, 0.4f);
-        public LoadGate.Limits openFilesLimits = new LoadGate.Limits(0.60f, 0.80f, 0.5f);
-        public LoadGate.Limits aggressiveFilesLimits = new LoadGate.Limits(0.40f, 0.60f, 0.7f); // Aggressive weight, lower threshold
-        public LoadGate.Limits threadPressureLimits = new LoadGate.Limits(0.50f, 0.70f, 0.5f);
-        public LoadGate.Limits systemLoadLimits = new LoadGate.Limits(0.55f, 0.75f, 0.5f);
+        public LoadGate.Limits cpuLimits = new LoadGate.Limits(0.55, 0.70, 0.6);
+        public LoadGate.Limits ramLimits = new LoadGate.Limits(0.60, 0.75, 0.4);
+        public LoadGate.Limits openFilesLimits = new LoadGate.Limits(0.60, 0.80, 0.5);
+        public LoadGate.Limits aggressiveFilesLimits = new LoadGate.Limits(0.40, 0.60, 0.7); // Aggressive weight, lower threshold
+        public LoadGate.Limits threadPressureLimits = new LoadGate.Limits(0.50, 0.70, 0.5);
+        public LoadGate.Limits systemLoadLimits = new LoadGate.Limits(0.55, 0.75, 0.5);
 
         // Calculate limits based on soft and hard open file limits
         public BiFunction<Long, Long, LoadGate.Limits> openFilesLimitsCalculator = (soft, hard) -> {

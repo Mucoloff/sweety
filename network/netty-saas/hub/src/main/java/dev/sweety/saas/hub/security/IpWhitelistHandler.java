@@ -104,6 +104,10 @@ public class IpWhitelistHandler extends ChannelInboundHandlerAdapter {
         return lastRefreshMs;
     }
 
+    public Set<String> allowedIps() {
+        return allowedIps;
+    }
+
     @FunctionalInterface
     public interface IpProvider {
         Set<String> getAllowedIps();

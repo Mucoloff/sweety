@@ -24,7 +24,7 @@ public abstract class ServiceNodeHandler {
         return node;
     }
 
-    public void keepAlive(float timing) {
+    public void keepAlive(double timing) {
 
     }
 

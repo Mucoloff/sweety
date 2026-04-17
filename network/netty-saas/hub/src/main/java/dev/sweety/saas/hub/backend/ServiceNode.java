@@ -20,6 +20,8 @@ import dev.sweety.saas.service.packet.global.ping.SystemPing;
 import dev.sweety.saas.service.packet.global.ping.SystemPong;
 import io.netty.channel.ChannelHandlerContext;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -84,6 +86,8 @@ public class ServiceNode extends BackendNode implements IService {
         handler.disconnect();
     }
 
+    private Instant lastPing;
+
     @Override
     public void onPacketReceive(final ChannelHandlerContext ctx, final Packet packet) {
         if (packet instanceof MetricsUpdatePacket met) {
@@ -96,18 +100,21 @@ public class ServiceNode extends BackendNode implements IService {
         }
         super.ctx = ctx;
 
-        final long now = timeMode.now();
         switch (packet) {
             //case SystemPing ping -> sendToSelf(new SystemPong(now));
-            case SystemPong pong -> {
-                long time = pong.timestamp();
+            case SystemPong _ -> {
+                final Duration pingDuration = Duration.between(lastPing, Instant.now());
 
-                float timing = pingEMA.update(now - time);
+                double timing = pingEMA.update(pingDuration.toNanos());
                 handler.keepAlive(timing);
                 // Schedule next ping after 5s — NOT immediately (was causing infinite tight loop)
                 if (super.ctx != null && super.ctx.channel().isActive()) {
                     super.ctx.channel().eventLoop().schedule(
-                            () -> sendToSelf(new SystemPing(timeMode.now())),
+                            () -> {
+                                sendToSelf(new SystemPing()).whenComplete((o, t) -> {
+                                    if (t == null) lastPing = Instant.now();
+                                });
+                            },
                             5, TimeUnit.SECONDS
                     );
                 }

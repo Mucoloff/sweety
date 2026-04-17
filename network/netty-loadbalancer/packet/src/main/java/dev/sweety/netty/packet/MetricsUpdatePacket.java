@@ -11,11 +11,11 @@ import java.util.Map;
 
 public class MetricsUpdatePacket extends Packet {
 
-    private static final float SCALE = 10_000f;
+    private static final double SCALE = 10_000f;
 
     private SmoothedLoad load;
 
-    private Map<Integer, Float> packetTimings; // packet ID -> EMA latency
+    private Map<Integer, Double> packetTimings; // packet ID -> EMA latency
 
     public MetricsUpdatePacket(final SmoothedLoad load, Map<Integer, EMA> packetTimings) {
         this.buffer()
@@ -55,31 +55,31 @@ public class MetricsUpdatePacket extends Packet {
         return load;
     }
 
-    public float cpu() {
+    public double cpu() {
         return load.cpu();
     }
 
-    public float ram() {
+    public double ram() {
         return load.ram();
     }
 
-    public float cpuTotal() {
+    public double cpuTotal() {
         return load.cpuTotal();
     }
 
-    public float ramTotal() {
+    public double ramTotal() {
         return load.ramTotal();
     }
 
-    public float openFiles() {
+    public double openFiles() {
         return load.openFiles();
     }
 
-    public float threadPressure() {
+    public double threadPressure() {
         return load.threadPressure();
     }
 
-    public float systemLoad() {
+    public double systemLoad() {
         return load.systemLoad();
     }
 
@@ -87,7 +87,7 @@ public class MetricsUpdatePacket extends Packet {
         return load.state();
     }
 
-    public Map<Integer, Float> packetTimings() {
+    public Map<Integer, Double> packetTimings() {
         return packetTimings;
     }
 }

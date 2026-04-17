@@ -1,31 +1,47 @@
-package dev.sweety.project.test;
+package dev.sweety.time;
 
-import lombok.Setter;
 
 import javax.mail.*;
 import javax.mail.internet.*;
 import java.util.Arrays;
 import java.util.Properties;
 
-public enum MailSender {
-    INSTANCE;
+public class MailSender {
 
-    private final Properties properties = new Properties();
-    boolean skip = true;
-    @Setter
+    private final Properties properties;
     private String username, password;
 
-    MailSender() {
-        properties.put("mail.smtp.auth", "true");
-        properties.put("mail.smtp.starttls.enable", "true");
-        properties.put("mail.smtp.host", "smtp.gmail.com");
-        properties.put("mail.smtp.port", "587");
+    public MailSender(Properties properties) {
+        this.properties = properties;
+    }
 
+    public MailSender() {
+        this(new Properties());
+    }
+
+    public MailSender setup(String auth, String starttls, String host, String port) {
+        this.properties.put("mail.smtp.auth", auth);
+        this.properties.put("mail.smtp.starttls.enable", starttls);
+        this.properties.put("mail.smtp.host", host);
+        this.properties.put("mail.smtp.port", port);
+        return this;
+    }
+
+    public MailSender setGmail() {
+        return setup("true", "true", "smtp.gmail.com", "587");
+    }
+
+    public MailSender setPassword(String password) {
+        this.password = password;
+        return this;
+    }
+
+    public MailSender setUsername(String username) {
+        this.username = username;
+        return this;
     }
 
     public void send(String object, String content, String... address) {
-
-        if (skip) return;
 
         Session session = Session.getInstance(properties, new Authenticator() {
             protected PasswordAuthentication getPasswordAuthentication() {

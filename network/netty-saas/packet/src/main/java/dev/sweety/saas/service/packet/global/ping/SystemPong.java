@@ -4,6 +4,9 @@ import dev.sweety.netty.packet.model.Packet;
 
 public class SystemPong extends Packet {
 
+    public SystemPong() {
+    }
+
     public SystemPong(long timestamp) {
         super(timestamp);
     }

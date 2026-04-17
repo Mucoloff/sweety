@@ -1,0 +1,27 @@
+hub:
+  host: localhost
+  port: 5000
+  externalPort: 5001
+services:
+  s1:
+    count: 2
+    externalPorts:
+    - 5003
+    - 5005
+    ports:
+    - 5002
+    - 5004
+    hosts:
+    - localhost
+    - localhost
+  s2:
+    count: 2
+    externalPorts:
+    - 5007
+    - 5009
+    ports:
+    - 5006
+    - 5008
+    hosts:
+    - localhost
+    - localhost

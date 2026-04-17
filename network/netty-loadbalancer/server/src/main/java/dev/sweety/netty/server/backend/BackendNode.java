@@ -47,36 +47,36 @@ public class BackendNode implements IBackend {
 
     public void disconnect() {
         requestMetrics.reset();
-        usageScore = latencyScore = bandwidthScore = currentBandwidthScore = packetTimeScore = totalScore = 0f;
-        maxObservedAvgLoad = maxObservedCurrentLoad = maxObservedPacketTime = 1f;
+        usageScore = latencyScore = bandwidthScore = currentBandwidthScore = packetTimeScore = totalScore = 0;
+        maxObservedAvgLoad = maxObservedCurrentLoad = maxObservedPacketTime = 1;
         packetTimings.clear();
         inFlight.set(0);
         logger.push("disconnect").info("Backend disconnected!").pop();
     }
 
     private volatile NodeState state = NodeState.HEALTHY;
-    private volatile float usageScore = 0f, latencyScore = 0f, bandwidthScore = 0f, currentBandwidthScore = 0f, packetTimeScore = 0f, totalScore = 0f;
-    private volatile float avg_packet_time = 0.5f;
+    private volatile double usageScore = 0, latencyScore = 0, bandwidthScore = 0, currentBandwidthScore = 0, packetTimeScore = 0, totalScore = 0;
+    private volatile double avg_packet_time = 0.5;
 
-    private volatile float maxObservedPacketTime = 1f;
-    private final Map<Integer, Float> packetTimings = new ConcurrentHashMap<>();
+    private volatile double maxObservedPacketTime = 1;
+    private final Map<Integer, Double> packetTimings = new ConcurrentHashMap<>();
 
-    private volatile float maxObservedAvgLoad = 1f, maxObservedCurrentLoad = 1f;
+    private volatile double maxObservedAvgLoad = 1, maxObservedCurrentLoad = 1;
 
-    synchronized void updateMaxObserved(float avgLoad, float currentLoad, float currentTime) {
+    synchronized void updateMaxObserved(double avgLoad, double currentLoad, double currentTime) {
         maxObservedAvgLoad = Math.max(maxObservedAvgLoad, avgLoad);
         maxObservedCurrentLoad = Math.max(maxObservedCurrentLoad, currentLoad);
         maxObservedPacketTime = Math.max(maxObservedPacketTime, currentTime);
     }
 
-    public final float avgPacketTime(int id) {
+    public final double avgPacketTime(int id) {
         return packetTimings.getOrDefault(id, avg_packet_time);
     }
 
     public boolean handled(Packet packet) {
         return switch (packet) {
-            case MetricsUpdatePacket metricsUpdatePacket -> true;
-            case InternalPacket internalPacket -> true;
+            case MetricsUpdatePacket _ -> true;
+            case InternalPacket _ -> true;
             case null, default -> false;
         };
     }
@@ -89,30 +89,30 @@ public class BackendNode implements IBackend {
             packetTimings.putAll(metrics.packetTimings());
 
             // update max observed scores
-            float avgLoad = requestMetrics.getAverageBandwidthLoad();
-            float currentLoad = requestMetrics.getCurrentAverageBandwidthLoad();
-            float sum_time = 0f;
+            double avgLoad = requestMetrics.getAverageBandwidthLoad();
+            double currentLoad = requestMetrics.getCurrentAverageBandwidthLoad();
+            double sum_time = 0;
             int count_time = 0;
-            for (Float timing : packetTimings.values()) {
+            for (Double timing : packetTimings.values()) {
                 if (timing == null) continue;
                 sum_time += timing;
                 count_time++;
             }
-            final float current_time = count_time > 0 ? sum_time / count_time : 0.5f;
+            final double current_time = count_time > 0 ? sum_time / count_time : 0.5;
             this.avg_packet_time = current_time;
             updateMaxObserved(avgLoad, currentLoad, current_time);
 
             // Update node state first (so penalty applies consistently)
-            final float statePenalty = ((state = metrics.state()) == NodeState.DEGRADED ? 0.7f : 1f);
+            final double statePenalty = ((state = metrics.state()) == NodeState.DEGRADED ? 0.7f : 1);
 
             // Resource usage score: weighted blend of process usage + pressure indicators.
             // (CPU/RAM stay the main driver, the others help detect contention / nearing limits.)
             usageScore = statePenalty * (
-                    0.32f * metrics.cpu()
-                            + 0.28f * metrics.ram()
-                            + 0.15f * metrics.openFiles()
-                            + 0.15f * metrics.threadPressure()
-                            + 0.10f * metrics.systemLoad()
+                    0.32 * metrics.cpu()
+                            + 0.28 * metrics.ram()
+                            + 0.15 * metrics.openFiles()
+                            + 0.15 * metrics.threadPressure()
+                            + 0.10 * metrics.systemLoad()
             );
 
             latencyScore = MathUtils.clamp(requestMetrics.getAverageLatency() / BackendSettings.MAX_EXPECTED_LATENCY());
@@ -121,11 +121,11 @@ public class BackendNode implements IBackend {
             packetTimeScore = current_time / maxObservedPacketTime;
 
             // Total score: keep previous weights but shift a bit from bandwidth -> usage to reflect new richer usage signal.
-            totalScore = 0.40f * usageScore
-                    + 0.25f * latencyScore
-                    + 0.15f * bandwidthScore
-                    + 0.10f * currentBandwidthScore
-                    + 0.10f * packetTimeScore;
+            totalScore = 0.40 * usageScore
+                    + 0.25 * latencyScore
+                    + 0.15 * bandwidthScore
+                    + 0.10 * currentBandwidthScore
+                    + 0.10 * packetTimeScore;
         } else if (loadBalancer != null && packet instanceof InternalPacket internal) {
             internal.get().ifPresent(forward -> {
                 if (forward.senderId() >= 0) {
@@ -168,10 +168,6 @@ public class BackendNode implements IBackend {
     }
 
     private final AtomicInteger inFlight = new AtomicInteger(0);
-
-    public boolean canAcceptPacket() {
-        return this.inFlight.get() < BackendSettings.MAX_IN_FLIGHT;
-    }
 
     public boolean tryAcceptPacket() {
         int current;
@@ -249,96 +245,96 @@ public class BackendNode implements IBackend {
         return this;
     }
 
-    public float usageScore() {
+    public double usageScore() {
         return usageScore;
     }
 
-    public BackendNode setUsageScore(float usageScore) {
+    public BackendNode setUsageScore(double usageScore) {
         this.usageScore = usageScore;
         return this;
     }
 
-    public float latencyScore() {
+    public double latencyScore() {
         return latencyScore;
     }
 
-    public BackendNode setLatencyScore(float latencyScore) {
+    public BackendNode setLatencyScore(double latencyScore) {
         this.latencyScore = latencyScore;
         return this;
     }
 
-    public float bandwidthScore() {
+    public double bandwidthScore() {
         return bandwidthScore;
     }
 
-    public BackendNode setBandwidthScore(float bandwidthScore) {
+    public BackendNode setBandwidthScore(double bandwidthScore) {
         this.bandwidthScore = bandwidthScore;
         return this;
     }
 
-    public float currentBandwidthScore() {
+    public double currentBandwidthScore() {
         return currentBandwidthScore;
     }
 
-    public BackendNode setCurrentBandwidthScore(float currentBandwidthScore) {
+    public BackendNode setCurrentBandwidthScore(double currentBandwidthScore) {
         this.currentBandwidthScore = currentBandwidthScore;
         return this;
     }
 
-    public float packetTimeScore() {
+    public double packetTimeScore() {
         return packetTimeScore;
     }
 
-    public BackendNode setPacketTimeScore(float packetTimeScore) {
+    public BackendNode setPacketTimeScore(double packetTimeScore) {
         this.packetTimeScore = packetTimeScore;
         return this;
     }
 
-    public float totalScore() {
+    public double totalScore() {
         return totalScore;
     }
 
-    public BackendNode setTotalScore(float totalScore) {
+    public BackendNode setTotalScore(double totalScore) {
         this.totalScore = totalScore;
         return this;
     }
 
-    public float avg_packet_time() {
+    public double avg_packet_time() {
         return avg_packet_time;
     }
 
-    public BackendNode setAvg_packet_time(float avg_packet_time) {
+    public BackendNode setAvg_packet_time(double avg_packet_time) {
         this.avg_packet_time = avg_packet_time;
         return this;
     }
 
-    public float maxObservedPacketTime() {
+    public double maxObservedPacketTime() {
         return maxObservedPacketTime;
     }
 
-    public BackendNode setMaxObservedPacketTime(float maxObservedPacketTime) {
+    public BackendNode setMaxObservedPacketTime(double maxObservedPacketTime) {
         this.maxObservedPacketTime = maxObservedPacketTime;
         return this;
     }
 
-    public Map<Integer, Float> packetTimings() {
+    public Map<Integer, Double> packetTimings() {
         return packetTimings;
     }
 
-    public float maxObservedAvgLoad() {
+    public double maxObservedAvgLoad() {
         return maxObservedAvgLoad;
     }
 
-    public BackendNode setMaxObservedAvgLoad(float maxObservedAvgLoad) {
+    public BackendNode setMaxObservedAvgLoad(double maxObservedAvgLoad) {
         this.maxObservedAvgLoad = maxObservedAvgLoad;
         return this;
     }
 
-    public float maxObservedCurrentLoad() {
+    public double maxObservedCurrentLoad() {
         return maxObservedCurrentLoad;
     }
 
-    public BackendNode setMaxObservedCurrentLoad(float maxObservedCurrentLoad) {
+    public BackendNode setMaxObservedCurrentLoad(double maxObservedCurrentLoad) {
         this.maxObservedCurrentLoad = maxObservedCurrentLoad;
         return this;
     }

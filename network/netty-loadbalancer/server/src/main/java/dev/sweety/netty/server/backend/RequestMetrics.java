@@ -38,18 +38,18 @@ public class RequestMetrics {
         currentLoadEma.update(l);
     }
 
-    public float getAverageLatency() {
+    public double getAverageLatency() {
         return latencyEma.get();
     }
 
-    public float getAverageBandwidthLoad() {
+    public double getAverageBandwidthLoad() {
         return totalLoadEma.get();
     }
 
-    public float getCurrentAverageBandwidthLoad() {
+    public double getCurrentAverageBandwidthLoad() {
         long pending = pendingRequests.size();
-        float realAvg = pending == 0 ? 0 : (float) currentLoad.get() / pending;
-        float smoothed = currentLoadEma.get();
+        double realAvg = pending == 0 ? 0 : (double) currentLoad.get() / pending;
+        double smoothed = currentLoadEma.get();
 
         return 0.5f * (realAvg + smoothed);
     }

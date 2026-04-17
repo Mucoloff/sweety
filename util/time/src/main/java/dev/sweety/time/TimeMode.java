@@ -1,5 +1,6 @@
 package dev.sweety.time;
 
+import java.time.Instant;
 import java.util.function.LongSupplier;
 
 public enum TimeMode {

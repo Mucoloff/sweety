@@ -4,6 +4,10 @@ import dev.sweety.netty.packet.model.Packet;
 
 public class SystemPing extends Packet {
 
+    public SystemPing() {
+
+    }
+
     public SystemPing(long timestamp) {
         super(timestamp);
     }

@@ -51,7 +51,7 @@ public enum Balancers {
             int limit = Math.min(3, activeNodes.length);
 
             final int packetId = packet.id();
-            final float factor = 0.35f;
+            final double factor = 0.35f;
 
             return  fromParam(slice(activeNodes, start, limit), (n) ->
                     (factor * n.totalScore()) + ((1 - factor) * n.avgPacketTime(packetId) / n.maxObservedPacketTime()));
@@ -81,7 +81,7 @@ public enum Balancers {
         return result;
     }
 
-    private static Balancer fromParam(Function<BackendNode, Float> score) {
+    private static Balancer fromParam(Function<BackendNode, Double> score) {
         return new Balancer() {
             @Override
             public <T extends BackendNode> T nextNode(T[] activeNodes, LogHelper logger, Packet packet, ChannelHandlerContext ctx) {
@@ -91,20 +91,20 @@ public enum Balancers {
         };
     }
 
-    private static <T extends BackendNode> T fromParam(T[] activeNodes, Function<T, Float> score) {
-        float avgScore = (float) Arrays.stream(activeNodes)
+    private static <T extends BackendNode> T fromParam(T[] activeNodes, Function<T, Double> score) {
+        double avgScore = Arrays.stream(activeNodes)
                 .mapToDouble(score::apply)
                 .average()
                 .orElse(1.0);
         return Arrays.stream(activeNodes)
-                .filter(n -> score.apply(n) <= avgScore * 1.1f)
-                .min(comparingFloat(score))
+                .filter(n -> score.apply(n) <= avgScore * 1.1)
+                .min(comparingdouble(score))
                 .orElse(activeNodes[0]);
     }
 
-    public static <T> Comparator<T> comparingFloat(Function<? super T, Float> keyExtractor) {
+    public static <T> Comparator<T> comparingdouble(Function<? super T, Double> keyExtractor) {
         Objects.requireNonNull(keyExtractor);
-        return (Comparator<T> & Serializable) (c1, c2) -> Float.compare(keyExtractor.apply(c1), keyExtractor.apply(c2));
+        return (Comparator<T> & Serializable) (c1, c2) -> Double.compare(keyExtractor.apply(c1), keyExtractor.apply(c2));
     }
 
 }

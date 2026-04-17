@@ -71,10 +71,6 @@ public record Vector2i(int x, int y) {
         };
     }
 
-    public Vector2d toVector3d() {
-        return new Vector2d(x, y);
-    }
-
     public Vector2i add(int x, int y) {
         return new Vector2i(this.x + x, this.y + y);
     }

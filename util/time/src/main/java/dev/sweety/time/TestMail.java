@@ -1,12 +1,13 @@
-package dev.sweety.project.test;
-
-import dev.sweety.time.TimeUtils;
+package dev.sweety.time;
 
 public class TestMail {
 
     public static void main(String[] args) {
         String email = "mucofietigibbys@gmail.com";
-        MailSender.INSTANCE.set(email, "byox vfql hinr sxyr");
+
+        MailSender INSTANCE = new MailSender();
+
+        INSTANCE.set(email, "byox vfql hinr sxyr");
 
         String username = "lucky", license = "lucky", resource = "negro", edition = "Developer";
 
@@ -67,11 +68,10 @@ public class TestMail {
 
         email = "lupica.francy06@gmail.com";
 
-        MailSender.INSTANCE.send("Aurora | Welcome " + username, welcome, email);
-        MailSender.INSTANCE.send("Aurora | License creation", newLicense, email);
-        MailSender.INSTANCE.send("Aurora | " + resource, expiring, email);
-        MailSender.INSTANCE.send("Aurora | " + resource, expired, email);
-
+        INSTANCE.send("Aurora | Welcome " + username, welcome, email);
+        INSTANCE.send("Aurora | License creation", newLicense, email);
+        INSTANCE.send("Aurora | " + resource, expiring, email);
+        INSTANCE.send("Aurora | " + resource, expired, email);
     }
 
      /*

@@ -2,15 +2,15 @@ package dev.sweety.netty.metrics;
 
 public final class EMA {
 
-    private final float alpha; // 0 < alpha <= 1
-    private volatile float value;
+    private final double alpha; // 0 < alpha <= 1
+    private volatile double value;
     private volatile boolean initialized = false;
 
-    public EMA(float alpha) {
+    public EMA(double alpha) {
         this.alpha = alpha;
     }
 
-    public synchronized float update(float sample) {
+    public synchronized double update(double sample) {
         if (!initialized) {
             value = sample;
             initialized = true;
@@ -20,7 +20,7 @@ public final class EMA {
         return value;
     }
 
-    public float get() {
+    public double get() {
         return value;
     }
 

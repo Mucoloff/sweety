@@ -29,6 +29,10 @@ public final class MathUtils {
         return Math.clamp(value, 0f, 1f);
     }
 
+    public static double clamp(double value) {
+        return Math.clamp(value, 0f, 1d);
+    }
+
     public interface Compare<T> {
         boolean compare(T a, T b);
 

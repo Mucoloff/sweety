@@ -3,12 +3,18 @@ package dev.sweety.data;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public final class ObjectUtils {
+
+    @SafeVarargs
+    public static <T> boolean notNull(T t, Predicate<T>... predicates) {
+        return !isNull(t, predicates);
+    }
 
     @SafeVarargs
     public static <T> boolean isNull(T t, Predicate<T>... predicates) {
@@ -48,6 +54,16 @@ public final class ObjectUtils {
     public static <T> T make(T object, Consumer<T> initializer) {
         initializer.accept(object);
         return object;
+    }
+
+    public static String formatUuid(String uuidStr) {
+        return uuidStr.contains("-")
+                ? uuidStr
+                : uuidStr.replaceFirst("(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}+)", "$1-$2-$3-$4-$5");
+    }
+
+    public static UUID parseUuid(String uuidStr) {
+        return UUID.fromString(formatUuid(uuidStr));
     }
 
 }

@@ -10,6 +10,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.Pair;
+import lombok.experimental.Delegate;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.EOFException;
@@ -24,6 +25,7 @@ public class PacketBuffer {
     private static final int MAX_ARRAY_SIZE = 1 << 20;
     private static final int MAX_STRING_BYTES = 1 << 20;
 
+    @Delegate
     private final ByteBuf nettyBuffer;
 
     public PacketBuffer(ByteBuf nettyBuffer) {
@@ -373,6 +375,19 @@ public class PacketBuffer {
         return arr;
     }
 
+    public PacketBuffer writeStringArray(String... array) {
+        writeVarInt(array.length);
+        for (String i : array) writeString(i);
+        return this;
+    }
+
+    public String[] readStringArray() {
+        int len = readBoundedLength("String[]", MAX_ARRAY_SIZE);
+        String[] arr = new String[len];
+        for (int i = 0; i < len; i++) arr[i] = readString();
+        return arr;
+    }
+
     private PacketBuffer writePresence(boolean present) {
         return this.writeBoolean(present);
     }
@@ -661,11 +676,11 @@ public class PacketBuffer {
         return this.nettyBuffer;
     }
 
-    public PacketBuffer writePercentual(float percent, float scale) {
+    public PacketBuffer writePercentual(double percent, double scale) {
         return this.writeVarInt((int) (MathUtils.clamp(percent) * scale));
     }
 
-    public float readPercentual(float scale) {
+    public double readPercentual(double scale) {
         return this.readVarInt() / scale;
     }
 
