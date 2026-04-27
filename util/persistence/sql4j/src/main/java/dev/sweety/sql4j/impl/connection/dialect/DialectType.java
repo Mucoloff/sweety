@@ -1,6 +1,7 @@
 package dev.sweety.sql4j.impl.connection.dialect;
 
 import dev.sweety.sql4j.api.connection.dialect.Dialect;
+import dev.sweety.sql4j.impl.connection.ConnectionType;
 
 public enum DialectType {
     SQLITE(new SqliteDialect()),
@@ -20,5 +21,9 @@ public enum DialectType {
 
     public Dialect dialect() {
         return dialect;
+    }
+
+    public ConnectionType connectionType() {
+        return ConnectionType.fromDialectType(this);
     }
 }

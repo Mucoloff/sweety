@@ -3,6 +3,7 @@ package dev.sweety.sql4j.impl.query.entity;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
+import dev.sweety.sql4j.impl.query.QueryCache;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -13,49 +14,57 @@ public final class UpdateEntity<T> extends AbstractQuery<Integer> {
 
     private final Table<T> table;
     private final T instance;
+    private final Metadata metadata;
 
-    private final List<Column> updateColumns;
-    private final List<Column> primaryKeys;
-    private final String sql;
+    private record Metadata(List<Column> updateColumns, List<Column> primaryKeys, String sql) {}
 
     public UpdateEntity(final Table<T> table, final T instance) {
         this.table = table;
         this.instance = instance;
 
-        this.primaryKeys = table.primaryKeys();
-        this.updateColumns = table.updatableColumns();
-        this.sql = buildSqlInternal();
+        String cacheKey = "update:meta:" + table.name() + ":" + table.clazz().getName();
+        this.metadata = QueryCache.getMetadata(cacheKey, _ -> {
+            List<Column> primaryKeys = table.primaryKeys();
+            List<Column> updateColumns = table.updatableColumns();
+
+            String setClause = updateColumns.stream()
+                    .map(Column::name)
+                    .map(n -> n + "=?")
+                    .collect(Collectors.joining(", "));
+
+            String whereClause = primaryKeys.stream()
+                    .map(Column::name)
+                    .map(n -> n + "=?")
+                    .collect(Collectors.joining(" AND "));
+
+            String sql = "UPDATE " + table.name() + " SET " + setClause + " WHERE " + whereClause;
+            return new Metadata(updateColumns, primaryKeys, sql);
+        });
+    }
+
+    private UpdateEntity(Table<T> table, Metadata metadata, T instance) {
+        this.table = table;
+        this.metadata = metadata;
+        this.instance = instance;
+    }
+
+    public UpdateEntity<T> copy(T instance) {
+        return new UpdateEntity<>(table, metadata, instance);
     }
 
     @Override
     protected String buildSql() {
-        return sql;
-    }
-
-
-    private String buildSqlInternal() {
-        String setClause = updateColumns.stream()
-                .map(Column::name)
-                .map(n -> n + "=?")
-                .collect(Collectors.joining(", "));
-
-        String whereClause = primaryKeys.stream()
-                .map(Column::name)
-                .map(n -> n + "=?")
-                .collect(Collectors.joining(" AND "));
-
-        return "UPDATE " + table.name() + " SET " + setClause + " WHERE " + whereClause;
+        return metadata.sql;
     }
 
     @Override
     public void bind(final PreparedStatement ps) throws SQLException {
-        int idx = table.bindColumns(ps, updateColumns, instance, 1);
-        for (Column pk : primaryKeys) ps.setObject(idx++, pk.get(instance));
+        int idx = table.bindColumns(ps, metadata.updateColumns, instance, 1);
+        for (Column pk : metadata.primaryKeys) ps.setObject(idx++, pk.get(instance));
     }
 
     @Override
     public Integer execute(final PreparedStatement ps) throws SQLException {
         return ps.executeUpdate();
     }
-
 }

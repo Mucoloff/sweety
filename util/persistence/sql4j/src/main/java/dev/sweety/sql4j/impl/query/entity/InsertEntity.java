@@ -16,49 +16,59 @@ public final class InsertEntity<T> extends AbstractQuery<Pair<Integer, T>> {
 
     private final Table<T> table;
     private final T instance;
-    private final List<Column> insertColumns;
-    private final Column generatedColumn;
-    private final int fieldsPerRow;
-    private final String sql;
+    private final Metadata metadata;
 
-    public InsertEntity(Table<T> table, @NotNull T instance) {
+    private record Metadata(List<Column> insertColumns, Column generatedColumn, int fieldsPerRow, String sql) {}
+
+    public InsertEntity(Table<T> table, T instance) {
         this.table = table;
         this.instance = instance;
 
-        Pair<List<Column>, Column> cols = table.insertableColumns();
-        this.insertColumns = cols.key();
-        this.generatedColumn = cols.value();
-        this.fieldsPerRow = insertColumns.size();
-        this.sql = buildSqlInternal();
+        String cacheKey = "insert:meta:" + table.name() + ":" + table.clazz().getName();
+        this.metadata = dev.sweety.sql4j.impl.query.QueryCache.getMetadata(cacheKey, _ -> {
+            Pair<List<Column>, Column> cols = table.insertableColumns();
+            List<Column> insertColumns = cols.key();
+            Column generatedColumn = cols.value();
+            int fieldsPerRow = insertColumns.size();
+
+            String colNames = insertColumns.stream().map(Column::name).collect(Collectors.joining(", "));
+            String placeholders = "(" + "?,".repeat(fieldsPerRow).replaceAll(",$", "") + ")";
+            String sql = "INSERT INTO " + table.name() + " (" + colNames + ") VALUES " + placeholders;
+
+            return new Metadata(insertColumns, generatedColumn, fieldsPerRow, sql);
+        });
+    }
+
+    private InsertEntity(Table<T> table, Metadata metadata, T instance) {
+        this.table = table;
+        this.metadata = metadata;
+        this.instance = instance;
+    }
+
+    public InsertEntity<T> copy(T instance) {
+        return new InsertEntity<>(table, metadata, instance);
     }
 
     @Override
     protected String buildSql() {
-        return sql;
-    }
-
-    private String buildSqlInternal() {
-        String cols = insertColumns.stream().map(Column::name).collect(Collectors.joining(", "));
-        String placeholders = "(" + "?,".repeat(fieldsPerRow).replaceAll(",$", "") + ")";
-        return "INSERT INTO " + table.name() + " (" + cols + ") VALUES " + placeholders;
+        return metadata.sql;
     }
 
     @Override
     public void bind(PreparedStatement ps) throws SQLException {
         int idx = 1;
-        for (Column c : insertColumns) c.set(ps, idx++, instance);
-
+        for (Column c : metadata.insertColumns) c.set(ps, idx++, instance);
     }
 
     @Override
     public Pair<Integer, T> execute(PreparedStatement ps) throws SQLException {
         int updated = ps.executeUpdate();
 
-        if (generatedColumn != null) {
+        if (metadata.generatedColumn != null) {
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
                     Object key = rs.getObject(1);
-                    generatedColumn.set(instance, key);
+                    metadata.generatedColumn.set(instance, key);
                 }
             }
         }
@@ -67,6 +77,6 @@ public final class InsertEntity<T> extends AbstractQuery<Pair<Integer, T>> {
 
     @Override
     public boolean returnGeneratedKeys() {
-        return generatedColumn != null;
+        return metadata.generatedColumn != null;
     }
 }

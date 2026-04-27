@@ -1,8 +1,8 @@
 package dev.sweety.saas.hub.backend.handler.impl;
 
-import ac.ecstacy.hub.backend.ServiceNode;
-import ac.ecstacy.hub.backend.handler.ServiceNodeHandler;
-import ac.ecstacy.netty.api.packet.model.Packet;
+import dev.sweety.netty.packet.model.Packet;
+import dev.sweety.saas.hub.backend.ServiceNode;
+import dev.sweety.saas.hub.backend.handler.ServiceNodeHandler;
 import io.netty.channel.ChannelHandlerContext;
 
 public class LobbyNodeHandler extends ServiceNodeHandler {

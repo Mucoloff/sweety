@@ -3,6 +3,7 @@ package dev.sweety.sql4j.api.query.functions;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
+@FunctionalInterface
 public interface QueryExecutor<T> extends QueryBinder {
     T execute(PreparedStatement ps) throws SQLException;
 
@@ -11,5 +12,5 @@ public interface QueryExecutor<T> extends QueryBinder {
         execute(ps);
     }
 
-    QueryExecutor<?> EMPTY = ps -> null;
+    QueryExecutor<?> EMPTY = _ -> null;
 }

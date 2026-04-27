@@ -27,7 +27,8 @@ public final class ParamQuery<T> extends AbstractQuery<T> {
 
     public static final class Builder<T> {
         private String sql;
-        private QueryBinder binder = ps -> {};
+        private QueryBinder binder = _ -> {
+        };
         private QueryExecutor<T> executor;
         private boolean returnGeneratedKeys;
 
@@ -58,9 +59,24 @@ public final class ParamQuery<T> extends AbstractQuery<T> {
         }
     }
 
-    @Override protected String buildSql() { return sql; }
-    @Override public void bind(PreparedStatement ps) throws SQLException { binder.bind(ps); }
-    @Override public T execute(PreparedStatement ps) throws SQLException { return executor.execute(ps); }
-    @Override public boolean returnGeneratedKeys() { return returnGeneratedKeys; }
+    @Override
+    protected String buildSql() {
+        return sql;
+    }
+
+    @Override
+    public void bind(PreparedStatement ps) throws SQLException {
+        binder.bind(ps);
+    }
+
+    @Override
+    public T execute(PreparedStatement ps) throws SQLException {
+        return executor.execute(ps);
+    }
+
+    @Override
+    public boolean returnGeneratedKeys() {
+        return returnGeneratedKeys;
+    }
 }
 

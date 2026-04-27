@@ -8,48 +8,45 @@ import dev.sweety.sql4j.api.query.Query;
 import dev.sweety.sql4j.api.query.functions.QueryBinder;
 import dev.sweety.sql4j.api.query.functions.QueryExecutor;
 import dev.sweety.sql4j.impl.query.QueryCache;
+
 import dev.sweety.sql4j.impl.query.SelectJoin;
 import dev.sweety.sql4j.impl.query.entity.DeleteEntity;
 import dev.sweety.sql4j.impl.query.entity.InsertEntity;
 import dev.sweety.sql4j.impl.query.entity.SelectEntity;
 import dev.sweety.sql4j.impl.query.entity.UpdateEntity;
-import dev.sweety.sql4j.impl.query.param.ParamQuery;
 import dev.sweety.sql4j.impl.query.table.CreateTable;
 import dev.sweety.sql4j.impl.query.table.DropTable;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
 public record Repository<Entity>(Table<Entity> table) {
 
     public Repository(Table<Entity> table) {
-        TableRegistry.register(this.table = table);
+        this.table = table;
     }
 
-    private static <T> String name(final Class<T> table) {
-        final Table.Info tableInfo = table.getAnnotation(Table.Info.class);
-        if (tableInfo == null) throw new IllegalStateException("Missing @Table on " + table);
-        return tableInfo.name();
-    }
-
+    /**
+     * @deprecated Use {@link Database#createRepository(Class)} instead to ensure proper registry isolation.
+     */
+    @Deprecated
     public Repository(final Class<Entity> table) {
-        this(new Table<>(table, name(table)));
+        this(new TableRegistry().get(table));
     }
 
     public InsertEntity<Entity> insert(Entity entity) {
-        return new InsertEntity<>(table, entity);
+        return Query.insert(table, entity);
     }
 
     public UpdateEntity<Entity> update(Entity entity) {
-        return new UpdateEntity<>(table, entity);
+        return Query.update(table, entity);
     }
 
     public DeleteEntity<Entity> delete(Entity entity) {
-        return new DeleteEntity<>(table, entity);
+        return Query.delete(table, entity);
     }
 
     public SelectEntity<Entity> selectAll() {
-        return new SelectEntity<>(table);
+        return Query.selectAll(table);
     }
 
     public SelectEntity<Entity> selectWhere(String where, Object... params) {
@@ -65,19 +62,11 @@ public record Repository<Entity>(Table<Entity> table) {
     }
 
     public static <T> Query<T> cached(String key, Supplier<Query<T>> supplier) {
-        return QueryCache.get(key, supplier);
+        return QueryCache.getQuery(key, _ -> supplier.get());
     }
 
     public static SelectJoin.Builder join(Table<?>... tables) {
         return new SelectJoin.Builder().join(tables);
-    }
-
-    public static <T> CompletableFuture<T> execute(final SqlConnection connection, final String query, final QueryBinder bind, final QueryExecutor<T> execute) {
-        return generate(query, bind, execute).execute(connection);
-    }
-
-    public static <T> Query<T> generate(final String query, final QueryBinder bind, final QueryExecutor<T> execute) {
-        return ParamQuery.<T>builder().sql(query).bind(bind).execute(execute).build();
     }
 }
 

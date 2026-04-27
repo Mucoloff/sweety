@@ -19,16 +19,20 @@ public final class Table<T> {
     private final String name;
     private final Class<T> clazz;
 
-    private final List<Column> columnsList;
+    private final List<Column> columnsList = new ArrayList<>();
     private final Map<String, Column> columnsMap = new LinkedHashMap<>();
-    private final List<Column> primaryKeys;
-    private final List<ForeignKey> foreignKeys;
-    private final List<Column> updatableColumns;
-    private final Pair<List<Column>, Column> insertableColumns;
+    private final List<Column> primaryKeys = new ArrayList<>();
+    private final List<ForeignKey> foreignKeys = new ArrayList<>();
+    private final List<Column> updatableColumns = new ArrayList<>();
+    private Pair<List<Column>, Column> insertableColumns;
 
     public Table(Class<T> clazz, String name) {
         this.clazz = clazz;
         this.name = name;
+    }
+
+    public void initialize(TableRegistry registry) {
+        if (!columnsList.isEmpty()) return; // Already initialized
 
         List<Column> cols = new ArrayList<>();
         List<Column> pks = new ArrayList<>();
@@ -45,7 +49,7 @@ public final class Table<T> {
 
             ForeignKey.Info fkInfo = field.getAnnotation(ForeignKey.Info.class);
             if (fkInfo != null) {
-                Table<?> refTable = TableRegistry.get(fkInfo.table());
+                Table<?> refTable = registry.get(fkInfo.table());
                 Column refCol = refTable.column(fkInfo.column());
                 fks.add(new ForeignKey(col, refTable, refCol, true, fkInfo.onDelete(), fkInfo.onUpdate()));
             }
@@ -61,15 +65,14 @@ public final class Table<T> {
             }
         }
 
-        this.columnsList = List.copyOf(cols);
-        this.primaryKeys = List.copyOf(pks);
-        this.foreignKeys = List.copyOf(fks);
-        this.updatableColumns = List.copyOf(updatable);
+        this.columnsList.addAll(cols);
+        this.primaryKeys.addAll(pks);
+        this.foreignKeys.addAll(fks);
+        this.updatableColumns.addAll(updatable);
         this.insertableColumns = Pair.of(
                 cols.stream().filter(c -> !c.isAutoIncrement()).toList(),
                 autoInc
         );
-
     }
 
     public int bindColumns(PreparedStatement ps, List<Column> cols, Object instance, int startIdx) throws SQLException {
