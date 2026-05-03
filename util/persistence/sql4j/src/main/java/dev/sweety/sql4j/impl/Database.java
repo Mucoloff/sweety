@@ -57,7 +57,9 @@ public class Database implements AutoCloseable {
 
     public <R extends Repository<E>, E> R getOrCreateRepository(final Class<E> entityClass, Function<Class<E>, Repository<E>> factory) {
         //noinspection unchecked
-        return (R) repositories.computeIfAbsent(entityClass, k -> factory.apply((Class<E>) k));
+        R repo = (R) repositories.computeIfAbsent(entityClass, k -> factory.apply((Class<E>) k));
+        repo.create(dialect(), true).execute(connection).join();
+        return repo;
     }
 
     public TableRegistry tableRegistry() {

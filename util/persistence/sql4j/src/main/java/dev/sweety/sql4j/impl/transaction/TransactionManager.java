@@ -29,12 +29,7 @@ public class TransactionManager {
     /**
      * Wrapper che esegue le query usando la connection della transazione
      */
-    public static class Transaction {
-        private final Connection con;
-
-        public Transaction(final Connection con) {
-            this.con = con;
-        }
+    public record Transaction(Connection con) {
 
         public <T> T execute(Query<T> query) throws SQLException {
             return QueryExecutor.execute(con, query);

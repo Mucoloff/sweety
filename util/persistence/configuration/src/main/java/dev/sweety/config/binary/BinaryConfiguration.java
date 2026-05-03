@@ -143,7 +143,7 @@ public class BinaryConfiguration extends Configuration {
 
     private Map<String, Object> readMap(DataInputStream in) throws IOException {
         int size = in.readInt();
-        Map<String, Object> map = new HashMap<>(size);
+        Map<String, Object> map = new TreeMap<>();
 
         for (int i = 0; i < size; i++) {
             String key = in.readUTF();

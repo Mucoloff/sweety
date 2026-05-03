@@ -21,8 +21,8 @@ public class RandomUtils {
     public <E> E randomElement(Collection<? extends E> collection) {
         if (collection == null || collection.isEmpty()) return null;
         int index = RANDOM.nextInt(collection.size());
-        if (collection instanceof List)
-            return ((List<? extends E>) collection).get(index);
+        if (collection instanceof List<? extends E> list)
+            return list.get(index);
         Iterator<? extends E> iter = collection.iterator();
         for (int i = 0; i < index; i++) iter.next();
         return iter.next();

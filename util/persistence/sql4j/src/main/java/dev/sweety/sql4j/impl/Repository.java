@@ -61,12 +61,5 @@ public record Repository<Entity>(Table<Entity> table) {
         return new DropTable(this.table);
     }
 
-    public static <T> Query<T> cached(String key, Supplier<Query<T>> supplier) {
-        return QueryCache.getQuery(key, _ -> supplier.get());
-    }
-
-    public static SelectJoin.Builder join(Table<?>... tables) {
-        return new SelectJoin.Builder().join(tables);
-    }
 }
 

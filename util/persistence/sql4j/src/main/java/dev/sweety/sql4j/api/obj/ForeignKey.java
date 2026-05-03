@@ -21,8 +21,11 @@ public record ForeignKey(
     @Target(ElementType.FIELD)
     public @interface Info {
         Class<?> table();
+
         String column() default "id";
+
         ForeignKey.Action onDelete() default ForeignKey.Action.NO_ACTION;
+
         ForeignKey.Action onUpdate() default ForeignKey.Action.NO_ACTION;
     }
 

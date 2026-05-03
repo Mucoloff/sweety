@@ -12,19 +12,20 @@ public record QueryResult(byte info, int affectedRows, List<Integer> generatedKe
 
     public static QueryResult fromStatement(PreparedStatement pst) throws SQLException {
         boolean hasResultSet = pst.execute();
-        List<Map<String, Object>> resultList = null;
-        int affectedRows = 0;
+        List<Map<String, Object>> resultList;
+        int affectedRows;
         List<Integer> generatedKeysList = new ArrayList<>();
         byte info = 0;
 
         if (hasResultSet) {
             info |= 0x01; // Has result set
+            affectedRows = 0;
             try (ResultSet rs = pst.getResultSet()) {
                 resultList = deserializeResultSet(rs);
             }
-
         } else {
             affectedRows = pst.getUpdateCount();
+            resultList = List.of();
         }
 
         try (ResultSet gkRs = pst.getGeneratedKeys()) {
@@ -46,8 +47,8 @@ public record QueryResult(byte info, int affectedRows, List<Integer> generatedKe
     }
 
     public static List<Map<String, Object>> deserializeResultSet(ResultSet rs) throws SQLException {
-        List<Map<String, Object>> resultsList = new ArrayList<>();
         int columnCount = rs.getMetaData().getColumnCount();
+        List<Map<String, Object>> resultsList = new ArrayList<>();
 
         while (rs.next()) {
             Map<String, Object> row = new HashMap<>(columnCount);

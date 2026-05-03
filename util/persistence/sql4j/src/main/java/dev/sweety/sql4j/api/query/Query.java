@@ -5,6 +5,7 @@ import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.functions.QueryBinder;
 import dev.sweety.sql4j.api.query.functions.QueryExecutor;
 import dev.sweety.sql4j.impl.query.QueryCache;
+import dev.sweety.sql4j.impl.query.SelectJoin;
 import dev.sweety.sql4j.impl.query.entity.DeleteEntity;
 import dev.sweety.sql4j.impl.query.entity.InsertEntity;
 import dev.sweety.sql4j.impl.query.entity.SelectEntity;
@@ -16,6 +17,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 public sealed interface Query<T> permits AbstractQuery, UnsafeQuery {
 
@@ -77,5 +79,13 @@ public sealed interface Query<T> permits AbstractQuery, UnsafeQuery {
 
     static CompletableFuture<QueryResult> execute(final SqlConnection connection, final String query, final Object... params) {
         return generic(query, params).execute(connection);
+    }
+
+    static <T> Query<T> cached(String key, Supplier<Query<T>> supplier) {
+        return QueryCache.getQuery(key, _ -> supplier.get());
+    }
+
+    static SelectJoin.Builder join(Table<?>... tables) {
+        return new SelectJoin.Builder().join(tables);
     }
 }

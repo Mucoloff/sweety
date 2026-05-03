@@ -4,6 +4,7 @@ import dev.sweety.config.common.TextConfiguration;
 
 import java.io.*;
 import java.util.Map;
+import java.util.TreeMap;
 
 public class YamlConfiguration extends TextConfiguration {
 

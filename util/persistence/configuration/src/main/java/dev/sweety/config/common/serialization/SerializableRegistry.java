@@ -42,12 +42,16 @@ public class SerializableRegistry {
 
         private static Executable search(final Class<? extends ConfigSerializable> clazz) throws NoSuchMethodException {
             final List<Constructor<?>> constructors = Arrays.stream(clazz.getConstructors())
-                    .filter(constructor -> constructor.getParameterCount() == 1 && constructor.getParameterTypes()[0].equals(Map.class)
+                    .filter(constructor -> constructor.getParameterCount() == 1 && (
+                                    constructor.getParameterTypes()[0].equals(Map.class)
+                            )
                     )
                     .toList();
 
             final List<Method> methods = Arrays.stream(clazz.getMethods())
-                    .filter(method -> method.getParameterCount() == 1 && method.getParameterTypes()[0].equals(Map.class) && method.getReturnType().equals(clazz) && (method.getModifiers() & Modifier.STATIC) != 0)
+                    .filter(method -> method.getParameterCount() == 1 && (
+                            method.getParameterTypes()[0].equals(Map.class)
+                    ) && method.getReturnType().equals(clazz) && (method.getModifiers() & Modifier.STATIC) != 0)
                     .toList();
 
             if (constructors.isEmpty() && methods.isEmpty()) {

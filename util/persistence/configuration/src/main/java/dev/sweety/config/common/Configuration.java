@@ -7,14 +7,11 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public abstract class Configuration {
 
-    private final Map<String, Object> map = new HashMap<>();
+    private final Map<String, Object> map = new TreeMap<>();
 
     protected abstract void dumpToStream(Map<String, Object> map, OutputStream out) throws IOException;
 
@@ -440,9 +437,9 @@ public abstract class Configuration {
     @NotNull
     public <T extends ConfigSerializable> Map<String, T> getSerializableMap(@NotNull String path, @NotNull Class<T> clazz) {
         final Map<String, Object> map = getMap(path);
-        if (map == null) return new HashMap<>(0);
+        if (map == null) return new TreeMap<>();
 
-        final Map<String, T> result = new HashMap<>(map.size());
+        final Map<String, T> result = new TreeMap<>();
 
         for (Map.Entry<String, Object> entry : map.entrySet()) {
             //noinspection unchecked
@@ -499,7 +496,7 @@ public abstract class Configuration {
                 //noinspection unchecked
                 current = (Map<String, Object>) m;
             } else {
-                final Map<String, Object> newSection = new HashMap<>();
+                final Map<String, Object> newSection = new TreeMap<>();
                 current.put(parts[i], newSection);
                 current = newSection;
             }
@@ -535,7 +532,7 @@ public abstract class Configuration {
     }
 
     private Map<String, Object> serializeMap(Map<?, ?> map) {
-        Map<String, Object> result = new HashMap<>(map.size());
+        Map<String, Object> result = new TreeMap<>();
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             Object value = entry.getValue();
             Object serializedValue;

@@ -1,7 +1,8 @@
 package dev.sweety.config;
 
+import dev.sweety.config.common.Configuration;
 import dev.sweety.config.common.serialization.ConfigSerializable;
-import dev.sweety.config.prop.PropConfiguration;
+import dev.sweety.config.yml.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
@@ -13,7 +14,7 @@ public class TestProperties {
 
         String name;
         int age;
-        Map<String, Object> map = new HashMap<>();
+        Map<String, Object> map = tree();
 
         public TestObj(String name, int age) {
             this.name = name;
@@ -23,9 +24,9 @@ public class TestProperties {
         }
 
         public TestObj(Map<String, Object> me) {
-            this.name = (String) me.get("name");
-            this.age = (int) me.get("age");
-            this.map = (Map<String, Object>) me.get("map");
+            this.name = getAs(me, "name");
+            this.age = getAs(me, "age");
+            this.map = getAs(me, "map");
         }
 
         @Override
@@ -35,7 +36,7 @@ public class TestProperties {
 
         @Override
         public Map<String, Object> serialize() {
-            final Map<String, Object> me = new HashMap<>();
+            final Map<String, Object> me = tree();
             me.put("name", name);
             me.put("age", age);
             me.put("map", map);
@@ -44,7 +45,7 @@ public class TestProperties {
     }
 
     public static void main(String[] args) throws IOException {
-        PropConfiguration configuration = new PropConfiguration();
+        Configuration configuration = new YamlConfiguration();
 
         configuration.set("test.key", "test value");
 
@@ -52,16 +53,17 @@ public class TestProperties {
 
         configuration.set("test.obj", new TestObj("test", 10));
 
+        File file = new File("test.yml");
 
-        configuration.save(new File("test.properties"));
+        configuration.save(file);
 
 
-        configuration.load(new File("test.properties"));
+        configuration.load(file);
 
         testRead(configuration);
     }
 
-    private static void testRead(PropConfiguration configuration) {
+    private static void testRead(Configuration configuration) {
         System.out.println(configuration.getString("test.key"));
         System.out.println(configuration.getStringList("test.list"));
         System.out.println(configuration.getSerializable("test.obj", TestObj.class));

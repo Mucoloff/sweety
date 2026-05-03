@@ -22,9 +22,9 @@ public final class SelectJoin extends AbstractQuery<List<Map<String, Object>>> {
      */
     private SelectJoin(List<Table<?>> tables, List<String> onClauses, String whereClause, Object... params) {
         if (tables.size() < 2)
-            throw new IllegalArgumentException("Serve almeno 2 tabelle per un join");
+            throw new IllegalArgumentException("Servono almeno 2 tabelle per un join");
         if (onClauses.size() != tables.size() - 1)
-            throw new IllegalArgumentException("Numero di onClauses deve essere tables.size() - 1");
+            throw new IllegalArgumentException("Numero di onClauses deve essere " + (tables.size() - 1));
 
         this.params = Arrays.asList(params);
         this.sql = buildSql(tables, onClauses, whereClause);

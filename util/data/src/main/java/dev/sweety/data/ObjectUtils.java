@@ -2,8 +2,7 @@ package dev.sweety.data;
 
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Arrays;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -30,6 +29,16 @@ public final class ObjectUtils {
     @SafeVarargs
     public static <T, R> @NotNull R nullOption(T t, Function<@NotNull T, R> getter, @NotNull R fallback, Predicate<T>... predicates) {
         return isNull(t, predicates) ? fallback : getter.apply(t);
+    }
+
+    public static <E> E getByOrdinalMod(int ordinal, Iterable<? extends E> values) {
+        if (values == null || !values.iterator().hasNext()) return null;
+        int absIndex = Math.abs(ordinal);
+        if (values instanceof List<? extends E> list) return list.get(absIndex % list.size());
+        int index = values instanceof Collection<? extends E> collection ? absIndex % collection.size() : absIndex;
+        Iterator<? extends E> iter = values.iterator();
+        for (int i = 0; i < index; i++) iter.next();
+        return iter.next();
     }
 
     @SafeVarargs
