@@ -1,18 +1,24 @@
 package dev.sweety.sql4j.impl.query.param;
 
+import dev.sweety.sql4j.api.obj.Row;
+
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-public record QueryResult(byte info, int affectedRows, List<Integer> generatedKeys, List<Map<String, Object>> result) {
+/**
+ * Represents the result of a generic SQL execution via {@link ParamQuery}.
+ *
+ * <p>The {@code result} field (a {@link List} of {@link Row}) is populated for SELECT queries.
+ * For DML queries (INSERT, UPDATE, DELETE), {@code affectedRows} is set and {@code result} is empty.
+ */
+public record QueryResult(byte info, int affectedRows, List<Integer> generatedKeys, List<Row> result) {
 
     public static QueryResult fromStatement(PreparedStatement pst) throws SQLException {
         boolean hasResultSet = pst.execute();
-        List<Map<String, Object>> resultList;
+        List<Row> resultList;
         int affectedRows;
         List<Integer> generatedKeysList = new ArrayList<>();
         byte info = 0;
@@ -21,7 +27,7 @@ public record QueryResult(byte info, int affectedRows, List<Integer> generatedKe
             info |= 0x01; // Has result set
             affectedRows = 0;
             try (ResultSet rs = pst.getResultSet()) {
-                resultList = deserializeResultSet(rs);
+                resultList = Row.fromResultSetAll(rs);
             }
         } else {
             affectedRows = pst.getUpdateCount();
@@ -44,20 +50,5 @@ public record QueryResult(byte info, int affectedRows, List<Integer> generatedKe
 
     public boolean hasGeneratedKeys() {
         return (info & 0x02) != 0;
-    }
-
-    public static List<Map<String, Object>> deserializeResultSet(ResultSet rs) throws SQLException {
-        int columnCount = rs.getMetaData().getColumnCount();
-        List<Map<String, Object>> resultsList = new ArrayList<>();
-
-        while (rs.next()) {
-            Map<String, Object> row = new HashMap<>(columnCount);
-            for (int i = 1; i <= columnCount; i++) {
-                row.put(rs.getMetaData().getColumnLabel(i), rs.getObject(i));
-            }
-            resultsList.add(row);
-        }
-
-        return resultsList;
     }
 }

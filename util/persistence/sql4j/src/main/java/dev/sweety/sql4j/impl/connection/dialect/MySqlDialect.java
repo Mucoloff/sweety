@@ -30,6 +30,21 @@ public class MySqlDialect implements Dialect {
         if (type == byte[].class)
             return "BLOB";
 
+        if (type == java.util.UUID.class)
+            return "VARCHAR(36)";
+
+        if (type == java.time.LocalDate.class)
+            return "DATE";
+
+        if (type == java.time.LocalDateTime.class)
+            return "DATETIME";
+
+        if (type == java.math.BigDecimal.class)
+            return "DECIMAL(19,4)";
+
+        if (type.isEnum())
+            return "VARCHAR(255)";
+
         return "VARCHAR(255)";
     }
 
@@ -45,5 +60,21 @@ public class MySqlDialect implements Dialect {
             case SET_NULL -> "SET NULL";
             case RESTRICT, NO_ACTION -> "RESTRICT";
         };
+    }
+
+    @Override
+    public String upsertSyntax(String table, java.util.List<String> insertCols, java.util.List<String> updateCols, java.util.List<String> pkCols) {
+        String cols = String.join(", ", insertCols);
+        String placeholders = insertCols.stream().map(c -> "?").collect(java.util.stream.Collectors.joining(", "));
+        
+        if (updateCols.isEmpty()) {
+            return "INSERT IGNORE INTO " + table + " (" + cols + ") VALUES (" + placeholders + ")";
+        }
+
+        String updates = updateCols.stream()
+                .map(c -> c + " = VALUES(" + c + ")")
+                .collect(java.util.stream.Collectors.joining(", "));
+        
+        return "INSERT INTO " + table + " (" + cols + ") VALUES (" + placeholders + ") ON DUPLICATE KEY UPDATE " + updates;
     }
 }

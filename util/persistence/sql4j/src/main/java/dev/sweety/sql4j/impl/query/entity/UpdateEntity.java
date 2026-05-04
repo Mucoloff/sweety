@@ -18,12 +18,12 @@ public final class UpdateEntity<T> extends AbstractQuery<Integer> {
 
     private record Metadata(List<Column> updateColumns, List<Column> primaryKeys, String sql) {}
 
-    public UpdateEntity(final Table<T> table, final T instance) {
+    public UpdateEntity(final Table<T> table, final T instance, QueryCache cache) {
         this.table = table;
         this.instance = instance;
 
         String cacheKey = "update:meta:" + table.name() + ":" + table.clazz().getName();
-        this.metadata = QueryCache.getMetadata(cacheKey, _ -> {
+        this.metadata = cache.getMetadata(cacheKey, _ -> {
             List<Column> primaryKeys = table.primaryKeys();
             List<Column> updateColumns = table.updatableColumns();
 

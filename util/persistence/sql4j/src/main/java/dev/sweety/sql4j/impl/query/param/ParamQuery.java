@@ -1,11 +1,14 @@
 package dev.sweety.sql4j.impl.query.param;
 
+import dev.sweety.sql4j.api.obj.Row;
 import dev.sweety.sql4j.api.query.AbstractQuery;
 import dev.sweety.sql4j.api.query.functions.QueryBinder;
 import dev.sweety.sql4j.api.query.functions.QueryExecutor;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 
 public final class ParamQuery<T> extends AbstractQuery<T> {
 
@@ -21,29 +24,38 @@ public final class ParamQuery<T> extends AbstractQuery<T> {
         this.returnGeneratedKeys = b.returnGeneratedKeys;
     }
 
-    public static <T> Builder<T> builder() {
-        return new Builder<>();
+    // --- Typed builder (user specifies executor + return type) ---
+
+    public static <T> Builder<T> builder(String sql, QueryExecutor<T> executor) {
+        return new Builder<>(sql, executor);
+    }
+
+    /**
+     * Convenience builder for SELECT queries that return {@code List<Row>}.
+     * The executor is pre-configured to deserialize the ResultSet into {@link Row} objects.
+     * Only {@link Builder#bind(QueryBinder)} and {@link Builder#build()} are needed.
+     */
+    public static Builder<List<Row>> rowBuilder(String sql) {
+        return new Builder<>(sql, ps -> {
+            try (ResultSet rs = ps.executeQuery()) {
+                return Row.fromResultSetAll(rs);
+            }
+        });
     }
 
     public static final class Builder<T> {
-        private String sql;
-        private QueryBinder binder = _ -> {
-        };
-        private QueryExecutor<T> executor;
-        private boolean returnGeneratedKeys;
+        private final String sql;
+        private final QueryExecutor<T> executor;
+        private QueryBinder binder = QueryBinder.EMPTY;
+        private boolean returnGeneratedKeys = false;
 
-        public Builder<T> sql(String sql) {
+        Builder(String sql, QueryExecutor<T> executor) {
             this.sql = sql;
-            return this;
+            this.executor = executor;
         }
 
         public Builder<T> bind(QueryBinder binder) {
             this.binder = binder;
-            return this;
-        }
-
-        public Builder<T> execute(QueryExecutor<T> executor) {
-            this.executor = executor;
             return this;
         }
 
@@ -53,8 +65,8 @@ public final class ParamQuery<T> extends AbstractQuery<T> {
         }
 
         public ParamQuery<T> build() {
-            if (sql == null || executor == null)
-                throw new IllegalStateException("sql and executor required");
+            if (sql == null || sql.isBlank()) throw new IllegalStateException("sql required");
+            if (executor == null) throw new IllegalStateException("executor required");
             return new ParamQuery<>(this);
         }
     }
@@ -79,4 +91,3 @@ public final class ParamQuery<T> extends AbstractQuery<T> {
         return returnGeneratedKeys;
     }
 }
-

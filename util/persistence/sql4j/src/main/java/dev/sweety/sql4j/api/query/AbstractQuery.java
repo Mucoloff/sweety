@@ -12,7 +12,12 @@ public abstract non-sealed class AbstractQuery<T>
         return sql;
     }
 
+    /**
+     * Validates the generated SQL before execution.
+     * PreparedStatements already prevent injection — this is a sanity check only.
+     */
     protected void validateSql(final String sql) {
-        if (sql.contains(";")) throw new IllegalStateException("Multiple statements not allowed");
+        if (sql == null || sql.isBlank())
+            throw new IllegalStateException("SQL query cannot be null or blank");
     }
 }

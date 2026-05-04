@@ -6,6 +6,7 @@ import dev.sweety.sql4j.api.connection.SqlConnection;
 import dev.sweety.sql4j.impl.connection.ConnectionType;
 
 import dev.sweety.sql4j.api.query.chain.QueryChain;
+import dev.sweety.sql4j.impl.query.QueryCache;
 import dev.sweety.sql4j.impl.transaction.TransactionManager;
 import dev.sweety.sql4j.api.obj.table.TableRegistry;
 
@@ -21,6 +22,7 @@ public class Database implements AutoCloseable {
 
     private final Map<Class<?>, Repository<?>> repositories = new ConcurrentHashMap<>();
     private final TableRegistry tableRegistry = new TableRegistry();
+    private final QueryCache queryCache = new QueryCache();
     private final SqlConnection connection;
     private final Dialect dialect;
     private final TransactionManager transactionManager;
@@ -48,18 +50,26 @@ public class Database implements AutoCloseable {
     }
 
     public <R extends Repository<E>, E> R createRepository(final Class<E> entityClass) {
-        return getOrCreateRepository(entityClass, clazz -> new Repository<>(tableRegistry.get(clazz)));
+        return getOrCreateRepository(entityClass,
+                clazz -> new Repository<>(tableRegistry.get(clazz), dialect, queryCache));
     }
 
     public <R extends Repository<E>, E> R createRepository(final Class<E> entityClass, String customTableName) {
-        return getOrCreateRepository(entityClass, clazz -> new Repository<>(tableRegistry.getOrCreate(clazz, customTableName)));
+        return getOrCreateRepository(entityClass,
+                clazz -> new Repository<>(tableRegistry.getOrCreate(clazz, customTableName), dialect, queryCache));
     }
 
-    public <R extends Repository<E>, E> R getOrCreateRepository(final Class<E> entityClass, Function<Class<E>, Repository<E>> factory) {
+    public <R extends Repository<E>, E> R getOrCreateRepository(final Class<E> entityClass,
+                                                                  Function<Class<E>, Repository<E>> factory) {
         //noinspection unchecked
-        R repo = (R) repositories.computeIfAbsent(entityClass, k -> factory.apply((Class<E>) k));
-        repo.create(dialect(), true).execute(connection).join();
-        return repo;
+        return (R) repositories.computeIfAbsent(entityClass, k -> {
+            // CREATE TABLE only happens once — inside computeIfAbsent
+            Repository<E> repo = factory.apply((Class<E>) k);
+            repo.create(true).execute(connection).join();
+            // Automatically add any missing columns for schema evolution
+            repo.migrateSchema(connection);
+            return repo;
+        });
     }
 
     public TableRegistry tableRegistry() {
@@ -83,7 +93,23 @@ public class Database implements AutoCloseable {
         return transactionManager.transaction(chain);
     }
 
-    public CompletableFuture<Void> transaction(final TransactionManager.TransactionBlock block) {
+    /**
+     * Executes a transactional block with savepoint support.
+     * Use this for complex transactions that require savepoints or conditional rollbacks.
+     *
+     * <pre>{@code
+     * db.transact(tx -> {
+     *     tx.execute(repo.insert(entity));
+     *     tx.savepoint("after_insert");
+     *     try {
+     *         tx.execute(riskyQuery);
+     *     } catch (SQLException e) {
+     *         tx.rollbackTo("after_insert");
+     *     }
+     * }).join();
+     * }</pre>
+     */
+    public CompletableFuture<Void> transact(final TransactionManager.TransactionBlock block) {
         return transactionManager.transaction(block);
     }
 

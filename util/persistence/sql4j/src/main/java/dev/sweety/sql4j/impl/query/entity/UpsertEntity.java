@@ -1,5 +1,6 @@
 package dev.sweety.sql4j.impl.query.entity;
 
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
@@ -13,7 +14,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public final class InsertEntity<T> extends AbstractQuery<Pair<Integer, T>> {
+public final class UpsertEntity<T> extends AbstractQuery<Pair<Integer, T>> {
 
     private final Table<T> table;
     private final T instance;
@@ -21,33 +22,43 @@ public final class InsertEntity<T> extends AbstractQuery<Pair<Integer, T>> {
 
     private record Metadata(List<Column> insertColumns, @Nullable Column generatedColumn, String sql) {}
 
-    public InsertEntity(Table<T> table, T instance, QueryCache cache) {
+    public UpsertEntity(Table<T> table, Dialect dialect, T instance, QueryCache cache) {
         this.table = table;
         this.instance = instance;
 
-        String cacheKey = "insert:meta:" + table.name() + ":" + table.clazz().getName();
+        String cacheKey = "upsert:meta:" + table.name() + ":" + table.clazz().getName();
         this.metadata = cache.getMetadata(cacheKey, _ -> {
             Pair<List<Column>, Column> cols = table.insertableColumns();
             List<Column> insertColumns = cols.key();
             Column generatedColumn = cols.value();
-            int fieldsPerRow = insertColumns.size();
 
-            String colNames = insertColumns.stream().map(Column::name).collect(Collectors.joining(", "));
-            String placeholders = "(" + "?,".repeat(fieldsPerRow).replaceAll(",$", "") + ")";
-            String sql = "INSERT INTO " + table.name() + " (" + colNames + ") VALUES " + placeholders;
+            List<String> insertColNames = insertColumns.stream().map(Column::name).toList();
+            List<String> pkColNames = table.primaryKeys().stream().map(Column::name).toList();
+            
+            // By default, UPSERT updates all columns except the primary keys
+            List<String> updateColNames = insertColumns.stream()
+                    .map(Column::name)
+                    .filter(name -> !pkColNames.contains(name))
+                    .toList();
+
+            if (pkColNames.isEmpty()) {
+                throw new IllegalStateException("Table " + table.name() + " has no primary keys, cannot UPSERT.");
+            }
+
+            String sql = dialect.upsertSyntax(table.name(), insertColNames, updateColNames, pkColNames);
 
             return new Metadata(insertColumns, generatedColumn, sql);
         });
     }
 
-    private InsertEntity(Table<T> table, Metadata metadata, T instance) {
+    private UpsertEntity(Table<T> table, Metadata metadata, T instance) {
         this.table = table;
         this.metadata = metadata;
         this.instance = instance;
     }
 
-    public InsertEntity<T> copy(T instance) {
-        return new InsertEntity<>(table, metadata, instance);
+    public UpsertEntity<T> copy(T instance) {
+        return new UpsertEntity<>(table, metadata, instance);
     }
 
     @Override
@@ -58,6 +69,8 @@ public final class InsertEntity<T> extends AbstractQuery<Pair<Integer, T>> {
     @Override
     public void bind(PreparedStatement ps) throws SQLException {
         int idx = 1;
+        // In most dialects, UPSERT parameter bindings only require the INSERT parameters once.
+        // H2 MERGE, SQLite/PostgreSQL ON CONFLICT, MySQL ON DUPLICATE KEY UPDATE all use the initial VALUES list.
         for (Column c : metadata.insertColumns) c.set(ps, idx++, instance);
     }
 
@@ -71,6 +84,8 @@ public final class InsertEntity<T> extends AbstractQuery<Pair<Integer, T>> {
                     Object key = rs.getObject(1);
                     metadata.generatedColumn.set(instance, key);
                 }
+            } catch (SQLException ignore) {
+                // Some drivers/dialects don't return generated keys on UPSERT when it updates instead of inserts
             }
         }
         return Pair.of(updated, instance);

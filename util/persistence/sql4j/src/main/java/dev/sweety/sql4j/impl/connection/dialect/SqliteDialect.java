@@ -24,6 +24,18 @@ public final class SqliteDialect implements Dialect {
         if (type == byte[].class)
             return "BLOB";
 
+        if (type == java.util.UUID.class)
+            return "TEXT";
+
+        if (type == java.time.LocalDate.class || type == java.time.LocalDateTime.class)
+            return "TEXT";
+
+        if (type == java.math.BigDecimal.class)
+            return "REAL";
+
+        if (type.isEnum())
+            return "TEXT";
+
         return "TEXT";
     }
 
@@ -46,6 +58,23 @@ public final class SqliteDialect implements Dialect {
             case RESTRICT -> "RESTRICT";
             case NO_ACTION -> "NO ACTION";
         };
+    }
+
+    @Override
+    public String upsertSyntax(String table, java.util.List<String> insertCols, java.util.List<String> updateCols, java.util.List<String> pkCols) {
+        String cols = String.join(", ", insertCols);
+        String placeholders = insertCols.stream().map(c -> "?").collect(java.util.stream.Collectors.joining(", "));
+        String pks = String.join(", ", pkCols);
+        
+        if (updateCols.isEmpty()) {
+            return "INSERT INTO " + table + " (" + cols + ") VALUES (" + placeholders + ") ON CONFLICT (" + pks + ") DO NOTHING";
+        }
+
+        String updates = updateCols.stream()
+                .map(c -> c + " = excluded." + c)
+                .collect(java.util.stream.Collectors.joining(", "));
+        
+        return "INSERT INTO " + table + " (" + cols + ") VALUES (" + placeholders + ") ON CONFLICT (" + pks + ") DO UPDATE SET " + updates;
     }
 
 }

@@ -41,26 +41,29 @@ public final class CreateTable extends AbstractQuery<Void> {
         sb.append(table.name()).append(" (");
 
         StringJoiner cols = new StringJoiner(", ");
+        boolean isSinglePK = table.primaryKeys().size() == 1;
         boolean compositePK = table.primaryKeys().size() > 1;
 
         for (Column c : table.columns()) {
+            // Case: single PK + autoIncrement — inline definition only (no separate constraint)
+            if (c.isPrimaryKey() && c.isAutoIncrement() && isSinglePK) {
+                cols.add(c.name() + " INTEGER PRIMARY KEY " + dialect.autoIncrement());
+                continue;
+            }
+
+            if (c.isAutoIncrement()) {
+                // autoIncrement on a non-single-PK column is unsupported
+                throw new IllegalStateException(
+                        "AUTOINCREMENT can only be used on a single INTEGER PRIMARY KEY column. " +
+                        "Offending column: '" + c.name() + "' in table '" + table.name() + "'");
+            }
+
             StringBuilder col = new StringBuilder();
             col.append(c.name()).append(" ").append(dialect.sqlType(c.field().getType()));
 
-            boolean isSinglePK = table.primaryKeys().size() == 1;
-
-            if (c.isPrimaryKey() && c.isAutoIncrement() && isSinglePK) {
-                // solo PK singola e tipo INTEGER
-                col = new StringBuilder(c.name() + " INTEGER PRIMARY KEY " + dialect.autoIncrement());
-            } else {
-                // normale colonna
-                if (c.isPrimaryKey() && !c.isAutoIncrement() && isSinglePK) {
-                    col.append(" PRIMARY KEY");
-                }
-                if (c.isAutoIncrement()) {
-                    // errore se non è INTEGER PK
-                    throw new IllegalStateException("AUTOINCREMENT can only be used on a single INTEGER PRIMARY KEY: " + c.name()+ "\n: sql: " + sb.append(cols.add(col)) + " //interrupted");
-                }
+            // NOT NULL unless explicitly nullable
+            if (!c.isNullable() && !c.isPrimaryKey()) {
+                col.append(" NOT NULL");
             }
 
             cols.add(col.toString());
@@ -68,25 +71,27 @@ public final class CreateTable extends AbstractQuery<Void> {
 
         sb.append(cols);
 
-        // PK separata
-        if (compositePK || (table.primaryKeys().size() == 1 && !table.primaryKeys().getFirst().isAutoIncrement())) {
+        // Separate PRIMARY KEY constraint for:
+        // - composite PKs
+        // - single PK that is NOT autoIncrement
+        if (compositePK || (isSinglePK && !table.primaryKeys().getFirst().isAutoIncrement())) {
             sb.append(", PRIMARY KEY (")
                     .append(table.primaryKeys().stream().map(Column::name).collect(Collectors.joining(", ")))
                     .append(")");
         }
 
-        // FK
-        for (ForeignKey fk : table.foreignKeys()) {
-            sb.append(", FOREIGN KEY (").append(fk.local().name()).append(")")
-                    .append(" REFERENCES ").append(fk.referencedTable().name())
-                    .append("(").append(fk.referencedColumn().name()).append(")")
-                    .append(" ON DELETE ").append(dialect.foreignKeyAction(fk.onDelete()))
-                    .append(" ON UPDATE ").append(dialect.foreignKeyAction(fk.onUpdate()));
+        // FK constraints
+        if (dialect.supportsForeignKeys()) {
+            for (ForeignKey fk : table.foreignKeys()) {
+                sb.append(", FOREIGN KEY (").append(fk.local().name()).append(")")
+                        .append(" REFERENCES ").append(fk.referencedTable().name())
+                        .append("(").append(fk.referencedColumn().name()).append(")")
+                        .append(" ON DELETE ").append(dialect.foreignKeyAction(fk.onDelete()))
+                        .append(" ON UPDATE ").append(dialect.foreignKeyAction(fk.onUpdate()));
+            }
         }
 
         sb.append(")");
         return sb.toString();
     }
-
-
 }

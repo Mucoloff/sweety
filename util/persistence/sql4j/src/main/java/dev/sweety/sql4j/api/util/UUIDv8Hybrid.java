@@ -9,26 +9,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class UUIDv8Hybrid {
 
     private static final SecureRandom RANDOM = new SecureRandom();
-    private static final File COUNTER_FILE = new File("uuid-v8.dat");
-    private static final AtomicLong COUNTER = new AtomicLong();
+    private static final AtomicLong COUNTER = new AtomicLong(RANDOM.nextLong());
     private static final long NODE_ID = RANDOM.nextLong();
-
-    static {
-        if (COUNTER_FILE.exists()) {
-            try (DataInputStream dis = new DataInputStream(new FileInputStream(COUNTER_FILE))) {
-                COUNTER.set(readVarLong(dis));
-            } catch (IOException e) {
-                COUNTER.set(0);
-            }
-        }
-
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(COUNTER_FILE))) {
-                writeVarLong(dos, COUNTER.get());
-            } catch (IOException ignored) {
-            }
-        }));
-    }
 
     public static UUID generate(long timestamp) {
         final long mostSig = ((((timestamp & 0xFFFFFFFFL) << 32) | (((timestamp >> 32) & 0xFFFFL) << 16) | ((timestamp >> 48) & 0x0FFFL)) & ~(0xF000L)) | 0x1000L;

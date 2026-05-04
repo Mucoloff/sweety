@@ -44,7 +44,7 @@ public class SqlConnection implements AutoCloseable {
         try {
             return CompletableFuture.supplyAsync(() -> {
                 try (final Connection con = connection()) {
-                    return QueryExecutor.execute(con, query);
+                    return SqlRunner.execute(con, query);
                 } catch (SQLException e) {
                     throw new CompletionException(e);
                 }

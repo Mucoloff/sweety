@@ -1,10 +1,10 @@
-package dev.sweety.sql4j;
+package dev.sweety.sql4j.entity;
 
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 
-@Table.Info(name = "users")
-public class TestUser {
+@Table.Info(name = "datas")
+public class TestData {
 
     @Column.Info(primaryKey = true, autoIncrement = true)
     private int id;
@@ -12,17 +12,12 @@ public class TestUser {
     @Column.Info
     private String name;
 
-    @Column.Info
-    private int age;
+    public TestData() {}
 
-    public TestUser() {}
-
-    public TestUser(String name, int age) {
+    public TestData(String name) {
         this.name = name;
-        this.age = age;
     }
 
     public int getId() { return id; }
     public String getName() { return name; }
-    public int getAge() { return age; }
 }

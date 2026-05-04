@@ -1,6 +1,7 @@
 package dev.sweety.sql4j.impl.query;
 
 import dev.sweety.sql4j.api.obj.Column;
+import dev.sweety.sql4j.api.obj.Row;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
 
@@ -9,7 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 
-public final class SelectJoin extends AbstractQuery<List<Map<String, Object>>> {
+public final class SelectJoin extends AbstractQuery<List<Row>> {
 
     private final String sql;
     private final List<Object> params;
@@ -27,10 +28,10 @@ public final class SelectJoin extends AbstractQuery<List<Map<String, Object>>> {
             throw new IllegalArgumentException("Numero di onClauses deve essere " + (tables.size() - 1));
 
         this.params = Arrays.asList(params);
-        this.sql = buildSql(tables, onClauses, whereClause);
+        this.sql = buildJoinSql(tables, onClauses, whereClause);
     }
 
-    private String buildSql(List<Table<?>> tables, List<String> onClauses, String whereClause) {
+    private String buildJoinSql(List<Table<?>> tables, List<String> onClauses, String whereClause) {
         StringBuilder sb = new StringBuilder("SELECT ");
 
         List<String> cols = new ArrayList<>();
@@ -41,7 +42,6 @@ public final class SelectJoin extends AbstractQuery<List<Map<String, Object>>> {
         }
         sb.append(String.join(", ", cols));
 
-        // from + join
         sb.append(" FROM ").append(tables.getFirst().name());
         for (int i = 1; i < tables.size(); i++) {
             sb.append(" INNER JOIN ").append(tables.get(i).name())
@@ -68,17 +68,10 @@ public final class SelectJoin extends AbstractQuery<List<Map<String, Object>>> {
     }
 
     @Override
-    public List<Map<String, Object>> execute(PreparedStatement ps) throws SQLException {
-        ResultSet rs = ps.executeQuery();
-        List<Map<String, Object>> results = new ArrayList<>();
-        while (rs.next()) {
-            Map<String, Object> row = new LinkedHashMap<>();
-            for (int i = 1; i <= rs.getMetaData().getColumnCount(); i++) {
-                row.put(rs.getMetaData().getColumnLabel(i), rs.getObject(i));
-            }
-            results.add(row);
+    public List<Row> execute(PreparedStatement ps) throws SQLException {
+        try (ResultSet rs = ps.executeQuery()) {
+            return Row.fromResultSetAll(rs);
         }
-        return results;
     }
 
     public static class Builder {
@@ -91,13 +84,11 @@ public final class SelectJoin extends AbstractQuery<List<Map<String, Object>>> {
         private String whereClause = null;
         private final List<Object> params = new ArrayList<>();
 
-        public Builder() {
-
-        }
+        public Builder() {}
 
         public Builder join(Table<?>... tables) {
             for (Table<?> t : tables) {
-                if (tablesSet.add(t)) { // se non c’era già
+                if (tablesSet.add(t)) {
                     tablesList.add(t);
                 }
             }
@@ -123,5 +114,4 @@ public final class SelectJoin extends AbstractQuery<List<Map<String, Object>>> {
             return new SelectJoin(tablesList, onClausesList, whereClause, params.toArray());
         }
     }
-
 }

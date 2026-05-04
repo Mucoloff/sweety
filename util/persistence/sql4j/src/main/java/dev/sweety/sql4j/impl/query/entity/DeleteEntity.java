@@ -7,6 +7,7 @@ import dev.sweety.sql4j.impl.query.QueryCache;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,15 +20,14 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> {
     private record Metadata(List<Column> primaryKeys, String sql) {}
 
     @SafeVarargs
-    public DeleteEntity(final Table<T> table, final T... instances) {
+    public DeleteEntity(final Table<T> table, QueryCache cache, final T... instances) {
         this.table = table;
         this.instances = instances;
 
-        // Note: delete prototype is only valid for a specific number of instances
         int instancesCount = instances != null ? instances.length : 0;
 
         String cacheKey = "delete:meta:" + table.name() + ":" + table.clazz().getName() + ":" + instancesCount;
-        this.metadata = QueryCache.getMetadata(cacheKey, _ -> {
+        this.metadata = cache.getMetadata(cacheKey, _ -> {
             List<Column> pks = table.primaryKeys();
             StringBuilder sb = new StringBuilder("DELETE FROM ").append(table.name()).append(" WHERE ");
             if (pks.size() == 1) {
@@ -42,7 +42,7 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> {
                 sb.append(
                         instancesCount > 0
                                 ? String.join(", ",
-                                java.util.Collections.nCopies(instancesCount,
+                                Collections.nCopies(instancesCount,
                                         "(" + "?, ".repeat(pks.size()).replaceAll(", $", "") + ")"))
                                 : ""
                 );

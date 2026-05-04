@@ -1,16 +1,32 @@
 package dev.sweety.sql4j.api.query.chain;
 
-import dev.sweety.sql4j.api.connection.QueryExecutor;
-import dev.sweety.sql4j.api.connection.SqlConnection;
+import dev.sweety.sql4j.api.connection.SqlRunner;
 import dev.sweety.sql4j.api.query.Query;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 
-public class DependentQueryChain<I, O>
-        implements QueryChain<O> {
+/**
+ * A chain of queries where each step's input is the output of the previous step.
+ *
+ * <p>Useful for dependent operations, e.g. insert a parent entity and use its generated key
+ * to insert a child entity.
+ *
+ * <p>When invoked via {@link #execute(dev.sweety.sql4j.api.connection.SqlConnection)},
+ * all steps run inside a single transaction — if any step fails the whole chain is rolled back.
+ *
+ * <p>Example:
+ * <pre>{@code
+ * db.transaction(
+ *     DependentQueryChain.start(users.insert(user))
+ *         .then(result -> orders.insert(new Order(result.value().getId())))
+ * ).join();
+ * }</pre>
+ *
+ * @param <I> Input type (output of the previous step)
+ * @param <O> Output type of this step
+ */
+public class DependentQueryChain<I, O> implements QueryChain<O> {
 
     private final ChainableQuery<I, O> step;
     private final DependentQueryChain<?, I> previous;
@@ -23,9 +39,7 @@ public class DependentQueryChain<I, O>
         this.step = step;
     }
 
-    private static final class Start<O>
-            extends DependentQueryChain<Void, O> {
-
+    private static final class Start<O> extends DependentQueryChain<Void, O> {
         private Start(final ChainableQuery<Void, O> step) {
             super(null, step);
         }
@@ -39,22 +53,14 @@ public class DependentQueryChain<I, O>
         return new DependentQueryChain<>(this, next);
     }
 
-    public final CompletableFuture<O> execute(final SqlConnection connection) {
-        return CompletableFuture.supplyAsync(() -> {
-            try (final Connection con = connection.connection()) {
-                return execute(con);
-            } catch (final SQLException e) {
-                throw new CompletionException(e);
-            }
-        }, connection.executor());
-    }
-
+    /**
+     * Executes all steps in dependency order on the given connection.
+     * No transaction management — the caller controls commit/rollback.
+     */
     @Override
     public final O execute(final Connection con) throws SQLException {
         final I input = previous == null ? null : previous.execute(con);
         final Query<O> q = step.build(input);
-        return QueryExecutor.execute(con, q);
+        return SqlRunner.execute(con, q);
     }
 }
-
-

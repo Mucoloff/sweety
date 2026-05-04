@@ -30,6 +30,21 @@ public class PostgreSQLDialect implements Dialect {
         if (type == byte[].class)
             return "BYTEA";
 
+        if (type == java.util.UUID.class)
+            return "UUID";
+
+        if (type == java.time.LocalDate.class)
+            return "DATE";
+
+        if (type == java.time.LocalDateTime.class)
+            return "TIMESTAMP";
+
+        if (type == java.math.BigDecimal.class)
+            return "DECIMAL";
+
+        if (type.isEnum())
+            return "VARCHAR(255)";
+
         return "VARCHAR(255)";
     }
 
@@ -49,6 +64,23 @@ public class PostgreSQLDialect implements Dialect {
             case SET_NULL -> "SET NULL";
             case RESTRICT, NO_ACTION -> "RESTRICT";
         };
+    }
+
+    @Override
+    public String upsertSyntax(String table, java.util.List<String> insertCols, java.util.List<String> updateCols, java.util.List<String> pkCols) {
+        String cols = String.join(", ", insertCols);
+        String placeholders = insertCols.stream().map(c -> "?").collect(java.util.stream.Collectors.joining(", "));
+        String pks = String.join(", ", pkCols);
+        
+        if (updateCols.isEmpty()) {
+            return "INSERT INTO " + table + " (" + cols + ") VALUES (" + placeholders + ") ON CONFLICT (" + pks + ") DO NOTHING";
+        }
+
+        String updates = updateCols.stream()
+                .map(c -> c + " = EXCLUDED." + c)
+                .collect(java.util.stream.Collectors.joining(", "));
+        
+        return "INSERT INTO " + table + " (" + cols + ") VALUES (" + placeholders + ") ON CONFLICT (" + pks + ") DO UPDATE SET " + updates;
     }
 }
 
