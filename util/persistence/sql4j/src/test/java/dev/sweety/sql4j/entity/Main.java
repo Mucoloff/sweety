@@ -20,7 +20,7 @@ public class Main {
         var config = new SQLiteConfig("data.db");
         ConnectionType type = ConnectionType.SQLITE;
 
-        try (SqlConnection connection = type.create(config, Executors.newSingleThreadExecutor(), false);
+        try (SqlConnection connection = type.create(config, false);
              Database db = new Database(connection)) {
 
             Repository<TestUser>  users  = db.createRepository(TestUser.class);

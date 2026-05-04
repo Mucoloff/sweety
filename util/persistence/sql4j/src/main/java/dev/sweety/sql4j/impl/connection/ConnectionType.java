@@ -9,6 +9,7 @@ import dev.sweety.sql4j.impl.connection.provider.HikariConnectionProvider;
 
 import java.util.Objects;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 public enum ConnectionType {
     SQLITE(DialectType.SQLITE),
@@ -38,7 +39,7 @@ public enum ConnectionType {
         };
     }
 
-    public SqlConnection create(final DatabaseConfig config, final Executor executor, final boolean useHikari) {
+    public SqlConnection create(final DatabaseConfig config, final Executor executor, final boolean useHikari, final boolean ownsExecutor) {
         final DatabaseConfig requiredConfig = Objects.requireNonNull(config, "config cannot be null");
         final Executor requiredExecutor = Objects.requireNonNull(executor, "executor cannot be null");
 
@@ -46,13 +47,27 @@ public enum ConnectionType {
             final ConnectionProvider provider = useHikari
                     ? new HikariConnectionProvider(requiredConfig)
                     : new DriverManagerConnectionProvider(requiredConfig);
-            return new SqlConnection(this.dialectType, provider, requiredExecutor);
+            return new SqlConnection(this.dialectType, provider, requiredExecutor, ownsExecutor);
         }
         throw new IllegalArgumentException("Config dialect " + requiredConfig.dialectType() + " does not match " + this);
     }
 
+    public SqlConnection create(final DatabaseConfig config, final Executor executor, final boolean useHikari) {
+        return create(config, executor, useHikari, false);
+    }
+
     public SqlConnection create(final DatabaseConfig config, final Executor executor) {
-        return create(config, executor, true); // Default to Hikari
+        return create(config, executor, true, false); // Default to Hikari, user owns executor
+    }
+
+    public SqlConnection create(final DatabaseConfig config, final boolean useHikari) {
+        // Automatically create a cached thread pool and mark ownsExecutor = true
+        // so that SqlConnection will shut it down on close().
+        return create(config, Executors.newCachedThreadPool(), useHikari, true);
+    }
+
+    public SqlConnection create(final DatabaseConfig config) {
+        return create(config, true); // Default to Hikari, auto-manage executor
     }
 
     // Backward compatibility

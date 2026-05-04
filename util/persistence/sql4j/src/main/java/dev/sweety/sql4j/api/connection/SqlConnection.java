@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 
 public class SqlConnection implements AutoCloseable {
@@ -17,11 +18,17 @@ public class SqlConnection implements AutoCloseable {
     private final DialectType dialectType;
     private final ConnectionProvider connectionProvider;
     private final Executor executor;
+    private final boolean ownsExecutor;
 
     public SqlConnection(final DialectType dialectType, final ConnectionProvider connectionProvider, final Executor executor) {
+        this(dialectType, connectionProvider, executor, false);
+    }
+
+    public SqlConnection(final DialectType dialectType, final ConnectionProvider connectionProvider, final Executor executor, final boolean ownsExecutor) {
         this.dialectType = dialectType;
         this.connectionProvider = connectionProvider;
         this.executor = executor;
+        this.ownsExecutor = ownsExecutor;
     }
 
     public Connection connection() throws SQLException {
@@ -57,5 +64,8 @@ public class SqlConnection implements AutoCloseable {
     @Override
     public void close() {
         connectionProvider.close();
+        if (ownsExecutor && executor instanceof ExecutorService es) {
+            es.shutdown();
+        }
     }
 }
