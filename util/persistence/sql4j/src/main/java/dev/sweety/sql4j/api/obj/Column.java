@@ -58,6 +58,8 @@ public final class Column<T> {
     public Criterion lt(T value) { return Criterion.lt(this, value); }
     public Criterion le(T value) { return Criterion.le(this, value); }
     public Criterion like(String pattern) { return Criterion.like(this, pattern); }
+    @SafeVarargs
+    public final Criterion in(T... values) { return Criterion.in(this, java.util.Arrays.asList(values)); }
 
     public Class<?> type() {
         return relationIdField != null ? relationIdField.getType() : field.getType();
@@ -90,66 +92,82 @@ public final class Column<T> {
     }
 
     public void set(Object instance, Object value) {
-        try {
-            Class<?> type = field.getType();
-            if (relationIdField != null && value != null && !type.isInstance(value)) {
-                return;
-            }
-            if (value == null) {
-                if (type.isPrimitive()) {
-                    field.set(instance, defaultPrimitiveValue(type));
-                } else {
-                    field.set(instance, null);
-                }
-                return;
-            }
-            
-            if (type == boolean.class || type == Boolean.class) {
-                if (value instanceof Boolean b) {
-                    field.set(instance, b);
-                    return;
-                } else if (value instanceof Number n) {
-                    field.set(instance, n.intValue() != 0);
-                    return;
-                }
-            }
+        Class<?> type = field.getType();
+        if (relationIdField != null && value != null && !type.isInstance(value)) {
+            // It's an ID being set to a relation field (Entity). 
+            // We ignore it here as relations are handled by Join logic or Lazy loading.
+            return;
+        }
 
-            if (value instanceof Number n) {
-                if (type == byte.class || type == Byte.class) field.set(instance, n.byteValue());
-                else if (type == short.class || type == Short.class) field.set(instance, n.shortValue());
-                else if (type == int.class || type == Integer.class) field.set(instance, n.intValue());
-                else if (type == long.class || type == Long.class) field.set(instance, n.longValue());
-                else if (type == float.class || type == Float.class) field.set(instance, n.floatValue());
-                else if (type == double.class || type == Double.class) field.set(instance, n.doubleValue());
-                else if (type == java.math.BigDecimal.class) field.set(instance, java.math.BigDecimal.valueOf(n.doubleValue()));
-                else field.set(instance, value);
-            } else if (type.isEnum() && value instanceof String s) {
-                @SuppressWarnings({"unchecked", "rawtypes"})
-                Object enumValue = Enum.valueOf((Class<Enum>) type, s);
-                field.set(instance, enumValue);
-            } else if (type == java.util.UUID.class) {
-                if (value instanceof java.util.UUID) field.set(instance, value);
-                else if (value instanceof String s) field.set(instance, java.util.UUID.fromString(s));
-                else if (value instanceof byte[] b && b.length == 16) {
-                    java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(b);
-                    field.set(instance, new java.util.UUID(bb.getLong(), bb.getLong()));
-                }
-            } else if (type == java.time.LocalDate.class) {
-                if (value instanceof java.time.LocalDate) field.set(instance, value);
-                else if (value instanceof java.sql.Date d) field.set(instance, d.toLocalDate());
-                else if (value instanceof String s) field.set(instance, java.time.LocalDate.parse(s));
-            } else if (type == java.time.LocalDateTime.class) {
-                if (value instanceof java.time.LocalDateTime) field.set(instance, value);
-                else if (value instanceof java.sql.Timestamp t) field.set(instance, t.toLocalDateTime());
-                else if (value instanceof String s) field.set(instance, java.time.LocalDateTime.parse(s.replace(" ", "T")));
-            } else if (type == java.math.BigDecimal.class && value instanceof String s) {
-                field.set(instance, new java.math.BigDecimal(s));
+        value = convertValue(value, type);
+
+        // Try using the accessor first (to avoid reflection)
+        TableAccessor<?> accessor = table.accessor();
+        if (accessor != null) {
+            //noinspection unchecked
+            ((TableAccessor<Object>) accessor).setFieldValue(instance, name, value);
+            return;
+        }
+
+        try {
+            if (value == null && type.isPrimitive()) {
+                field.set(instance, defaultPrimitiveValue(type));
             } else {
                 field.set(instance, value);
             }
         } catch (IllegalAccessException e) {
-            throw new IllegalStateException("Failed to set field " + field.getName() + " on " + instance.getClass().getName() + " with value " + value, e);
+            throw new IllegalStateException(e);
         }
+    }
+
+    private Object convertValue(Object value, Class<?> type) {
+        if (value == null) return null;
+        if (type.isInstance(value)) return value;
+
+        if (type == boolean.class || type == Boolean.class) {
+            if (value instanceof Boolean b) return b;
+            if (value instanceof Number n) return n.intValue() != 0;
+            if (value instanceof String s) return s.equalsIgnoreCase("true") || s.equals("1");
+        }
+
+        if (value instanceof Number n) {
+            if (type == byte.class || type == Byte.class) return n.byteValue();
+            if (type == short.class || type == Short.class) return n.shortValue();
+            if (type == int.class || type == Integer.class) return n.intValue();
+            if (type == long.class || type == Long.class) return n.longValue();
+            if (type == float.class || type == Float.class) return n.floatValue();
+            if (type == double.class || type == Double.class) return n.doubleValue();
+            if (type == java.math.BigDecimal.class) return java.math.BigDecimal.valueOf(n.doubleValue());
+        }
+
+        if (type.isEnum() && value instanceof String s) {
+            //noinspection unchecked,rawtypes
+            return Enum.valueOf((Class<Enum>) type, s);
+        }
+
+        if (type == java.util.UUID.class) {
+            if (value instanceof String s) return java.util.UUID.fromString(s);
+            if (value instanceof byte[] b && b.length == 16) {
+                java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(b);
+                return new java.util.UUID(bb.getLong(), bb.getLong());
+            }
+        }
+
+        if (type == java.time.LocalDate.class) {
+            if (value instanceof java.sql.Date d) return d.toLocalDate();
+            if (value instanceof String s) return java.time.LocalDate.parse(s);
+        }
+
+        if (type == java.time.LocalDateTime.class) {
+            if (value instanceof java.sql.Timestamp t) return t.toLocalDateTime();
+            if (value instanceof String s) return java.time.LocalDateTime.parse(s.replace(" ", "T"));
+        }
+
+        if (type == java.math.BigDecimal.class && value instanceof String s) {
+            return new java.math.BigDecimal(s);
+        }
+
+        return value;
     }
 
     private static Object defaultPrimitiveValue(Class<?> type) {

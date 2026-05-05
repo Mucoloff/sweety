@@ -4,6 +4,7 @@ import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
 import dev.sweety.sql4j.impl.query.QueryCache;
+import org.jetbrains.annotations.NotNull;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -19,7 +20,7 @@ public final class UpdateEntity<T> extends AbstractQuery<Integer> {
 
     private record Metadata(List<Column<?>> updateColumns, List<Column<?>> primaryKeys, String sql) {}
 
-    public UpdateEntity(final Table<T> table, final T instance, QueryCache cache) {
+    public UpdateEntity(final Table<T> table, @NotNull final T instance, QueryCache cache) {
         this.table = Objects.requireNonNull(table, "table cannot be null");
         this.instance = Objects.requireNonNull(instance, "instance cannot be null");
         Objects.requireNonNull(cache, "cache cannot be null");

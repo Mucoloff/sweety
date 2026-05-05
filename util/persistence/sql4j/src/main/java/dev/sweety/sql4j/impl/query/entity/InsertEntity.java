@@ -80,17 +80,16 @@ public final class InsertEntity<T> extends AbstractQuery<MutationResult<T>> {
     @Override
     public MutationResult<T> execute(PreparedStatement ps) throws SQLException {
         int affected = ps.executeUpdate();
-        int generatedId = affected;
 
         if (metadata.generatedColumn != null) {
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
-                    generatedId = rs.getInt(1);
-                    metadata.generatedColumn.set(instance, generatedId);
+                    Object id = rs.getObject(1);
+                    metadata.generatedColumn.set(instance, id);
                 }
             }
         }
-        return new MutationResult<>(generatedId, instance);
+        return new MutationResult<>(affected, instance);
     }
 
     @Override

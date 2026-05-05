@@ -7,12 +7,14 @@ import dev.sweety.sql4j.api.query.AbstractQuery;
 import dev.sweety.sql4j.impl.query.QueryCache;
 import dev.sweety.sql4j.api.obj.InsertableColumns;
 import dev.sweety.sql4j.api.query.MutationResult;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public final class UpsertEntity<T> extends AbstractQuery<MutationResult<T>> {
@@ -23,9 +25,9 @@ public final class UpsertEntity<T> extends AbstractQuery<MutationResult<T>> {
 
     private record Metadata(List<Column<?>> insertColumns, @Nullable Column<?> generatedColumn, String sql) {}
 
-    public UpsertEntity(Table<T> table, Dialect dialect, T instance, QueryCache cache) {
-        this.table = table;
-        this.instance = instance;
+    public UpsertEntity(Table<T> table, Dialect dialect, @NotNull T instance, QueryCache cache) {
+        this.table = Objects.requireNonNull(table);
+        this.instance = Objects.requireNonNull(instance);
 
         String cacheKey = "upsert:meta:" + table.name() + ":" + table.clazz().getName();
         this.metadata = cache.getMetadata(cacheKey, _ -> {

@@ -28,6 +28,16 @@ public sealed interface Query<T> permits AbstractQuery, UnsafeQuery {
         return connection.executeAsync(this);
     }
 
+    default <R> Query<R> extractObjects(java.util.function.Function<T, R> mapper) {
+        return new AbstractQuery<R>() {
+            @Override protected String buildSql() { return Query.this.sql(); }
+            @Override public void bind(PreparedStatement ps) throws SQLException { Query.this.bind(ps); }
+            @Override public R execute(PreparedStatement ps) throws SQLException {
+                return mapper.apply(Query.this.execute(ps));
+            }
+        };
+    }
+
     // --- Utility Factory Methods ---
 
     static <T> Query<T> generate(final String query, final QueryBinder bind, final QueryExecutor<T> execute) {

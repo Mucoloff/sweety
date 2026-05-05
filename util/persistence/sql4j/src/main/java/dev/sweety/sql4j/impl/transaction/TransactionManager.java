@@ -139,7 +139,7 @@ public class TransactionManager {
                 try {
                     block.run(tx);
                     con.commit();
-                } catch (SQLException | RuntimeException e) {
+                } catch (Throwable e) {
                     safeRollback(con);
                     throw new CompletionException(e);
                 }

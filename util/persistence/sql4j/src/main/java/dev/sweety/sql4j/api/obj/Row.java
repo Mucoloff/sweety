@@ -113,9 +113,16 @@ public final class Row {
         if (!hasData) return null;
 
         try {
-            java.lang.reflect.Constructor<T> ctor = table.clazz().getDeclaredConstructor();
-            ctor.setAccessible(true);
-            T instance = ctor.newInstance();
+            T instance;
+            TableAccessor<T> accessor = table.accessor();
+            if (accessor != null) {
+                instance = accessor.newInstance();
+            } else {
+                java.lang.reflect.Constructor<T> ctor = table.clazz().getDeclaredConstructor();
+                ctor.setAccessible(true);
+                instance = ctor.newInstance();
+            }
+
             for (dev.sweety.sql4j.api.obj.Column c : table.columns()) {
                 String colName = pfx + c.name().toLowerCase(Locale.ENGLISH);
                 if (has(colName)) {
@@ -140,7 +147,9 @@ public final class Row {
         int count = meta.getColumnCount();
         Map<String, Object> map = new LinkedHashMap<>(count);
         for (int i = 1; i <= count; i++) {
-            map.put(meta.getColumnLabel(i).toLowerCase(Locale.ENGLISH), rs.getObject(i));
+            String label = meta.getColumnLabel(i).toLowerCase(Locale.ENGLISH);
+            Object value = rs.getObject(i);
+            map.put(label, value);
         }
         return new Row(map);
     }

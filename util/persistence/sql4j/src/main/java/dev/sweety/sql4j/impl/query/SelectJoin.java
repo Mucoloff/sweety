@@ -4,7 +4,9 @@ import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Row;
 import dev.sweety.sql4j.api.obj.Table;
+import dev.sweety.sql4j.api.obj.table.TableRegistry;
 import dev.sweety.sql4j.api.query.AbstractQuery;
+import dev.sweety.sql4j.api.query.Criterion;
 import dev.sweety.sql4j.api.query.Query;
 
 import java.sql.PreparedStatement;
@@ -12,13 +14,14 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.function.Function;
-import java.util.Objects;
 
 public final class SelectJoin extends AbstractQuery<List<Row>> {
 
     private final List<Table<?>> tables;
+    private final List<JoinInfo> joins;
     private final String sql;
     private final List<Object> params;
+    private final Criterion criterion;
     private final Dialect dialect;
 
     private int limit = -1;
@@ -26,30 +29,19 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
     private String orderBy = null;
     private boolean ascending = true;
 
-    /**
-     * @param tables      tabelle da joinare
-     * @param onClauses   clausole ON per ogni join (tables.size() - 1 elementi)
-     * @param whereClause eventuale WHERE
-     * @param dialect     dialetto del database
-     * @param params      parametri della query
-     */
-    private SelectJoin(List<Table<?>> tables, List<String> onClauses, String whereClause, Dialect dialect, Object... params) {
-        Objects.requireNonNull(tables, "tables cannot be null");
-        Objects.requireNonNull(onClauses, "onClauses cannot be null");
-        if (tables.size() < 2)
-            throw new IllegalArgumentException("Servono almeno 2 tabelle per un join");
-        if (onClauses.size() != tables.size() - 1)
-            throw new IllegalArgumentException("Numero di onClauses deve essere " + (tables.size() - 1));
+    private record JoinInfo(Table<?> sourceTable, Table<?> targetTable, Table.Relation relation) {}
 
+    private SelectJoin(List<Table<?>> tables, List<JoinInfo> joins, List<String> onClauses, String whereClause, Criterion criterion, Dialect dialect, Object... params) {
         this.tables = tables;
+        this.joins = joins;
         this.params = Arrays.asList(params != null ? params : new Object[0]);
-        this.dialect = Objects.requireNonNull(dialect, "dialect cannot be null");
-        this.sql = buildJoinSql(tables, onClauses, whereClause);
+        this.criterion = criterion;
+        this.dialect = dialect;
+        this.sql = buildJoinSql(tables, onClauses, whereClause, criterion);
     }
 
-    private String buildJoinSql(List<Table<?>> tables, List<String> onClauses, String whereClause) {
+    private String buildJoinSql(List<Table<?>> tables, List<String> onClauses, String whereClause, Criterion criterion) {
         StringBuilder sb = new StringBuilder("SELECT ");
-
         List<String> cols = new ArrayList<>();
         for (Table<?> t : tables) {
             for (Column<?> c : t.columns()) {
@@ -58,14 +50,18 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
         }
         sb.append(String.join(", ", cols));
 
-        sb.append(" FROM ").append(tables.getFirst().name());
+        sb.append(" FROM ").append(tables.get(0).name());
         for (int i = 1; i < tables.size(); i++) {
             sb.append(" INNER JOIN ").append(tables.get(i).name())
                     .append(" ON ").append(onClauses.get(i - 1));
         }
 
-        if (whereClause != null && !whereClause.isEmpty()) {
-            sb.append(" WHERE ").append(whereClause);
+        List<String> wheres = new ArrayList<>();
+        if (whereClause != null && !whereClause.isEmpty()) wheres.add(whereClause);
+        if (criterion != null) wheres.add(criterion.toSql());
+
+        if (!wheres.isEmpty()) {
+            sb.append(" WHERE ").append(String.join(" AND ", wheres));
         }
 
         return sb.toString();
@@ -104,8 +100,12 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
 
     @Override
     public void bind(PreparedStatement ps) throws SQLException {
-        for (int i = 0; i < params.size(); i++) {
-            ps.setObject(i + 1, params.get(i));
+        int idx = 1;
+        for (Object p : params) {
+            ps.setObject(idx++, p);
+        }
+        if (criterion != null) {
+            criterion.bind(ps, idx);
         }
     }
 
@@ -116,47 +116,14 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
         }
     }
 
-    // --- Estrazione Avanzata (Relazioni) ---
-
-    /**
-     * Mappa i risultati del JOIN in una lista di oggetti generici.
-     * Utile per ricostruire alberi di entità (es. User con List<Order>) estraendo 
-     * le singole parti usando `row.extractEntity(...)`.
-     */
-    public <R> Query<List<R>> extractObjects(Function<Row, R> mapper) {
-        return new AbstractQuery<>() {
-            @Override
-            protected String buildSql() {
-                return SelectJoin.this.sql();
-            }
-
-            @Override
-            public void bind(PreparedStatement ps) throws SQLException {
-                SelectJoin.this.bind(ps);
-            }
-
-            @Override
-            public List<R> execute(PreparedStatement ps) throws SQLException {
-                return SelectJoin.this.execute(ps).stream().map(mapper).toList();
-            }
-        };
-    }
-
-    /**
-     * Tenta di mappare automaticamente i risultati sull'albero di dipendenze.
-     * Raggruppa le righe per la chiave primaria della radice e popola le liste @OneToMany.
-     */
     public <R> Query<List<R>> mapToHierarchy(Class<R> type) {
         return new AbstractQuery<>() {
             @Override protected String buildSql() { return SelectJoin.this.sql(); }
             @Override public void bind(PreparedStatement ps) throws SQLException { SelectJoin.this.bind(ps); }
-
-            @Override
-            public List<R> execute(PreparedStatement ps) throws SQLException {
+            @Override public List<R> execute(PreparedStatement ps) throws SQLException {
                 List<Row> rows = SelectJoin.this.execute(ps);
                 if (rows.isEmpty()) return Collections.emptyList();
 
-                // 1. Trova la tabella radice
                 Table<R> rootTableFound = null;
                 for (Table<?> t : tables) {
                     if (t.clazz() == type) {
@@ -165,115 +132,130 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
                         break;
                     }
                 }
-                if (rootTableFound == null) throw new IllegalArgumentException("Root type " + type.getName() + " not found in JOIN tables");
-                
+                if (rootTableFound == null) throw new IllegalArgumentException("Root type " + type.getName() + " not found");
                 final Table<R> rootTable = rootTableFound;
-                final String rootPrefix = rootTable.name();
-
+                
                 Map<Object, R> identityMap = new LinkedHashMap<>();
+                // identity maps for each table to ensure we reuse instances within the same result set
+                Map<Table<?>, Map<Object, Object>> globalIdentityMap = new HashMap<>();
+                for (Table<?> t : tables) globalIdentityMap.put(t, new HashMap<>());
 
                 for (Row row : rows) {
-                    Object pkValue = row.get(rootPrefix + "_" + rootTable.primaryKeys().get(0).name());
-                    if (pkValue == null) continue;
+                    Object rootPk = row.get(rootTable.name() + "_" + rootTable.primaryKeys().get(0).name());
+                    if (rootPk == null) continue;
 
-                    R root = identityMap.computeIfAbsent(pkValue, _ -> row.extractEntity(rootTable, rootPrefix));
+                    R root = (R) globalIdentityMap.get(rootTable).computeIfAbsent(rootPk, _ -> row.extractEntity(rootTable, rootTable.name()));
+                    identityMap.put(rootPk, root);
 
-                    // 2. Popola le relazioni per ogni tabella coinvolta nel JOIN
-                    for (Table<?> t : tables) {
-                        if (t == rootTable) continue;
-                        String prefix = t.name();
+                    for (JoinInfo join : joins) {
+                        Object sourcePk = row.get(join.sourceTable.name() + "_" + join.sourceTable.primaryKeys().get(0).name());
+                        Object targetPk = row.get(join.targetTable.name() + "_" + join.targetTable.primaryKeys().get(0).name());
                         
-                        // Controlla se questa tabella è una relazione della radice
-                        for (Table.Relation rel : rootTable.relations()) {
-                            if (rel.targetClass() == t.clazz()) {
-                                populateRelation(root, rel, t, row, prefix);
-                            }
-                        }
+                        if (sourcePk == null || targetPk == null) continue;
+
+                        Object sourceEntity = globalIdentityMap.get(join.sourceTable).get(sourcePk);
+                        if (sourceEntity == null) continue; // Should not happen if join list is ordered correctly
+
+                        Object targetEntity = globalIdentityMap.get(join.targetTable).computeIfAbsent(targetPk, _ -> row.extractEntity(join.targetTable, join.targetTable.name()));
+                        
+                        populateRelation(sourceEntity, join.relation, join.targetTable, targetEntity, targetPk);
                     }
                 }
                 return new ArrayList<>(identityMap.values());
             }
 
-            private void populateRelation(Object root, Table.Relation rel, Table<?> targetTable, Row row, String prefix) {
+            private void populateRelation(Object source, Table.Relation rel, Table<?> targetTable, Object targetEntity, Object targetPk) {
                 try {
                     rel.field().setAccessible(true);
-                    Object targetPk = row.get(prefix + "_" + targetTable.primaryKeys().get(0).name());
-                    if (targetPk == null) return; // Null side of LEFT JOIN or no data
-
-                    Object targetEntity = row.extractEntity(targetTable, prefix);
-                    if (targetEntity == null) return; // Should not happen if targetPk was not null but extra safety
-
                     if (rel.type() == Table.Relation.Type.ONE_TO_MANY || rel.type() == Table.Relation.Type.MANY_TO_MANY) {
                         //noinspection unchecked
-                        Collection<Object> collection = (Collection<Object>) rel.field().get(root);
+                        Collection<Object> collection = (Collection<Object>) rel.field().get(source);
                         if (collection == null) {
-                            if (rel.field().getType() == Set.class) collection = new HashSet<>();
-                            else collection = new ArrayList<>();
-                            rel.field().set(root, collection);
+                            collection = (rel.field().getType() == Set.class) ? new HashSet<>() : new ArrayList<>();
+                            rel.field().set(source, collection);
                         }
-                        // Simple deduplication for collections based on PK (manual check here since we don't have equals/hashCode on entities)
                         boolean exists = false;
                         for (Object existing : collection) {
-                            Object existingPk = targetTable.primaryKeys().get(0).get(existing);
-                            if (Objects.equals(existingPk, targetPk)) {
-                                exists = true;
-                                break;
+                            if (Objects.equals(targetTable.primaryKeys().get(0).get(existing), targetPk)) {
+                                exists = true; break;
                             }
                         }
                         if (!exists) collection.add(targetEntity);
-                    } else if (rel.type() == Table.Relation.Type.MANY_TO_ONE) {
-                        if (rel.field().get(root) == null) {
-                            rel.field().set(root, targetEntity);
-                        }
+                    } else {
+                        if (rel.field().get(source) == null) rel.field().set(source, targetEntity);
                     }
-                } catch (Exception e) {
-                    throw new RuntimeException("Failed to populate hierarchy for " + rel.field().getName(), e);
-                }
+                } catch (Exception e) { throw new RuntimeException(e); }
             }
         };
     }
 
     public static class Builder {
         private final List<Table<?>> tablesList = new ArrayList<>();
-        private final Set<Table<?>> tablesSet = new HashSet<>();
-
+        private final List<JoinInfo> joinsList = new ArrayList<>();
         private final List<String> onClausesList = new ArrayList<>();
-        private final Set<String> onClausesSet = new HashSet<>();
-
-        private String whereClause = null;
+        private final TableRegistry registry;
+        private String whereClause;
+        private Criterion criterion;
         private final List<Object> params = new ArrayList<>();
-        private Dialect dialect = null;
+        private Dialect dialect;
 
-        public Builder() {}
+        public Builder() {
+            this(TableRegistry.getDefault());
+        }
 
-        public Builder dialect(Dialect dialect) {
-            this.dialect = dialect;
+        public Builder(TableRegistry registry) {
+            this.registry = registry;
+        }
+
+        public Builder dialect(Dialect dialect) { this.dialect = dialect; return this; }
+
+        public Builder join(Table<?>... tables) {
+            for (Table<?> table : tables) {
+                if (!tablesList.contains(table)) tablesList.add(table);
+            }
             return this;
         }
 
-        public Builder join(Table<?>... tables) {
-            for (Table<?> t : tables) {
-                if (tablesSet.add(t)) {
-                    tablesList.add(t);
+        public Builder join(Table.Relation rel) {
+            Table<?> targetTable = registry.get(rel.targetClass());
+            
+            // Find the source table: the one that declares this relation
+            Class<?> declaringClass = rel.field().getDeclaringClass();
+            Table<?> sourceTable = null;
+            for (Table<?> t : tablesList) {
+                if (t.clazz().isAssignableFrom(declaringClass)) {
+                    sourceTable = t;
+                    break;
                 }
+            }
+            if (sourceTable == null && tablesList.size() >= 1) {
+                sourceTable = tablesList.get(tablesList.size() - 1);
+            }
+
+            if (sourceTable == null) {
+                throw new IllegalStateException("Source table for relation " + rel.field().getName() + " not found in join builder");
+            }
+
+            if (!tablesList.contains(targetTable)) tablesList.add(targetTable);
+            joinsList.add(new JoinInfo(sourceTable, targetTable, rel));
+
+            // ManyToOne -> source.fk == target.pk
+            if (rel.type() == Table.Relation.Type.MANY_TO_ONE) {
+                on(sourceTable.column(rel.column().name()), targetTable.primaryKeys().get(0));
+            } else if (rel.type() == Table.Relation.Type.ONE_TO_MANY) {
+                // OneToMany -> source.pk == target.column(rel.mappedBy())
+                on(sourceTable.primaryKeys().get(0), targetTable.column(rel.mappedBy()));
             }
             return this;
         }
 
         public Builder on(String... onClauses) {
-            for (String c : onClauses) {
-                if (onClausesSet.add(c)) {
-                    onClausesList.add(c);
-                }
-            }
+            Collections.addAll(onClausesList, onClauses);
             return this;
         }
 
         public Builder on(Column<?> left, Column<?> right) {
-            String clause = left.table().name() + "." + left.name() + " = " + right.table().name() + "." + right.name();
-            if (onClausesSet.add(clause)) {
-                onClausesList.add(clause);
-            }
+            onClausesList.add(left.table().name() + "." + left.name() + " = " + right.table().name() + "." + right.name());
             return this;
         }
 
@@ -283,8 +265,13 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
             return this;
         }
 
+        public Builder where(Criterion criterion) {
+            this.criterion = criterion;
+            return this;
+        }
+
         public SelectJoin build() {
-            return new SelectJoin(tablesList, onClausesList, whereClause, dialect, params.toArray());
+            return new SelectJoin(tablesList, joinsList, onClausesList, whereClause, criterion, dialect, params.toArray());
         }
     }
 }

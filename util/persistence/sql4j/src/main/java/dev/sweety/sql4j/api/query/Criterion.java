@@ -10,32 +10,59 @@ public interface Criterion {
     void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException;
     int countParameters();
 
-    static Criterion eq(Column col, Object value) {
+    default Criterion and(Criterion other) {
+        return and(this, other);
+    }
+
+    default Criterion or(Criterion other) {
+        return or(this, other);
+    }
+
+    default Criterion not() {
+        return not(this);
+    }
+
+
+    static Criterion eq(Column<?> col, Object value) {
         return new ComparisonCriterion(col, "=", value);
     }
 
-    static Criterion ne(Column col, Object value) {
+    static Criterion ne(Column<?> col, Object value) {
         return new ComparisonCriterion(col, "<>", value);
     }
 
-    static Criterion gt(Column col, Object value) {
+    static Criterion gt(Column<?> col, Object value) {
         return new ComparisonCriterion(col, ">", value);
     }
 
-    static Criterion ge(Column col, Object value) {
+    static Criterion ge(Column<?> col, Object value) {
         return new ComparisonCriterion(col, ">=", value);
     }
 
-    static Criterion lt(Column col, Object value) {
+    static Criterion lt(Column<?> col, Object value) {
         return new ComparisonCriterion(col, "<", value);
     }
 
-    static Criterion le(Column col, Object value) {
+    static Criterion le(Column<?> col, Object value) {
         return new ComparisonCriterion(col, "<=", value);
     }
 
-    static Criterion like(Column col, String pattern) {
+    static Criterion like(Column<?> col, String pattern) {
         return new ComparisonCriterion(col, "LIKE", pattern);
+    }
+
+    static Criterion in(Column<?> col, java.util.Collection<?> values) {
+        return new Criterion() {
+            @Override public String toSql() {
+                String placeholders = values.stream().map(_ -> "?").collect(Collectors.joining(", "));
+                return col.name() + " IN (" + placeholders + ")";
+            }
+            @Override public void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException {
+                int idx = startIdx;
+                for (Object v : values) ps.setObject(idx++, v);
+            }
+            @Override public int countParameters() { return values.size(); }
+        };
     }
 
     static Criterion and(Criterion... criteria) {
@@ -55,11 +82,11 @@ public interface Criterion {
     }
 
     class ComparisonCriterion implements Criterion {
-        private final Column column;
+        private final Column<?> column;
         private final String operator;
         private final Object value;
 
-        public ComparisonCriterion(Column column, String operator, Object value) {
+        public ComparisonCriterion(Column<?> column, String operator, Object value) {
             this.column = column;
             this.operator = operator;
             this.value = value;

@@ -37,6 +37,7 @@ public final class Table<T> {
     private final List<Relation> relations = new ArrayList<>();
     private InsertableColumns insertableColumns;
     private Column<?> softDeleteColumn;
+    private final TableAccessor<T> accessor;
 
     private volatile boolean initializing = false;
     private volatile boolean initialized = false;
@@ -44,6 +45,36 @@ public final class Table<T> {
     public Table(Class<T> clazz, String name) {
         this.clazz = clazz;
         this.name = name;
+        this.accessor = discoverAccessor(clazz);
+    }
+
+    private TableAccessor<T> discoverAccessor(Class<T> clazz) {
+        String name = clazz.getName();
+        // Try standard naming (e.g., UserTable)
+        TableAccessor<T> accessor = tryLoadAccessor(name + "Table");
+        if (accessor != null) return accessor;
+
+        // Try nested naming replacement (e.g., EnterpriseDslTest_UserTable)
+        if (name.contains("$")) {
+            accessor = tryLoadAccessor(name.replace('$', '_') + "Table");
+            return accessor;
+        }
+        return null;
+    }
+
+    private TableAccessor<T> tryLoadAccessor(String className) {
+        try {
+            Class<?> accessorClass = Class.forName(className);
+            java.lang.reflect.Field instanceField = accessorClass.getField("INSTANCE");
+            //noinspection unchecked
+            return (TableAccessor<T>) instanceField.get(null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public TableAccessor<T> accessor() {
+        return accessor;
     }
 
     public void initialize(TableRegistry registry) {
@@ -56,6 +87,9 @@ public final class Table<T> {
             initializing = true;
 
             try {
+                // If we have an accessor, we can potentially skip some reflection
+                // (Future: populate columns list directly from accessor constants)
+
                 // Pass 1: Basic columns
                 for (Field field : clazz.getDeclaredFields()) {
                     Column.Info colInfo = field.getAnnotation(Column.Info.class);
@@ -142,11 +176,15 @@ public final class Table<T> {
                 List<Column<?>> insertColumns = new ArrayList<>();
                 for (Column<?> c : columnsList) {
                     if (c.isAutoIncrement()) {
+                        System.err.println("[DEBUG] TABLE " + name + " found AutoInc column: " + c.name());
                         autoInc = c;
                     } else {
                         insertColumns.add(c);
                         if (!c.isPrimaryKey()) updatableColumns.add(c);
                     }
+                }
+                if (autoInc == null) {
+                    System.err.println("[DEBUG] TABLE " + name + " NO AutoInc column found.");
                 }
                 this.insertableColumns = new InsertableColumns(insertColumns, autoInc);
 
