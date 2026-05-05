@@ -8,10 +8,31 @@ import java.lang.reflect.Field;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-public record Column(String name, Field field, Info info) {
+public final class Column {
+    private final String name;
+    private final Field field;
+    private final Info info;
+    private Field relationIdField; // For ManyToOne
 
-    public Column {
+    public Column(String name, Field field, Info info) {
+        this.name = name;
+        this.field = field;
+        this.info = info;
         field.setAccessible(true);
+    }
+
+    public Column(String name, Field field, Info info, Field relationIdField) {
+        this(name, field, info);
+        this.relationIdField = relationIdField;
+        if (relationIdField != null) relationIdField.setAccessible(true);
+    }
+
+    public String name() { return name; }
+    public Field field() { return field; }
+    public Info info() { return info; }
+
+    public Class<?> type() {
+        return relationIdField != null ? relationIdField.getType() : field.getType();
     }
 
     public <T> T get(Object instance) {
@@ -27,6 +48,14 @@ public record Column(String name, Field field, Info info) {
         Object value = get(instance);
         if (value instanceof Enum<?> e) {
             ps.setObject(index, e.name());
+        } else if (relationIdField != null && value != null) {
+            // It's a ManyToOne relationship, extract the ID from the entity
+            try {
+                Object id = relationIdField.get(value);
+                ps.setObject(index, id);
+            } catch (IllegalAccessException e) {
+                throw new IllegalStateException("Failed to extract ID from relation " + value.getClass().getName(), e);
+            }
         } else {
             ps.setObject(index, value);
         }
@@ -35,6 +64,12 @@ public record Column(String name, Field field, Info info) {
     public void set(Object instance, Object value) {
         try {
             Class<?> type = field.getType();
+            if (relationIdField != null && value != null && !type.isInstance(value)) {
+                // If this is a relation field (e.g. User user) and we're trying to set an ID (Integer),
+                // we skip it to avoid IllegalAccessException. 
+                // Future versions could instantiate a proxy/stub here.
+                return;
+            }
             if (value == null) {
                 if (type.isPrimitive()) {
                     field.set(instance, defaultPrimitiveValue(type));
@@ -96,15 +131,15 @@ public record Column(String name, Field field, Info info) {
     }
 
     public boolean isPrimaryKey() {
-        return info.primaryKey();
+        return info != null && info.primaryKey();
     }
 
     public boolean isAutoIncrement() {
-        return info.autoIncrement();
+        return info != null && info.autoIncrement();
     }
 
     public boolean isNullable() {
-        return info.nullable();
+        return info != null && info.nullable();
     }
 
     @Retention(RetentionPolicy.RUNTIME)

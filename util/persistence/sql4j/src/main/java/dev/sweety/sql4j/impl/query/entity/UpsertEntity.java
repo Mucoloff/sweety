@@ -5,7 +5,8 @@ import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
 import dev.sweety.sql4j.impl.query.QueryCache;
-import it.unimi.dsi.fastutil.Pair;
+import dev.sweety.sql4j.api.obj.InsertableColumns;
+import dev.sweety.sql4j.api.query.MutationResult;
 import org.jetbrains.annotations.Nullable;
 
 import java.sql.PreparedStatement;
@@ -14,7 +15,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public final class UpsertEntity<T> extends AbstractQuery<Pair<Integer, T>> {
+public final class UpsertEntity<T> extends AbstractQuery<MutationResult<T>> {
 
     private final Table<T> table;
     private final T instance;
@@ -28,9 +29,9 @@ public final class UpsertEntity<T> extends AbstractQuery<Pair<Integer, T>> {
 
         String cacheKey = "upsert:meta:" + table.name() + ":" + table.clazz().getName();
         this.metadata = cache.getMetadata(cacheKey, _ -> {
-            Pair<List<Column>, Column> cols = table.insertableColumns();
-            List<Column> insertColumns = cols.key();
-            Column generatedColumn = cols.value();
+            InsertableColumns cols = table.insertableColumns();
+            List<Column> insertColumns = cols.columns();
+            Column generatedColumn = cols.autoIncrementColumn();
 
             List<String> insertColNames = insertColumns.stream().map(Column::name).toList();
             List<String> pkColNames = table.primaryKeys().stream().map(Column::name).toList();
@@ -75,20 +76,21 @@ public final class UpsertEntity<T> extends AbstractQuery<Pair<Integer, T>> {
     }
 
     @Override
-    public Pair<Integer, T> execute(PreparedStatement ps) throws SQLException {
-        int updated = ps.executeUpdate();
+    public MutationResult<T> execute(PreparedStatement ps) throws SQLException {
+        int affected = ps.executeUpdate();
+        int generatedId = affected;
 
         if (metadata.generatedColumn != null) {
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
-                    Object key = rs.getObject(1);
-                    metadata.generatedColumn.set(instance, key);
+                    generatedId = rs.getInt(1);
+                    metadata.generatedColumn.set(instance, generatedId);
                 }
             } catch (SQLException ignore) {
                 // Some drivers/dialects don't return generated keys on UPSERT when it updates instead of inserts
             }
         }
-        return Pair.of(updated, instance);
+        return new MutationResult<>(generatedId, instance);
     }
 
     @Override

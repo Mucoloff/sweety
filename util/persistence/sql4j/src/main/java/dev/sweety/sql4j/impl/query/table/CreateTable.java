@@ -59,7 +59,7 @@ public final class CreateTable extends AbstractQuery<Void> {
             }
 
             StringBuilder col = new StringBuilder();
-            col.append(c.name()).append(" ").append(dialect.sqlType(c.field().getType()));
+            col.append(c.name()).append(" ").append(dialect.sqlType(c.type()));
 
             // NOT NULL unless explicitly nullable
             if (!c.isNullable() && !c.isPrimaryKey()) {

@@ -80,6 +80,54 @@ public final class Row {
         return data;
     }
 
+    /**
+     * Extracts an entity from this row by matching prefixed column names.
+     * For example, if prefix is "users", it looks for "users_id", "users_name" etc.
+     *
+     * @param table The table descriptor for the entity type
+     * @param prefix The prefix used in the SQL JOIN (typically table.name())
+     * @return The populated entity instance, or null if all columns for this entity are null (e.g. from a LEFT JOIN miss).
+     */
+    public <T> T extractEntity(dev.sweety.sql4j.api.obj.Table<T> table, String prefix) {
+        String pfx = prefix.toLowerCase(Locale.ENGLISH) + "_";
+        
+        // Check if the primary keys are null (indicates a LEFT JOIN miss)
+        boolean hasData = false;
+        for (dev.sweety.sql4j.api.obj.Column pk : table.primaryKeys()) {
+            if (!isNull(pfx + pk.name().toLowerCase(Locale.ENGLISH))) {
+                hasData = true;
+                break;
+            }
+        }
+        
+        // Fallback: check if ANY column has data if no PK is defined
+        if (!hasData && table.primaryKeys().isEmpty()) {
+            for (dev.sweety.sql4j.api.obj.Column c : table.columns()) {
+                if (!isNull(pfx + c.name().toLowerCase(Locale.ENGLISH))) {
+                    hasData = true;
+                    break;
+                }
+            }
+        }
+
+        if (!hasData) return null;
+
+        try {
+            java.lang.reflect.Constructor<T> ctor = table.clazz().getDeclaredConstructor();
+            ctor.setAccessible(true);
+            T instance = ctor.newInstance();
+            for (dev.sweety.sql4j.api.obj.Column c : table.columns()) {
+                String colName = pfx + c.name().toLowerCase(Locale.ENGLISH);
+                if (has(colName)) {
+                    c.set(instance, get(colName));
+                }
+            }
+            return instance;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to extract entity " + table.clazz().getName(), e);
+        }
+    }
+
     // --- Static factory ---
 
     /**

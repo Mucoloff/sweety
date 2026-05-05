@@ -4,7 +4,8 @@ import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
 import dev.sweety.sql4j.impl.query.QueryCache;
-import it.unimi.dsi.fastutil.Pair;
+import dev.sweety.sql4j.api.obj.InsertableColumns;
+import dev.sweety.sql4j.api.query.MutationResult;
 import org.jetbrains.annotations.Nullable;
 
 import java.sql.PreparedStatement;
@@ -13,13 +14,14 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public final class InsertEntity<T> extends AbstractQuery<Pair<Integer, T>> {
+public final class InsertEntity<T> extends AbstractQuery<MutationResult<T>> {
 
     private final Table<T> table;
     private final T instance;
     private final Metadata metadata;
 
-    private record Metadata(List<Column> insertColumns, @Nullable Column generatedColumn, String sql) {}
+    private record Metadata(List<Column> insertColumns, @Nullable Column generatedColumn, String sql) {
+    }
 
     public InsertEntity(Table<T> table, T instance, QueryCache cache) {
         this.table = table;
@@ -27,9 +29,9 @@ public final class InsertEntity<T> extends AbstractQuery<Pair<Integer, T>> {
 
         String cacheKey = "insert:meta:" + table.name() + ":" + table.clazz().getName();
         this.metadata = cache.getMetadata(cacheKey, _ -> {
-            Pair<List<Column>, Column> cols = table.insertableColumns();
-            List<Column> insertColumns = cols.key();
-            Column generatedColumn = cols.value();
+            InsertableColumns cols = table.insertableColumns();
+            List<Column> insertColumns = cols.columns();
+            Column generatedColumn = cols.autoIncrementColumn();
             int fieldsPerRow = insertColumns.size();
 
             String colNames = insertColumns.stream().map(Column::name).collect(Collectors.joining(", "));
@@ -62,18 +64,19 @@ public final class InsertEntity<T> extends AbstractQuery<Pair<Integer, T>> {
     }
 
     @Override
-    public Pair<Integer, T> execute(PreparedStatement ps) throws SQLException {
-        int updated = ps.executeUpdate();
+    public MutationResult<T> execute(PreparedStatement ps) throws SQLException {
+        int affected = ps.executeUpdate();
+        int generatedId = affected;
 
         if (metadata.generatedColumn != null) {
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
-                    Object key = rs.getObject(1);
-                    metadata.generatedColumn.set(instance, key);
+                    generatedId = rs.getInt(1);
+                    metadata.generatedColumn.set(instance, generatedId);
                 }
             }
         }
-        return Pair.of(updated, instance);
+        return new MutationResult<>(generatedId, instance);
     }
 
     @Override

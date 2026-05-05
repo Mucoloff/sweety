@@ -32,9 +32,9 @@ public class Main {
 
             // Insert in a transaction with savepoint demo
             db.transact(tx -> {
-                var testUser  = tx.execute(users.insert(user)).value();
-                var testData  = tx.execute(datas.insert(data)).value();
-                var order     = tx.execute(orders.insert(new TestOrder(testUser, testData))).value();
+                var testUser  = tx.execute(users.insert(user)).entity();
+                var testData  = tx.execute(datas.insert(data)).entity();
+                var order     = tx.execute(orders.insert(new TestOrder(testUser, testData))).entity();
                 System.out.println("Inserted User:  " + testUser);
                 System.out.println("Inserted Data:  " + testData);
                 System.out.println("Inserted Order: " + order);

@@ -4,11 +4,13 @@ import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Row;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
+import dev.sweety.sql4j.api.query.Query;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.function.Function;
 
 public final class SelectJoin extends AbstractQuery<List<Row>> {
 
@@ -72,6 +74,40 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
         try (ResultSet rs = ps.executeQuery()) {
             return Row.fromResultSetAll(rs);
         }
+    }
+
+    // --- Estrazione Avanzata (Relazioni) ---
+
+    /**
+     * Mappa i risultati del JOIN in una lista di oggetti generici.
+     * Utile per ricostruire alberi di entità (es. User con List<Order>) estraendo 
+     * le singole parti usando `row.extractEntity(...)`.
+     */
+    public <R> Query<List<R>> extractObjects(Function<Row, R> mapper) {
+        return new AbstractQuery<>() {
+            @Override
+            protected String buildSql() {
+                return SelectJoin.this.sql();
+            }
+
+            @Override
+            public void bind(PreparedStatement ps) throws SQLException {
+                SelectJoin.this.bind(ps);
+            }
+
+            @Override
+            public List<R> execute(PreparedStatement ps) throws SQLException {
+                return SelectJoin.this.execute(ps).stream().map(mapper).toList();
+            }
+        };
+    }
+
+    /**
+     * Tenta di mappare automaticamente i risultati sull'albero di dipendenze.
+     * ATTENZIONE: Questa API richiede un sistema di annotazioni (es. @OneToMany) non ancora completato.
+     */
+    public <R> Query<List<R>> mapToHierarchy(Class<R> type) {
+        throw new UnsupportedOperationException("L'estrazione magica automatica di gerarchie 1:N richiede le annotazioni di relazione. Usa extractObjects() o esegui il join raw per il mapping manuale.");
     }
 
     public static class Builder {

@@ -51,25 +51,29 @@ public class Database implements AutoCloseable {
 
     public <R extends Repository<E>, E> R createRepository(final Class<E> entityClass) {
         return getOrCreateRepository(entityClass,
-                clazz -> new Repository<>(tableRegistry.get(clazz), dialect, queryCache));
+                clazz -> new Repository<>(tableRegistry.get(clazz), dialect, queryCache, tableRegistry));
     }
 
     public <R extends Repository<E>, E> R createRepository(final Class<E> entityClass, String customTableName) {
         return getOrCreateRepository(entityClass,
-                clazz -> new Repository<>(tableRegistry.getOrCreate(clazz, customTableName), dialect, queryCache));
+                clazz -> new Repository<>(tableRegistry.getOrCreate(clazz, customTableName), dialect, queryCache, tableRegistry));
     }
 
     public <R extends Repository<E>, E> R getOrCreateRepository(final Class<E> entityClass,
                                                                   Function<Class<E>, Repository<E>> factory) {
         //noinspection unchecked
         return (R) repositories.computeIfAbsent(entityClass, k -> {
-            // CREATE TABLE only happens once — inside computeIfAbsent
             Repository<E> repo = factory.apply((Class<E>) k);
-            repo.create(true).execute(connection).join();
-            // Automatically add any missing columns for schema evolution
-            repo.migrateSchema(connection);
+            migrateAll();
             return repo;
         });
+    }
+
+    public void migrateAll() {
+        for (dev.sweety.sql4j.api.obj.Table<?> t : tableRegistry.allTables()) {
+            new dev.sweety.sql4j.impl.query.table.CreateTable(t, dialect, true).execute(connection).join();
+            new Repository<>(t, dialect, queryCache, tableRegistry).migrateSchema(connection);
+        }
     }
 
     public TableRegistry tableRegistry() {

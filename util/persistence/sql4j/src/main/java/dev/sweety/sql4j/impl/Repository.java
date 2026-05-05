@@ -23,11 +23,13 @@ public class Repository<Entity> {
     private final Table<Entity> table;
     private final Dialect dialect;
     private final QueryCache cache;
+    private final TableRegistry registry;
 
-    public Repository(Table<Entity> table, Dialect dialect, QueryCache cache) {
+    public Repository(Table<Entity> table, Dialect dialect, QueryCache cache, TableRegistry registry) {
         this.table = table;
         this.dialect = dialect;
         this.cache = cache;
+        this.registry = registry;
     }
 
     /**
@@ -35,7 +37,7 @@ public class Repository<Entity> {
      */
     @Deprecated
     public Repository(final Class<Entity> entityClass) {
-        this(new TableRegistry().get(entityClass), new dev.sweety.sql4j.impl.connection.dialect.SqliteDialect(), new QueryCache());
+        this(new TableRegistry().get(entityClass), new dev.sweety.sql4j.impl.connection.dialect.SqliteDialect(), new QueryCache(), new TableRegistry());
     }
 
     public Table<Entity> table() {
@@ -64,6 +66,68 @@ public class Repository<Entity> {
         int count = instances != null ? instances.length : 0;
         return cache.<DeleteEntity<Entity>>getQuery("deletePrototype:" + table.name() + ":" + count,
                 _ -> new DeleteEntity<>(table, cache, instances)).copy(instances);
+    }
+
+    // ─── Relations ─────────────────────────────────────────────────────────────
+
+    public dev.sweety.sql4j.api.query.Query<Integer> addRelation(Entity entity, Object related) {
+        for (Table.Relation rel : table.relations()) {
+            if (rel.type() == Table.Relation.Type.MANY_TO_MANY && rel.targetClass().isInstance(related)) {
+                Table<?> junctionTable = registry.allTables().stream()
+                        .filter(t -> t.name().equalsIgnoreCase(rel.joinTable()))
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalStateException("Junction table " + rel.joinTable() + " not found"));
+
+                Object id1 = table.primaryKeys().get(0).get(entity);
+                Object id2 = registry.get(rel.targetClass()).primaryKeys().get(0).get(related);
+
+                String sql = "INSERT INTO " + junctionTable.name() + " (" +
+                             junctionTable.columns().get(0).name() + ", " +
+                             junctionTable.columns().get(1).name() + ") VALUES (?, ?)";
+
+                return new dev.sweety.sql4j.api.query.AbstractQuery<Integer>() {
+                    @Override protected String buildSql() { return sql; }
+                    @Override public void bind(java.sql.PreparedStatement ps) throws java.sql.SQLException {
+                        ps.setObject(1, id1);
+                        ps.setObject(2, id2);
+                    }
+                    @Override public Integer execute(java.sql.PreparedStatement ps) throws java.sql.SQLException {
+                        return ps.executeUpdate();
+                    }
+                };
+            }
+        }
+        throw new IllegalArgumentException("No ManyToMany relation found between " + table.clazz().getSimpleName() + " and " + related.getClass().getSimpleName());
+    }
+
+    public dev.sweety.sql4j.api.query.Query<Integer> removeRelation(Entity entity, Object related) {
+        for (Table.Relation rel : table.relations()) {
+            if (rel.type() == Table.Relation.Type.MANY_TO_MANY && rel.targetClass().isInstance(related)) {
+                Table<?> junctionTable = registry.allTables().stream()
+                        .filter(t -> t.name().equalsIgnoreCase(rel.joinTable()))
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalStateException("Junction table " + rel.joinTable() + " not found"));
+
+                Object id1 = table.primaryKeys().get(0).get(entity);
+                Object id2 = registry.get(rel.targetClass()).primaryKeys().get(0).get(related);
+
+                String sql = "DELETE FROM " + junctionTable.name() + " WHERE " +
+                             junctionTable.columns().get(0).name() + " = ? AND " +
+                             junctionTable.columns().get(1).name() + " = ?";
+
+                return new dev.sweety.sql4j.api.query.AbstractQuery<Integer>() {
+                    @Override protected String buildSql() { return sql; }
+                    @Override public void bind(java.sql.PreparedStatement ps) throws java.sql.SQLException {
+                        ps.setObject(1, id1);
+                        ps.setObject(2, id2);
+                    }
+                    @Override public Integer execute(java.sql.PreparedStatement ps) throws java.sql.SQLException {
+                        return ps.executeUpdate();
+                    }
+                };
+            }
+        }
+        throw new IllegalArgumentException("No ManyToMany relation found between " + table.clazz().getSimpleName() + " and " + related.getClass().getSimpleName());
     }
 
     // ─── Entity-based reads ────────────────────────────────────────────────────
@@ -174,7 +238,7 @@ public class Repository<Entity> {
 
             for (Column c : table.columns()) {
                 if (!existingColumns.contains(c.name().toLowerCase(java.util.Locale.ENGLISH))) {
-                    String colDef = c.name() + " " + dialect.sqlType(c.field().getType());
+                    String colDef = c.name() + " " + dialect.sqlType(c.type());
                     // Skip NOT NULL for ADD COLUMN to avoid constraint errors on existing rows, 
                     // unless it's an advanced dialect/setup. For safety, we just add the column.
                     String sql = dialect.addColumnSyntax(table.name(), colDef);
