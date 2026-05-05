@@ -82,10 +82,6 @@ public class Repository<Entity> {
         return new dev.sweety.sql4j.api.query.PkContext<>(this, values);
     }
 
-    public dev.sweety.sql4j.api.query.Query<Integer> deleteByPk(Object pk) {
-        return pk(pk).delete();
-    }
-
     public DeleteWhere<Entity> deleteWhere(dev.sweety.sql4j.api.query.Criterion criterion) {
         return deleteWhere().where(criterion);
     }
@@ -174,9 +170,6 @@ public class Repository<Entity> {
         return selectAll().where(criterion);
     }
 
-    public dev.sweety.sql4j.api.query.Query<Entity> selectByPk(Object pk) {
-        return pk(pk).find();
-    }
 
     /**
      * Selects all columns with a WHERE clause. Returns fully populated entity instances.
