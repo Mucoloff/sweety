@@ -22,7 +22,7 @@ import java.util.function.Function;
 public class Database implements AutoCloseable {
 
     private final Map<Class<?>, Repository<?>> repositories = new ConcurrentHashMap<>();
-    private final TableRegistry tableRegistry = new TableRegistry();
+    private final TableRegistry tableRegistry = TableRegistry.getDefault();
     private final QueryCache queryCache = new QueryCache();
     private final SqlConnection connection;
     private final Dialect dialect;

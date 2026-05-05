@@ -37,7 +37,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> {
     private boolean ascending = true;
     private boolean includeDeleted = false;
 
-    private record Metadata<T>(String sql, Constructor<T> constructor, List<Column> selectedColumns) {}
+    private record Metadata<T>(String sql, Constructor<T> constructor, List<Column<?>> selectedColumns) {}
 
     // --- Constructors ---
 
@@ -122,7 +122,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> {
     }
 
     private Metadata<T> buildMetadata(Table<T> table, String whereClause, Criterion criterion, Set<String> columnNames) {
-        List<Column> selected = (columnNames == null || columnNames.isEmpty())
+        List<Column<?>> selected = (columnNames == null || columnNames.isEmpty())
                 ? table.columns()
                 : columnNames.stream().map(table::column).collect(Collectors.toList());
 

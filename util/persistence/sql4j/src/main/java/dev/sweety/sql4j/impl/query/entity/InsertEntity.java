@@ -21,7 +21,7 @@ public final class InsertEntity<T> extends AbstractQuery<MutationResult<T>> {
     private final T instance;
     private final Metadata metadata;
 
-    private record Metadata(List<Column> insertColumns, @Nullable Column generatedColumn, String sql) {
+    private record Metadata(List<Column<?>> insertColumns, @Nullable Column<?> generatedColumn, String sql) {
     }
 
     public InsertEntity(Table<T> table, T instance, QueryCache cache) {
@@ -31,9 +31,9 @@ public final class InsertEntity<T> extends AbstractQuery<MutationResult<T>> {
         Objects.requireNonNull(table.insertableColumns(), "table.insertableColumns() is null for " + table.name());
 
         // Calculate which columns are present (non-null or no default)
-        List<Column> allInsertable = table.insertableColumns().columns();
-        List<Column> activeColumns = new java.util.ArrayList<>();
-        for (Column c : allInsertable) {
+        List<Column<?>> allInsertable = table.insertableColumns().columns();
+        List<Column<?>> activeColumns = new java.util.ArrayList<>();
+        for (Column<?> c : allInsertable) {
             Object val = c.get(instance);
             if (val == null && c.defaultValue() != null && !c.defaultValue().isEmpty()) {
                 continue; // Skip to let DB use default
@@ -45,7 +45,7 @@ public final class InsertEntity<T> extends AbstractQuery<MutationResult<T>> {
         String cacheKey = "insert:meta:" + table.name() + ":" + colKey;
 
         this.metadata = cache.getMetadata(cacheKey, _ -> {
-            Column generatedColumn = table.insertableColumns().autoIncrementColumn();
+            Column<?> generatedColumn = table.insertableColumns().autoIncrementColumn();
             int fieldsPerRow = activeColumns.size();
 
             String colNames = activeColumns.stream().map(Column::name).collect(Collectors.joining(", "));

@@ -6,9 +6,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 public record ForeignKey(
-        Column local,
+        Column<?> local,
         Table<?> referencedTable,
-        Column referencedColumn,
+        Column<?> referencedColumn,
         boolean nullable,
         Action onDelete,
         Action onUpdate

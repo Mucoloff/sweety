@@ -17,7 +17,7 @@ public final class UpdateEntity<T> extends AbstractQuery<Integer> {
     private final T instance;
     private final Metadata metadata;
 
-    private record Metadata(List<Column> updateColumns, List<Column> primaryKeys, String sql) {}
+    private record Metadata(List<Column<?>> updateColumns, List<Column<?>> primaryKeys, String sql) {}
 
     public UpdateEntity(final Table<T> table, final T instance, QueryCache cache) {
         this.table = Objects.requireNonNull(table, "table cannot be null");
@@ -26,8 +26,8 @@ public final class UpdateEntity<T> extends AbstractQuery<Integer> {
 
         String cacheKey = "update:meta:" + table.name() + ":" + table.clazz().getName();
         this.metadata = cache.getMetadata(cacheKey, _ -> {
-            List<Column> primaryKeys = table.primaryKeys();
-            List<Column> updateColumns = table.updatableColumns();
+            List<Column<?>> primaryKeys = table.primaryKeys();
+            List<Column<?>> updateColumns = table.updatableColumns();
 
             String setClause = updateColumns.stream()
                     .map(Column::name)
@@ -62,7 +62,7 @@ public final class UpdateEntity<T> extends AbstractQuery<Integer> {
     @Override
     public void bind(final PreparedStatement ps) throws SQLException {
         int idx = table.bindColumns(ps, metadata.updateColumns, instance, 1);
-        for (Column pk : metadata.primaryKeys) ps.setObject(idx++, pk.get(instance));
+        for (Column<?> pk : metadata.primaryKeys) ps.setObject(idx++, pk.get(instance));
     }
 
     @Override

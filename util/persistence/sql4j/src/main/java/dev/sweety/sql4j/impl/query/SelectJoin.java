@@ -52,7 +52,7 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
 
         List<String> cols = new ArrayList<>();
         for (Table<?> t : tables) {
-            for (Column c : t.columns()) {
+            for (Column<?> c : t.columns()) {
                 cols.add(t.name() + "." + c.name() + " AS " + t.name() + "_" + c.name());
             }
         }
@@ -269,7 +269,7 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
             return this;
         }
 
-        public Builder on(Column left, Column right) {
+        public Builder on(Column<?> left, Column<?> right) {
             String clause = left.table().name() + "." + left.name() + " = " + right.table().name() + "." + right.name();
             if (onClausesSet.add(clause)) {
                 onClausesList.add(clause);

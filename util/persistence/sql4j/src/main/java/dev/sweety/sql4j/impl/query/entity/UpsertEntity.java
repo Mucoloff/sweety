@@ -21,7 +21,7 @@ public final class UpsertEntity<T> extends AbstractQuery<MutationResult<T>> {
     private final T instance;
     private final Metadata metadata;
 
-    private record Metadata(List<Column> insertColumns, @Nullable Column generatedColumn, String sql) {}
+    private record Metadata(List<Column<?>> insertColumns, @Nullable Column<?> generatedColumn, String sql) {}
 
     public UpsertEntity(Table<T> table, Dialect dialect, T instance, QueryCache cache) {
         this.table = table;
@@ -30,17 +30,17 @@ public final class UpsertEntity<T> extends AbstractQuery<MutationResult<T>> {
         String cacheKey = "upsert:meta:" + table.name() + ":" + table.clazz().getName();
         this.metadata = cache.getMetadata(cacheKey, _ -> {
             InsertableColumns cols = table.insertableColumns();
-            List<Column> insertColumns = cols.columns();
-            Column generatedColumn = cols.autoIncrementColumn();
+            List<Column<?>> insertColumns = cols.columns();
+            Column<?> generatedColumn = cols.autoIncrementColumn();
 
-            List<String> insertColNames = insertColumns.stream().map(Column::name).toList();
-            List<String> pkColNames = table.primaryKeys().stream().map(Column::name).toList();
+            List<String> insertColNames = insertColumns.stream().map(Column::name).collect(Collectors.toList());
+            List<String> pkColNames = table.primaryKeys().stream().map(Column::name).collect(Collectors.toList());
             
             // By default, UPSERT updates all columns except the primary keys
             List<String> updateColNames = insertColumns.stream()
                     .map(Column::name)
                     .filter(name -> !pkColNames.contains(name))
-                    .toList();
+                    .collect(Collectors.toList());
 
             if (pkColNames.isEmpty()) {
                 throw new IllegalStateException("Table " + table.name() + " has no primary keys, cannot UPSERT.");
@@ -72,7 +72,7 @@ public final class UpsertEntity<T> extends AbstractQuery<MutationResult<T>> {
         int idx = 1;
         // In most dialects, UPSERT parameter bindings only require the INSERT parameters once.
         // H2 MERGE, SQLite/PostgreSQL ON CONFLICT, MySQL ON DUPLICATE KEY UPDATE all use the initial VALUES list.
-        for (Column c : metadata.insertColumns) c.set(ps, idx++, instance);
+        for (Column<?> c : metadata.insertColumns) c.set(ps, idx++, instance);
     }
 
     @Override

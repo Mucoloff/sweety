@@ -15,6 +15,12 @@ import java.util.function.Function;
 public final class TableRegistry {
 
     private final Map<Class<?>, Table<?>> tableMap = new IdentityHashMap<>();
+    private static final TableRegistry DEFAULT = new TableRegistry();
+
+    public static TableRegistry getDefault() {
+        return DEFAULT;
+    }
+
     private final Map<String, Table<?>> allTables = new java.util.HashMap<>();
 
     public void register(Table<?> table) {
@@ -66,12 +72,12 @@ public final class TableRegistry {
             String key = name.toLowerCase(Locale.ENGLISH);
             if (allTables.containsKey(key)) return;
 
-            Column pk1 = t1.primaryKeys().getFirst();
-            Column pk2 = t2.primaryKeys().getFirst();
+            Column<?> pk1 = t1.primaryKeys().getFirst();
+            Column<?> pk2 = t2.primaryKeys().getFirst();
 
-            List<Function<Table<Object>, Column>> colFactories = java.util.List.of(
-                t -> new Column(t, t1.name().toLowerCase() + "_id", pk1.field(), null),
-                t -> new Column(t, t2.name().toLowerCase() + "_id", pk2.field(), null)
+            List<Function<Table<Object>, Column<?>>> colFactories = java.util.List.of(
+                t -> new Column<>(t, t1.name().toLowerCase() + "_id", pk1.field(), null),
+                t -> new Column<>(t, t2.name().toLowerCase() + "_id", pk2.field(), null)
             );
 
             List<ForeignKey> fks = new java.util.ArrayList<>();

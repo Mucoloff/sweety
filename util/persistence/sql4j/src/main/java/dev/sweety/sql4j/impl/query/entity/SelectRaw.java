@@ -118,17 +118,17 @@ public final class SelectRaw extends AbstractQuery<List<Row>> {
     // --- Metadata builder ---
 
     private static Metadata buildMetadata(Table<?> table, String whereClause, Set<String> columnNames) {
-        List<Column> selected = columnNames == null || columnNames.isEmpty()
+        List<Column<?>> selected = columnNames == null || columnNames.isEmpty()
                 ? table.columns()
                 : table.columns().stream()
                         .filter(c -> columnNames.contains(c.name()))
-                        .toList();
+                        .collect(Collectors.toList());
 
         if (selected.isEmpty())
             throw new IllegalArgumentException(
                     "No matching columns found for " + columnNames + " in table '" + table.name() + "'");
 
-        List<String> names = selected.stream().map(Column::name).toList();
+        List<String> names = selected.stream().map(Column::name).collect(Collectors.toList());
         String colList = String.join(", ", names);
         String sql = "SELECT " + colList + " FROM " + table.name()
                 + (whereClause != null && !whereClause.isEmpty() ? " WHERE " + whereClause : "");
@@ -143,7 +143,7 @@ public final class SelectRaw extends AbstractQuery<List<Row>> {
         String base = metadata.sql;
 
         // Soft delete filtering
-        Column softDeleteCol = table.softDeleteColumn();
+        Column<?> softDeleteCol = table.softDeleteColumn();
         if (softDeleteCol != null && !includeDeleted) {
             String filter;
             if (softDeleteCol.type() == java.time.LocalDateTime.class || softDeleteCol.type() == java.util.Date.class) {

@@ -54,7 +54,7 @@ public final class CreateTable extends AbstractQuery<Void> {
         boolean isSinglePK = table.primaryKeys().size() == 1;
         boolean compositePK = table.primaryKeys().size() > 1;
 
-        for (Column c : table.columns()) {
+        for (Column<?> c : table.columns()) {
             // Case: single PK + autoIncrement — inline definition only (no separate constraint)
             if (c.isPrimaryKey() && c.isAutoIncrement() && isSinglePK) {
                 cols.add(c.name() + " INTEGER PRIMARY KEY " + dialect.autoIncrement());
@@ -115,7 +115,7 @@ public final class CreateTable extends AbstractQuery<Void> {
 
     public static java.util.List<String> buildIndices(Table<?> table, boolean ifNotExists) {
         java.util.List<String> indices = new java.util.ArrayList<>();
-        for (Column c : table.columns()) {
+        for (Column<?> c : table.columns()) {
             if (c.indexName() != null) {
                 StringBuilder sb = new StringBuilder("CREATE ");
                 if (c.isUnique()) sb.append("UNIQUE ");

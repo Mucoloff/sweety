@@ -1,5 +1,6 @@
 package dev.sweety.sql4j.api.obj;
 
+import dev.sweety.sql4j.api.query.Criterion;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -9,7 +10,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Objects;
 
-public final class Column {
+public final class Column<T> {
     private final String name;
     private final Field field;
     private final Info info;
@@ -48,11 +49,21 @@ public final class Column {
     public void setDefaultValue(String defaultValue) { this.defaultValue = defaultValue; }
     public void setSoftDelete(boolean softDelete) { this.softDelete = softDelete; }
 
+    // --- DSL Methods ---
+
+    public Criterion eq(T value) { return Criterion.eq(this, value); }
+    public Criterion ne(T value) { return Criterion.ne(this, value); }
+    public Criterion gt(T value) { return Criterion.gt(this, value); }
+    public Criterion ge(T value) { return Criterion.ge(this, value); }
+    public Criterion lt(T value) { return Criterion.lt(this, value); }
+    public Criterion le(T value) { return Criterion.le(this, value); }
+    public Criterion like(String pattern) { return Criterion.like(this, pattern); }
+
     public Class<?> type() {
         return relationIdField != null ? relationIdField.getType() : field.getType();
     }
 
-    public <T> T get(Object instance) {
+    public T get(Object instance) {
         try {
             //noinspection unchecked
             return (T) field.get(instance);
@@ -82,9 +93,6 @@ public final class Column {
         try {
             Class<?> type = field.getType();
             if (relationIdField != null && value != null && !type.isInstance(value)) {
-                // If this is a relation field (e.g. User user) and we're trying to set an ID (Integer),
-                // we skip it to avoid IllegalAccessException. 
-                // Future versions could instantiate a proxy/stub here.
                 return;
             }
             if (value == null) {
@@ -96,7 +104,6 @@ public final class Column {
                 return;
             }
             
-            // Handle boolean/Boolean specially (databases often return 0/1 as Integer/Long)
             if (type == boolean.class || type == Boolean.class) {
                 if (value instanceof Boolean b) {
                     field.set(instance, b);
@@ -141,7 +148,7 @@ public final class Column {
                 field.set(instance, value);
             }
         } catch (IllegalAccessException e) {
-            throw new IllegalStateException("Failed to set field " + field.getName() + " on " + instance.getClass().getName() + " with value " + value + " of type " + (value != null ? value.getClass().getName() : "null"), e);
+            throw new IllegalStateException("Failed to set field " + field.getName() + " on " + instance.getClass().getName() + " with value " + value, e);
         }
     }
 
@@ -173,21 +180,10 @@ public final class Column {
     @Target(ElementType.FIELD)
     public @interface Info {
         String name() default "";
-
         boolean primaryKey() default false;
-
         boolean autoIncrement() default false;
-
-        /**
-         * Marks this column as nullable in the DDL (omits NOT NULL constraint).
-         * <p><b>Note:</b> Cannot be {@code true} on primitive fields ({@code int}, {@code long}, etc.)
-         * — use wrapper types ({@code Integer}, {@code Long}) instead.
-         * This is validated at table initialization and will throw {@link IllegalStateException}.
-         */
         boolean nullable() default false;
-
         boolean unique() default false;
-
         String defaultValue() default "";
     }
 }

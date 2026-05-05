@@ -23,19 +23,20 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public final class Table<T> {
     private final String name;
     private final Class<T> clazz;
 
-    private final List<Column> columnsList = new ArrayList<>();
-    private final Map<String, Column> columnsMap = new LinkedHashMap<>();
-    private final List<Column> primaryKeys = new ArrayList<>();
+    private final List<Column<?>> columnsList = new ArrayList<>();
+    private final Map<String, Column<?>> columnsMap = new LinkedHashMap<>();
+    private final List<Column<?>> primaryKeys = new ArrayList<>();
     private final List<ForeignKey> foreignKeys = new ArrayList<>();
-    private final List<Column> updatableColumns = new ArrayList<>();
+    private final List<Column<?>> updatableColumns = new ArrayList<>();
     private final List<Relation> relations = new ArrayList<>();
     private InsertableColumns insertableColumns;
-    private Column softDeleteColumn;
+    private Column<?> softDeleteColumn;
 
     private volatile boolean initializing = false;
     private volatile boolean initialized = false;
@@ -66,7 +67,7 @@ public final class Table<T> {
                                     field.getType().getName() + "' is a primitive.");
                         }
 
-                        Column col = new Column(this, colInfo.name().isEmpty() ? field.getName() : colInfo.name(), field, colInfo);
+                        Column<?> col = new Column<>(this, colInfo.name().isEmpty() ? field.getName() : colInfo.name(), field, colInfo);
                         
                         // Enterprise annotations
                         Unique unique = field.getAnnotation(Unique.class);
@@ -101,10 +102,10 @@ public final class Table<T> {
                         if (refTable.primaryKeys().isEmpty()) {
                             throw new IllegalStateException("Table " + refTable.name() + " has no primary keys");
                         }
-                        Column refPk = refTable.primaryKeys().get(0);
+                        Column<?> refPk = refTable.primaryKeys().get(0);
                         
                         String colName = manyToOne.columnName().isEmpty() ? field.getName() + "_id" : manyToOne.columnName();
-                        Column col = new Column(this, colName, field, null, refPk.field());
+                        Column<?> col = new Column<>(this, colName, field, null, refPk.field());
                         
                         this.columnsList.add(col);
                         this.columnsMap.put(col.name().toLowerCase(java.util.Locale.ENGLISH), col);
@@ -129,7 +130,7 @@ public final class Table<T> {
                             dev.sweety.sql4j.api.obj.ForeignKey.Info fkInfo = field.getAnnotation(dev.sweety.sql4j.api.obj.ForeignKey.Info.class);
                             if (fkInfo != null) {
                                 Table<?> refTable = registry.get(fkInfo.table());
-                                Column refCol = refTable.column(fkInfo.column());
+                                Column<?> refCol = refTable.column(fkInfo.column());
                                 this.foreignKeys.add(new ForeignKey(this.column(colInfo.name().isEmpty() ? field.getName() : colInfo.name()), refTable, refCol, true, fkInfo.onDelete(), fkInfo.onUpdate()));
                             }
                         }
@@ -137,9 +138,9 @@ public final class Table<T> {
                 }
 
                 // Finalize insertable/updatable
-                Column autoInc = null;
-                List<Column> insertColumns = new ArrayList<>();
-                for (Column c : columnsList) {
+                Column<?> autoInc = null;
+                List<Column<?>> insertColumns = new ArrayList<>();
+                for (Column<?> c : columnsList) {
                     if (c.isAutoIncrement()) {
                         autoInc = c;
                     } else {
@@ -164,9 +165,9 @@ public final class Table<T> {
         return field.getType();
     }
 
-    public int bindColumns(PreparedStatement ps, List<Column> cols, Object instance, int startIdx) throws SQLException {
+    public int bindColumns(PreparedStatement ps, List<Column<?>> cols, Object instance, int startIdx) throws SQLException {
         int idx = startIdx;
-        for (Column c : cols) c.set(ps, idx++, instance);
+        for (Column<?> c : cols) c.set(ps, idx++, instance);
         return idx;
     }
 
@@ -178,16 +179,16 @@ public final class Table<T> {
         return clazz;
     }
 
-    public static Table<Object> virtual(String name, List<Function<Table<Object>, Column>> columnFactories, List<ForeignKey> foreignKeys) {
+    public static Table<Object> virtual(String name, List<Function<Table<Object>, Column<?>>> columnFactories, List<ForeignKey> foreignKeys) {
         Table<Object> table = new Table<>(Object.class, name);
-        List<Column> columns = columnFactories.stream().map(f -> f.apply(table)).toList();
+        List<Column<?>> columns = columnFactories.stream().map(f -> f.apply(table)).collect(Collectors.toList());
         table.columnsList.addAll(columns);
-        for (Column c : columns) table.columnsMap.put(c.name().toLowerCase(java.util.Locale.ENGLISH), c);
+        for (Column<?> c : columns) table.columnsMap.put(c.name().toLowerCase(java.util.Locale.ENGLISH), c);
         table.foreignKeys.addAll(foreignKeys);
         
-        List<Column> insertColumns = new ArrayList<>();
-        Column autoInc = null;
-        for (Column c : columns) {
+        List<Column<?>> insertColumns = new ArrayList<>();
+        Column<?> autoInc = null;
+        for (Column<?> c : columns) {
             if (c.isAutoIncrement()) autoInc = c;
             else insertColumns.add(c);
         }
@@ -197,7 +198,7 @@ public final class Table<T> {
         return table;
     }
 
-    public List<Column> columns() {
+    public List<Column<?>> columns() {
         return columnsList;
     }
 
@@ -205,7 +206,7 @@ public final class Table<T> {
         return relations;
     }
 
-    public List<Column> primaryKeys() {
+    public List<Column<?>> primaryKeys() {
         return primaryKeys;
     }
 
@@ -213,7 +214,7 @@ public final class Table<T> {
         return foreignKeys;
     }
 
-    public List<Column> updatableColumns() {
+    public List<Column<?>> updatableColumns() {
         return updatableColumns;
     }
 
@@ -221,12 +222,12 @@ public final class Table<T> {
         return insertableColumns;
     }
 
-    public Column softDeleteColumn() {
+    public Column<?> softDeleteColumn() {
         return softDeleteColumn;
     }
 
-    public Column column(String name) {
-        Column col = columnsMap.get(name.toLowerCase(Locale.ENGLISH));
+    public Column<?> column(String name) {
+        Column<?> col = columnsMap.get(name.toLowerCase(Locale.ENGLISH));
         if (col == null) {
             // Check if it's a relation column
             for (Relation rel : relations) {
@@ -245,7 +246,7 @@ public final class Table<T> {
             Class<?> targetClass,
             String mappedBy,
             String joinTable,
-            Column column // Only for MANY_TO_ONE
+            Column<?> column // Only for MANY_TO_ONE
     ) {
         public enum Type {
             MANY_TO_ONE, ONE_TO_MANY, MANY_TO_MANY

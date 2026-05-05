@@ -19,7 +19,7 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> {
     private final Metadata metadata;
     private boolean hardDelete = false;
 
-    private record Metadata(List<Column> primaryKeys, Column softDeleteColumn, String softDeleteSql, String hardDeleteSql) {}
+    private record Metadata(List<Column<?>> primaryKeys, Column<?> softDeleteColumn, String softDeleteSql, String hardDeleteSql) {}
 
     @SafeVarargs
     public DeleteEntity(final Table<T> table, QueryCache cache, final T... instances) {
@@ -28,11 +28,11 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> {
         Objects.requireNonNull(cache, "cache cannot be null");
 
         int instancesCount = instances != null ? instances.length : 0;
-        Column softDeleteCol = table.softDeleteColumn();
+        Column<?> softDeleteCol = table.softDeleteColumn();
 
         String cacheKey = "delete:meta:" + table.name() + ":" + table.clazz().getName() + ":" + instancesCount;
         this.metadata = cache.getMetadata(cacheKey, _ -> {
-            List<Column> pks = table.primaryKeys();
+            List<Column<?>> pks = table.primaryKeys();
             
             String wherePart;
             if (pks.size() == 1) {
@@ -94,7 +94,7 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> {
         if (instances == null) return;
         int idx = 1;
         for (T instance : instances) {
-            for (Column pk : metadata.primaryKeys) {
+            for (Column<?> pk : metadata.primaryKeys) {
                 ps.setObject(idx++, pk.get(instance));
             }
         }
