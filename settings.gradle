@@ -61,6 +61,7 @@ include 'util:persistence:configuration'
 
 include 'util:persistence:ormlite-util'
 include 'util:persistence:sql4j'
+include 'util:persistence:sql4j-processor'
 
 include 'util:processor'
 include 'util:processor:event-processor'
