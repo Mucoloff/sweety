@@ -137,7 +137,7 @@ public class Repository<Entity> {
      */
     public SelectEntity<Entity> selectAll() {
         return cache.getQuery("selectAllPrototype:" + table.name(),
-                _ -> new SelectEntity<>(table, cache));
+                _ -> new SelectEntity<>(table, cache, dialect));
     }
 
     /**
@@ -148,7 +148,7 @@ public class Repository<Entity> {
      * }</pre>
      */
     public SelectEntity<Entity> selectWhere(String where, Object... params) {
-        return new SelectEntity<>(table, where, cache, params);
+        return new SelectEntity<>(table, where, cache, dialect, params);
     }
 
     /**
@@ -161,7 +161,7 @@ public class Repository<Entity> {
      */
     public SelectEntity<Entity> select(String... columnNames) {
         Set<String> cols = Set.of(columnNames);
-        return new SelectEntity<>(table, null, cols, cache, (Object[]) null);
+        return new SelectEntity<>(table, null, cols, cache, dialect, (Object[]) null);
     }
 
     /**
@@ -169,7 +169,7 @@ public class Repository<Entity> {
      * Unspecified entity fields are left at zero/null.
      */
     public SelectEntity<Entity> selectWhere(String where, Set<String> columnNames, Object... params) {
-        return new SelectEntity<>(table, where, columnNames, cache, params);
+        return new SelectEntity<>(table, where, columnNames, cache, dialect, params);
     }
 
     // ─── Row-based reads (lightweight, no entity instantiation) ────────────────
@@ -184,7 +184,7 @@ public class Repository<Entity> {
      */
     public SelectRaw selectRawAll() {
         return cache.getQuery("selectRawAllPrototype:" + table.name(),
-                _ -> new SelectRaw(table, cache));
+                _ -> new SelectRaw(table, cache, dialect));
     }
 
     /**
@@ -197,21 +197,25 @@ public class Repository<Entity> {
      */
     public SelectRaw selectRaw(String... columnNames) {
         Set<String> cols = Set.of(columnNames);
-        return new SelectRaw(table, null, cols, cache, (Object[]) null);
+        return new SelectRaw(table, null, cols, cache, dialect, (Object[]) null);
     }
 
     /**
      * Selects specific columns with a WHERE clause and returns {@link List}<{@link Row}>.
      */
     public SelectRaw selectRawWhere(String where, Object... params) {
-        return new SelectRaw(table, where, null, cache, params);
+        return new SelectRaw(table, where, null, cache, dialect, params);
+    }
+
+    public dev.sweety.sql4j.impl.query.SelectJoin.Builder joinBuilder() {
+        return new dev.sweety.sql4j.impl.query.SelectJoin.Builder().dialect(dialect).join(table);
     }
 
     /**
      * Selects specific columns with a WHERE clause and returns {@link List}<{@link Row}>.
      */
     public SelectRaw selectRawWhere(String where, Set<String> columnNames, Object... params) {
-        return new SelectRaw(table, where, columnNames, cache, params);
+        return new SelectRaw(table, where, columnNames, cache, dialect, params);
     }
 
     // ─── DDL & Migration ───────────────────────────────────────────────────────

@@ -50,5 +50,12 @@ public interface Dialect {
     default boolean supportsForeignKeys() {
         return true;
     }
+
+    default String limitOffsetSyntax(int limit, int offset) {
+        if (limit < 0) return "";
+        StringBuilder sb = new StringBuilder(" LIMIT ").append(limit);
+        if (offset >= 0) sb.append(" OFFSET ").append(offset);
+        return sb.toString();
+    }
 }
 

@@ -18,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Function;
 
 public final class Table<T> {
     private final String name;
@@ -64,7 +65,7 @@ public final class Table<T> {
                                 field.getType().getName() + "' is a primitive.");
                     }
 
-                    Column col = new Column(colInfo.name().isEmpty() ? field.getName() : colInfo.name(), field, colInfo);
+                    Column col = new Column(this, colInfo.name().isEmpty() ? field.getName() : colInfo.name(), field, colInfo);
                     cols.add(col);
                     this.columnsMap.put(col.name().toLowerCase(java.util.Locale.ENGLISH), col);
                     if (col.isPrimaryKey()) pks.add(col);
@@ -95,7 +96,7 @@ public final class Table<T> {
                     Column refPk = refTable.primaryKeys().get(0);
                     
                     String colName = manyToOne.columnName().isEmpty() ? field.getName() + "_id" : manyToOne.columnName();
-                    Column col = new Column(colName, field, null, refPk.field());
+                    Column col = new Column(this, colName, field, null, refPk.field());
                     
                     this.columnsList.add(col);
                     this.columnsMap.put(col.name().toLowerCase(java.util.Locale.ENGLISH), col);
@@ -162,8 +163,9 @@ public final class Table<T> {
         return clazz;
     }
 
-    public static Table<Object> virtual(String name, List<Column> columns, List<ForeignKey> foreignKeys) {
+    public static Table<Object> virtual(String name, List<Function<Table<Object>, Column>> columnFactories, List<ForeignKey> foreignKeys) {
         Table<Object> table = new Table<>(Object.class, name);
+        List<Column> columns = columnFactories.stream().map(f -> f.apply(table)).toList();
         table.columnsList.addAll(columns);
         for (Column c : columns) table.columnsMap.put(c.name().toLowerCase(java.util.Locale.ENGLISH), c);
         table.foreignKeys.addAll(foreignKeys);

@@ -1,5 +1,6 @@
 package dev.sweety.sql4j.impl.query;
 
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Row;
 import dev.sweety.sql4j.api.obj.Table;
@@ -16,20 +17,28 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
 
     private final String sql;
     private final List<Object> params;
+    private final Dialect dialect;
+
+    private int limit = -1;
+    private int offset = -1;
+    private String orderBy = null;
+    private boolean ascending = true;
 
     /**
      * @param tables      tabelle da joinare
      * @param onClauses   clausole ON per ogni join (tables.size() - 1 elementi)
      * @param whereClause eventuale WHERE
+     * @param dialect     dialetto del database
      * @param params      parametri della query
      */
-    private SelectJoin(List<Table<?>> tables, List<String> onClauses, String whereClause, Object... params) {
+    private SelectJoin(List<Table<?>> tables, List<String> onClauses, String whereClause, Dialect dialect, Object... params) {
         if (tables.size() < 2)
             throw new IllegalArgumentException("Servono almeno 2 tabelle per un join");
         if (onClauses.size() != tables.size() - 1)
             throw new IllegalArgumentException("Numero di onClauses deve essere " + (tables.size() - 1));
 
         this.params = Arrays.asList(params);
+        this.dialect = dialect;
         this.sql = buildJoinSql(tables, onClauses, whereClause);
     }
 
@@ -59,7 +68,33 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
 
     @Override
     protected String buildSql() {
-        return sql;
+        String base = sql;
+        if (orderBy != null) {
+            base += " ORDER BY " + orderBy + (ascending ? " ASC" : " DESC");
+        }
+        if (dialect != null) {
+            base += dialect.limitOffsetSyntax(limit, offset);
+        } else if (limit >= 0) {
+            base += " LIMIT " + limit;
+            if (offset >= 0) base += " OFFSET " + offset;
+        }
+        return base;
+    }
+
+    public SelectJoin limit(int limit) {
+        this.limit = limit;
+        return this;
+    }
+
+    public SelectJoin offset(int offset) {
+        this.offset = offset;
+        return this;
+    }
+
+    public SelectJoin orderBy(String column, boolean ascending) {
+        this.orderBy = column;
+        this.ascending = ascending;
+        return this;
     }
 
     @Override
@@ -119,8 +154,14 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
 
         private String whereClause = null;
         private final List<Object> params = new ArrayList<>();
+        private Dialect dialect = null;
 
         public Builder() {}
+
+        public Builder dialect(Dialect dialect) {
+            this.dialect = dialect;
+            return this;
+        }
 
         public Builder join(Table<?>... tables) {
             for (Table<?> t : tables) {
@@ -140,6 +181,14 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
             return this;
         }
 
+        public Builder on(Column left, Column right) {
+            String clause = left.table().name() + "." + left.name() + " = " + right.table().name() + "." + right.name();
+            if (onClausesSet.add(clause)) {
+                onClausesList.add(clause);
+            }
+            return this;
+        }
+
         public Builder where(String whereClause, Object... params) {
             this.whereClause = whereClause;
             Collections.addAll(this.params, params);
@@ -147,7 +196,7 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
         }
 
         public SelectJoin build() {
-            return new SelectJoin(tablesList, onClausesList, whereClause, params.toArray());
+            return new SelectJoin(tablesList, onClausesList, whereClause, dialect, params.toArray());
         }
     }
 }

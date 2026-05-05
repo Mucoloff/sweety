@@ -1,5 +1,6 @@
 package dev.sweety.sql4j.impl.query.entity;
 
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Row;
 import dev.sweety.sql4j.api.obj.Table;
@@ -29,19 +30,25 @@ public final class SelectRaw extends AbstractQuery<List<Row>> {
 
     private final Object[] params;
     private final Metadata metadata;
+    private final Dialect dialect;
+
+    private int limit = -1;
+    private int offset = -1;
+    private String orderBy = null;
+    private boolean ascending = true;
 
     private record Metadata(String sql, List<String> columnNames) {}
 
     // --- Constructors ---
 
     /** Selects all columns of the table, no WHERE. */
-    public SelectRaw(Table<?> table, QueryCache cache) {
-        this(table, null, null, cache, (Object[]) null);
+    public SelectRaw(Table<?> table, QueryCache cache, Dialect dialect) {
+        this(table, null, null, cache, dialect, (Object[]) null);
     }
 
     /** Selects all columns with an optional WHERE clause. */
-    public SelectRaw(Table<?> table, String whereClause, QueryCache cache, Object... params) {
-        this(table, whereClause, null, cache, params);
+    public SelectRaw(Table<?> table, String whereClause, QueryCache cache, Dialect dialect, Object... params) {
+        this(table, whereClause, null, cache, dialect, params);
     }
 
     /**
@@ -54,8 +61,9 @@ public final class SelectRaw extends AbstractQuery<List<Row>> {
      * @param params      positional parameters for the WHERE clause
      */
     public SelectRaw(Table<?> table, String whereClause, Set<String> columnNames,
-                     QueryCache cache, Object... params) {
+                     QueryCache cache, Dialect dialect, Object... params) {
         this.params = params;
+        this.dialect = dialect;
 
         String colKey = columnNames == null || columnNames.isEmpty()
                 ? "*"
@@ -68,14 +76,31 @@ public final class SelectRaw extends AbstractQuery<List<Row>> {
     }
 
     /** Private copy constructor for prototype recycling. */
-    private SelectRaw(Metadata metadata, Object[] params) {
+    private SelectRaw(Metadata metadata, Dialect dialect, Object[] params) {
         this.metadata = metadata;
+        this.dialect = dialect;
         this.params = params;
     }
 
     /** Creates a copy with new positional parameters — zero-allocation prototype reuse. */
     public SelectRaw copy(Object... params) {
-        return new SelectRaw(metadata, params);
+        return new SelectRaw(metadata, dialect, params);
+    }
+
+    public SelectRaw limit(int limit) {
+        this.limit = limit;
+        return this;
+    }
+
+    public SelectRaw offset(int offset) {
+        this.offset = offset;
+        return this;
+    }
+
+    public SelectRaw orderBy(String column, boolean ascending) {
+        this.orderBy = column;
+        this.ascending = ascending;
+        return this;
     }
 
     // --- Metadata builder ---
@@ -103,7 +128,17 @@ public final class SelectRaw extends AbstractQuery<List<Row>> {
 
     @Override
     protected String buildSql() {
-        return metadata.sql;
+        String base = metadata.sql;
+        if (orderBy != null) {
+            base += " ORDER BY " + orderBy + (ascending ? " ASC" : " DESC");
+        }
+        if (dialect != null) {
+            base += dialect.limitOffsetSyntax(limit, offset);
+        } else if (limit >= 0) {
+            base += " LIMIT " + limit;
+            if (offset >= 0) base += " OFFSET " + offset;
+        }
+        return base;
     }
 
     @Override

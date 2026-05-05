@@ -12,17 +12,19 @@ public final class Column {
     private final String name;
     private final Field field;
     private final Info info;
+    private final Table<?> table;
     private Field relationIdField; // For ManyToOne
 
-    public Column(String name, Field field, Info info) {
+    public Column(Table<?> table, String name, Field field, Info info) {
+        this.table = table;
         this.name = name;
         this.field = field;
         this.info = info;
         field.setAccessible(true);
     }
 
-    public Column(String name, Field field, Info info, Field relationIdField) {
-        this(name, field, info);
+    public Column(Table<?> table, String name, Field field, Info info, Field relationIdField) {
+        this(table, name, field, info);
         this.relationIdField = relationIdField;
         if (relationIdField != null) relationIdField.setAccessible(true);
     }
@@ -30,6 +32,7 @@ public final class Column {
     public String name() { return name; }
     public Field field() { return field; }
     public Info info() { return info; }
+    public Table<?> table() { return table; }
 
     public Class<?> type() {
         return relationIdField != null ? relationIdField.getType() : field.getType();

@@ -1,9 +1,15 @@
 package dev.sweety.sql4j.api.obj.table;
 
+import dev.sweety.sql4j.api.obj.Column;
+import dev.sweety.sql4j.api.obj.ForeignKey;
+import dev.sweety.sql4j.api.obj.ForeignKey.Action;
 import dev.sweety.sql4j.api.obj.Table;
 
 import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.function.Function;
 
 public final class TableRegistry {
 
@@ -13,7 +19,7 @@ public final class TableRegistry {
     public void register(Table<?> table) {
         synchronized (tableMap) {
             tableMap.put(table.clazz(), table);
-            allTables.put(table.name().toLowerCase(java.util.Locale.ENGLISH), table);
+            allTables.put(table.name().toLowerCase(Locale.ENGLISH), table);
         }
     }
 
@@ -54,22 +60,23 @@ public final class TableRegistry {
 
     public void registerJunctionTable(String name, Table<?> t1, Table<?> t2) {
         synchronized (tableMap) {
-            String key = name.toLowerCase(java.util.Locale.ENGLISH);
+            String key = name.toLowerCase(Locale.ENGLISH);
             if (allTables.containsKey(key)) return;
 
-            dev.sweety.sql4j.api.obj.Column pk1 = t1.primaryKeys().get(0);
-            dev.sweety.sql4j.api.obj.Column pk2 = t2.primaryKeys().get(0);
+            Column pk1 = t1.primaryKeys().getFirst();
+            Column pk2 = t2.primaryKeys().getFirst();
 
-            dev.sweety.sql4j.api.obj.Column c1 = new dev.sweety.sql4j.api.obj.Column(t1.name().toLowerCase() + "_id", pk1.field(), null);
-            dev.sweety.sql4j.api.obj.Column c2 = new dev.sweety.sql4j.api.obj.Column(t2.name().toLowerCase() + "_id", pk2.field(), null);
-
-            java.util.List<dev.sweety.sql4j.api.obj.Column> cols = java.util.List.of(c1, c2);
-            java.util.List<dev.sweety.sql4j.api.obj.ForeignKey> fks = java.util.List.of(
-                new dev.sweety.sql4j.api.obj.ForeignKey(c1, t1, pk1, false, dev.sweety.sql4j.api.obj.ForeignKey.Action.CASCADE, dev.sweety.sql4j.api.obj.ForeignKey.Action.CASCADE),
-                new dev.sweety.sql4j.api.obj.ForeignKey(c2, t2, pk2, false, dev.sweety.sql4j.api.obj.ForeignKey.Action.CASCADE, dev.sweety.sql4j.api.obj.ForeignKey.Action.CASCADE)
+            List<Function<Table<Object>, Column>> colFactories = java.util.List.of(
+                t -> new Column(t, t1.name().toLowerCase() + "_id", pk1.field(), null),
+                t -> new Column(t, t2.name().toLowerCase() + "_id", pk2.field(), null)
             );
 
-            Table<Object> junctionTable = Table.virtual(name, cols, fks);
+            List<ForeignKey> fks = new java.util.ArrayList<>();
+            Table<Object> junctionTable = Table.virtual(name, colFactories, fks);
+            
+            fks.add(new ForeignKey(junctionTable.columns().get(0), t1, pk1, false, Action.CASCADE, ForeignKey.Action.CASCADE));
+            fks.add(new ForeignKey(junctionTable.columns().get(1), t2, pk2, false, ForeignKey.Action.CASCADE, ForeignKey.Action.CASCADE));
+
             allTables.put(key, junctionTable);
         }
     }

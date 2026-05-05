@@ -1,5 +1,6 @@
 package dev.sweety.sql4j.impl.query.entity;
 
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
@@ -32,19 +33,25 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> {
     private final Table<T> table;
     private final Object[] params;
     private final Metadata<T> metadata;
+    private final Dialect dialect;
+
+    private int limit = -1;
+    private int offset = -1;
+    private String orderBy = null;
+    private boolean ascending = true;
 
     private record Metadata<T>(String sql, Constructor<T> constructor, List<Column> selectedColumns) {}
 
     // --- Constructors ---
 
     /** Full select, no WHERE. */
-    public SelectEntity(Table<T> table, QueryCache cache) {
-        this(table, null, null, cache, (Object[]) null);
+    public SelectEntity(Table<T> table, QueryCache cache, Dialect dialect) {
+        this(table, null, null, cache, dialect, (Object[]) null);
     }
 
     /** Full select, optional WHERE. */
-    public SelectEntity(Table<T> table, String whereClause, QueryCache cache, Object... params) {
-        this(table, whereClause, null, cache, params);
+    public SelectEntity(Table<T> table, String whereClause, QueryCache cache, Dialect dialect, Object... params) {
+        this(table, whereClause, null, cache, dialect, params);
     }
 
     /**
@@ -58,9 +65,10 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> {
      * @param params       positional parameters for the WHERE clause
      */
     public SelectEntity(Table<T> table, String whereClause, Set<String> columnNames,
-                        QueryCache cache, Object... params) {
+                        QueryCache cache, Dialect dialect, Object... params) {
         this.table = table;
         this.params = params;
+        this.dialect = dialect;
 
         // Build cache key from table + where + sorted column names for stable identity
         String colKey = columnNames == null || columnNames.isEmpty()
@@ -74,15 +82,32 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> {
     }
 
     /** Private copy constructor (for prototype recycling). */
-    private SelectEntity(Table<T> table, Metadata<T> metadata, Object[] params) {
+    private SelectEntity(Table<T> table, Metadata<T> metadata, Dialect dialect, Object[] params) {
         this.table = table;
         this.metadata = metadata;
+        this.dialect = dialect;
         this.params = params;
     }
 
     /** Creates a copy with new positional parameters — zero-allocation prototype reuse. */
     public SelectEntity<T> copy(Object... params) {
-        return new SelectEntity<>(table, metadata, params);
+        return new SelectEntity<>(table, metadata, dialect, params);
+    }
+
+    public SelectEntity<T> limit(int limit) {
+        this.limit = limit;
+        return this;
+    }
+
+    public SelectEntity<T> offset(int offset) {
+        this.offset = offset;
+        return this;
+    }
+
+    public SelectEntity<T> orderBy(String column, boolean ascending) {
+        this.orderBy = column;
+        this.ascending = ascending;
+        return this;
     }
 
     // --- Metadata builder ---
@@ -116,7 +141,17 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> {
 
     @Override
     protected String buildSql() {
-        return metadata.sql;
+        String base = metadata.sql;
+        if (orderBy != null) {
+            base += " ORDER BY " + orderBy + (ascending ? " ASC" : " DESC");
+        }
+        if (dialect != null) {
+            base += dialect.limitOffsetSyntax(limit, offset);
+        } else if (limit >= 0) {
+            base += " LIMIT " + limit;
+            if (offset >= 0) base += " OFFSET " + offset;
+        }
+        return base;
     }
 
     @Override
