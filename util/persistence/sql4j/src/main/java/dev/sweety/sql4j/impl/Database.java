@@ -12,6 +12,7 @@ import dev.sweety.sql4j.api.obj.table.TableRegistry;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
@@ -28,8 +29,8 @@ public class Database implements AutoCloseable {
     private final TransactionManager transactionManager;
 
     public Database(final SqlConnection connection) {
-        this.connection = connection;
-        this.dialect = connection.dialect();
+        this.connection = Objects.requireNonNull(connection, "connection cannot be null");
+        this.dialect = Objects.requireNonNull(connection.dialect(), "dialect cannot be null");
         this.transactionManager = new TransactionManager(connection);
     }
 
@@ -72,6 +73,16 @@ public class Database implements AutoCloseable {
     public void migrateAll() {
         for (dev.sweety.sql4j.api.obj.Table<?> t : tableRegistry.allTables()) {
             new dev.sweety.sql4j.impl.query.table.CreateTable(t, dialect, true).execute(connection).join();
+            for (String indexSql : dev.sweety.sql4j.impl.query.table.CreateTable.buildIndices(t, true)) {
+                connection.executeAsync(new dev.sweety.sql4j.api.query.AbstractQuery<Void>() {
+                    @Override protected String buildSql() { return indexSql; }
+                    @Override public void bind(java.sql.PreparedStatement ps) {}
+                    @Override public Void execute(java.sql.PreparedStatement ps) throws java.sql.SQLException {
+                        ps.execute();
+                        return null;
+                    }
+                }).join();
+            }
             new Repository<>(t, dialect, queryCache, tableRegistry).migrateSchema(connection);
         }
     }

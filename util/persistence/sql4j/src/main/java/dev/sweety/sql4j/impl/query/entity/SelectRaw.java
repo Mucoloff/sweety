@@ -11,6 +11,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -31,13 +33,15 @@ public final class SelectRaw extends AbstractQuery<List<Row>> {
     private final Object[] params;
     private final Metadata metadata;
     private final Dialect dialect;
+    private final Table<?> table;
 
     private int limit = -1;
     private int offset = -1;
     private String orderBy = null;
     private boolean ascending = true;
+    private boolean includeDeleted = false;
 
-    private record Metadata(String sql, List<String> columnNames) {}
+    private record Metadata(String sql, List<String> columnNames, Table<?> table) {}
 
     // --- Constructors ---
 
@@ -62,8 +66,10 @@ public final class SelectRaw extends AbstractQuery<List<Row>> {
      */
     public SelectRaw(Table<?> table, String whereClause, Set<String> columnNames,
                      QueryCache cache, Dialect dialect, Object... params) {
+        this.table = Objects.requireNonNull(table, "table cannot be null");
         this.params = params;
-        this.dialect = dialect;
+        this.dialect = Objects.requireNonNull(dialect, "dialect cannot be null");
+        Objects.requireNonNull(cache, "cache cannot be null");
 
         String colKey = columnNames == null || columnNames.isEmpty()
                 ? "*"
@@ -77,9 +83,10 @@ public final class SelectRaw extends AbstractQuery<List<Row>> {
 
     /** Private copy constructor for prototype recycling. */
     private SelectRaw(Metadata metadata, Dialect dialect, Object[] params) {
-        this.metadata = metadata;
-        this.dialect = dialect;
+        this.metadata = Objects.requireNonNull(metadata, "metadata cannot be null");
+        this.dialect = Objects.requireNonNull(dialect, "dialect cannot be null");
         this.params = params;
+        this.table = metadata.table;
     }
 
     /** Creates a copy with new positional parameters — zero-allocation prototype reuse. */
@@ -103,6 +110,11 @@ public final class SelectRaw extends AbstractQuery<List<Row>> {
         return this;
     }
 
+    public SelectRaw withDeleted() {
+        this.includeDeleted = true;
+        return this;
+    }
+
     // --- Metadata builder ---
 
     private static Metadata buildMetadata(Table<?> table, String whereClause, Set<String> columnNames) {
@@ -121,7 +133,7 @@ public final class SelectRaw extends AbstractQuery<List<Row>> {
         String sql = "SELECT " + colList + " FROM " + table.name()
                 + (whereClause != null && !whereClause.isEmpty() ? " WHERE " + whereClause : "");
 
-        return new Metadata(sql, names);
+        return new Metadata(sql, names, table);
     }
 
     // --- Query implementation ---
@@ -129,6 +141,24 @@ public final class SelectRaw extends AbstractQuery<List<Row>> {
     @Override
     protected String buildSql() {
         String base = metadata.sql;
+
+        // Soft delete filtering
+        Column softDeleteCol = table.softDeleteColumn();
+        if (softDeleteCol != null && !includeDeleted) {
+            String filter;
+            if (softDeleteCol.type() == java.time.LocalDateTime.class || softDeleteCol.type() == java.util.Date.class) {
+                filter = softDeleteCol.name() + " IS NULL";
+            } else {
+                filter = softDeleteCol.name() + " = 0";
+            }
+
+            if (base.toUpperCase(Locale.ENGLISH).contains(" WHERE ")) {
+                base += " AND " + filter;
+            } else {
+                base += " WHERE " + filter;
+            }
+        }
+
         if (orderBy != null) {
             base += " ORDER BY " + orderBy + (ascending ? " ASC" : " DESC");
         }

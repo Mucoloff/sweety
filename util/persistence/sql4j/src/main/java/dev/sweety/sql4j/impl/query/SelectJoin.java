@@ -12,9 +12,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.function.Function;
+import java.util.Objects;
 
 public final class SelectJoin extends AbstractQuery<List<Row>> {
 
+    private final List<Table<?>> tables;
     private final String sql;
     private final List<Object> params;
     private final Dialect dialect;
@@ -32,13 +34,16 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
      * @param params      parametri della query
      */
     private SelectJoin(List<Table<?>> tables, List<String> onClauses, String whereClause, Dialect dialect, Object... params) {
+        Objects.requireNonNull(tables, "tables cannot be null");
+        Objects.requireNonNull(onClauses, "onClauses cannot be null");
         if (tables.size() < 2)
             throw new IllegalArgumentException("Servono almeno 2 tabelle per un join");
         if (onClauses.size() != tables.size() - 1)
             throw new IllegalArgumentException("Numero di onClauses deve essere " + (tables.size() - 1));
 
-        this.params = Arrays.asList(params);
-        this.dialect = dialect;
+        this.tables = tables;
+        this.params = Arrays.asList(params != null ? params : new Object[0]);
+        this.dialect = Objects.requireNonNull(dialect, "dialect cannot be null");
         this.sql = buildJoinSql(tables, onClauses, whereClause);
     }
 
@@ -139,10 +144,93 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
 
     /**
      * Tenta di mappare automaticamente i risultati sull'albero di dipendenze.
-     * ATTENZIONE: Questa API richiede un sistema di annotazioni (es. @OneToMany) non ancora completato.
+     * Raggruppa le righe per la chiave primaria della radice e popola le liste @OneToMany.
      */
     public <R> Query<List<R>> mapToHierarchy(Class<R> type) {
-        throw new UnsupportedOperationException("L'estrazione magica automatica di gerarchie 1:N richiede le annotazioni di relazione. Usa extractObjects() o esegui il join raw per il mapping manuale.");
+        return new AbstractQuery<>() {
+            @Override protected String buildSql() { return SelectJoin.this.sql(); }
+            @Override public void bind(PreparedStatement ps) throws SQLException { SelectJoin.this.bind(ps); }
+
+            @Override
+            public List<R> execute(PreparedStatement ps) throws SQLException {
+                List<Row> rows = SelectJoin.this.execute(ps);
+                if (rows.isEmpty()) return Collections.emptyList();
+
+                // 1. Trova la tabella radice
+                Table<R> rootTableFound = null;
+                for (Table<?> t : tables) {
+                    if (t.clazz() == type) {
+                        //noinspection unchecked
+                        rootTableFound = (Table<R>) t;
+                        break;
+                    }
+                }
+                if (rootTableFound == null) throw new IllegalArgumentException("Root type " + type.getName() + " not found in JOIN tables");
+                
+                final Table<R> rootTable = rootTableFound;
+                final String rootPrefix = rootTable.name();
+
+                Map<Object, R> identityMap = new LinkedHashMap<>();
+
+                for (Row row : rows) {
+                    Object pkValue = row.get(rootPrefix + "_" + rootTable.primaryKeys().get(0).name());
+                    if (pkValue == null) continue;
+
+                    R root = identityMap.computeIfAbsent(pkValue, _ -> row.extractEntity(rootTable, rootPrefix));
+
+                    // 2. Popola le relazioni per ogni tabella coinvolta nel JOIN
+                    for (Table<?> t : tables) {
+                        if (t == rootTable) continue;
+                        String prefix = t.name();
+                        
+                        // Controlla se questa tabella è una relazione della radice
+                        for (Table.Relation rel : rootTable.relations()) {
+                            if (rel.targetClass() == t.clazz()) {
+                                populateRelation(root, rel, t, row, prefix);
+                            }
+                        }
+                    }
+                }
+                return new ArrayList<>(identityMap.values());
+            }
+
+            private void populateRelation(Object root, Table.Relation rel, Table<?> targetTable, Row row, String prefix) {
+                try {
+                    rel.field().setAccessible(true);
+                    Object targetPk = row.get(prefix + "_" + targetTable.primaryKeys().get(0).name());
+                    if (targetPk == null) return; // Null side of LEFT JOIN or no data
+
+                    Object targetEntity = row.extractEntity(targetTable, prefix);
+                    if (targetEntity == null) return; // Should not happen if targetPk was not null but extra safety
+
+                    if (rel.type() == Table.Relation.Type.ONE_TO_MANY || rel.type() == Table.Relation.Type.MANY_TO_MANY) {
+                        //noinspection unchecked
+                        Collection<Object> collection = (Collection<Object>) rel.field().get(root);
+                        if (collection == null) {
+                            if (rel.field().getType() == Set.class) collection = new HashSet<>();
+                            else collection = new ArrayList<>();
+                            rel.field().set(root, collection);
+                        }
+                        // Simple deduplication for collections based on PK (manual check here since we don't have equals/hashCode on entities)
+                        boolean exists = false;
+                        for (Object existing : collection) {
+                            Object existingPk = targetTable.primaryKeys().get(0).get(existing);
+                            if (Objects.equals(existingPk, targetPk)) {
+                                exists = true;
+                                break;
+                            }
+                        }
+                        if (!exists) collection.add(targetEntity);
+                    } else if (rel.type() == Table.Relation.Type.MANY_TO_ONE) {
+                        if (rel.field().get(root) == null) {
+                            rel.field().set(root, targetEntity);
+                        }
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to populate hierarchy for " + rel.field().getName(), e);
+                }
+            }
+        };
     }
 
     public static class Builder {

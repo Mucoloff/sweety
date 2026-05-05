@@ -8,6 +8,7 @@ import dev.sweety.sql4j.api.query.AbstractQuery;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
@@ -16,12 +17,21 @@ public final class CreateTable extends AbstractQuery<Void> {
     private final String sql;
 
     public CreateTable(Table<?> table, Dialect dialect, boolean ifNotExists) {
+        Objects.requireNonNull(table, "table cannot be null");
+        Objects.requireNonNull(dialect, "dialect cannot be null");
         this.sql = build(table, dialect, ifNotExists);
     }
 
     @Override
     protected String buildSql() {
         return sql;
+    }
+
+    public java.util.List<String> buildAllSql(Table<?> table, Dialect dialect, boolean ifNotExists) {
+        java.util.List<String> list = new java.util.ArrayList<>();
+        list.add(sql);
+        list.addAll(buildIndices(table, ifNotExists));
+        return list;
     }
 
     @Override
@@ -65,6 +75,14 @@ public final class CreateTable extends AbstractQuery<Void> {
             if (!c.isNullable() && !c.isPrimaryKey()) {
                 col.append(" NOT NULL");
             }
+            
+            if (c.defaultValue() != null && !c.defaultValue().isEmpty()) {
+                col.append(" DEFAULT ").append(c.defaultValue());
+            }
+
+            if (c.isUnique() && isSinglePK && !c.isPrimaryKey()) {
+                col.append(" UNIQUE");
+            }
 
             cols.add(col.toString());
         }
@@ -93,5 +111,21 @@ public final class CreateTable extends AbstractQuery<Void> {
 
         sb.append(")");
         return sb.toString();
+    }
+
+    public static java.util.List<String> buildIndices(Table<?> table, boolean ifNotExists) {
+        java.util.List<String> indices = new java.util.ArrayList<>();
+        for (Column c : table.columns()) {
+            if (c.indexName() != null) {
+                StringBuilder sb = new StringBuilder("CREATE ");
+                if (c.isUnique()) sb.append("UNIQUE ");
+                sb.append("INDEX ");
+                if (ifNotExists) sb.append("IF NOT EXISTS ");
+                sb.append(c.indexName()).append(" ON ").append(table.name())
+                        .append("(").append(c.name()).append(")");
+                indices.add(sb.toString());
+            }
+        }
+        return indices;
     }
 }

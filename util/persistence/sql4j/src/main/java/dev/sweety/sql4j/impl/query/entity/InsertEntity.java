@@ -12,6 +12,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public final class InsertEntity<T> extends AbstractQuery<MutationResult<T>> {
@@ -24,21 +25,34 @@ public final class InsertEntity<T> extends AbstractQuery<MutationResult<T>> {
     }
 
     public InsertEntity(Table<T> table, T instance, QueryCache cache) {
-        this.table = table;
-        this.instance = instance;
+        this.table = Objects.requireNonNull(table, "table is null");
+        this.instance = Objects.requireNonNull(instance, "instance is null");
+        Objects.requireNonNull(cache, "cache is null");
+        Objects.requireNonNull(table.insertableColumns(), "table.insertableColumns() is null for " + table.name());
 
-        String cacheKey = "insert:meta:" + table.name() + ":" + table.clazz().getName();
+        // Calculate which columns are present (non-null or no default)
+        List<Column> allInsertable = table.insertableColumns().columns();
+        List<Column> activeColumns = new java.util.ArrayList<>();
+        for (Column c : allInsertable) {
+            Object val = c.get(instance);
+            if (val == null && c.defaultValue() != null && !c.defaultValue().isEmpty()) {
+                continue; // Skip to let DB use default
+            }
+            activeColumns.add(c);
+        }
+
+        String colKey = activeColumns.stream().map(Column::name).sorted().collect(Collectors.joining(","));
+        String cacheKey = "insert:meta:" + table.name() + ":" + colKey;
+
         this.metadata = cache.getMetadata(cacheKey, _ -> {
-            InsertableColumns cols = table.insertableColumns();
-            List<Column> insertColumns = cols.columns();
-            Column generatedColumn = cols.autoIncrementColumn();
-            int fieldsPerRow = insertColumns.size();
+            Column generatedColumn = table.insertableColumns().autoIncrementColumn();
+            int fieldsPerRow = activeColumns.size();
 
-            String colNames = insertColumns.stream().map(Column::name).collect(Collectors.joining(", "));
+            String colNames = activeColumns.stream().map(Column::name).collect(Collectors.joining(", "));
             String placeholders = "(" + "?,".repeat(fieldsPerRow).replaceAll(",$", "") + ")";
             String sql = "INSERT INTO " + table.name() + " (" + colNames + ") VALUES " + placeholders;
 
-            return new Metadata(insertColumns, generatedColumn, sql);
+            return new Metadata(activeColumns, generatedColumn, sql);
         });
     }
 

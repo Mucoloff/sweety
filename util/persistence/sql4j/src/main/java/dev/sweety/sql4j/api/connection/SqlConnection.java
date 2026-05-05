@@ -7,6 +7,7 @@ import dev.sweety.sql4j.impl.connection.dialect.DialectType;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
@@ -25,9 +26,9 @@ public class SqlConnection implements AutoCloseable {
     }
 
     public SqlConnection(final DialectType dialectType, final ConnectionProvider connectionProvider, final Executor executor, final boolean ownsExecutor) {
-        this.dialectType = dialectType;
-        this.connectionProvider = connectionProvider;
-        this.executor = executor;
+        this.dialectType = Objects.requireNonNull(dialectType, "dialectType cannot be null");
+        this.connectionProvider = Objects.requireNonNull(connectionProvider, "connectionProvider cannot be null");
+        this.executor = Objects.requireNonNull(executor, "executor cannot be null");
         this.ownsExecutor = ownsExecutor;
     }
 

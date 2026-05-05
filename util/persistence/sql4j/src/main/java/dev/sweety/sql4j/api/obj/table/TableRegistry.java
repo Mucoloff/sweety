@@ -9,6 +9,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 
 public final class TableRegistry {
@@ -17,6 +18,7 @@ public final class TableRegistry {
     private final Map<String, Table<?>> allTables = new java.util.HashMap<>();
 
     public void register(Table<?> table) {
+        Objects.requireNonNull(table, "table cannot be null");
         synchronized (tableMap) {
             tableMap.put(table.clazz(), table);
             allTables.put(table.name().toLowerCase(Locale.ENGLISH), table);
@@ -24,6 +26,7 @@ public final class TableRegistry {
     }
 
     public <T> Table<T> get(Class<T> clazz) {
+        Objects.requireNonNull(clazz, "clazz cannot be null");
         synchronized (tableMap) {
             //noinspection unchecked
             Table<T> table = (Table<T>) tableMap.get(clazz);

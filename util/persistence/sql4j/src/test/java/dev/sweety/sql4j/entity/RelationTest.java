@@ -23,7 +23,7 @@ public class RelationTest {
 
     @BeforeEach
     void setup() {
-        connection = ConnectionType.SQLITE.create(Executors.newSingleThreadExecutor(), ":memory:");
+        connection = ConnectionType.SQLITE.create(Executors.newSingleThreadExecutor(), "data");
         db = new Database(connection);
         
         users = db.createRepository(UserRel.class);

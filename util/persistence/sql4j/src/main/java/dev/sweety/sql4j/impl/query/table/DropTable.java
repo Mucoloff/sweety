@@ -5,17 +5,18 @@ import dev.sweety.sql4j.api.query.AbstractQuery;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.Objects;
 
 public final class DropTable extends AbstractQuery<Void> {
 
     private final String sql;
 
     public DropTable(final String name) {
-        this.sql = "DROP TABLE IF EXISTS " + name;
+        this.sql = "DROP TABLE IF EXISTS " + Objects.requireNonNull(name, "name cannot be null");
     }
 
     public DropTable(final Table<?> table) {
-        this(table.name());
+        this(Objects.requireNonNull(table, "table cannot be null").name());
     }
 
     @Override

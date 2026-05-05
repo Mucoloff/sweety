@@ -16,7 +16,9 @@ import dev.sweety.sql4j.impl.query.table.DropTable;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 public class Repository<Entity> {
 
@@ -26,10 +28,10 @@ public class Repository<Entity> {
     private final TableRegistry registry;
 
     public Repository(Table<Entity> table, Dialect dialect, QueryCache cache, TableRegistry registry) {
-        this.table = table;
-        this.dialect = dialect;
-        this.cache = cache;
-        this.registry = registry;
+        this.table = Objects.requireNonNull(table, "table cannot be null");
+        this.dialect = Objects.requireNonNull(dialect, "dialect cannot be null");
+        this.cache = Objects.requireNonNull(cache, "cache cannot be null");
+        this.registry = Objects.requireNonNull(registry, "registry cannot be null");
     }
 
     /**
@@ -47,8 +49,7 @@ public class Repository<Entity> {
     // ─── Writes ────────────────────────────────────────────────────────────────
 
     public InsertEntity<Entity> insert(Entity entity) {
-        return cache.<InsertEntity<Entity>>getQuery("insertPrototype:" + table.name(),
-                _ -> new InsertEntity<>(table, null, cache)).copy(entity);
+        return new InsertEntity<>(table, entity, cache);
     }
 
     public dev.sweety.sql4j.impl.query.entity.UpsertEntity<Entity> upsert(Entity entity) {

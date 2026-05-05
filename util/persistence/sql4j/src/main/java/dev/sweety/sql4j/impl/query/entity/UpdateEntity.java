@@ -8,6 +8,7 @@ import dev.sweety.sql4j.impl.query.QueryCache;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public final class UpdateEntity<T> extends AbstractQuery<Integer> {
@@ -19,8 +20,9 @@ public final class UpdateEntity<T> extends AbstractQuery<Integer> {
     private record Metadata(List<Column> updateColumns, List<Column> primaryKeys, String sql) {}
 
     public UpdateEntity(final Table<T> table, final T instance, QueryCache cache) {
-        this.table = table;
-        this.instance = instance;
+        this.table = Objects.requireNonNull(table, "table cannot be null");
+        this.instance = Objects.requireNonNull(instance, "instance cannot be null");
+        Objects.requireNonNull(cache, "cache cannot be null");
 
         String cacheKey = "update:meta:" + table.name() + ":" + table.clazz().getName();
         this.metadata = cache.getMetadata(cacheKey, _ -> {

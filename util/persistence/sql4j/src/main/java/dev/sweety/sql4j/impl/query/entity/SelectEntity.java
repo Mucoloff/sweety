@@ -13,6 +13,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -39,8 +41,9 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> {
     private int offset = -1;
     private String orderBy = null;
     private boolean ascending = true;
+    private boolean includeDeleted = false;
 
-    private record Metadata<T>(String sql, Constructor<T> constructor, List<Column> selectedColumns) {}
+    private record Metadata<T>(String sql, Constructor<T> constructor, List<Column> selectedColumns, Table<T> table) {}
 
     // --- Constructors ---
 
@@ -66,9 +69,10 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> {
      */
     public SelectEntity(Table<T> table, String whereClause, Set<String> columnNames,
                         QueryCache cache, Dialect dialect, Object... params) {
-        this.table = table;
+        this.table = Objects.requireNonNull(table, "table cannot be null");
         this.params = params;
-        this.dialect = dialect;
+        this.dialect = Objects.requireNonNull(dialect, "dialect cannot be null");
+        Objects.requireNonNull(cache, "cache cannot be null");
 
         // Build cache key from table + where + sorted column names for stable identity
         String colKey = columnNames == null || columnNames.isEmpty()
@@ -83,9 +87,9 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> {
 
     /** Private copy constructor (for prototype recycling). */
     private SelectEntity(Table<T> table, Metadata<T> metadata, Dialect dialect, Object[] params) {
-        this.table = table;
-        this.metadata = metadata;
-        this.dialect = dialect;
+        this.table = Objects.requireNonNull(table, "table cannot be null");
+        this.metadata = Objects.requireNonNull(metadata, "metadata cannot be null");
+        this.dialect = Objects.requireNonNull(dialect, "dialect cannot be null");
         this.params = params;
     }
 
@@ -110,6 +114,11 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> {
         return this;
     }
 
+    public SelectEntity<T> withDeleted() {
+        this.includeDeleted = true;
+        return this;
+    }
+
     // --- Metadata builder ---
 
     private static <T> Metadata<T> buildMetadata(Table<T> table, String whereClause, Set<String> columnNames) {
@@ -130,7 +139,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> {
         try {
             Constructor<T> ctor = table.clazz().getDeclaredConstructor();
             ctor.setAccessible(true);
-            return new Metadata<>(sql, ctor, selected);
+            return new Metadata<>(sql, ctor, selected, table);
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(
                     "Entity class '" + table.clazz().getName() + "' must have a no-args constructor", e);
@@ -142,6 +151,24 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> {
     @Override
     protected String buildSql() {
         String base = metadata.sql;
+        
+        // Soft delete filtering
+        Column softDeleteCol = metadata.table.softDeleteColumn();
+        if (softDeleteCol != null && !includeDeleted) {
+            String filter;
+            if (softDeleteCol.type() == java.time.LocalDateTime.class || softDeleteCol.type() == java.util.Date.class) {
+                filter = softDeleteCol.name() + " IS NULL";
+            } else {
+                filter = softDeleteCol.name() + " = 0";
+            }
+            
+            if (base.toUpperCase(Locale.ENGLISH).contains(" WHERE ")) {
+                base += " AND " + filter;
+            } else {
+                base += " WHERE " + filter;
+            }
+        }
+
         if (orderBy != null) {
             base += " ORDER BY " + orderBy + (ascending ? " ASC" : " DESC");
         }

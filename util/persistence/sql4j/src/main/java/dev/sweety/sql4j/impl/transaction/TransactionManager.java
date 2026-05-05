@@ -12,13 +12,14 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.Objects;
 
 public class TransactionManager {
 
     private final SqlConnection sqlConnection;
 
     public TransactionManager(SqlConnection sqlConnection) {
-        this.sqlConnection = sqlConnection;
+        this.sqlConnection = Objects.requireNonNull(sqlConnection, "sqlConnection cannot be null");
     }
 
     // --- Functional interface for block-style transactions ---
