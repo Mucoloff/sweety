@@ -4,6 +4,7 @@ import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
+import dev.sweety.sql4j.api.query.Criterion;
 import dev.sweety.sql4j.impl.query.QueryCache;
 
 import java.lang.reflect.Constructor;
@@ -20,22 +21,15 @@ import java.util.stream.Collectors;
 
 /**
  * Entity-based SELECT query that returns fully populated (or partially populated) entity instances.
- *
- * <p>Two main modes:
- * <ul>
- *   <li><b>Full</b> — {@code SELECT col1, col2, ... FROM table} — all columns fetched.
- *   <li><b>Projection</b> — {@code SELECT name, age FROM table} — only the specified columns are
- *       fetched; unselected fields are left at their zero/null default value.
- * </ul>
- *
- * <p>SQL templates and constructor handles are cached per (table, where, columns) triple.
  */
 public final class SelectEntity<T> extends AbstractQuery<List<T>> {
 
     private final Table<T> table;
-    private final Object[] params;
-    private final Metadata<T> metadata;
+    private final QueryCache cache;
     private final Dialect dialect;
+    private final Object[] params;
+    private final Criterion criterion;
+    private final Metadata<T> metadata;
 
     private int limit = -1;
     private int offset = -1;
@@ -43,59 +37,59 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> {
     private boolean ascending = true;
     private boolean includeDeleted = false;
 
-    private record Metadata<T>(String sql, Constructor<T> constructor, List<Column> selectedColumns, Table<T> table) {}
+    private record Metadata<T>(String sql, Constructor<T> constructor, List<Column> selectedColumns) {}
 
     // --- Constructors ---
 
-    /** Full select, no WHERE. */
     public SelectEntity(Table<T> table, QueryCache cache, Dialect dialect) {
-        this(table, null, null, cache, dialect, (Object[]) null);
+        this(table, (String) null, null, cache, dialect, (Object[]) null);
     }
 
-    /** Full select, optional WHERE. */
     public SelectEntity(Table<T> table, String whereClause, QueryCache cache, Dialect dialect, Object... params) {
         this(table, whereClause, null, cache, dialect, params);
     }
 
-    /**
-     * Projection select — only the specified columns are included in the SQL.
-     * Unspecified fields in the entity will be left at zero/null.
-     *
-     * @param table        entity table descriptor
-     * @param whereClause  optional WHERE clause (may be null)
-     * @param columnNames  explicit column names to include; null or empty → all columns
-     * @param cache        query cache scoped to the owning Database
-     * @param params       positional parameters for the WHERE clause
-     */
     public SelectEntity(Table<T> table, String whereClause, Set<String> columnNames,
                         QueryCache cache, Dialect dialect, Object... params) {
-        this.table = Objects.requireNonNull(table, "table cannot be null");
-        this.params = params;
-        this.dialect = Objects.requireNonNull(dialect, "dialect cannot be null");
-        Objects.requireNonNull(cache, "cache cannot be null");
-
-        // Build cache key from table + where + sorted column names for stable identity
-        String colKey = columnNames == null || columnNames.isEmpty()
-                ? "*"
-                : columnNames.stream().sorted().collect(Collectors.joining(","));
-        String cacheKey = "select:meta:" + table.name()
-                + ":" + (whereClause != null ? whereClause : "")
-                + ":" + colKey;
-
-        this.metadata = cache.getMetadata(cacheKey, _ -> buildMetadata(table, whereClause, columnNames));
+        this(table, whereClause, null, columnNames, cache, dialect, params);
     }
 
-    /** Private copy constructor (for prototype recycling). */
-    private SelectEntity(Table<T> table, Metadata<T> metadata, Dialect dialect, Object[] params) {
+    private SelectEntity(Table<T> table, String whereClause, Criterion criterion, Set<String> columnNames,
+                        QueryCache cache, Dialect dialect, Object... params) {
         this.table = Objects.requireNonNull(table, "table cannot be null");
-        this.metadata = Objects.requireNonNull(metadata, "metadata cannot be null");
+        this.cache = Objects.requireNonNull(cache, "cache cannot be null");
         this.dialect = Objects.requireNonNull(dialect, "dialect cannot be null");
         this.params = params;
+        this.criterion = criterion;
+
+        String colKey = columnNames == null || columnNames.isEmpty() ? "*" : columnNames.stream().sorted().collect(Collectors.joining(","));
+        String wherePart = whereClause != null ? whereClause : (criterion != null ? criterion.toSql() : "");
+        String cacheKey = "select:meta:" + table.name() + ":" + wherePart + ":" + colKey;
+
+        this.metadata = cache.getMetadata(cacheKey, _ -> buildMetadata(table, whereClause, criterion, columnNames));
     }
 
-    /** Creates a copy with new positional parameters — zero-allocation prototype reuse. */
+    private SelectEntity(Table<T> table, QueryCache cache, Metadata<T> metadata, Dialect dialect, Object[] params, Criterion criterion) {
+        this.table = table;
+        this.cache = cache;
+        this.metadata = metadata;
+        this.dialect = dialect;
+        this.params = params;
+        this.criterion = criterion;
+    }
+
     public SelectEntity<T> copy(Object... params) {
-        return new SelectEntity<>(table, metadata, dialect, params);
+        SelectEntity<T> copy = new SelectEntity<>(table, cache, metadata, dialect, params, criterion);
+        copy.limit = this.limit;
+        copy.offset = this.offset;
+        copy.orderBy = this.orderBy;
+        copy.ascending = this.ascending;
+        copy.includeDeleted = this.includeDeleted;
+        return copy;
+    }
+
+    public SelectEntity<T> where(Criterion criterion) {
+        return new SelectEntity<>(table, null, criterion, null, cache, dialect);
     }
 
     public SelectEntity<T> limit(int limit) {
@@ -106,6 +100,14 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> {
     public SelectEntity<T> offset(int offset) {
         this.offset = offset;
         return this;
+    }
+
+    public SelectEntity<T> orderBy(String column) {
+        return orderBy(column, true);
+    }
+
+    public SelectEntity<T> orderByDescending(String column) {
+        return orderBy(column, false);
     }
 
     public SelectEntity<T> orderBy(String column, boolean ascending) {
@@ -119,49 +121,41 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> {
         return this;
     }
 
-    // --- Metadata builder ---
-
-    private static <T> Metadata<T> buildMetadata(Table<T> table, String whereClause, Set<String> columnNames) {
-        List<Column> selected = columnNames == null || columnNames.isEmpty()
+    private Metadata<T> buildMetadata(Table<T> table, String whereClause, Criterion criterion, Set<String> columnNames) {
+        List<Column> selected = (columnNames == null || columnNames.isEmpty())
                 ? table.columns()
-                : table.columns().stream()
-                        .filter(c -> columnNames.contains(c.name()))
-                        .toList();
+                : columnNames.stream().map(table::column).collect(Collectors.toList());
 
-        if (selected.isEmpty())
-            throw new IllegalArgumentException(
-                    "No matching columns found for " + columnNames + " in table '" + table.name() + "'");
+        String cols = selected.stream().map(Column::name).collect(Collectors.joining(", "));
+        StringBuilder sb = new StringBuilder("SELECT ").append(cols).append(" FROM ").append(table.name());
 
-        String colList = selected.stream().map(Column::name).collect(Collectors.joining(", "));
-        String sql = "SELECT " + colList + " FROM " + table.name()
-                + (whereClause != null && !whereClause.isEmpty() ? " WHERE " + whereClause : "");
+        String wherePart = null;
+        if (whereClause != null && !whereClause.isEmpty()) {
+            wherePart = whereClause;
+        } else if (criterion != null) {
+            wherePart = criterion.toSql();
+        }
+
+        if (wherePart != null) {
+            sb.append(" WHERE ").append(wherePart);
+        }
 
         try {
             Constructor<T> ctor = table.clazz().getDeclaredConstructor();
             ctor.setAccessible(true);
-            return new Metadata<>(sql, ctor, selected, table);
+            return new Metadata<>(sb.toString(), ctor, selected);
         } catch (NoSuchMethodException e) {
-            throw new RuntimeException(
-                    "Entity class '" + table.clazz().getName() + "' must have a no-args constructor", e);
+            throw new IllegalArgumentException("Entity " + table.clazz().getName() + " must have a no-arg constructor", e);
         }
     }
-
-    // --- Query implementation ---
 
     @Override
     protected String buildSql() {
         String base = metadata.sql;
+        Column softDeleteCol = table.softDeleteColumn();
         
-        // Soft delete filtering
-        Column softDeleteCol = metadata.table.softDeleteColumn();
         if (softDeleteCol != null && !includeDeleted) {
-            String filter;
-            if (softDeleteCol.type() == java.time.LocalDateTime.class || softDeleteCol.type() == java.util.Date.class) {
-                filter = softDeleteCol.name() + " IS NULL";
-            } else {
-                filter = softDeleteCol.name() + " = 0";
-            }
-            
+            String filter = softDeleteCol.name() + " = 0";
             if (base.toUpperCase(Locale.ENGLISH).contains(" WHERE ")) {
                 base += " AND " + filter;
             } else {
@@ -172,19 +166,24 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> {
         if (orderBy != null) {
             base += " ORDER BY " + orderBy + (ascending ? " ASC" : " DESC");
         }
-        if (dialect != null) {
-            base += dialect.limitOffsetSyntax(limit, offset);
-        } else if (limit >= 0) {
+        if (limit > 0) {
             base += " LIMIT " + limit;
-            if (offset >= 0) base += " OFFSET " + offset;
+            if (offset > 0) {
+                base += " OFFSET " + offset;
+            }
         }
         return base;
     }
 
     @Override
     public void bind(PreparedStatement ps) throws SQLException {
-        if (params == null) return;
-        for (int i = 0; i < params.length; i++) ps.setObject(i + 1, params[i]);
+        int idx = 1;
+        if (params != null) {
+            for (Object p : params) ps.setObject(idx++, p);
+        }
+        if (criterion != null) {
+            criterion.bind(ps, idx);
+        }
     }
 
     @Override
