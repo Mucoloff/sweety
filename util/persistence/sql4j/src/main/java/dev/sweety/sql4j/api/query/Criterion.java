@@ -47,6 +47,33 @@ public interface Criterion {
         return new ComparisonCriterion(col, "<=", value);
     }
 
+    static Criterion isNull(Column<?> col) {
+        return new Criterion() {
+            @Override public String toSql() { return col.name() + " IS NULL"; }
+            @Override public void bind(java.sql.PreparedStatement ps, int startIdx) {}
+            @Override public int countParameters() { return 0; }
+        };
+    }
+
+    static Criterion isNotNull(Column<?> col) {
+        return new Criterion() {
+            @Override public String toSql() { return col.name() + " IS NOT NULL"; }
+            @Override public void bind(java.sql.PreparedStatement ps, int startIdx) {}
+            @Override public int countParameters() { return 0; }
+        };
+    }
+
+    static Criterion between(Column<?> col, Object min, Object max) {
+        return new Criterion() {
+            @Override public String toSql() { return col.name() + " BETWEEN ? AND ?"; }
+            @Override public void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException {
+                ps.setObject(startIdx, min);
+                ps.setObject(startIdx + 1, max);
+            }
+            @Override public int countParameters() { return 2; }
+        };
+    }
+
     static Criterion like(Column<?> col, String pattern) {
         return new ComparisonCriterion(col, "LIKE", pattern);
     }
@@ -62,6 +89,19 @@ public interface Criterion {
                 for (Object v : values) ps.setObject(idx++, v);
             }
             @Override public int countParameters() { return values.size(); }
+        };
+    }
+
+    static Criterion raw(String sql, Object... params) {
+        return new Criterion() {
+            @Override public String toSql() { return sql; }
+            @Override public void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException {
+                int idx = startIdx;
+                if (params != null) {
+                    for (Object p : params) ps.setObject(idx++, p);
+                }
+            }
+            @Override public int countParameters() { return params != null ? params.length : 0; }
         };
     }
 

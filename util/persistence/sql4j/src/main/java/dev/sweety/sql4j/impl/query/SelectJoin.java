@@ -24,47 +24,66 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
     private final Criterion criterion;
     private final Dialect dialect;
 
+    private final String fromAndJoinsSql;
+    private final String whereSql;
+    private final String selectColsSql;
+
     private int limit = -1;
     private int offset = -1;
     private String orderBy = null;
     private boolean ascending = true;
+    private final boolean includeDeleted;
 
     private record JoinInfo(Table<?> sourceTable, Table<?> targetTable, Table.Relation relation) {}
 
-    private SelectJoin(List<Table<?>> tables, List<JoinInfo> joins, List<String> onClauses, String whereClause, Criterion criterion, Dialect dialect, Object... params) {
+    private SelectJoin(List<Table<?>> tables, List<JoinInfo> joins, List<String> onClauses, String whereClause, Criterion criterion, Dialect dialect, boolean includeDeleted, Object... params) {
         this.tables = tables;
         this.joins = joins;
         this.params = Arrays.asList(params != null ? params : new Object[0]);
         this.criterion = criterion;
         this.dialect = dialect;
-        this.sql = buildJoinSql(tables, onClauses, whereClause, criterion);
-    }
+        this.includeDeleted = includeDeleted;
 
-    private String buildJoinSql(List<Table<?>> tables, List<String> onClauses, String whereClause, Criterion criterion) {
-        StringBuilder sb = new StringBuilder("SELECT ");
+        // Build SELECT columns
         List<String> cols = new ArrayList<>();
         for (Table<?> t : tables) {
             for (Column<?> c : t.columns()) {
                 cols.add(t.name() + "." + c.name() + " AS " + t.name() + "_" + c.name());
             }
         }
-        sb.append(String.join(", ", cols));
+        this.selectColsSql = String.join(", ", cols);
 
-        sb.append(" FROM ").append(tables.get(0).name());
+        // Build FROM and JOINS
+        StringBuilder fj = new StringBuilder(" FROM ").append(tables.get(0).name());
         for (int i = 1; i < tables.size(); i++) {
-            sb.append(" INNER JOIN ").append(tables.get(i).name())
+            fj.append(" INNER JOIN ").append(tables.get(i).name())
                     .append(" ON ").append(onClauses.get(i - 1));
         }
+        this.fromAndJoinsSql = fj.toString();
 
+        // Build WHERE
         List<String> wheres = new ArrayList<>();
         if (whereClause != null && !whereClause.isEmpty()) wheres.add(whereClause);
         if (criterion != null) wheres.add(criterion.toSql());
-
-        if (!wheres.isEmpty()) {
-            sb.append(" WHERE ").append(String.join(" AND ", wheres));
+        
+        // Global Soft Delete Filter
+        if (!includeDeleted) {
+            for (Table<?> t : tables) {
+                Column<?> sd = t.softDeleteColumn();
+                if (sd != null) {
+                    wheres.add(t.name() + "." + sd.name() + " = 0");
+                }
+            }
         }
+        
+        this.whereSql = wheres.isEmpty() ? "" : " WHERE " + String.join(" AND ", wheres);
 
-        return sb.toString();
+        this.sql = "SELECT " + selectColsSql + fromAndJoinsSql + whereSql;
+    }
+
+    public String countSql() {
+        Table<?> root = tables.get(0);
+        return "SELECT COUNT(DISTINCT " + root.name() + "." + root.primaryKeys().get(0).name() + ")" + fromAndJoinsSql + whereSql;
     }
 
     @Override
@@ -198,6 +217,7 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
         private Criterion criterion;
         private final List<Object> params = new ArrayList<>();
         private Dialect dialect;
+        private boolean includeDeleted = false;
 
         public Builder() {
             this(TableRegistry.getDefault());
@@ -270,8 +290,13 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
             return this;
         }
 
+        public Builder includeDeleted(boolean includeDeleted) {
+            this.includeDeleted = includeDeleted;
+            return this;
+        }
+
         public SelectJoin build() {
-            return new SelectJoin(tablesList, joinsList, onClausesList, whereClause, criterion, dialect, params.toArray());
+            return new SelectJoin(tablesList, joinsList, onClausesList, whereClause, criterion, dialect, includeDeleted, params.toArray());
         }
     }
 }

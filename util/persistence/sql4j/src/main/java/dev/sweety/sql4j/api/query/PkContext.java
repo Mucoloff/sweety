@@ -47,8 +47,8 @@ public final class PkContext<T> {
      * @return A query that returns the entity or null if not found.
      */
     public Query<T> find() {
-        return repository.selectAll().where(buildCriterion()).limit(1)
-                .extractObjects(list -> list.isEmpty() ? null : list.get(0));
+        return repository.wrapWithCache(values, () -> repository.select().where(buildCriterion()).limit(1)
+                .extractObjects(list -> list.isEmpty() ? null : list.get(0)));
     }
 
     /**

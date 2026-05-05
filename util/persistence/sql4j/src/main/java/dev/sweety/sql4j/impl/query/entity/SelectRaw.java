@@ -18,7 +18,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public final class SelectRaw extends AbstractQuery<List<Row>> {
+import dev.sweety.sql4j.api.query.SelectRawQuery;
+
+public final class SelectRaw extends AbstractQuery<List<Row>> implements SelectRawQuery {
 
     private final Table<?> table;
     private final QueryCache cache;

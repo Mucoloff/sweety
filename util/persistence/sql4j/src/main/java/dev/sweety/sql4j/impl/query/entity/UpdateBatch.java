@@ -3,31 +3,34 @@ package dev.sweety.sql4j.impl.query.entity;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
+import dev.sweety.sql4j.api.query.BatchQuery;
 import dev.sweety.sql4j.impl.query.QueryCache;
-import org.jetbrains.annotations.NotNull;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import dev.sweety.sql4j.api.query.UpdateQuery;
-
-public final class UpdateEntity<T> extends AbstractQuery<Integer> implements UpdateQuery<T> {
+public final class UpdateBatch<T> extends AbstractQuery<int[]> implements BatchQuery<T> {
 
     private final Table<T> table;
-    private final T instance;
+    private final Collection<T> instances;
     private final Metadata metadata;
 
     private record Metadata(List<Column<?>> updateColumns, List<Column<?>> primaryKeys, String sql) {}
 
-    public UpdateEntity(final Table<T> table, @NotNull final T instance, QueryCache cache) {
-        this.table = Objects.requireNonNull(table, "table cannot be null");
-        this.instance = Objects.requireNonNull(instance, "instance cannot be null");
-        Objects.requireNonNull(cache, "cache cannot be null");
+    public UpdateBatch(Table<T> table, Collection<T> instances, QueryCache cache) {
+        this.table = Objects.requireNonNull(table, "table is null");
+        this.instances = Objects.requireNonNull(instances, "instances is null");
+        Objects.requireNonNull(cache, "cache is null");
 
-        String cacheKey = "update:meta:" + table.name() + ":" + table.clazz().getName();
+        if (instances.isEmpty()) {
+            throw new IllegalArgumentException("Cannot update an empty batch");
+        }
+
+        String cacheKey = "updateBatch:meta:" + table.name() + ":" + table.clazz().getName();
         this.metadata = cache.getMetadata(cacheKey, _ -> {
             List<Column<?>> primaryKeys = table.primaryKeys();
             List<Column<?>> updateColumns = table.updatableColumns();
@@ -47,29 +50,27 @@ public final class UpdateEntity<T> extends AbstractQuery<Integer> implements Upd
         });
     }
 
-    private UpdateEntity(Table<T> table, Metadata metadata, T instance) {
-        this.table = table;
-        this.metadata = metadata;
-        this.instance = instance;
-    }
-
-    public UpdateEntity<T> copy(T instance) {
-        return new UpdateEntity<>(table, metadata, instance);
-    }
-
     @Override
     protected String buildSql() {
         return metadata.sql;
     }
 
     @Override
-    public void bind(final PreparedStatement ps) throws SQLException {
-        int idx = table.bindColumns(ps, metadata.updateColumns, instance, 1);
-        for (Column<?> pk : metadata.primaryKeys) ps.setObject(idx++, pk.get(instance));
+    public void bind(PreparedStatement ps) throws SQLException {
+        for (T instance : instances) {
+            int i = 1;
+            for (Column c : metadata.updateColumns) {
+                ps.setObject(i++, c.get(instance));
+            }
+            for (Column c : metadata.primaryKeys) {
+                ps.setObject(i++, c.get(instance));
+            }
+            ps.addBatch();
+        }
     }
 
     @Override
-    public Integer execute(final PreparedStatement ps) throws SQLException {
-        return ps.executeUpdate();
+    public int[] execute(PreparedStatement ps) throws SQLException {
+        return ps.executeBatch();
     }
 }

@@ -3,6 +3,7 @@ package dev.sweety.sql4j.impl.query.entity;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
+import dev.sweety.sql4j.api.query.DeleteQuery;
 import dev.sweety.sql4j.impl.query.QueryCache;
 
 import java.sql.PreparedStatement;
@@ -12,7 +13,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public final class DeleteEntity<T> extends AbstractQuery<Integer> {
+public final class DeleteEntity<T> extends AbstractQuery<Integer> implements DeleteQuery<T> {
 
     private final Table<T> table;
     private final T[] instances;
@@ -27,35 +28,34 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> {
         this.instances = Objects.requireNonNull(instances, "instances cannot be null");
         Objects.requireNonNull(cache, "cache cannot be null");
 
-        int instancesCount = instances != null ? instances.length : 0;
+        int instancesCount = instances.length;
         Column<?> softDeleteCol = table.softDeleteColumn();
 
         String cacheKey = "delete:meta:" + table.name() + ":" + table.clazz().getName() + ":" + instancesCount;
         this.metadata = cache.getMetadata(cacheKey, _ -> {
             List<Column<?>> pks = table.primaryKeys();
+            if (pks.isEmpty()) {
+                throw new IllegalStateException("Table " + table.name() + " must have a primary key for entity-based deletion");
+            }
             
             String wherePart;
-            if (pks.size() == 1) {
+            if (instancesCount == 0) {
+                wherePart = "1 = 0"; 
+            } else if (pks.size() == 1) {
                 StringBuilder w = new StringBuilder();
                 w.append(pks.getFirst().name()).append(" IN (");
                 w.repeat("?, ", instancesCount);
-                if (instancesCount > 0) w.setLength(w.length() - 2);
+                w.setLength(w.length() - 2);
                 w.append(")");
                 wherePart = w.toString();
             } else {
-                StringBuilder w = new StringBuilder();
-                w.append("(");
-                w.append(pks.stream().map(Column::name).collect(Collectors.joining(", ")));
-                w.append(") IN (");
-                w.append(
-                        instancesCount > 0
-                                ? String.join(", ",
+                wherePart = "(" +
+                        pks.stream().map(Column::name).collect(Collectors.joining(", ")) +
+                        ") IN (" +
+                        String.join(", ",
                                 Collections.nCopies(instancesCount,
-                                        "(" + "?, ".repeat(pks.size()).replaceAll(", $", "") + ")"))
-                                : ""
-                );
-                w.append(")");
-                wherePart = w.toString();
+                                        "(" + "?, ".repeat(pks.size()).replaceAll(", $", "") + ")")) +
+                        ")";
             }
 
             String hardDeleteSql = "DELETE FROM " + table.name() + " WHERE " + wherePart;
@@ -68,8 +68,16 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> {
     }
 
     public DeleteEntity<T> hardDelete() {
-        this.hardDelete = true;
-        return this;
+        DeleteEntity<T> copy = copy(instances);
+        copy.hardDelete = true;
+        return copy;
+    }
+
+    @Override
+    public DeleteEntity<T> softDelete() {
+        DeleteEntity<T> copy = copy(instances);
+        copy.hardDelete = false;
+        return copy;
     }
 
     private DeleteEntity(Table<T> table, Metadata metadata, T[] instances, boolean hardDelete) {
@@ -81,7 +89,7 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> {
 
     @SafeVarargs
     public final DeleteEntity<T> copy(T... instances) {
-        return new DeleteEntity<>(table, metadata, instances, hardDelete);
+        return new DeleteEntity<>(table, metadata, instances, false);
     }
 
     @Override
@@ -102,6 +110,23 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> {
 
     @Override
     public Integer execute(final PreparedStatement ps) throws SQLException {
-        return ps.executeUpdate();
+        int rows = ps.executeUpdate();
+        if (rows > 0 && metadata.softDeleteColumn != null && !hardDelete && instances != null) {
+            for (T instance : instances) {
+                try {
+                    // Logic for soft delete value (could be boolean or int)
+                    // We assume 1/true for deleted.
+                    Class<?> type = metadata.softDeleteColumn.field().getType();
+                    if (type == boolean.class || type == Boolean.class) {
+                        metadata.softDeleteColumn.set(instance, true);
+                    } else {
+                        metadata.softDeleteColumn.set(instance, 1);
+                    }
+                } catch (Exception ignored) {
+                    // Fail silently for in-memory update if something is wrong with the field
+                }
+            }
+        }
+        return rows;
     }
 }

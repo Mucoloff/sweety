@@ -12,7 +12,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.concurrent.CompletableFuture;
 
-public sealed interface Query<T> permits AbstractQuery, UnsafeQuery {
+public sealed interface Query<T> permits AbstractQuery, UnsafeQuery, SelectQuery, DeleteQuery, UpdateQuery, InsertQuery, UpsertQuery, SelectRawQuery, BatchQuery {
 
     void bind(final PreparedStatement ps) throws SQLException;
 

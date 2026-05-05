@@ -1,6 +1,7 @@
 package dev.sweety.sql4j.api.obj;
 
 import dev.sweety.sql4j.api.query.Criterion;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -10,7 +11,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Objects;
 
-public final class Column<T> {
+public class Column<T> {
     private final String name;
     private final Field field;
     private final Info info;
@@ -35,31 +36,95 @@ public final class Column<T> {
         if (relationIdField != null) relationIdField.setAccessible(true);
     }
 
-    public String name() { return name; }
-    public Field field() { return field; }
-    public Info info() { return info; }
-    public Table<?> table() { return table; }
-    public boolean isUnique() { return unique || (info != null && info.unique()); }
-    public String indexName() { return indexName; }
-    public String defaultValue() { return defaultValue != null ? defaultValue : (info != null ? info.defaultValue() : null); }
-    public boolean isSoftDelete() { return softDelete; }
+    protected Column(Table<?> table, String name) {
+        this.table = Objects.requireNonNull(table, "table cannot be null");
+        this.name = Objects.requireNonNull(name, "name cannot be null");
+        this.field = null;
+        this.info = null;
+    }
 
-    public void setUnique(boolean unique) { this.unique = unique; }
-    public void setIndexName(String indexName) { this.indexName = indexName; }
-    public void setDefaultValue(String defaultValue) { this.defaultValue = defaultValue; }
-    public void setSoftDelete(boolean softDelete) { this.softDelete = softDelete; }
+    public String name() {
+        return name;
+    }
+
+    public Field field() {
+        return field;
+    }
+
+    public Info info() {
+        return info;
+    }
+
+    public Table<?> table() {
+        return table;
+    }
+
+    public boolean isUnique() {
+        return unique || (info != null && info.unique());
+    }
+
+    public String indexName() {
+        return indexName;
+    }
+
+    public String defaultValue() {
+        return defaultValue != null ? defaultValue : (info != null ? info.defaultValue() : null);
+    }
+
+    public boolean isSoftDelete() {
+        return softDelete;
+    }
+
+    public void setUnique(boolean unique) {
+        this.unique = unique;
+    }
+
+    public void setIndexName(String indexName) {
+        this.indexName = indexName;
+    }
+
+    public void setDefaultValue(String defaultValue) {
+        this.defaultValue = defaultValue;
+    }
+
+    public void setSoftDelete(boolean softDelete) {
+        this.softDelete = softDelete;
+    }
 
     // --- DSL Methods ---
 
-    public Criterion eq(T value) { return Criterion.eq(this, value); }
-    public Criterion ne(T value) { return Criterion.ne(this, value); }
-    public Criterion gt(T value) { return Criterion.gt(this, value); }
-    public Criterion ge(T value) { return Criterion.ge(this, value); }
-    public Criterion lt(T value) { return Criterion.lt(this, value); }
-    public Criterion le(T value) { return Criterion.le(this, value); }
-    public Criterion like(String pattern) { return Criterion.like(this, pattern); }
+    public Criterion eq(T value) {
+        return Criterion.eq(this, value);
+    }
+
+    public Criterion ne(T value) {
+        return Criterion.ne(this, value);
+    }
+
+    public Criterion gt(T value) {
+        return Criterion.gt(this, value);
+    }
+
+    public Criterion ge(T value) {
+        return Criterion.ge(this, value);
+    }
+
+    public Criterion lt(T value) {
+        return Criterion.lt(this, value);
+    }
+
+    public Criterion le(T value) {
+        return Criterion.le(this, value);
+    }
+
+    public Criterion like(String pattern) {
+        return Criterion.like(this, pattern);
+    }
+
     @SafeVarargs
-    public final Criterion in(T... values) { return Criterion.in(this, java.util.Arrays.asList(values)); }
+    public final Criterion in(T... values) {
+        return Criterion.in(this, java.util.Arrays.asList(values));
+    }
 
     public Class<?> type() {
         return relationIdField != null ? relationIdField.getType() : field.getType();
@@ -198,10 +263,15 @@ public final class Column<T> {
     @Target(ElementType.FIELD)
     public @interface Info {
         String name() default "";
+
         boolean primaryKey() default false;
+
         boolean autoIncrement() default false;
+
         boolean nullable() default false;
+
         boolean unique() default false;
+
         String defaultValue() default "";
     }
 }

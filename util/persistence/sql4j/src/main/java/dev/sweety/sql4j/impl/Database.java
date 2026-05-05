@@ -1,18 +1,17 @@
 package dev.sweety.sql4j.impl;
 
 import dev.sweety.sql4j.api.configuration.DatabaseConfig;
-import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.connection.SqlConnection;
-import dev.sweety.sql4j.impl.connection.ConnectionType;
-
-import dev.sweety.sql4j.api.query.chain.QueryChain;
-import dev.sweety.sql4j.impl.query.QueryCache;
-import dev.sweety.sql4j.impl.transaction.TransactionManager;
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
+import dev.sweety.sql4j.api.interceptor.QueryInterceptor;
 import dev.sweety.sql4j.api.obj.table.TableRegistry;
+import dev.sweety.sql4j.api.query.chain.QueryChain;
+import dev.sweety.sql4j.impl.connection.ConnectionType;
+import dev.sweety.sql4j.impl.query.QueryCache;
+import dev.sweety.sql4j.impl.cache.EntityCache;
+import dev.sweety.sql4j.impl.transaction.TransactionManager;
 
-import java.util.Collection;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
@@ -27,6 +26,8 @@ public class Database implements AutoCloseable {
     private final SqlConnection connection;
     private final Dialect dialect;
     private final TransactionManager transactionManager;
+    private final EntityCache entityCache = new EntityCache();
+    private final List<QueryInterceptor> interceptors = new ArrayList<>();
 
     public Database(final SqlConnection connection) {
         this.connection = Objects.requireNonNull(connection, "connection cannot be null");
@@ -52,12 +53,12 @@ public class Database implements AutoCloseable {
 
     public <R extends Repository<E>, E> R createRepository(final Class<E> entityClass) {
         return getOrCreateRepository(entityClass,
-                clazz -> new Repository<>(tableRegistry.get(clazz), dialect, queryCache, tableRegistry));
+                clazz -> new Repository<>(tableRegistry.get(clazz), dialect, queryCache, tableRegistry, entityCache));
     }
 
     public <R extends Repository<E>, E> R createRepository(final Class<E> entityClass, String customTableName) {
         return getOrCreateRepository(entityClass,
-                clazz -> new Repository<>(tableRegistry.getOrCreate(clazz, customTableName), dialect, queryCache, tableRegistry));
+                clazz -> new Repository<>(tableRegistry.getOrCreate(clazz, customTableName), dialect, queryCache, tableRegistry, entityCache));
     }
 
     public <R extends Repository<E>, E> R getOrCreateRepository(final Class<E> entityClass,
@@ -126,6 +127,19 @@ public class Database implements AutoCloseable {
      */
     public CompletableFuture<Void> transact(final TransactionManager.TransactionBlock block) {
         return transactionManager.transaction(block);
+    }
+
+    public void addInterceptor(QueryInterceptor interceptor) {
+        interceptors.add(Objects.requireNonNull(interceptor));
+        connection.addInterceptor(interceptor);
+    }
+
+    public List<QueryInterceptor> interceptors() {
+        return java.util.Collections.unmodifiableList(interceptors);
+    }
+
+    public EntityCache entityCache() {
+        return entityCache;
     }
 
     @Override

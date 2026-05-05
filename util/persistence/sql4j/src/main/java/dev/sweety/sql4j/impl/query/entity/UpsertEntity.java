@@ -17,7 +17,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public final class UpsertEntity<T> extends AbstractQuery<MutationResult<T>> {
+import dev.sweety.sql4j.api.query.UpsertQuery;
+
+public final class UpsertEntity<T> extends AbstractQuery<MutationResult<T>> implements UpsertQuery<T> {
 
     private final Table<T> table;
     private final T instance;

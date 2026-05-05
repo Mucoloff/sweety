@@ -1,15 +1,12 @@
 package dev.sweety.sql4j.entity;
 
-import dev.sweety.sql4j.api.configuration.DatabaseConfig;
 import dev.sweety.sql4j.api.connection.SqlConnection;
 import dev.sweety.sql4j.api.connection.SqlRunner;
+import dev.sweety.sql4j.api.obj.Row;
 import dev.sweety.sql4j.api.util.SqlLogger;
 import dev.sweety.sql4j.impl.Database;
 import dev.sweety.sql4j.impl.Repository;
 import dev.sweety.sql4j.impl.connection.ConnectionType;
-import dev.sweety.sql4j.impl.connection.dialect.DialectType;
-import dev.sweety.sql4j.impl.connection.dialect.SqliteDialect;
-import dev.sweety.sql4j.api.obj.Row;
 import org.junit.jupiter.api.*;
 
 import java.util.List;
@@ -28,7 +25,7 @@ public class SQL4JFullTest {
     private Repository<Task> tasks;
 
     @BeforeEach
-    public void setup() throws Exception {
+    public void setup() {
         SqlRunner.setLogger(SqlLogger.stdout());
         // Use a UNIQUE FILE-based database for EACH test to ensure total isolation and persistence
         String dbName = "sql4j_test_" + System.nanoTime() + ".db";
@@ -73,7 +70,7 @@ public class SQL4JFullTest {
         assertEquals(26, updated.getAge());
 
         // Select All
-        List<User> all = users.selectAll().execute(con).join();
+        List<User> all = users.select().execute(con).join();
         assertEquals(1, all.size());
     }
 
@@ -99,29 +96,44 @@ public class SQL4JFullTest {
         users.insert(u3).execute(con).join();
 
         // AND + GT
-        List<User> result = users.selectAll()
+        List<User> result = users.select()
                 .where(UserTable.AGE.gt(28).and(UserTable.ROLE.eq("USER")))
                 .execute(con).join();
         assertEquals(2, result.size());
 
         // OR
-        result = users.selectAll()
+        result = users.select()
                 .where(UserTable.NAME.eq("Alice").or(UserTable.NAME.eq("Charlie")))
                 .execute(con).join();
         assertEquals(2, result.size());
 
         // LIKE
-        result = users.selectAll()
+        result = users.select()
                 .where(UserTable.NAME.like("%ar%"))
                 .execute(con).join();
         assertEquals(1, result.size());
-        assertEquals("Charlie", result.get(0).getName());
+        assertEquals("Charlie", result.getFirst().getName());
 
         // IN
-        result = users.selectAll()
+        result = users.select()
                 .where(UserTable.NAME.in("Alice", "Bob"))
                 .execute(con).join();
         assertEquals(2, result.size());
+
+        // BETWEEN
+        result = users.select()
+                .where(dev.sweety.sql4j.api.query.Criterion.between(UserTable.AGE, 20, 26))
+                .execute(con).join();
+        assertEquals(1, result.size());
+        assertEquals("Alice", result.getFirst().getName());
+
+        // RAW & IS NOT NULL
+        result = users.select()
+                .where(dev.sweety.sql4j.api.query.Criterion.raw("role = ?", "ADMIN")
+                    .and(dev.sweety.sql4j.api.query.Criterion.isNotNull(UserTable.NAME)))
+                .execute(con).join();
+        assertEquals(1, result.size());
+        assertEquals("Alice", result.getFirst().getName());
     }
 
     @Test
@@ -155,18 +167,18 @@ public class SQL4JFullTest {
         // Soft Delete via PK context
         users.pk(u1.getId()).delete().execute(con).join(); // Delete Alice
 
-        List<User> active = users.selectAll().execute(con).join();
+        List<User> active = users.select().execute(con).join();
         assertEquals(2, active.size());
         assertFalse(active.stream().anyMatch(u -> u.getName().equals("Alice")));
 
         // withDeleted
-        List<User> all = users.selectAll().withDeleted().execute(con).join();
+        List<User> all = users.select().withDeleted().execute(con).join();
         assertEquals(3, all.size());
         assertTrue(all.stream().anyMatch(u -> u.getName().equals("Alice")));
 
         // Bulk Delete
         users.deleteWhere().where(UserTable.NAME.eq("Bob")).execute(con).join();
-        assertEquals(1, users.selectAll().execute(con).join().size());
+        assertEquals(1, users.select().execute(con).join().size());
     }
 
     @Test
@@ -216,10 +228,21 @@ public class SQL4JFullTest {
                 .execute(con).join();
 
         assertEquals(1, hierarchy.size());
-        User root = hierarchy.get(0);
+        User root = hierarchy.getFirst();
         assertEquals("Charlie", root.getName());
         assertEquals(1, root.getProjects().size());
-        assertEquals(2, root.getProjects().get(0).getTasks().size());
+        assertEquals(2, root.getProjects().getFirst().getTasks().size());
+
+        // Fluent Fetch API
+        List<User> fetched = users.select()
+                .fetch(UserTable.PROJECTS_REL, ProjectTable.TASKS_REL)
+                .where(UserTable.NAME.eq("Charlie"))
+                .execute(con).join();
+        
+        assertEquals(1, fetched.size());
+        assertEquals("Charlie", fetched.getFirst().getName());
+        assertEquals(1, fetched.getFirst().getProjects().size());
+        assertEquals(2, fetched.getFirst().getProjects().getFirst().getTasks().size());
     }
 
     @Test
@@ -234,12 +257,12 @@ public class SQL4JFullTest {
             u.setRole("GHOST");
             tx.execute(users.insert(u));
             throw new RuntimeException("Rollback test");
-        }).handle((res, ex) -> {
+        }).handle((_, ex) -> {
             assertNotNull(ex, "Transaction should have failed with an exception");
             return null;
         }).join();
 
-        List<User> ghosts = users.selectAll().where(UserTable.NAME.eq("Ghost")).execute(con).join();
+        List<User> ghosts = users.select().where(UserTable.NAME.eq("Ghost")).execute(con).join();
         assertEquals(0, ghosts.size(), "Database should be empty after rollback, but found: " + ghosts);
     }
 

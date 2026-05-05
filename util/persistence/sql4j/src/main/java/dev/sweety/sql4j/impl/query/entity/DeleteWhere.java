@@ -9,7 +9,9 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Objects;
 
-public final class DeleteWhere<T> extends AbstractQuery<Integer> {
+import dev.sweety.sql4j.api.query.ConditionalDeleteQuery;
+
+public final class DeleteWhere<T> extends AbstractQuery<Integer> implements ConditionalDeleteQuery<T> {
 
     private final Table<T> table;
     private Criterion criterion;
@@ -26,6 +28,12 @@ public final class DeleteWhere<T> extends AbstractQuery<Integer> {
 
     public DeleteWhere<T> hardDelete() {
         this.hardDelete = true;
+        return this;
+    }
+
+    @Override
+    public DeleteWhere<T> softDelete() {
+        this.hardDelete = false;
         return this;
     }
 

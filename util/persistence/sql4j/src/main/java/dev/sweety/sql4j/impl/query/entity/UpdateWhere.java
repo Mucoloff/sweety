@@ -12,7 +12,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public final class UpdateWhere<T> extends AbstractQuery<Integer> {
+import dev.sweety.sql4j.api.query.ConditionalUpdateQuery;
+
+public final class UpdateWhere<T> extends AbstractQuery<Integer> implements ConditionalUpdateQuery<T> {
 
     private final Table<T> table;
     private final Map<Column<?>, Object> values = new LinkedHashMap<>();

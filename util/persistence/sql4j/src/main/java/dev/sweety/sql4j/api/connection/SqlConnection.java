@@ -4,9 +4,12 @@ import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.connection.provider.ConnectionProvider;
 import dev.sweety.sql4j.api.query.Query;
 import dev.sweety.sql4j.impl.connection.dialect.DialectType;
+import dev.sweety.sql4j.api.interceptor.QueryInterceptor;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -20,6 +23,7 @@ public class SqlConnection implements AutoCloseable {
     private final ConnectionProvider connectionProvider;
     private final Executor executor;
     private final boolean ownsExecutor;
+    private final List<QueryInterceptor> interceptors = new ArrayList<>();
 
     public SqlConnection(final DialectType dialectType, final ConnectionProvider connectionProvider, final Executor executor) {
         this(dialectType, connectionProvider, executor, false);
@@ -52,7 +56,7 @@ public class SqlConnection implements AutoCloseable {
         try {
             return CompletableFuture.supplyAsync(() -> {
                 try (final Connection con = connection()) {
-                    return SqlRunner.execute(con, query);
+                    return SqlRunner.execute(con, query, interceptors);
                 } catch (SQLException e) {
                     throw new CompletionException(e);
                 }
@@ -60,6 +64,14 @@ public class SqlConnection implements AutoCloseable {
         } catch (RejectedExecutionException e) {
             return CompletableFuture.failedFuture(e);
         }
+    }
+
+    public void addInterceptor(QueryInterceptor interceptor) {
+        interceptors.add(Objects.requireNonNull(interceptor));
+    }
+
+    public List<QueryInterceptor> interceptors() {
+        return interceptors;
     }
 
     @Override
