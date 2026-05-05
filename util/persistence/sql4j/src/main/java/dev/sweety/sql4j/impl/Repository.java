@@ -7,10 +7,12 @@ import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.obj.table.TableRegistry;
 import dev.sweety.sql4j.impl.query.QueryCache;
 import dev.sweety.sql4j.impl.query.entity.DeleteEntity;
+import dev.sweety.sql4j.impl.query.entity.DeleteWhere;
 import dev.sweety.sql4j.impl.query.entity.InsertEntity;
 import dev.sweety.sql4j.impl.query.entity.SelectEntity;
 import dev.sweety.sql4j.impl.query.entity.SelectRaw;
 import dev.sweety.sql4j.impl.query.entity.UpdateEntity;
+import dev.sweety.sql4j.impl.query.entity.UpsertEntity;
 import dev.sweety.sql4j.impl.query.table.CreateTable;
 import dev.sweety.sql4j.impl.query.table.DropTable;
 
@@ -49,24 +51,51 @@ public class Repository<Entity> {
     // ─── Writes ────────────────────────────────────────────────────────────────
 
     public InsertEntity<Entity> insert(Entity entity) {
-        return new InsertEntity<>(table, entity, cache);
+        return cache.getQuery("insertPrototype:" + table.name(),
+                _ -> new InsertEntity<>(table, entity, cache)).copy(entity);
+
     }
 
     public dev.sweety.sql4j.impl.query.entity.UpsertEntity<Entity> upsert(Entity entity) {
-        return cache.<dev.sweety.sql4j.impl.query.entity.UpsertEntity<Entity>>getQuery("upsertPrototype:" + table.name(),
-                _ -> new dev.sweety.sql4j.impl.query.entity.UpsertEntity<>(table, dialect, null, cache)).copy(entity);
+        return cache.getQuery("upsertPrototype:" + table.name(),
+                _ -> new
+                        UpsertEntity<>(table, dialect, entity, cache)).copy(entity);
     }
 
     public UpdateEntity<Entity> update(Entity entity) {
-        return cache.<UpdateEntity<Entity>>getQuery("updatePrototype:" + table.name(),
-                _ -> new UpdateEntity<>(table, null, cache)).copy(entity);
+        return cache.getQuery("updatePrototype:" + table.name(),
+                _ -> new UpdateEntity<>(table, entity, cache)).copy(entity);
     }
 
     @SafeVarargs
     public final DeleteEntity<Entity> delete(Entity... instances) {
         int count = instances != null ? instances.length : 0;
-        return cache.<DeleteEntity<Entity>>getQuery("deletePrototype:" + table.name() + ":" + count,
+        return cache.getQuery("deletePrototype:" + table.name() + ":" + count,
                 _ -> new DeleteEntity<>(table, cache, instances)).copy(instances);
+    }
+
+    public DeleteWhere<Entity> deleteWhere() {
+        return new dev.sweety.sql4j.impl.query.entity.DeleteWhere<>(table);
+    }
+
+    public dev.sweety.sql4j.api.query.PkContext<Entity> pk(Object... values) {
+        return new dev.sweety.sql4j.api.query.PkContext<>(this, values);
+    }
+
+    public dev.sweety.sql4j.api.query.Query<Integer> deleteByPk(Object pk) {
+        return pk(pk).delete();
+    }
+
+    public DeleteWhere<Entity> deleteWhere(dev.sweety.sql4j.api.query.Criterion criterion) {
+        return deleteWhere().where(criterion);
+    }
+
+    public dev.sweety.sql4j.impl.query.entity.UpdateWhere<Entity> updateWhere() {
+        return new dev.sweety.sql4j.impl.query.entity.UpdateWhere<>(table);
+    }
+
+    public dev.sweety.sql4j.impl.query.entity.UpdateWhere<Entity> updateWhere(dev.sweety.sql4j.api.query.Criterion criterion) {
+        return updateWhere().where(criterion);
     }
 
     // ─── Relations ─────────────────────────────────────────────────────────────
@@ -141,6 +170,14 @@ public class Repository<Entity> {
                 _ -> new SelectEntity<>(table, cache, dialect));
     }
 
+    public SelectEntity<Entity> select(dev.sweety.sql4j.api.query.Criterion criterion) {
+        return selectAll().where(criterion);
+    }
+
+    public dev.sweety.sql4j.api.query.Query<Entity> selectByPk(Object pk) {
+        return pk(pk).find();
+    }
+
     /**
      * Selects all columns with a WHERE clause. Returns fully populated entity instances.
      *
@@ -152,17 +189,20 @@ public class Repository<Entity> {
         return new SelectEntity<>(table, where, cache, dialect, params);
     }
 
-    /**
-     * Selects only the specified columns. Unspecified entity fields are left at zero/null.
-     *
-     * <pre>{@code
-     * repo.select("name", "age").execute(connection).join();
-     * // → List<Entity> where getId() == 0 (not fetched)
-     * }</pre>
-     */
+    public SelectEntity<Entity> select(Column<?>... columns) {
+        return selectAll().select(columns);
+    }
+
     public SelectEntity<Entity> select(String... columnNames) {
-        Set<String> cols = Set.of(columnNames);
-        return new SelectEntity<>(table, null, cols, cache, dialect, (Object[]) null);
+        return new SelectEntity<Entity>(table, null, Set.of(columnNames), cache, dialect, (Object[]) null);
+    }
+
+    public SelectRaw selectRaw(Column<?>... columns) {
+        return selectRawAll().select(columns);
+    }
+
+    public SelectRaw selectRaw(String... columnNames) {
+        return new SelectRaw(table, null, Set.of(columnNames), cache, dialect, (Object[]) null);
     }
 
     /**
@@ -170,7 +210,7 @@ public class Repository<Entity> {
      * Unspecified entity fields are left at zero/null.
      */
     public SelectEntity<Entity> selectWhere(String where, Set<String> columnNames, Object... params) {
-        return new SelectEntity<>(table, where, columnNames, cache, dialect, params);
+        return new SelectEntity<Entity>(table, where, columnNames, cache, dialect, params);
     }
 
     // ─── Row-based reads (lightweight, no entity instantiation) ────────────────
@@ -196,11 +236,6 @@ public class Repository<Entity> {
      * // → [Row{name=Alice, age=25}, ...]
      * }</pre>
      */
-    public SelectRaw selectRaw(String... columnNames) {
-        Set<String> cols = Set.of(columnNames);
-        return new SelectRaw(table, null, cols, cache, dialect, (Object[]) null);
-    }
-
     /**
      * Selects specific columns with a WHERE clause and returns {@link List}<{@link Row}>.
      */
@@ -209,7 +244,7 @@ public class Repository<Entity> {
     }
 
     public dev.sweety.sql4j.impl.query.SelectJoin.Builder joinBuilder() {
-        return new dev.sweety.sql4j.impl.query.SelectJoin.Builder().dialect(dialect).join(table);
+        return new dev.sweety.sql4j.impl.query.SelectJoin.Builder(registry).dialect(dialect).join(table);
     }
 
     /**
