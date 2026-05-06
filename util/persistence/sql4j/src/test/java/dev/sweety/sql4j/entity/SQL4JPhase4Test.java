@@ -40,7 +40,7 @@ public class SQL4JPhase4Test {
             User u = new User();
             u.setName("StreamUser" + i);
             u.setAge(20 + i);
-            u.setRole("USER");
+            u.setRole(Role.USER);
             batch.add(u);
         }
         users.insertBatch(batch).execute(con).join();

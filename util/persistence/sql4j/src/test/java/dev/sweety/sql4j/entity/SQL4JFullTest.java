@@ -50,7 +50,7 @@ public class SQL4JFullTest {
         User u = new User();
         u.setName("Alice");
         u.setAge(25);
-        u.setRole("ADMIN");
+        u.setRole(Role.ADMIN);
 
         // Insert
         users.insert(u).execute(con).join();
@@ -82,22 +82,22 @@ public class SQL4JFullTest {
         User u1 = new User();
         u1.setName("Alice");
         u1.setAge(25);
-        u1.setRole("ADMIN");
+        u1.setRole(Role.ADMIN);
         User u2 = new User();
         u2.setName("Bob");
         u2.setAge(30);
-        u2.setRole("USER");
+        u2.setRole(Role.USER);
         User u3 = new User();
         u3.setName("Charlie");
         u3.setAge(35);
-        u3.setRole("USER");
+        u3.setRole(Role.USER);
         users.insert(u1).execute(con).join();
         users.insert(u2).execute(con).join();
         users.insert(u3).execute(con).join();
 
         // AND + GT
         List<User> result = users.select()
-                .where(UserTable.AGE.gt(28).and(UserTable.ROLE.eq("USER")))
+                .where(UserTable.AGE.gt(28).and(UserTable.ROLE.eq(Role.USER)))
                 .execute(con).join();
         assertEquals(2, result.size());
 
@@ -129,7 +129,7 @@ public class SQL4JFullTest {
 
         // RAW & IS NOT NULL
         result = users.select()
-                .where(dev.sweety.sql4j.api.query.Criterion.raw("role = ?", "ADMIN")
+                .where(dev.sweety.sql4j.api.query.Criterion.raw("role = ?", Role.ADMIN)
                     .and(dev.sweety.sql4j.api.query.Criterion.isNotNull(UserTable.NAME)))
                 .execute(con).join();
         assertEquals(1, result.size());
@@ -144,22 +144,22 @@ public class SQL4JFullTest {
         User u1 = new User();
         u1.setName("Alice");
         u1.setAge(25);
-        u1.setRole("ADMIN");
+        u1.setRole(Role.ADMIN);
         User u2 = new User();
         u2.setName("Bob");
         u2.setAge(30);
-        u2.setRole("USER");
+        u2.setRole(Role.USER);
         User u3 = new User();
         u3.setName("Charlie");
         u3.setAge(35);
-        u3.setRole("USER");
+        u3.setRole(Role.USER);
         users.insert(u1).execute(con).join();
         users.insert(u2).execute(con).join();
         users.insert(u3).execute(con).join();
 
         // Bulk Update
         int affected = users.updateWhere()
-                .set(UserTable.ROLE, "SUPER_USER")
+                .set(UserTable.ROLE, Role.ADMIN)
                 .where(UserTable.AGE.gt(30))
                 .execute(con).join();
         assertEquals(1, affected); // Only Charlie is > 30
@@ -189,7 +189,7 @@ public class SQL4JFullTest {
         User charlie = new User();
         charlie.setName("Charlie");
         charlie.setAge(35);
-        charlie.setRole("USER");
+        charlie.setRole(Role.USER);
         users.insert(charlie).execute(con).join();
 
         Project p1 = new Project();
@@ -254,7 +254,7 @@ public class SQL4JFullTest {
             User u = new User();
             u.setName("Ghost");
             u.setAge(0);
-            u.setRole("GHOST");
+            u.setRole(Role.USER);
             tx.execute(users.insert(u));
             throw new RuntimeException("Rollback test");
         }).handle((_, ex) -> {

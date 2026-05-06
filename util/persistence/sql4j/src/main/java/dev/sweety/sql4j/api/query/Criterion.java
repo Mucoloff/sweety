@@ -77,8 +77,8 @@ public interface Criterion {
                 return (dialect != null ? col.toSql(dialect) : col.name()) + " BETWEEN ? AND ?"; 
             }
             @Override public void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException {
-                ps.setObject(startIdx, min);
-                ps.setObject(startIdx + 1, max);
+                ps.setObject(startIdx, min instanceof Enum<?> e ? e.name() : min);
+                ps.setObject(startIdx + 1, max instanceof Enum<?> e ? e.name() : max);
             }
             @Override public int countParameters() { return 2; }
         };
@@ -96,7 +96,7 @@ public interface Criterion {
             }
             @Override public void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException {
                 int idx = startIdx;
-                for (Object v : values) ps.setObject(idx++, v);
+                for (Object v : values) ps.setObject(idx++, v instanceof Enum<?> e ? e.name() : v);
             }
             @Override public int countParameters() { return values.size(); }
         };
@@ -108,7 +108,7 @@ public interface Criterion {
             @Override public void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException {
                 int idx = startIdx;
                 if (params != null) {
-                    for (Object p : params) ps.setObject(idx++, p);
+                    for (Object p : params) ps.setObject(idx++, p instanceof Enum<?> e ? e.name() : p);
                 }
             }
             @Override public int countParameters() { return params != null ? params.length : 0; }
@@ -159,7 +159,7 @@ public interface Criterion {
 
         @Override
         public void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException {
-            ps.setObject(startIdx, value);
+            ps.setObject(startIdx, value instanceof Enum<?> e ? e.name() : value);
         }
 
         @Override

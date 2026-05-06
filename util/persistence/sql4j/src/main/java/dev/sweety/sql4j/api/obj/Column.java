@@ -1,5 +1,6 @@
 package dev.sweety.sql4j.api.obj;
 
+import dev.sweety.sql4j.api.obj.table.TableRegistry;
 import dev.sweety.sql4j.api.query.Criterion;
 
 import java.lang.annotation.ElementType;
@@ -13,21 +14,34 @@ import java.util.Objects;
 
 public class Column<T> {
     private final String name;
+    private final Class<T> type;
     private final Field field;
     private final Info info;
     private final Table<?> table;
     private Field relationIdField; // For ManyToOne
+    private boolean relation = false;
     private boolean unique = false;
     private String indexName = null;
     private String defaultValue = null;
     private boolean softDelete = false;
+    private boolean primaryKey = false;
+    private boolean autoIncrement = false;
+    private boolean nullable = true;
 
     public Column(Table<?> table, String name, Field field, Info info) {
         this.table = Objects.requireNonNull(table, "table cannot be null");
         this.name = Objects.requireNonNull(name, "name cannot be null");
-        this.field = Objects.requireNonNull(field, "field cannot be null");
+        this.field = field;
+        this.type = (Class<T>) (field != null ? field.getType() : null);
         this.info = info;
-        field.setAccessible(true);
+        if (field != null) field.setAccessible(true);
+        if (info != null) {
+            this.primaryKey = info.primaryKey();
+            this.autoIncrement = info.autoIncrement();
+            this.nullable = info.nullable();
+            this.unique = info.unique();
+            this.defaultValue = info.defaultValue().isEmpty() ? null : info.defaultValue();
+        }
     }
 
     public Column(Table<?> table, String name, Field field, Info info, Field relationIdField) {
@@ -36,11 +50,24 @@ public class Column<T> {
         if (relationIdField != null) relationIdField.setAccessible(true);
     }
 
+    public Column(Table<?> table, String name, Class<T> type, boolean primaryKey, boolean autoIncrement, boolean nullable) {
+        this.table = Objects.requireNonNull(table, "table cannot be null");
+        this.name = Objects.requireNonNull(name, "name cannot be null");
+        this.type = type;
+        this.field = null;
+        this.info = null;
+        this.primaryKey = primaryKey;
+        this.autoIncrement = autoIncrement;
+        this.nullable = nullable;
+    }
+
     protected Column(Table<?> table, String name) {
         this.table = Objects.requireNonNull(table, "table cannot be null");
         this.name = Objects.requireNonNull(name, "name cannot be null");
+        this.type = null;
         this.field = null;
         this.info = null;
+        this.nullable = true;
     }
 
     public String name() {
@@ -131,10 +158,20 @@ public class Column<T> {
     }
 
     public Class<?> type() {
-        return relationIdField != null ? relationIdField.getType() : field.getType();
+        if (type != null) return type;
+        return relationIdField != null ? relationIdField.getType() : (field != null ? field.getType() : Object.class);
     }
 
+    public boolean isRelation() { return relation; }
+    public void setRelation(boolean relation) { this.relation = relation; }
+
     public T get(Object instance) {
+        TableAccessor<?> accessor = table.accessor();
+        if (accessor != null) {
+            //noinspection unchecked
+            return (T) ((TableAccessor<Object>) accessor).getFieldValue(instance, name);
+        }
+
         try {
             //noinspection unchecked
             return (T) field.get(instance);
@@ -147,13 +184,16 @@ public class Column<T> {
         Object value = get(instance);
         if (value instanceof Enum<?> e) {
             ps.setObject(index, e.name());
-        } else if (relationIdField != null && value != null) {
-            // It's a ManyToOne relationship, extract the ID from the entity
-            try {
-                Object id = relationIdField.get(value);
-                ps.setObject(index, id);
-            } catch (IllegalAccessException e) {
-                throw new IllegalStateException("Failed to extract ID from relation " + value.getClass().getName(), e);
+        } else if ((relation || relationIdField != null) && value != null && !type().isInstance(value)) {
+            // It's a relation (Entity) but we need its ID for the physical column
+            // Find the PK of the entity
+            Table<?> refTable = TableRegistry.getDefault().get(value.getClass());
+            if (refTable != null && !refTable.primaryKeys().isEmpty()) {
+                Column<?> refPk = refTable.primaryKeys().get(0);
+                value = refPk.get(value);
+                ps.setObject(index, value);
+            } else {
+                ps.setObject(index, value);
             }
         } else {
             ps.setObject(index, value);
@@ -161,7 +201,7 @@ public class Column<T> {
     }
 
     public void set(Object instance, Object value) {
-        Class<?> type = field.getType();
+        Class<?> type = type();
         if (relationIdField != null && value != null && !type.isInstance(value)) {
             // It's an ID being set to a relation field (Entity). 
             // We ignore it here as relations are handled by Join logic or Lazy loading.
@@ -211,7 +251,7 @@ public class Column<T> {
 
         if (type.isEnum() && value instanceof String s) {
             //noinspection unchecked,rawtypes
-            return Enum.valueOf((Class<Enum>) type, s);
+            return Enum.valueOf((Class<Enum>) type, s.toUpperCase());
         }
 
         if (type == java.util.UUID.class) {
@@ -252,15 +292,15 @@ public class Column<T> {
     }
 
     public boolean isPrimaryKey() {
-        return info != null && info.primaryKey();
+        return primaryKey;
     }
 
     public boolean isAutoIncrement() {
-        return info != null && info.autoIncrement();
+        return autoIncrement;
     }
 
     public boolean isNullable() {
-        return info != null && info.nullable();
+        return nullable;
     }
 
     @Retention(RetentionPolicy.RUNTIME)

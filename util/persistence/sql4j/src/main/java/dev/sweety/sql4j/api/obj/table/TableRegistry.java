@@ -37,6 +37,20 @@ public final class TableRegistry {
             //noinspection unchecked
             Table<T> table = (Table<T>) tableMap.get(clazz);
             if (table == null) {
+                // Try to load the generated Table instance (which should self-register)
+                try {
+                    String mirrorName = clazz.getName() + "Table";
+                    Class<?> mirrorClass = Class.forName(mirrorName);
+                    // Accessing mirrorClass should trigger its static block and register the instance
+                    java.lang.reflect.Field instanceField = mirrorClass.getField("INSTANCE");
+                    table = (Table<T>) instanceField.get(null);
+                    if (table != null) {
+                        return table;
+                    }
+                } catch (Exception ignored) {
+                    // Fallback to reflection if no mirror exists
+                }
+
                 Table.Info info = clazz.getAnnotation(Table.Info.class);
                 if (info != null) {
                     table = new Table<>(clazz, info.name());

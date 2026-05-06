@@ -32,13 +32,13 @@ public class SQL4JPhase8Test {
         db.migrateAll();
         
         // Seed data
-        seedUser("Alice", 25, "ADMIN");
-        seedUser("Bob", 30, "USER");
-        seedUser("Charlie", 25, "USER");
-        seedUser("David", 35, "USER");
+        seedUser("Alice", 25, Role.ADMIN);
+        seedUser("Bob", 30, Role.USER);
+        seedUser("Charlie", 25, Role.USER);
+        seedUser("David", 35, Role.USER);
     }
 
-    private void seedUser(String name, int age, String role) {
+    private void seedUser(String name, int age, Role role) {
         User u = new User();
         u.setName(name);
         u.setAge(age);
@@ -51,6 +51,7 @@ public class SQL4JPhase8Test {
         db.close();
         new File("test_phase8.db").delete();
     }
+
     @AfterEach
     void resetLogger() {
         SqlRunner.setLogger(SqlLogger.nop());

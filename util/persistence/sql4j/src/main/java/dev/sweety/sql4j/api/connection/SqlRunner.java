@@ -79,46 +79,4 @@ public final class SqlRunner {
         }
     }
 
-    public static <T> java.util.stream.Stream<T> stream(Connection con, dev.sweety.sql4j.api.query.Query<List<T>> query, java.util.List<QueryInterceptor> interceptors) throws SQLException {
-        final String sql = query.sql();
-
-        for (QueryInterceptor interceptor : interceptors) {
-            interceptor.preExecute(query, con);
-        }
-
-        long start = System.nanoTime();
-        PreparedStatement ps = query.returnGeneratedKeys()
-                ? con.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)
-                : con.prepareStatement(sql);
-
-        try {
-            logger.log("[Thread-%d] Streaming SQL: %s", Thread.currentThread().threadId(), sql);
-            query.bind(ps);
-            java.sql.ResultSet rs = ps.executeQuery();
-
-            long duration = System.nanoTime() - start;
-            logger.log("[Thread-%d] Stream started in %.2fms", Thread.currentThread().threadId(), duration / 1_000_000.0);
-
-            // Create a Spliterator to wrap the ResultSet
-            java.util.Spliterator<T> spliterator = new java.util.Spliterators.AbstractSpliterator<T>(Long.MAX_VALUE, java.util.Spliterator.ORDERED) {
-                @Override
-                public boolean tryAdvance(java.util.function.Consumer<? super T> action) {
-                    try {
-                        List<T> next = query.execute(ps); // This is actually wrong because query.execute(ps) in SelectEntity reads EVERYTHING
-                        // ... I need a different method for SelectEntity to read ONE row
-                        return false; 
-                    } catch (SQLException e) {
-                        throw new java.util.concurrent.CompletionException(e);
-                    }
-                }
-            };
-            // ... Wait, SelectEntity.execute(ps) reads the whole ResultSet.
-            // I need SelectEntity to provide a row mapper.
-            return null;
-        } catch (SQLException e) {
-            ps.close();
-            throw e;
-        }
-    }
-
 }

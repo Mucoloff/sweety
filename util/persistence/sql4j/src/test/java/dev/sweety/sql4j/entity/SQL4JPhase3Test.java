@@ -46,7 +46,7 @@ public class SQL4JPhase3Test {
             User u = new User();
             u.setName("User" + i);
             u.setAge(20 + i);
-            u.setRole("USER");
+            u.setRole(Role.USER);
             batch.add(u);
         }
 

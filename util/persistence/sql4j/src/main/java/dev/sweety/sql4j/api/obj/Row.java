@@ -123,7 +123,7 @@ public final class Row {
                 instance = ctor.newInstance();
             }
 
-            for (dev.sweety.sql4j.api.obj.Column c : table.columns()) {
+            for (dev.sweety.sql4j.api.obj.Column<?> c : table.columns()) {
                 String colName = pfx + c.name().toLowerCase(Locale.ENGLISH);
                 if (has(colName)) {
                     c.set(instance, get(colName));

@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public final class Table<T> {
+public class Table<T> {
     private final String name;
     private final Class<T> clazz;
 
@@ -37,7 +37,7 @@ public final class Table<T> {
     private final List<Relation> relations = new ArrayList<>();
     private InsertableColumns insertableColumns;
     private Column<?> softDeleteColumn;
-    private final TableAccessor<T> accessor;
+    private TableAccessor<T> accessor;
 
     private volatile boolean initializing = false;
     private volatile boolean initialized = false;
@@ -46,6 +46,16 @@ public final class Table<T> {
         this.clazz = clazz;
         this.name = name;
         this.accessor = discoverAccessor(clazz);
+    }
+
+    public void setAccessor(TableAccessor<T> accessor) {
+        this.accessor = accessor;
+    }
+
+    public Table(Class<T> clazz, String name, TableAccessor<T> accessor) {
+        this.clazz = clazz;
+        this.name = name;
+        this.accessor = accessor;
     }
 
     private TableAccessor<T> discoverAccessor(Class<T> clazz) {
@@ -75,6 +85,44 @@ public final class Table<T> {
 
     public TableAccessor<T> accessor() {
         return accessor;
+    }
+
+    public void addColumn(Column<?> col) {
+        synchronized (this) {
+            this.columnsList.add(col);
+            this.columnsMap.put(col.name().toLowerCase(java.util.Locale.ENGLISH), col);
+            if (col.isPrimaryKey()) this.primaryKeys.add(col);
+            if (col.isSoftDelete()) this.softDeleteColumn = col;
+        }
+    }
+
+    public void addForeignKey(ForeignKey fk) {
+        synchronized (this) {
+            this.foreignKeys.add(fk);
+        }
+    }
+
+    public void addRelation(Relation rel) {
+        synchronized (this) {
+            this.relations.add(rel);
+        }
+    }
+
+    public void markInitialized() {
+        synchronized (this) {
+            // Finalize insertable/updatable
+            List<Column<?>> insertColumns = new ArrayList<>();
+            Column<?> autoInc = null;
+            for (Column<?> c : columnsList) {
+                if (c.isAutoIncrement()) autoInc = c;
+                else {
+                    insertColumns.add(c);
+                    if (!c.isPrimaryKey()) updatableColumns.add(c);
+                }
+            }
+            this.insertableColumns = new InsertableColumns(insertColumns, autoInc);
+            this.initialized = true;
+        }
     }
 
     public void initialize(TableRegistry registry) {

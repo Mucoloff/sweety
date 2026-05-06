@@ -31,9 +31,9 @@ public class SQL4JPhase5Test {
         db.migrateAll();
 
         // Data setup
-        users.insert(new User() {{ setName("A1"); setAge(20); setRole("ADMIN"); }}).execute(con).join();
-        users.insert(new User() {{ setName("A2"); setAge(30); setRole("ADMIN"); }}).execute(con).join();
-        users.insert(new User() {{ setName("U1"); setAge(25); setRole("USER");  }}).execute(con).join();
+        users.insert(new User() {{ setName("A1"); setAge(20); setRole(Role.ADMIN); }}).execute(con).join();
+        users.insert(new User() {{ setName("A2"); setAge(30); setRole(Role.ADMIN); }}).execute(con).join();
+        users.insert(new User() {{ setName("U1"); setAge(25); setRole(Role.USER);  }}).execute(con).join();
     }
 
     @AfterAll
@@ -52,10 +52,10 @@ public class SQL4JPhase5Test {
                 .executeAggregate(con).join();
 
         assertEquals(2, results.size());
-        Row adminRow = results.stream().filter(r -> "ADMIN".equals(r.getString("role"))).findFirst().orElseThrow();
+        Row adminRow = results.stream().filter(r -> Role.ADMIN.name().equals(r.get("role"))).findFirst().orElseThrow();
         assertEquals(2, adminRow.getLong("count_id"));
 
-        Row userRow = results.stream().filter(r -> "USER".equals(r.getString("role"))).findFirst().orElseThrow();
+        Row userRow = results.stream().filter(r -> Role.USER.name().equals(r.get("role"))).findFirst().orElseThrow();
         assertEquals(1, userRow.getLong("count_id"));
     }
 

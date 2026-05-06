@@ -47,7 +47,7 @@ public class SQL4JPhase6Test {
         User u = new User();
         u.setName("CacheUser");
         u.setAge(30);
-        u.setRole("USER");
+        u.setRole(Role.USER);
         
         // 1. Insert (fills cache)
         users.insert(u).execute(con).join();
@@ -80,7 +80,7 @@ public class SQL4JPhase6Test {
     void testCacheInvalidationUpdate() {
         User u = new User();
         u.setName("UpdateUser");
-        u.setRole("USER");
+        u.setRole(Role.USER);
         users.insert(u).execute(con).join();
         Object pk = u.getId();
 
@@ -98,7 +98,7 @@ public class SQL4JPhase6Test {
     void testCacheInvalidationDelete() {
         User u = new User();
         u.setName("DeleteUser");
-        u.setRole("USER");
+        u.setRole(Role.USER);
         users.insert(u).execute(con).join();
         Object pk = u.getId();
 

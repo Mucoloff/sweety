@@ -1,0 +1,857 @@
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by net.rubygrapefruit.platform.internal.NativeLibraryLoader in an unnamed module (file:/Users/francesco/.gradle/wrapper/dists/gradle-8.14-bin/38aieal9i53h9rfe7vjup95b9/gradle-8.14/lib/native-platform-0.22-milestone-28.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Initialized native services in: /Users/francesco/.gradle/native
+Initialized jansi services in: /Users/francesco/.gradle/native
+The client will now receive all logging from the daemon (pid: 67716). The daemon log file: /Users/francesco/.gradle/daemon/8.14/daemon-67716.out.log
+Starting 4th build in daemon [uptime: 30.019 secs, performance: 99%, GC rate: 0.00/s, heap usage: 4% of 512 MiB, non-heap usage: 22% of 384 MiB]
+Using 10 worker leases.
+Now considering [/Users/francesco/projects/java/todo/sweety] as hierarchies to watch
+Watching the file system is configured to be enabled if available
+File system watching is active
+Starting Build
+Settings evaluated using settings file '/Users/francesco/projects/java/todo/sweety/settings.gradle'.
+Projects loaded. Root project using build file '/Users/francesco/projects/java/todo/sweety/build.gradle.kts'.
+Included projects: [root project 'sweety', project ':feature', project ':hook', project ':minecraft', project ':network', project ':util', project ':feature:asm-patch', project ':feature:event', project ':feature:module', project ':feature:service', project ':hook:microsoft-auth', project ':hook:spotify', project ':minecraft:network', project ':minecraft:plugin', project ':minecraft:version', project ':network:netty', project ':network:netty-loadbalancer', project ':network:netty-saas', project ':util:animation', project ':util:color', project ':util:data', project ':util:exception', project ':util:file', project ':util:filter', project ':util:logger', project ':util:math', project ':util:persistence', project ':util:processor', project ':util:signature', project ':util:system', project ':util:thread', project ':util:time', project ':util:vector', project ':feature:asm-patch:applier', project ':feature:asm-patch:asm-patch-core', project ':feature:asm-patch:generator', project ':feature:event:api', project ':feature:event:impl', project ':feature:module:extension', project ':feature:module:versioning', project ':feature:service:api', project ':feature:service:impl', project ':network:netty-loadbalancer:backend', project ':network:netty-loadbalancer:packet', project ':network:netty-loadbalancer:server', project ':network:netty-saas:hub', project ':network:netty-saas:packet', project ':network:netty-saas:service', project ':util:persistence:configuration', project ':util:persistence:ormlite-util', project ':util:persistence:sql4j', project ':util:persistence:sql4j-processor', project ':util:processor:event-processor', project ':util:processor:intellij-plugin', project ':util:processor:packet-processor', project ':util:processor:record-getter-processor', project ':feature:module:extension:api', project ':feature:module:extension:common', project ':feature:module:extension:manager', project ':feature:module:versioning:client', project ':feature:module:versioning:protocol', project ':feature:module:versioning:update-server', project ':feature:module:versioning:client:app', project ':feature:module:versioning:client:launcher']
+
+> Configure project :
+Evaluating root project 'sweety' using build file '/Users/francesco/projects/java/todo/sweety/build.gradle.kts'.
+Resolved plugin [id: 'org.jetbrains.kotlin.jvm', version: '2.3.20-RC2', apply: false]
+Build 0eb2add7-27ed-4834-a336-0dfeb5e7a04c is started
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+Using Kotlin Gradle Plugin gradle813 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+
+> Configure project :feature
+Evaluating project ':feature' using build file '/Users/francesco/projects/java/todo/sweety/feature/build.gradle'.
+
+> Configure project :hook
+Evaluating project ':hook' using build file '/Users/francesco/projects/java/todo/sweety/hook/build.gradle'.
+
+> Configure project :minecraft
+Evaluating project ':minecraft' using build file '/Users/francesco/projects/java/todo/sweety/minecraft/build.gradle'.
+
+> Configure project :network
+Evaluating project ':network' using build file '/Users/francesco/projects/java/todo/sweety/network/build.gradle'.
+
+> Configure project :util
+Evaluating project ':util' using build file '/Users/francesco/projects/java/todo/sweety/util/build.gradle'.
+
+> Configure project :feature:asm-patch
+Evaluating project ':feature:asm-patch' using build file '/Users/francesco/projects/java/todo/sweety/feature/asm-patch/build.gradle.kts'.
+Resolved plugin [id: 'io.freefair.lombok', version: '9.0.0', apply: false]
+Resolved plugin [id: 'org.jetbrains.kotlin.jvm', version: '2.3.20-RC2', apply: false]
+
+> Configure project :feature:event
+Evaluating project ':feature:event' using build file '/Users/francesco/projects/java/todo/sweety/feature/event/build.gradle'.
+
+> Configure project :feature:module
+Evaluating project ':feature:module' using build file '/Users/francesco/projects/java/todo/sweety/feature/module/build.gradle'.
+
+> Configure project :feature:service
+Evaluating project ':feature:service' using build file '/Users/francesco/projects/java/todo/sweety/feature/service/build.gradle'.
+
+> Configure project :hook:microsoft-auth
+Evaluating project ':hook:microsoft-auth' using build file '/Users/francesco/projects/java/todo/sweety/hook/microsoft-auth/build.gradle'.
+
+> Configure project :hook:spotify
+Evaluating project ':hook:spotify' using build file '/Users/francesco/projects/java/todo/sweety/hook/spotify/build.gradle'.
+Resolved plugin [id: 'io.freefair.lombok', version: '9.0.0']
+
+> Configure project :minecraft:network
+Evaluating project ':minecraft:network' using build file '/Users/francesco/projects/java/todo/sweety/minecraft/network/build.gradle'.
+
+> Configure project :minecraft:plugin
+Evaluating project ':minecraft:plugin' using build file '/Users/francesco/projects/java/todo/sweety/minecraft/plugin/build.gradle'.
+
+> Configure project :minecraft:version
+Evaluating project ':minecraft:version' using build file '/Users/francesco/projects/java/todo/sweety/minecraft/version/build.gradle'.
+
+> Configure project :network:netty
+Evaluating project ':network:netty' using build file '/Users/francesco/projects/java/todo/sweety/network/netty/build.gradle'.
+Resolved plugin [id: 'io.freefair.lombok', version: '9.0.0']
+
+> Configure project :network:netty-loadbalancer
+Evaluating project ':network:netty-loadbalancer' using build file '/Users/francesco/projects/java/todo/sweety/network/netty-loadbalancer/build.gradle'.
+
+> Configure project :network:netty-saas
+Evaluating project ':network:netty-saas' using build file '/Users/francesco/projects/java/todo/sweety/network/netty-saas/build.gradle'.
+
+> Configure project :util:animation
+Evaluating project ':util:animation' using build file '/Users/francesco/projects/java/todo/sweety/util/animation/build.gradle.kts'.
+
+> Configure project :util:color
+Evaluating project ':util:color' using build file '/Users/francesco/projects/java/todo/sweety/util/color/build.gradle'.
+
+> Configure project :util:data
+Evaluating project ':util:data' using build file '/Users/francesco/projects/java/todo/sweety/util/data/build.gradle'.
+
+> Configure project :util:exception
+Evaluating project ':util:exception' using build file '/Users/francesco/projects/java/todo/sweety/util/exception/build.gradle'.
+
+> Configure project :util:file
+Evaluating project ':util:file' using build file '/Users/francesco/projects/java/todo/sweety/util/file/build.gradle'.
+
+> Configure project :util:filter
+Evaluating project ':util:filter' using build file '/Users/francesco/projects/java/todo/sweety/util/filter/build.gradle'.
+
+> Configure project :util:logger
+Evaluating project ':util:logger' using build file '/Users/francesco/projects/java/todo/sweety/util/logger/build.gradle'.
+
+> Configure project :util:math
+Evaluating project ':util:math' using build file '/Users/francesco/projects/java/todo/sweety/util/math/build.gradle'.
+Resolved plugin [id: 'io.freefair.lombok', version: '9.0.0']
+
+> Configure project :util:persistence
+Evaluating project ':util:persistence' using build file '/Users/francesco/projects/java/todo/sweety/util/persistence/build.gradle'.
+
+> Configure project :util:processor
+Evaluating project ':util:processor' using build file '/Users/francesco/projects/java/todo/sweety/util/processor/build.gradle'.
+
+> Configure project :util:signature
+Evaluating project ':util:signature' using build file '/Users/francesco/projects/java/todo/sweety/util/signature/build.gradle.kts'.
+
+> Configure project :util:system
+Evaluating project ':util:system' using build file '/Users/francesco/projects/java/todo/sweety/util/system/build.gradle'.
+
+> Configure project :util:thread
+Evaluating project ':util:thread' using build file '/Users/francesco/projects/java/todo/sweety/util/thread/build.gradle'.
+Resolved plugin [id: 'io.freefair.lombok', version: '9.0.0']
+
+> Configure project :util:time
+Evaluating project ':util:time' using build file '/Users/francesco/projects/java/todo/sweety/util/time/build.gradle'.
+
+> Configure project :util:vector
+Evaluating project ':util:vector' using build file '/Users/francesco/projects/java/todo/sweety/util/vector/build.gradle'.
+
+> Configure project :feature:asm-patch:applier
+Evaluating project ':feature:asm-patch:applier' using build file '/Users/francesco/projects/java/todo/sweety/feature/asm-patch/applier/build.gradle.kts'.
+
+> Configure project :feature:asm-patch:asm-patch-core
+Evaluating project ':feature:asm-patch:asm-patch-core' using build file '/Users/francesco/projects/java/todo/sweety/feature/asm-patch/core/build.gradle.kts'.
+
+> Configure project :feature:asm-patch:generator
+Evaluating project ':feature:asm-patch:generator' using build file '/Users/francesco/projects/java/todo/sweety/feature/asm-patch/generator/build.gradle.kts'.
+
+> Configure project :feature:event:api
+Evaluating project ':feature:event:api' using build file '/Users/francesco/projects/java/todo/sweety/feature/event/api/build.gradle.kts'.
+
+> Configure project :feature:event:impl
+Evaluating project ':feature:event:impl' using build file '/Users/francesco/projects/java/todo/sweety/feature/event/impl/build.gradle.kts'.
+
+> Configure project :feature:module:extension
+Evaluating project ':feature:module:extension' using build file '/Users/francesco/projects/java/todo/sweety/feature/module/extension/build.gradle'.
+
+> Configure project :feature:module:versioning
+Evaluating project ':feature:module:versioning' using build file '/Users/francesco/projects/java/todo/sweety/feature/module/versioning/build.gradle'.
+
+> Configure project :feature:service:api
+Evaluating project ':feature:service:api' using build file '/Users/francesco/projects/java/todo/sweety/feature/service/api/build.gradle'.
+
+> Configure project :feature:service:impl
+Evaluating project ':feature:service:impl' using build file '/Users/francesco/projects/java/todo/sweety/feature/service/impl/build.gradle'.
+
+> Configure project :network:netty-loadbalancer:backend
+Evaluating project ':network:netty-loadbalancer:backend' using build file '/Users/francesco/projects/java/todo/sweety/network/netty-loadbalancer/backend/build.gradle.kts'.
+
+> Configure project :network:netty-loadbalancer:packet
+Evaluating project ':network:netty-loadbalancer:packet' using build file '/Users/francesco/projects/java/todo/sweety/network/netty-loadbalancer/packet/build.gradle.kts'.
+
+> Configure project :network:netty-loadbalancer:server
+Evaluating project ':network:netty-loadbalancer:server' using build file '/Users/francesco/projects/java/todo/sweety/network/netty-loadbalancer/server/build.gradle.kts'.
+
+> Configure project :network:netty-saas:hub
+Evaluating project ':network:netty-saas:hub' using build file '/Users/francesco/projects/java/todo/sweety/network/netty-saas/hub/build.gradle.kts'.
+Resolved plugin [id: 'io.freefair.lombok', version: '9.0.0']
+
+> Configure project :network:netty-saas:packet
+Evaluating project ':network:netty-saas:packet' using build file '/Users/francesco/projects/java/todo/sweety/network/netty-saas/packet/build.gradle.kts'.
+Resolved plugin [id: 'io.freefair.lombok', version: '9.0.0']
+
+> Configure project :network:netty-saas:service
+Evaluating project ':network:netty-saas:service' using build file '/Users/francesco/projects/java/todo/sweety/network/netty-saas/service/build.gradle.kts'.
+Resolved plugin [id: 'io.freefair.lombok', version: '9.0.0']
+
+> Configure project :util:persistence:configuration
+Evaluating project ':util:persistence:configuration' using build file '/Users/francesco/projects/java/todo/sweety/util/persistence/configuration/build.gradle'.
+
+> Configure project :util:persistence:ormlite-util
+Evaluating project ':util:persistence:ormlite-util' using build file '/Users/francesco/projects/java/todo/sweety/util/persistence/ormlite-util/build.gradle'.
+
+> Configure project :util:persistence:sql4j
+Evaluating project ':util:persistence:sql4j' using build file '/Users/francesco/projects/java/todo/sweety/util/persistence/sql4j/build.gradle'.
+
+> Configure project :util:persistence:sql4j-processor
+Evaluating project ':util:persistence:sql4j-processor' using build file '/Users/francesco/projects/java/todo/sweety/util/persistence/sql4j-processor/build.gradle'.
+Resolved plugin [id: 'java-library']
+
+> Configure project :util:processor:event-processor
+Evaluating project ':util:processor:event-processor' using build file '/Users/francesco/projects/java/todo/sweety/util/processor/event-processor/build.gradle'.
+Resolved plugin [id: 'java-library']
+Resolved plugin [id: 'io.freefair.lombok', version: '9.0.0']
+
+> Configure project :util:processor:intellij-plugin
+Evaluating project ':util:processor:intellij-plugin' using build file '/Users/francesco/projects/java/todo/sweety/util/processor/intellij-plugin/build.gradle'.
+Resolved plugin [id: 'java']
+Resolved plugin [id: 'org.jetbrains.intellij', version: '1.17.2']
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring plugin
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Initializing Gradle IntelliJ Plugin
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring setup dependencies task
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring classpath.index cleanup task
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring compile tasks
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring patch plugin.xml task
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring robot-server download Task
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring list products task
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring list bundled plugins task
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring plugin verification task
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring run IDE task
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring run IDE performance test task
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring run IDE for UI tests task
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring build searchable options task
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring jar searchable options task
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring building plugin task
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring run plugin verifier task
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring sign plugin task
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring publish plugin task
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring resources task
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring plugin configuration verification task
+[gradle-intellij-plugin :util:processor:intellij-plugin intellij-plugin] Configuring tests tasks
+
+> Configure project :util:processor:packet-processor
+Evaluating project ':util:processor:packet-processor' using build file '/Users/francesco/projects/java/todo/sweety/util/processor/packet-processor/build.gradle'.
+Resolved plugin [id: 'java-library']
+
+> Configure project :util:processor:record-getter-processor
+Evaluating project ':util:processor:record-getter-processor' using build file '/Users/francesco/projects/java/todo/sweety/util/processor/record-getter-processor/build.gradle'.
+Resolved plugin [id: 'java-library']
+
+> Configure project :feature:module:extension:api
+Evaluating project ':feature:module:extension:api' using build file '/Users/francesco/projects/java/todo/sweety/feature/module/extension/api/build.gradle.kts'.
+
+> Configure project :feature:module:extension:common
+Evaluating project ':feature:module:extension:common' using build file '/Users/francesco/projects/java/todo/sweety/feature/module/extension/common/build.gradle.kts'.
+
+> Configure project :feature:module:extension:manager
+Evaluating project ':feature:module:extension:manager' using build file '/Users/francesco/projects/java/todo/sweety/feature/module/extension/manager/build.gradle.kts'.
+
+> Configure project :feature:module:versioning:client
+Evaluating project ':feature:module:versioning:client' using build file '/Users/francesco/projects/java/todo/sweety/feature/module/versioning/client/build.gradle'.
+
+> Configure project :feature:module:versioning:protocol
+Evaluating project ':feature:module:versioning:protocol' using build file '/Users/francesco/projects/java/todo/sweety/feature/module/versioning/protocol/build.gradle.kts'.
+
+> Configure project :feature:module:versioning:update-server
+Evaluating project ':feature:module:versioning:update-server' using build file '/Users/francesco/projects/java/todo/sweety/feature/module/versioning/update-server/build.gradle'.
+Resolved plugin [id: 'application']
+
+> Configure project :feature:module:versioning:client:app
+Evaluating project ':feature:module:versioning:client:app' using build file '/Users/francesco/projects/java/todo/sweety/feature/module/versioning/client/app/build.gradle.kts'.
+Resolved plugin [id: 'org.gradle.application']
+
+> Configure project :feature:module:versioning:client:launcher
+Evaluating project ':feature:module:versioning:client:launcher' using build file '/Users/francesco/projects/java/todo/sweety/feature/module/versioning/client/launcher/build.gradle.kts'.
+Resolved plugin [id: 'org.gradle.application']
+All projects evaluated.
+Task path ':util:persistence:sql4j:test' matched project ':util:persistence:sql4j'
+Task name matched 'test'
+Selected primary task 'test' from project :util:persistence:sql4j
+Starting process 'command '/usr/libexec/java_home''. Working directory: /Users/francesco/.gradle/daemon/8.14 Command: /usr/libexec/java_home -V
+Successfully started process 'command '/usr/libexec/java_home''
+Tasks to be executed: [task ':util:persistence:sql4j:checkKotlinGradlePluginConfigurationErrors', task ':util:persistence:sql4j:compileKotlin', task ':util:persistence:sql4j-processor:checkKotlinGradlePluginConfigurationErrors', task ':util:persistence:sql4j-processor:compileKotlin', task ':util:persistence:sql4j-processor:compileJava', task ':util:persistence:sql4j-processor:processResources', task ':util:persistence:sql4j-processor:classes', task ':util:persistence:sql4j-processor:jar', task ':util:persistence:sql4j:compileJava', task ':util:persistence:sql4j:processResources', task ':util:persistence:sql4j:classes', task ':util:persistence:sql4j:jar', task ':util:persistence:sql4j:compileTestKotlin', task ':util:persistence:sql4j:compileTestJava', task ':util:persistence:sql4j:processTestResources', task ':util:persistence:sql4j:testClasses', task ':util:persistence:sql4j:test']
+Tasks that were excluded: []
+Resolve mutations for :util:persistence:sql4j:checkKotlinGradlePluginConfigurationErrors (Thread[#427,Execution worker,5,main]) started.
+:util:persistence:sql4j:checkKotlinGradlePluginConfigurationErrors (Thread[#427,Execution worker,5,main]) started.
+
+> Task :util:persistence:sql4j:checkKotlinGradlePluginConfigurationErrors SKIPPED
+Skipping task ':util:persistence:sql4j:checkKotlinGradlePluginConfigurationErrors' as task onlyIf 'errorDiagnostics are present' is false.
+Resolve mutations for :util:persistence:sql4j:compileKotlin (Thread[#427,Execution worker,5,main]) started.
+:util:persistence:sql4j:compileKotlin (Thread[#427,Execution worker,5,main]) started.
+
+> Task :util:persistence:sql4j:compileKotlin NO-SOURCE
+Skipping task ':util:persistence:sql4j:compileKotlin' as it has no source files and no previous output files.
+Resolve mutations for :util:persistence:sql4j-processor:checkKotlinGradlePluginConfigurationErrors (Thread[#427,Execution worker,5,main]) started.
+:util:persistence:sql4j-processor:checkKotlinGradlePluginConfigurationErrors (Thread[#427,Execution worker,5,main]) started.
+
+> Task :util:persistence:sql4j-processor:checkKotlinGradlePluginConfigurationErrors SKIPPED
+Skipping task ':util:persistence:sql4j-processor:checkKotlinGradlePluginConfigurationErrors' as task onlyIf 'errorDiagnostics are present' is false.
+Resolve mutations for :util:persistence:sql4j-processor:compileKotlin (Thread[#427,Execution worker,5,main]) started.
+:util:persistence:sql4j-processor:compileKotlin (Thread[#427,Execution worker,5,main]) started.
+
+> Task :util:persistence:sql4j-processor:compileKotlin NO-SOURCE
+Skipping task ':util:persistence:sql4j-processor:compileKotlin' as it has no source files and no previous output files.
+Resolve mutations for :util:persistence:sql4j-processor:compileJava (Thread[#427,Execution worker,5,main]) started.
+:util:persistence:sql4j-processor:compileJava (Thread[#427,Execution worker,5,main]) started.
+
+> Task :util:persistence:sql4j-processor:compileJava UP-TO-DATE
+Caching disabled for task ':util:persistence:sql4j-processor:compileJava' because:
+  Build cache is disabled
+Skipping task ':util:persistence:sql4j-processor:compileJava' as it is up-to-date.
+No compile result for :util:persistence:sql4j-processor:compileJava
+No compile result for :util:persistence:sql4j-processor:compileJava
+Resolve mutations for :util:persistence:sql4j-processor:processResources (Thread[#427,Execution worker,5,main]) started.
+:util:persistence:sql4j-processor:processResources (Thread[#427,Execution worker,5,main]) started.
+
+> Task :util:persistence:sql4j-processor:processResources NO-SOURCE
+Skipping task ':util:persistence:sql4j-processor:processResources' as it has no source files and no previous output files.
+Resolve mutations for :util:persistence:sql4j-processor:classes (Thread[#427,Execution worker,5,main]) started.
+:util:persistence:sql4j-processor:classes (Thread[#427,Execution worker,5,main]) started.
+
+> Task :util:persistence:sql4j-processor:classes UP-TO-DATE
+Skipping task ':util:persistence:sql4j-processor:classes' as it has no actions.
+Resolve mutations for :util:persistence:sql4j-processor:jar (Thread[#427,Execution worker,5,main]) started.
+:util:persistence:sql4j-processor:jar (Thread[#427,Execution worker,5,main]) started.
+
+> Task :util:persistence:sql4j-processor:jar UP-TO-DATE
+Caching disabled for task ':util:persistence:sql4j-processor:jar' because:
+  Build cache is disabled
+  Not worth caching
+Skipping task ':util:persistence:sql4j-processor:jar' as it is up-to-date.
+work action resolve sql4j-processor-1.0.0.jar (project :util:persistence:sql4j-processor) (Thread[#427,Execution worker,5,main]) started.
+Resolve mutations for :util:persistence:sql4j:compileJava (Thread[#427,Execution worker,5,main]) started.
+:util:persistence:sql4j:compileJava (Thread[#427,Execution worker,5,main]) started.
+
+> Task :util:persistence:sql4j:compileJava UP-TO-DATE
+Caching disabled for task ':util:persistence:sql4j:compileJava' because:
+  Build cache is disabled
+Skipping task ':util:persistence:sql4j:compileJava' as it is up-to-date.
+No compile result for :util:persistence:sql4j:compileJava
+No compile result for :util:persistence:sql4j:compileJava
+Resolve mutations for :util:persistence:sql4j:processResources (Thread[#427,Execution worker,5,main]) started.
+:util:persistence:sql4j:processResources (Thread[#427,Execution worker,5,main]) started.
+
+> Task :util:persistence:sql4j:processResources NO-SOURCE
+Skipping task ':util:persistence:sql4j:processResources' as it has no source files and no previous output files.
+Resolve mutations for :util:persistence:sql4j:classes (Thread[#427,Execution worker,5,main]) started.
+:util:persistence:sql4j:classes (Thread[#427,Execution worker,5,main]) started.
+
+> Task :util:persistence:sql4j:classes UP-TO-DATE
+Skipping task ':util:persistence:sql4j:classes' as it has no actions.
+Resolve mutations for :util:persistence:sql4j:jar (Thread[#427,Execution worker,5,main]) started.
+:util:persistence:sql4j:jar (Thread[#427,Execution worker,5,main]) started.
+
+> Task :util:persistence:sql4j:jar UP-TO-DATE
+Caching disabled for task ':util:persistence:sql4j:jar' because:
+  Build cache is disabled
+  Not worth caching
+Skipping task ':util:persistence:sql4j:jar' as it is up-to-date.
+Resolve mutations for :util:persistence:sql4j:compileTestKotlin (Thread[#427,Execution worker,5,main]) started.
+:util:persistence:sql4j:compileTestKotlin (Thread[#427,Execution worker,5,main]) started.
+
+> Task :util:persistence:sql4j:compileTestKotlin NO-SOURCE
+Skipping task ':util:persistence:sql4j:compileTestKotlin' as it has no source files and no previous output files.
+Resolve mutations for :util:persistence:sql4j:compileTestJava (Thread[#427,Execution worker,5,main]) started.
+:util:persistence:sql4j:compileTestJava (Thread[#427,Execution worker,5,main]) started.
+
+> Task :util:persistence:sql4j:compileTestJava UP-TO-DATE
+Caching disabled for task ':util:persistence:sql4j:compileTestJava' because:
+  Build cache is disabled
+Skipping task ':util:persistence:sql4j:compileTestJava' as it is up-to-date.
+No compile result for :util:persistence:sql4j:compileTestJava
+No compile result for :util:persistence:sql4j:compileTestJava
+Resolve mutations for :util:persistence:sql4j:processTestResources (Thread[#427,Execution worker,5,main]) started.
+:util:persistence:sql4j:processTestResources (Thread[#427,Execution worker,5,main]) started.
+
+> Task :util:persistence:sql4j:processTestResources UP-TO-DATE
+Caching disabled for task ':util:persistence:sql4j:processTestResources' because:
+  Build cache is disabled
+  Not worth caching
+Skipping task ':util:persistence:sql4j:processTestResources' as it is up-to-date.
+Resolve mutations for :util:persistence:sql4j:testClasses (Thread[#427,Execution worker,5,main]) started.
+:util:persistence:sql4j:testClasses (Thread[#427,Execution worker,5,main]) started.
+
+> Task :util:persistence:sql4j:testClasses UP-TO-DATE
+Skipping task ':util:persistence:sql4j:testClasses' as it has no actions.
+Resolve mutations for :util:persistence:sql4j:test (Thread[#427,Execution worker,5,main]) started.
+:util:persistence:sql4j:test (Thread[#427,Execution worker,5,main]) started.
+Gradle Test Executor 4 started executing tests.
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by org.sqlite.SQLiteJDBCLoader in an unnamed module (file:/Users/francesco/.gradle/caches/modules-2/files-2.1/org.xerial/sqlite-jdbc/3.50.3.0/220f0cdfe9c5b97926a417fa11848ce8817d2135/sqlite-jdbc-3.50.3.0.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Gradle Test Executor 4 finished executing tests.
+
+> Task :util:persistence:sql4j:test FAILED
+Caching disabled for task ':util:persistence:sql4j:test' because:
+  Build cache is disabled
+Task ':util:persistence:sql4j:test' is not up-to-date because:
+  Task has failed previously.
+file or directory '/Users/francesco/projects/java/todo/sweety/util/persistence/sql4j/build/classes/kotlin/test', not found
+Starting process 'Gradle Test Executor 4'. Working directory: /Users/francesco/projects/java/todo/sweety/util/persistence/sql4j Command: /Users/francesco/Library/Java/JavaVirtualMachines/corretto-24.0.2/Contents/Home/bin/java -Dorg.gradle.internal.worker.tmpdir=/Users/francesco/projects/java/todo/sweety/util/persistence/sql4j/build/tmp/test/work @/Users/francesco/.gradle/.tmp/gradle-worker-classpath4185169504194540691txt -Xmx512m -Dfile.encoding=UTF-8 -Duser.country=IT -Duser.language=it -Duser.variant -ea worker.org.gradle.process.internal.worker.GradleWorkerMain 'Gradle Test Executor 4'
+Successfully started process 'Gradle Test Executor 4'
+
+SQL4JFullTest > 1. Basic CRUD & Reflection-Free Access STANDARD_ERROR
+    [DEBUG] TABLE full_users found AutoInc column: id
+    [DEBUG] TABLE full_users found AutoInc column: id
+    SLF4J: No SLF4J providers were found.
+    SLF4J: Defaulting to no-operation (NOP) logger implementation
+    SLF4J: See https://www.slf4j.org/codes.html#noProviders for further details.
+
+SQL4JFullTest > 1. Basic CRUD & Reflection-Free Access STANDARD_OUT
+    [SQL4J] [Thread-30] Executing SQL: CREATE TABLE IF NOT EXISTS "full_users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "age" INTEGER NOT NULL, "role" TEXT NOT NULL, "is_deleted" INTEGER NOT NULL)
+    [SQL4J] [Thread-30] SQL Executed in 4,32ms
+    [SQL4J] [Thread-30] Executing SQL: CREATE INDEX IF NOT EXISTS "idx_full_users_age" ON "full_users"("age")
+    [SQL4J] [Thread-30] SQL Executed in 0,71ms
+
+SQL4JFullTest > 1. Basic CRUD & Reflection-Free Access STANDARD_ERROR
+    [DEBUG] TABLE full_projects found AutoInc column: id
+    [DEBUG] TABLE full_projects found AutoInc column: id
+
+SQL4JFullTest > 1. Basic CRUD & Reflection-Free Access STANDARD_OUT
+    [SQL4J] [Thread-30] Executing SQL: CREATE TABLE IF NOT EXISTS "full_projects" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL, "owner_id" INTEGER NOT NULL, FOREIGN KEY ("owner_id") REFERENCES "full_users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-30] SQL Executed in 0,73ms
+    [SQL4J] [Thread-30] Executing SQL: CREATE TABLE IF NOT EXISTS "full_users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "age" INTEGER NOT NULL, "role" TEXT NOT NULL, "is_deleted" INTEGER NOT NULL)
+    [SQL4J] [Thread-30] SQL Executed in 0,21ms
+    [SQL4J] [Thread-30] Executing SQL: CREATE INDEX IF NOT EXISTS "idx_full_users_age" ON "full_users"("age")
+    [SQL4J] [Thread-30] SQL Executed in 0,19ms
+
+SQL4JFullTest > 1. Basic CRUD & Reflection-Free Access STANDARD_ERROR
+    [DEBUG] TABLE full_tasks found AutoInc column: id
+    [DEBUG] TABLE full_tasks found AutoInc column: id
+
+SQL4JFullTest > 1. Basic CRUD & Reflection-Free Access STANDARD_OUT
+    [SQL4J] [Thread-30] Executing SQL: CREATE TABLE IF NOT EXISTS "full_projects" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL, "owner_id" INTEGER NOT NULL, FOREIGN KEY ("owner_id") REFERENCES "full_users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-30] SQL Executed in 0,19ms
+    [SQL4J] [Thread-30] Executing SQL: CREATE TABLE IF NOT EXISTS "full_users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "age" INTEGER NOT NULL, "role" TEXT NOT NULL, "is_deleted" INTEGER NOT NULL)
+    [SQL4J] [Thread-30] SQL Executed in 0,15ms
+    [SQL4J] [Thread-30] Executing SQL: CREATE INDEX IF NOT EXISTS "idx_full_users_age" ON "full_users"("age")
+    [SQL4J] [Thread-30] SQL Executed in 0,16ms
+    [SQL4J] [Thread-30] Executing SQL: CREATE TABLE IF NOT EXISTS "full_tasks" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "description" TEXT NOT NULL, "status" TEXT NOT NULL, "project_id" INTEGER NOT NULL, FOREIGN KEY ("project_id") REFERENCES "full_projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-30] SQL Executed in 0,52ms
+    [SQL4J] [Thread-30] Executing SQL: CREATE TABLE IF NOT EXISTS "full_projects" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL, "owner_id" INTEGER NOT NULL, FOREIGN KEY ("owner_id") REFERENCES "full_users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-30] SQL Executed in 0,16ms
+    [SQL4J] [Thread-30] Executing SQL: CREATE TABLE IF NOT EXISTS "full_users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "age" INTEGER NOT NULL, "role" TEXT NOT NULL, "is_deleted" INTEGER NOT NULL)
+    [SQL4J] [Thread-30] SQL Executed in 0,13ms
+    [SQL4J] [Thread-30] Executing SQL: CREATE INDEX IF NOT EXISTS "idx_full_users_age" ON "full_users"("age")
+    [SQL4J] [Thread-30] SQL Executed in 0,13ms
+    [SQL4J] [Thread-30] Executing SQL: CREATE TABLE IF NOT EXISTS "full_tasks" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "description" TEXT NOT NULL, "status" TEXT NOT NULL, "project_id" INTEGER NOT NULL, FOREIGN KEY ("project_id") REFERENCES "full_projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-30] SQL Executed in 0,13ms
+    [SQL4J] [Thread-30] Executing SQL: INSERT INTO "full_users" ("name", "age", "role", "is_deleted") VALUES (?,?,?,?)
+    [SQL4J] [Thread-30] SQL Executed in 1,52ms
+    [SQL4J] [Thread-30] Executing SQL: UPDATE "full_users" SET "name"=?, "age"=?, "role"=?, "is_deleted"=? WHERE "id"=?
+    [SQL4J] [Thread-30] SQL Executed in 0,50ms
+    [SQL4J] [Thread-30] Executing SQL: SELECT "id", "name", "age", "role", "is_deleted" FROM "full_users" WHERE "is_deleted" = 0
+    [SQL4J] [Thread-30] SQL Executed in 0,52ms
+
+SQL4JFullTest > 2. Advanced Criterion DSL STANDARD_OUT
+    [SQL4J] [Thread-43] Executing SQL: CREATE TABLE IF NOT EXISTS "full_projects" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL, "owner_id" INTEGER NOT NULL, FOREIGN KEY ("owner_id") REFERENCES "full_users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-43] SQL Executed in 0,45ms
+    [SQL4J] [Thread-43] Executing SQL: CREATE TABLE IF NOT EXISTS "full_users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "age" INTEGER NOT NULL, "role" TEXT NOT NULL, "is_deleted" INTEGER NOT NULL)
+    [SQL4J] [Thread-43] SQL Executed in 0,40ms
+    [SQL4J] [Thread-43] Executing SQL: CREATE INDEX IF NOT EXISTS "idx_full_users_age" ON "full_users"("age")
+    [SQL4J] [Thread-43] SQL Executed in 0,38ms
+    [SQL4J] [Thread-43] Executing SQL: CREATE TABLE IF NOT EXISTS "full_tasks" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "description" TEXT NOT NULL, "status" TEXT NOT NULL, "project_id" INTEGER NOT NULL, FOREIGN KEY ("project_id") REFERENCES "full_projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-43] SQL Executed in 0,35ms
+    [SQL4J] [Thread-43] Executing SQL: CREATE TABLE IF NOT EXISTS "full_projects" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL, "owner_id" INTEGER NOT NULL, FOREIGN KEY ("owner_id") REFERENCES "full_users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-43] SQL Executed in 0,09ms
+    [SQL4J] [Thread-43] Executing SQL: CREATE TABLE IF NOT EXISTS "full_users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "age" INTEGER NOT NULL, "role" TEXT NOT NULL, "is_deleted" INTEGER NOT NULL)
+    [SQL4J] [Thread-43] SQL Executed in 0,10ms
+    [SQL4J] [Thread-43] Executing SQL: CREATE INDEX IF NOT EXISTS "idx_full_users_age" ON "full_users"("age")
+    [SQL4J] [Thread-43] SQL Executed in 0,08ms
+    [SQL4J] [Thread-43] Executing SQL: CREATE TABLE IF NOT EXISTS "full_tasks" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "description" TEXT NOT NULL, "status" TEXT NOT NULL, "project_id" INTEGER NOT NULL, FOREIGN KEY ("project_id") REFERENCES "full_projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-43] SQL Executed in 0,10ms
+    [SQL4J] [Thread-43] Executing SQL: CREATE TABLE IF NOT EXISTS "full_projects" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL, "owner_id" INTEGER NOT NULL, FOREIGN KEY ("owner_id") REFERENCES "full_users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-43] SQL Executed in 0,11ms
+    [SQL4J] [Thread-43] Executing SQL: CREATE TABLE IF NOT EXISTS "full_users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "age" INTEGER NOT NULL, "role" TEXT NOT NULL, "is_deleted" INTEGER NOT NULL)
+    [SQL4J] [Thread-43] SQL Executed in 0,08ms
+    [SQL4J] [Thread-43] Executing SQL: CREATE INDEX IF NOT EXISTS "idx_full_users_age" ON "full_users"("age")
+    [SQL4J] [Thread-43] SQL Executed in 0,08ms
+    [SQL4J] [Thread-43] Executing SQL: CREATE TABLE IF NOT EXISTS "full_tasks" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "description" TEXT NOT NULL, "status" TEXT NOT NULL, "project_id" INTEGER NOT NULL, FOREIGN KEY ("project_id") REFERENCES "full_projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-43] SQL Executed in 0,09ms
+    [SQL4J] [Thread-43] Executing SQL: CREATE TABLE IF NOT EXISTS "full_projects" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL, "owner_id" INTEGER NOT NULL, FOREIGN KEY ("owner_id") REFERENCES "full_users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-43] SQL Executed in 0,08ms
+    [SQL4J] [Thread-43] Executing SQL: CREATE TABLE IF NOT EXISTS "full_users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "age" INTEGER NOT NULL, "role" TEXT NOT NULL, "is_deleted" INTEGER NOT NULL)
+    [SQL4J] [Thread-43] SQL Executed in 0,09ms
+    [SQL4J] [Thread-43] Executing SQL: CREATE INDEX IF NOT EXISTS "idx_full_users_age" ON "full_users"("age")
+    [SQL4J] [Thread-43] SQL Executed in 0,09ms
+    [SQL4J] [Thread-43] Executing SQL: CREATE TABLE IF NOT EXISTS "full_tasks" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "description" TEXT NOT NULL, "status" TEXT NOT NULL, "project_id" INTEGER NOT NULL, FOREIGN KEY ("project_id") REFERENCES "full_projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-43] SQL Executed in 0,08ms
+    [SQL4J] [Thread-43] Executing SQL: INSERT INTO "full_users" ("name", "age", "role", "is_deleted") VALUES (?,?,?,?)
+    [SQL4J] [Thread-43] SQL Executed in 0,40ms
+    [SQL4J] [Thread-43] Executing SQL: INSERT INTO "full_users" ("name", "age", "role", "is_deleted") VALUES (?,?,?,?)
+    [SQL4J] [Thread-43] SQL Executed in 0,36ms
+    [SQL4J] [Thread-43] Executing SQL: INSERT INTO "full_users" ("name", "age", "role", "is_deleted") VALUES (?,?,?,?)
+    [SQL4J] [Thread-43] SQL Executed in 0,33ms
+    [SQL4J] [Thread-43] Executing SQL: SELECT "id", "name", "age", "role", "is_deleted" FROM "full_users" WHERE ("age" > ? AND "role" = ?) AND "is_deleted" = 0
+    [SQL4J] [Thread-43] SQL Executed in 0,59ms
+
+SQL4JFullTest > 2. Advanced Criterion DSL FAILED
+    org.opentest4j.AssertionFailedError: expected: <2> but was: <0>
+        at app//org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
+        at app//org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)
+        at app//org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:197)
+        at app//org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:150)
+        at app//org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:145)
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:531)
+        at app//dev.sweety.sql4j.entity.SQL4JFullTest.testCriterionDsl(SQL4JFullTest.java:102)
+
+SQL4JFullTest > 3. Bulk Operations & Soft Delete STANDARD_OUT
+    [SQL4J] [Thread-44] Executing SQL: CREATE TABLE IF NOT EXISTS "full_projects" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL, "owner_id" INTEGER NOT NULL, FOREIGN KEY ("owner_id") REFERENCES "full_users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-44] SQL Executed in 0,38ms
+    [SQL4J] [Thread-44] Executing SQL: CREATE TABLE IF NOT EXISTS "full_users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "age" INTEGER NOT NULL, "role" TEXT NOT NULL, "is_deleted" INTEGER NOT NULL)
+    [SQL4J] [Thread-44] SQL Executed in 0,33ms
+    [SQL4J] [Thread-44] Executing SQL: CREATE INDEX IF NOT EXISTS "idx_full_users_age" ON "full_users"("age")
+    [SQL4J] [Thread-44] SQL Executed in 0,31ms
+    [SQL4J] [Thread-44] Executing SQL: CREATE TABLE IF NOT EXISTS "full_tasks" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "description" TEXT NOT NULL, "status" TEXT NOT NULL, "project_id" INTEGER NOT NULL, FOREIGN KEY ("project_id") REFERENCES "full_projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-44] SQL Executed in 0,29ms
+    [SQL4J] [Thread-44] Executing SQL: CREATE TABLE IF NOT EXISTS "full_projects" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL, "owner_id" INTEGER NOT NULL, FOREIGN KEY ("owner_id") REFERENCES "full_users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-44] SQL Executed in 0,09ms
+    [SQL4J] [Thread-44] Executing SQL: CREATE TABLE IF NOT EXISTS "full_users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "age" INTEGER NOT NULL, "role" TEXT NOT NULL, "is_deleted" INTEGER NOT NULL)
+    [SQL4J] [Thread-44] SQL Executed in 0,08ms
+    [SQL4J] [Thread-44] Executing SQL: CREATE INDEX IF NOT EXISTS "idx_full_users_age" ON "full_users"("age")
+    [SQL4J] [Thread-44] SQL Executed in 0,06ms
+    [SQL4J] [Thread-44] Executing SQL: CREATE TABLE IF NOT EXISTS "full_tasks" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "description" TEXT NOT NULL, "status" TEXT NOT NULL, "project_id" INTEGER NOT NULL, FOREIGN KEY ("project_id") REFERENCES "full_projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-44] SQL Executed in 0,07ms
+    [SQL4J] [Thread-44] Executing SQL: CREATE TABLE IF NOT EXISTS "full_projects" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL, "owner_id" INTEGER NOT NULL, FOREIGN KEY ("owner_id") REFERENCES "full_users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-44] SQL Executed in 0,07ms
+    [SQL4J] [Thread-44] Executing SQL: CREATE TABLE IF NOT EXISTS "full_users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "age" INTEGER NOT NULL, "role" TEXT NOT NULL, "is_deleted" INTEGER NOT NULL)
+    [SQL4J] [Thread-44] SQL Executed in 0,07ms
+    [SQL4J] [Thread-44] Executing SQL: CREATE INDEX IF NOT EXISTS "idx_full_users_age" ON "full_users"("age")
+    [SQL4J] [Thread-44] SQL Executed in 0,07ms
+    [SQL4J] [Thread-44] Executing SQL: CREATE TABLE IF NOT EXISTS "full_tasks" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "description" TEXT NOT NULL, "status" TEXT NOT NULL, "project_id" INTEGER NOT NULL, FOREIGN KEY ("project_id") REFERENCES "full_projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-44] SQL Executed in 0,07ms
+    [SQL4J] [Thread-44] Executing SQL: CREATE TABLE IF NOT EXISTS "full_projects" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL, "owner_id" INTEGER NOT NULL, FOREIGN KEY ("owner_id") REFERENCES "full_users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-44] SQL Executed in 0,09ms
+    [SQL4J] [Thread-44] Executing SQL: CREATE TABLE IF NOT EXISTS "full_users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "age" INTEGER NOT NULL, "role" TEXT NOT NULL, "is_deleted" INTEGER NOT NULL)
+    [SQL4J] [Thread-44] SQL Executed in 0,07ms
+    [SQL4J] [Thread-44] Executing SQL: CREATE INDEX IF NOT EXISTS "idx_full_users_age" ON "full_users"("age")
+    [SQL4J] [Thread-44] SQL Executed in 0,06ms
+    [SQL4J] [Thread-44] Executing SQL: CREATE TABLE IF NOT EXISTS "full_tasks" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "description" TEXT NOT NULL, "status" TEXT NOT NULL, "project_id" INTEGER NOT NULL, FOREIGN KEY ("project_id") REFERENCES "full_projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-44] SQL Executed in 0,07ms
+    [SQL4J] [Thread-44] Executing SQL: INSERT INTO "full_users" ("name", "age", "role", "is_deleted") VALUES (?,?,?,?)
+    [SQL4J] [Thread-44] SQL Executed in 0,37ms
+    [SQL4J] [Thread-44] Executing SQL: INSERT INTO "full_users" ("name", "age", "role", "is_deleted") VALUES (?,?,?,?)
+    [SQL4J] [Thread-44] SQL Executed in 0,30ms
+    [SQL4J] [Thread-44] Executing SQL: INSERT INTO "full_users" ("name", "age", "role", "is_deleted") VALUES (?,?,?,?)
+    [SQL4J] [Thread-44] SQL Executed in 0,33ms
+    [SQL4J] [Thread-44] Executing SQL: UPDATE "full_users" SET "role" = ? WHERE "age" > ?
+    [SQL4J] [Thread-44] SQL Executed in 0,91ms
+    [SQL4J] [Thread-44] Executing SQL: UPDATE "full_users" SET "is_deleted" = 1 WHERE "id" = ?
+    [SQL4J] [Thread-44] SQL Executed in 0,38ms
+    [SQL4J] [Thread-44] Executing SQL: SELECT "id", "name", "age", "role", "is_deleted" FROM "full_users" WHERE "is_deleted" = 0
+
+SQL4JFullTest > 3. Bulk Operations & Soft Delete FAILED
+    java.util.concurrent.CompletionException: java.sql.SQLException: Failed to instantiate entity: dev.sweety.sql4j.entity.User
+        at dev.sweety.sql4j.api.connection.SqlConnection.lambda$executeAsync$0(SqlConnection.java:61)
+        at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1814)
+        at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1095)
+        at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:619)
+        at java.base/java.lang.Thread.run(Thread.java:1447)
+
+        Caused by:
+        java.sql.SQLException: Failed to instantiate entity: dev.sweety.sql4j.entity.User
+            at dev.sweety.sql4j.impl.query.entity.SelectEntity.mapRow(SelectEntity.java:378)
+            at dev.sweety.sql4j.impl.query.entity.SelectEntity.execute(SelectEntity.java:364)
+            at dev.sweety.sql4j.impl.query.entity.SelectEntity.execute(SelectEntity.java:22)
+            at dev.sweety.sql4j.api.connection.SqlRunner.execute(SqlRunner.java:59)
+            at dev.sweety.sql4j.api.connection.SqlConnection.lambda$executeAsync$0(SqlConnection.java:59)
+            ... 4 more
+
+            Caused by:
+            java.lang.IllegalArgumentException: No enum constant dev.sweety.sql4j.entity.Role.admin
+                at java.base/java.lang.Enum.valueOf(Enum.java:293)
+                at dev.sweety.sql4j.api.obj.Column.convertValue(Column.java:214)
+                at dev.sweety.sql4j.api.obj.Column.set(Column.java:171)
+                at dev.sweety.sql4j.impl.query.entity.SelectEntity.mapRow(SelectEntity.java:374)
+                ... 8 more
+
+SQL4JFullTest > 4. Relations & Typed Joins STANDARD_OUT
+    [SQL4J] [Thread-45] Executing SQL: CREATE TABLE IF NOT EXISTS "full_projects" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL, "owner_id" INTEGER NOT NULL, FOREIGN KEY ("owner_id") REFERENCES "full_users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-45] SQL Executed in 0,35ms
+    [SQL4J] [Thread-45] Executing SQL: CREATE TABLE IF NOT EXISTS "full_users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "age" INTEGER NOT NULL, "role" TEXT NOT NULL, "is_deleted" INTEGER NOT NULL)
+    [SQL4J] [Thread-45] SQL Executed in 0,30ms
+    [SQL4J] [Thread-45] Executing SQL: CREATE INDEX IF NOT EXISTS "idx_full_users_age" ON "full_users"("age")
+    [SQL4J] [Thread-45] SQL Executed in 0,45ms
+    [SQL4J] [Thread-45] Executing SQL: CREATE TABLE IF NOT EXISTS "full_tasks" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "description" TEXT NOT NULL, "status" TEXT NOT NULL, "project_id" INTEGER NOT NULL, FOREIGN KEY ("project_id") REFERENCES "full_projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-45] SQL Executed in 0,29ms
+    [SQL4J] [Thread-45] Executing SQL: CREATE TABLE IF NOT EXISTS "full_projects" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL, "owner_id" INTEGER NOT NULL, FOREIGN KEY ("owner_id") REFERENCES "full_users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-45] SQL Executed in 0,07ms
+    [SQL4J] [Thread-45] Executing SQL: CREATE TABLE IF NOT EXISTS "full_users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "age" INTEGER NOT NULL, "role" TEXT NOT NULL, "is_deleted" INTEGER NOT NULL)
+    [SQL4J] [Thread-45] SQL Executed in 0,06ms
+    [SQL4J] [Thread-45] Executing SQL: CREATE INDEX IF NOT EXISTS "idx_full_users_age" ON "full_users"("age")
+    [SQL4J] [Thread-45] SQL Executed in 0,07ms
+    [SQL4J] [Thread-45] Executing SQL: CREATE TABLE IF NOT EXISTS "full_tasks" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "description" TEXT NOT NULL, "status" TEXT NOT NULL, "project_id" INTEGER NOT NULL, FOREIGN KEY ("project_id") REFERENCES "full_projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-45] SQL Executed in 0,07ms
+    [SQL4J] [Thread-45] Executing SQL: CREATE TABLE IF NOT EXISTS "full_projects" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL, "owner_id" INTEGER NOT NULL, FOREIGN KEY ("owner_id") REFERENCES "full_users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-45] SQL Executed in 0,06ms
+    [SQL4J] [Thread-45] Executing SQL: CREATE TABLE IF NOT EXISTS "full_users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "age" INTEGER NOT NULL, "role" TEXT NOT NULL, "is_deleted" INTEGER NOT NULL)
+    [SQL4J] [Thread-45] SQL Executed in 0,06ms
+    [SQL4J] [Thread-45] Executing SQL: CREATE INDEX IF NOT EXISTS "idx_full_users_age" ON "full_users"("age")
+    [SQL4J] [Thread-45] SQL Executed in 0,06ms
+    [SQL4J] [Thread-45] Executing SQL: CREATE TABLE IF NOT EXISTS "full_tasks" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "description" TEXT NOT NULL, "status" TEXT NOT NULL, "project_id" INTEGER NOT NULL, FOREIGN KEY ("project_id") REFERENCES "full_projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-45] SQL Executed in 0,06ms
+    [SQL4J] [Thread-45] Executing SQL: CREATE TABLE IF NOT EXISTS "full_projects" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL, "owner_id" INTEGER NOT NULL, FOREIGN KEY ("owner_id") REFERENCES "full_users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-45] SQL Executed in 0,06ms
+    [SQL4J] [Thread-45] Executing SQL: CREATE TABLE IF NOT EXISTS "full_users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "age" INTEGER NOT NULL, "role" TEXT NOT NULL, "is_deleted" INTEGER NOT NULL)
+    [SQL4J] [Thread-45] SQL Executed in 0,06ms
+    [SQL4J] [Thread-45] Executing SQL: CREATE INDEX IF NOT EXISTS "idx_full_users_age" ON "full_users"("age")
+    [SQL4J] [Thread-45] SQL Executed in 0,05ms
+    [SQL4J] [Thread-45] Executing SQL: CREATE TABLE IF NOT EXISTS "full_tasks" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "description" TEXT NOT NULL, "status" TEXT NOT NULL, "project_id" INTEGER NOT NULL, FOREIGN KEY ("project_id") REFERENCES "full_projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-45] SQL Executed in 0,06ms
+    [SQL4J] [Thread-45] Executing SQL: INSERT INTO "full_users" ("name", "age", "role", "is_deleted") VALUES (?,?,?,?)
+    [SQL4J] [Thread-45] SQL Executed in 0,36ms
+    [SQL4J] [Thread-45] Executing SQL: INSERT INTO "full_projects" ("title", "owner_id") VALUES (?,?)
+    [SQL4J] [Thread-45] SQL Executed in 0,33ms
+    [SQL4J] [Thread-45] Executing SQL: INSERT INTO "full_tasks" ("description", "status", "project_id") VALUES (?,?,?)
+    [SQL4J] [Thread-45] SQL Executed in 0,35ms
+    [SQL4J] [Thread-45] Executing SQL: INSERT INTO "full_tasks" ("description", "status", "project_id") VALUES (?,?,?)
+    [SQL4J] [Thread-45] SQL Executed in 0,31ms
+    [SQL4J] [Thread-45] Executing SQL: SELECT "full_users"."id" AS "full_users_id", "full_users"."name" AS "full_users_name", "full_users"."age" AS "full_users_age", "full_users"."role" AS "full_users_role", "full_users"."is_deleted" AS "full_users_is_deleted", "full_projects"."id" AS "full_projects_id", "full_projects"."title" AS "full_projects_title", "full_projects"."owner_id" AS "full_projects_owner_id", "full_tasks"."id" AS "full_tasks_id", "full_tasks"."description" AS "full_tasks_description", "full_tasks"."status" AS "full_tasks_status", "full_tasks"."project_id" AS "full_tasks_project_id" FROM "full_users" INNER JOIN "full_projects" ON "full_users"."id" = "full_projects"."owner_id" INNER JOIN "full_tasks" ON "full_projects"."id" = "full_tasks"."project_id" WHERE "name" = ? AND "full_users"."is_deleted" = 0
+    [SQL4J] [Thread-45] SQL Executed in 0,42ms
+    [SQL4J] [Thread-45] Executing SQL: SELECT "full_users"."id" AS "full_users_id", "full_users"."name" AS "full_users_name", "full_users"."age" AS "full_users_age", "full_users"."role" AS "full_users_role", "full_users"."is_deleted" AS "full_users_is_deleted", "full_projects"."id" AS "full_projects_id", "full_projects"."title" AS "full_projects_title", "full_projects"."owner_id" AS "full_projects_owner_id", "full_tasks"."id" AS "full_tasks_id", "full_tasks"."description" AS "full_tasks_description", "full_tasks"."status" AS "full_tasks_status", "full_tasks"."project_id" AS "full_tasks_project_id" FROM "full_users" INNER JOIN "full_projects" ON "full_users"."id" = "full_projects"."owner_id" INNER JOIN "full_tasks" ON "full_projects"."id" = "full_tasks"."project_id" WHERE "name" = ? AND "full_users"."is_deleted" = 0
+    [SQL4J] [Thread-45] SQL Executed in 0,46ms
+    [SQL4J] [Thread-45] Executing SQL: SELECT "full_users"."id" AS "full_users_id", "full_users"."name" AS "full_users_name", "full_users"."age" AS "full_users_age", "full_users"."role" AS "full_users_role", "full_users"."is_deleted" AS "full_users_is_deleted", "full_projects"."id" AS "full_projects_id", "full_projects"."title" AS "full_projects_title", "full_projects"."owner_id" AS "full_projects_owner_id", "full_tasks"."id" AS "full_tasks_id", "full_tasks"."description" AS "full_tasks_description", "full_tasks"."status" AS "full_tasks_status", "full_tasks"."project_id" AS "full_tasks_project_id" FROM "full_users" INNER JOIN "full_projects" ON "full_users"."id" = "full_projects"."owner_id" INNER JOIN "full_tasks" ON "full_projects"."id" = "full_tasks"."project_id" WHERE "name" = ? AND "full_users"."is_deleted" = 0
+    [SQL4J] [Thread-45] SQL Executed in 0,21ms
+
+SQL4JFullTest > 5. Transactions STANDARD_OUT
+    [SQL4J] [Thread-46] Executing SQL: CREATE TABLE IF NOT EXISTS "full_projects" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL, "owner_id" INTEGER NOT NULL, FOREIGN KEY ("owner_id") REFERENCES "full_users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-46] SQL Executed in 0,30ms
+    [SQL4J] [Thread-46] Executing SQL: CREATE TABLE IF NOT EXISTS "full_users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "age" INTEGER NOT NULL, "role" TEXT NOT NULL, "is_deleted" INTEGER NOT NULL)
+    [SQL4J] [Thread-46] SQL Executed in 0,25ms
+    [SQL4J] [Thread-46] Executing SQL: CREATE INDEX IF NOT EXISTS "idx_full_users_age" ON "full_users"("age")
+    [SQL4J] [Thread-46] SQL Executed in 0,21ms
+    [SQL4J] [Thread-46] Executing SQL: CREATE TABLE IF NOT EXISTS "full_tasks" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "description" TEXT NOT NULL, "status" TEXT NOT NULL, "project_id" INTEGER NOT NULL, FOREIGN KEY ("project_id") REFERENCES "full_projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-46] SQL Executed in 0,21ms
+    [SQL4J] [Thread-46] Executing SQL: CREATE TABLE IF NOT EXISTS "full_projects" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL, "owner_id" INTEGER NOT NULL, FOREIGN KEY ("owner_id") REFERENCES "full_users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-46] SQL Executed in 0,07ms
+    [SQL4J] [Thread-46] Executing SQL: CREATE TABLE IF NOT EXISTS "full_users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "age" INTEGER NOT NULL, "role" TEXT NOT NULL, "is_deleted" INTEGER NOT NULL)
+    [SQL4J] [Thread-46] SQL Executed in 0,05ms
+    [SQL4J] [Thread-46] Executing SQL: CREATE INDEX IF NOT EXISTS "idx_full_users_age" ON "full_users"("age")
+    [SQL4J] [Thread-46] SQL Executed in 0,06ms
+    [SQL4J] [Thread-46] Executing SQL: CREATE TABLE IF NOT EXISTS "full_tasks" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "description" TEXT NOT NULL, "status" TEXT NOT NULL, "project_id" INTEGER NOT NULL, FOREIGN KEY ("project_id") REFERENCES "full_projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-46] SQL Executed in 0,08ms
+    [SQL4J] [Thread-46] Executing SQL: CREATE TABLE IF NOT EXISTS "full_projects" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL, "owner_id" INTEGER NOT NULL, FOREIGN KEY ("owner_id") REFERENCES "full_users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-46] SQL Executed in 0,07ms
+    [SQL4J] [Thread-46] Executing SQL: CREATE TABLE IF NOT EXISTS "full_users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "age" INTEGER NOT NULL, "role" TEXT NOT NULL, "is_deleted" INTEGER NOT NULL)
+    [SQL4J] [Thread-46] SQL Executed in 0,05ms
+    [SQL4J] [Thread-46] Executing SQL: CREATE INDEX IF NOT EXISTS "idx_full_users_age" ON "full_users"("age")
+    [SQL4J] [Thread-46] SQL Executed in 0,06ms
+    [SQL4J] [Thread-46] Executing SQL: CREATE TABLE IF NOT EXISTS "full_tasks" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "description" TEXT NOT NULL, "status" TEXT NOT NULL, "project_id" INTEGER NOT NULL, FOREIGN KEY ("project_id") REFERENCES "full_projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-46] SQL Executed in 0,06ms
+    [SQL4J] [Thread-46] Executing SQL: CREATE TABLE IF NOT EXISTS "full_projects" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT NULL, "owner_id" INTEGER NOT NULL, FOREIGN KEY ("owner_id") REFERENCES "full_users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-46] SQL Executed in 0,06ms
+    [SQL4J] [Thread-46] Executing SQL: CREATE TABLE IF NOT EXISTS "full_users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "age" INTEGER NOT NULL, "role" TEXT NOT NULL, "is_deleted" INTEGER NOT NULL)
+    [SQL4J] [Thread-46] SQL Executed in 0,05ms
+    [SQL4J] [Thread-46] Executing SQL: CREATE INDEX IF NOT EXISTS "idx_full_users_age" ON "full_users"("age")
+    [SQL4J] [Thread-46] SQL Executed in 0,05ms
+    [SQL4J] [Thread-46] Executing SQL: CREATE TABLE IF NOT EXISTS "full_tasks" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "description" TEXT NOT NULL, "status" TEXT NOT NULL, "project_id" INTEGER NOT NULL, FOREIGN KEY ("project_id") REFERENCES "full_projects"("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+    [SQL4J] [Thread-46] SQL Executed in 0,05ms
+    [SQL4J] [Thread-46] Executing SQL: INSERT INTO "full_users" ("name", "age", "role", "is_deleted") VALUES (?,?,?,?)
+    [SQL4J] [Thread-46] SQL Executed in 0,20ms
+    [SQL4J] [Thread-46] Executing SQL: SELECT "id", "name", "age", "role", "is_deleted" FROM "full_users" WHERE "name" = ? AND "is_deleted" = 0
+    [SQL4J] [Thread-46] SQL Executed in 0,08ms
+
+5 tests completed, 2 failed
+Finished generating test XML results (0.0 secs) into: /Users/francesco/projects/java/todo/sweety/util/persistence/sql4j/build/test-results/test
+Generating HTML test report...
+Finished generating test html results (0.001 secs) into: /Users/francesco/projects/java/todo/sweety/util/persistence/sql4j/build/reports/tests/test
+Build 0eb2add7-27ed-4834-a336-0dfeb5e7a04c is closed
+
+[Incubating] Problems report is available at: file:///Users/francesco/projects/java/todo/sweety/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':util:persistence:sql4j:test'.
+> There were failing tests. See the report at: file:///Users/francesco/projects/java/todo/sweety/util/persistence/sql4j/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 1s
+7 actionable tasks: 1 executed, 6 up-to-date
+Watched directory hierarchies: [/Users/francesco/projects/java/todo/sweety]

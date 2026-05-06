@@ -14,7 +14,7 @@ public class User {
     @Column.Info(name = "id", primaryKey = true, autoIncrement = true)
     private Integer id;
 
-    @Column.Info(name = "name", nullable = false)
+    @Column.Info(name = "name")
     @Unique
     private String name;
 
@@ -23,11 +23,11 @@ public class User {
     private int age;
 
     @Column.Info(name = "role")
-    private String role;
+    private Role role;
 
     @Column.Info(name = "is_deleted")
     @SoftDelete
-    private int deleted;
+    private boolean deleted;
 
     @OneToMany(mappedBy = "owner_id")
     private final List<Project> projects = new ArrayList<>();
@@ -59,19 +59,19 @@ public class User {
         this.age = age;
     }
 
-    public String getRole() {
+    public Role getRole() {
         return role;
     }
 
-    public void setRole(String role) {
+    public void setRole(Role role) {
         this.role = role;
     }
 
-    public int getDeleted() {
+    public boolean getDeleted() {
         return deleted;
     }
 
-    public void setDeleted(int deleted) {
+    public void setDeleted(boolean deleted) {
         this.deleted = deleted;
     }
 
