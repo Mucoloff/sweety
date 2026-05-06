@@ -74,7 +74,7 @@ public class Database implements AutoCloseable {
     public void migrateAll() {
         for (dev.sweety.sql4j.api.obj.Table<?> t : tableRegistry.allTables()) {
             new dev.sweety.sql4j.impl.query.table.CreateTable(t, dialect, true).execute(connection).join();
-            for (String indexSql : dev.sweety.sql4j.impl.query.table.CreateTable.buildIndices(t, true)) {
+            for (String indexSql : dev.sweety.sql4j.impl.query.table.CreateTable.buildIndices(t, dialect, true)) {
                 connection.executeAsync(new dev.sweety.sql4j.api.query.AbstractQuery<Void>() {
                     @Override protected String buildSql() { return indexSql; }
                     @Override public void bind(java.sql.PreparedStatement ps) {}

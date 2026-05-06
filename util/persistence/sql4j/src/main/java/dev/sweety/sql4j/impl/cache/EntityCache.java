@@ -1,61 +1,66 @@
 package dev.sweety.sql4j.impl.cache;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import dev.sweety.sql4j.api.annotation.Cacheable;
-import java.util.Collections;
-import java.util.LinkedHashMap;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class EntityCache {
 
     private static final int DEFAULT_MAX_SIZE = 1000;
-    private final Map<Class<?>, Map<Object, Object>> caches = new ConcurrentHashMap<>();
-    private boolean enabled = true;
-
-    public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
-    }
-
-    public boolean isEnabled() {
-        return enabled;
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> T get(Class<T> clazz, Object pk) {
-        if (!enabled || pk == null) return null;
-        Map<Object, Object> classCache = caches.get(clazz);
-        return classCache != null ? (T) classCache.get(pk) : null;
-    }
+    
+    // Cache map: EntityClass -> (PK -> EntityInstance)
+    private final Map<Class<?>, Cache<Object, Object>> caches = new ConcurrentHashMap<>();
 
     public <T> void put(Class<T> clazz, Object pk, T entity) {
-        if (!enabled || pk == null || entity == null) return;
-        
-        Cacheable anno = clazz.getAnnotation(Cacheable.class);
-        if (anno == null) return; // Only cache if @Cacheable is present
+        if (entity == null || pk == null) return;
+        getCache(clazz).put(pk, entity);
+    }
 
-        int maxSize = anno.maxSize() > 0 ? anno.maxSize() : DEFAULT_MAX_SIZE;
-
-        caches.computeIfAbsent(clazz, _ -> Collections.synchronizedMap(new LinkedHashMap<Object, Object>(maxSize, 0.75f, true) {
-            @Override
-            protected boolean removeEldestEntry(Map.Entry<Object, Object> eldest) {
-                return size() > maxSize;
-            }
-        })).put(pk, entity);
+    public <T> T get(Class<T> clazz, Object pk) {
+        Cache<Object, Object> cache = caches.get(clazz);
+        if (cache == null) return null;
+        //noinspection unchecked
+        return (T) cache.getIfPresent(pk);
     }
 
     public void evict(Class<?> clazz, Object pk) {
-        if (pk == null) return;
-        Map<Object, Object> classCache = caches.get(clazz);
-        if (classCache != null) {
-            classCache.remove(pk);
+        Cache<Object, Object> cache = caches.get(clazz);
+        if (cache != null) {
+            cache.invalidate(pk);
         }
     }
 
     public void evictAll(Class<?> clazz) {
-        caches.remove(clazz);
+        Cache<Object, Object> cache = caches.get(clazz);
+        if (cache != null) {
+            cache.invalidateAll();
+        }
     }
 
     public void clear() {
-        caches.clear();
+        for (Cache<Object, Object> cache : caches.values()) {
+            cache.invalidateAll();
+        }
+    }
+
+    private Cache<Object, Object> getCache(Class<?> clazz) {
+        return caches.computeIfAbsent(clazz, k -> {
+            int maxSize = DEFAULT_MAX_SIZE;
+            Cacheable ann = k.getAnnotation(Cacheable.class);
+            if (ann != null) {
+                maxSize = ann.maxSize();
+            }
+            
+            return Caffeine.newBuilder()
+                    .maximumSize(maxSize)
+                    .build();
+        });
+    }
+
+    public boolean isEnabled() {
+        return true;
     }
 }

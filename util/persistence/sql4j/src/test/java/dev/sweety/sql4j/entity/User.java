@@ -3,11 +3,13 @@ package dev.sweety.sql4j.entity;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.obj.annotation.*;
+import dev.sweety.sql4j.api.annotation.Cacheable;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Table.Info(name = "full_users")
+@Cacheable(maxSize = 100)
 public class User {
     @Column.Info(name = "id", primaryKey = true, autoIncrement = true)
     private Integer id;

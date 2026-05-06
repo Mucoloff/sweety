@@ -36,6 +36,11 @@ public class SQL4JPhase6Test {
         new File("test_phase6.db").delete();
     }
 
+    @AfterEach
+    void resetLogger() {
+        SqlRunner.setLogger(SqlLogger.nop());
+    }
+
     @Test
     @DisplayName("L2 Cache: Read Hit")
     void testCacheReadHit() {
@@ -52,21 +57,22 @@ public class SQL4JPhase6Test {
         // 2. Setup logger to count queries
         AtomicInteger queryCount = new AtomicInteger();
         SqlRunner.setLogger(message -> {
-            if (message.contains("Executing SQL")) queryCount.incrementAndGet();
+            if (message.contains("Executing SQL")) {
+                queryCount.incrementAndGet();
+            }
         });
 
         // 3. Find by PK (should be cache hit)
         User found1 = users.pk(pk).find().execute(con).join();
         assertNotNull(found1);
         assertEquals(0, queryCount.get(), "First find should be a cache hit (0 queries)");
-
+        
         // 4. Clear cache and find again
+        queryCount.set(0);
         db.entityCache().clear();
         User found2 = users.pk(pk).find().execute(con).join();
         assertNotNull(found2);
         assertEquals(1, queryCount.get(), "Find after clear should hit DB (1 query)");
-        
-        SqlRunner.setLogger(SqlLogger.nop());
     }
 
     @Test
