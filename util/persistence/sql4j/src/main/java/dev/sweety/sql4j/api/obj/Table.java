@@ -8,6 +8,7 @@ import dev.sweety.sql4j.api.obj.annotation.OneToMany;
 import dev.sweety.sql4j.api.obj.annotation.SoftDelete;
 import dev.sweety.sql4j.api.obj.annotation.Unique;
 import dev.sweety.sql4j.api.obj.table.TableRegistry;
+import java.util.Objects;
 
 
 import java.lang.annotation.ElementType;
@@ -347,5 +348,17 @@ public class Table<T> {
     @Target(ElementType.TYPE)
     public @interface Info {
         String name();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Table<?> table)) return false;
+        return Objects.equals(name, table.name) && Objects.equals(clazz, table.clazz);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, clazz);
     }
 }

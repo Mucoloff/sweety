@@ -11,6 +11,7 @@ import dev.sweety.sql4j.impl.query.QueryCache;
 import dev.sweety.sql4j.impl.cache.EntityCache;
 import dev.sweety.sql4j.impl.transaction.TransactionManager;
 
+import dev.sweety.sql4j.api.obj.Table;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,9 +19,11 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 
+import dev.sweety.sql4j.api.repository.Repository;
+
 public class Database implements AutoCloseable {
 
-    private final Map<Class<?>, Repository<?>> repositories = new ConcurrentHashMap<>();
+    private final Map<Class<?>, dev.sweety.sql4j.api.repository.Repository<?>> repositories = new ConcurrentHashMap<>();
     private final TableRegistry tableRegistry = TableRegistry.getDefault();
     private final QueryCache queryCache = new QueryCache();
     private final SqlConnection connection;
@@ -53,18 +56,60 @@ public class Database implements AutoCloseable {
 
     public <R extends Repository<E>, E> R createRepository(final Class<E> entityClass) {
         return getOrCreateRepository(entityClass,
-                clazz -> new Repository<>(tableRegistry.get(clazz), dialect, queryCache, tableRegistry, entityCache));
+                clazz -> new BaseRepository<>(tableRegistry.get(clazz), dialect, queryCache, tableRegistry, entityCache));
     }
 
     public <R extends Repository<E>, E> R createRepository(final Class<E> entityClass, String customTableName) {
-        return getOrCreateRepository(entityClass,
-                clazz -> new Repository<>(tableRegistry.getOrCreate(clazz, customTableName), dialect, queryCache, tableRegistry, entityCache));
+        //noinspection unchecked
+        return (R) new BaseRepository<>(tableRegistry.getOrCreate(entityClass, customTableName),
+                dialect, queryCache, tableRegistry, entityCache);
+    }
+
+    public <R extends Repository<E>, E> R getCustomRepository(Class<R> repositoryInterface) {
+        if (repositories.containsKey(repositoryInterface)) {
+            //noinspection unchecked
+            return (R) repositories.get(repositoryInterface);
+        }
+        try {
+            // Find the generated implementation
+            String implName = repositoryInterface.getPackageName() + "." + repositoryInterface.getSimpleName() + "Impl";
+            Class<?> implClass = Class.forName(implName);
+            
+            // Get the entity type from the Sql4jRepository annotation
+            dev.sweety.sql4j.api.annotation.Sql4jRepository ann = repositoryInterface.getAnnotation(dev.sweety.sql4j.api.annotation.Sql4jRepository.class);
+            if (ann == null) throw new IllegalArgumentException("Interface " + repositoryInterface.getName() + " is not annotated with @Sql4jRepository");
+            
+            Class<?> entityClass = ann.entity();
+            
+            // Instantiate with standard dependencies
+            java.lang.reflect.Constructor<?> ctor = implClass.getConstructor(
+                dev.sweety.sql4j.api.obj.Table.class,
+                dev.sweety.sql4j.api.connection.dialect.Dialect.class,
+                dev.sweety.sql4j.impl.query.QueryCache.class,
+                dev.sweety.sql4j.api.obj.table.TableRegistry.class,
+                dev.sweety.sql4j.impl.cache.EntityCache.class
+            );
+
+            //noinspection unchecked
+            R repo = (R) ctor.newInstance(
+                tableRegistry.get(entityClass),
+                dialect,
+                queryCache,
+                tableRegistry,
+                entityCache
+            );
+            repositories.put(repositoryInterface, repo);
+            return repo;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load repository implementation for " + repositoryInterface.getName(), e);
+        }
     }
 
     public <R extends Repository<E>, E> R getOrCreateRepository(final Class<E> entityClass,
                                                                   Function<Class<E>, Repository<E>> factory) {
         //noinspection unchecked
         return (R) repositories.computeIfAbsent(entityClass, k -> {
+            //noinspection unchecked
             Repository<E> repo = factory.apply((Class<E>) k);
             migrateAll();
             return repo;
@@ -84,7 +129,7 @@ public class Database implements AutoCloseable {
                     }
                 }).join();
             }
-            new Repository<>(t, dialect, queryCache, tableRegistry).migrateSchema(connection);
+            new BaseRepository<>((Table<Object>) t, dialect, queryCache, tableRegistry, null).migrateSchema(connection);
         }
     }
 

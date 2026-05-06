@@ -5,7 +5,7 @@ import dev.sweety.sql4j.api.connection.SqlRunner;
 import dev.sweety.sql4j.api.query.Aggregate;
 import dev.sweety.sql4j.api.util.SqlLogger;
 import dev.sweety.sql4j.impl.Database;
-import dev.sweety.sql4j.impl.Repository;
+import dev.sweety.sql4j.api.repository.Repository;
 import dev.sweety.sql4j.impl.connection.ConnectionType;
 import org.junit.jupiter.api.*;
 

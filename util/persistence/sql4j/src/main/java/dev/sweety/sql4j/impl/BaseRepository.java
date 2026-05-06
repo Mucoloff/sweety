@@ -5,6 +5,7 @@ import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Row;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.obj.table.TableRegistry;
+import dev.sweety.sql4j.api.repository.Repository;
 import dev.sweety.sql4j.impl.query.QueryCache;
 import dev.sweety.sql4j.api.query.*;
 import dev.sweety.sql4j.impl.query.entity.*;
@@ -18,7 +19,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
-public class Repository<Entity> {
+
+public class BaseRepository<Entity> implements Repository<Entity> {
 
     private final Table<Entity> table;
     private final Dialect dialect;
@@ -26,7 +28,8 @@ public class Repository<Entity> {
     private final TableRegistry registry;
     private final dev.sweety.sql4j.impl.cache.EntityCache entityCache;
 
-    public Repository(Table<Entity> table, Dialect dialect, QueryCache cache, TableRegistry registry, dev.sweety.sql4j.impl.cache.EntityCache entityCache) {
+    public BaseRepository(Table<Entity> table, Dialect dialect, QueryCache cache, TableRegistry registry, 
+                      dev.sweety.sql4j.impl.cache.EntityCache entityCache) {
         this.table = Objects.requireNonNull(table, "table cannot be null");
         this.dialect = Objects.requireNonNull(dialect, "dialect cannot be null");
         this.cache = Objects.requireNonNull(cache, "cache cannot be null");
@@ -34,7 +37,7 @@ public class Repository<Entity> {
         this.entityCache = entityCache;
     }
 
-    public Repository(Table<Entity> table, Dialect dialect, QueryCache cache, TableRegistry registry) {
+    public BaseRepository(Table<Entity> table, Dialect dialect, QueryCache cache, TableRegistry registry) {
         this(table, dialect, cache, registry, null);
     }
 
@@ -42,8 +45,8 @@ public class Repository<Entity> {
      * @deprecated Use {@link Database#createRepository(Class)} instead to ensure proper registry isolation.
      */
     @Deprecated
-    public Repository(final Class<Entity> entityClass) {
-        this(new TableRegistry().get(entityClass), new dev.sweety.sql4j.impl.connection.dialect.SqliteDialect(), new QueryCache(), new TableRegistry());
+    public BaseRepository(final Class<Entity> entityClass) {
+        this(new TableRegistry().get(entityClass), new dev.sweety.sql4j.impl.connection.dialect.SqliteDialect(), new QueryCache(), new TableRegistry(), null);
     }
 
     public Table<Entity> table() {
@@ -86,6 +89,13 @@ public class Repository<Entity> {
 
     public BatchQuery<Entity> updateBatch(Collection<Entity> entities) {
         return new UpdateBatch<>(table, dialect, entities, cache);
+    }
+
+    @SuppressWarnings("unchecked")
+    public DeleteQuery<Entity> delete(Entity entity) {
+        Entity[] array = (Entity[]) java.lang.reflect.Array.newInstance(table.clazz(), 1);
+        array[0] = entity;
+        return delete(array);
     }
 
     @SafeVarargs
@@ -296,6 +306,10 @@ public class Repository<Entity> {
 
     public CreateTable create(boolean ifNotExists) {
         return new CreateTable(this.table, dialect, ifNotExists);
+    }
+
+    public CreateTable createTable() {
+        return create(true);
     }
 
     public void migrateSchema(dev.sweety.sql4j.api.connection.SqlConnection connection) {

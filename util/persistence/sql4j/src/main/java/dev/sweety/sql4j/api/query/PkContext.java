@@ -2,7 +2,7 @@ package dev.sweety.sql4j.api.query;
 
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
-import dev.sweety.sql4j.impl.Repository;
+import dev.sweety.sql4j.api.repository.Repository;
 
 import java.util.List;
 import java.util.Objects;
