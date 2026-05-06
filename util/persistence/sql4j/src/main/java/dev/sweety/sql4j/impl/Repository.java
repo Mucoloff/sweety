@@ -55,7 +55,7 @@ public class Repository<Entity> {
     public InsertQuery<Entity> insert(Entity entity) {
         InsertQuery<Entity> query = cache.getQuery("insertPrototype:" + table.name(),
                 _ -> new InsertEntity<>(table, dialect, entity, cache)).copy(entity);
-        if (entityCache == null) return query;
+        if (entityCache == null || !entityCache.isCacheable(table.clazz())) return query;
 
         return new InsertQueryWrapper<>(query, () -> {
             Object pk = table.primaryKeys().get(0).get(entity);
@@ -76,7 +76,7 @@ public class Repository<Entity> {
     public UpdateQuery<Entity> update(Entity entity) {
         UpdateQuery<Entity> query = cache.getQuery("updatePrototype:" + table.name(),
                 _ -> new UpdateEntity<>(table, dialect, entity, cache)).copy(entity);
-        if (entityCache == null) return query;
+        if (entityCache == null || !entityCache.isCacheable(table.clazz())) return query;
 
         return new UpdateQueryWrapper<>(query, () -> {
             Object pk = table.primaryKeys().get(0).get(entity);
@@ -94,7 +94,7 @@ public class Repository<Entity> {
         DeleteQuery<Entity> query = cache.getQuery("deletePrototype:" + table.name() + ":" + count,
                 _ -> new DeleteEntity<>(table, dialect, cache, instances)).copy(instances);
         
-        if (entityCache == null) return query;
+        if (entityCache == null || !entityCache.isCacheable(table.clazz())) return query;
 
         return new DeleteQueryWrapper<>(query, () -> {
             if (instances != null) {
@@ -115,7 +115,7 @@ public class Repository<Entity> {
     }
 
     public <T> Query<T> wrapWithCache(Object pkValue, java.util.function.Supplier<Query<T>> querySupplier) {
-        if (entityCache != null && entityCache.isEnabled()) {
+        if (entityCache != null && entityCache.isEnabled() && entityCache.isCacheable(table.clazz())) {
             Object pk = (pkValue instanceof Object[] arr && arr.length == 1) ? arr[0] : pkValue;
             T cached = (T) entityCache.get(table.clazz(), pk);
             if (cached != null) {

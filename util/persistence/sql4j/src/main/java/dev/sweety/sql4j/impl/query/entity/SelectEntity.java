@@ -312,7 +312,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
 
     @Override
     public java.util.concurrent.CompletableFuture<List<T>> execute(dev.sweety.sql4j.api.connection.SqlConnection con) {
-        if (entityCache != null && entityCache.isEnabled()) {
+        if (entityCache != null && entityCache.isEnabled() && entityCache.isCacheable(table.clazz())) {
             // Check if it's a simple "select * from table where id = ?"
             boolean selectAll = selectedColumnNames == null || selectedColumnNames.isEmpty();
             boolean noJoin = fetchRelations == null || fetchRelations.length == 0;

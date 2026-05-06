@@ -13,13 +13,22 @@ public final class EntityCache {
     
     // Cache map: EntityClass -> (PK -> EntityInstance)
     private final Map<Class<?>, Cache<Object, Object>> caches = new ConcurrentHashMap<>();
+    private final Map<Class<?>, Boolean> cacheableStatus = new ConcurrentHashMap<>();
+
+    public boolean isCacheable(Class<?> clazz) {
+        return cacheableStatus.computeIfAbsent(clazz, k -> {
+            Cacheable ann = k.getAnnotation(Cacheable.class);
+            return ann != null && ann.maxSize() > 0;
+        });
+    }
 
     public <T> void put(Class<T> clazz, Object pk, T entity) {
-        if (entity == null || pk == null) return;
+        if (entity == null || pk == null || !isCacheable(clazz)) return;
         getCache(clazz).put(pk, entity);
     }
 
     public <T> T get(Class<T> clazz, Object pk) {
+        if (!isCacheable(clazz)) return null;
         Cache<Object, Object> cache = caches.get(clazz);
         if (cache == null) return null;
         //noinspection unchecked
@@ -27,6 +36,7 @@ public final class EntityCache {
     }
 
     public void evict(Class<?> clazz, Object pk) {
+        if (!isCacheable(clazz)) return;
         Cache<Object, Object> cache = caches.get(clazz);
         if (cache != null) {
             cache.invalidate(pk);
@@ -34,6 +44,7 @@ public final class EntityCache {
     }
 
     public void evictAll(Class<?> clazz) {
+        if (!isCacheable(clazz)) return;
         Cache<Object, Object> cache = caches.get(clazz);
         if (cache != null) {
             cache.invalidateAll();
@@ -48,11 +59,8 @@ public final class EntityCache {
 
     private Cache<Object, Object> getCache(Class<?> clazz) {
         return caches.computeIfAbsent(clazz, k -> {
-            int maxSize = DEFAULT_MAX_SIZE;
             Cacheable ann = k.getAnnotation(Cacheable.class);
-            if (ann != null) {
-                maxSize = ann.maxSize();
-            }
+            int maxSize = (ann != null) ? ann.maxSize() : DEFAULT_MAX_SIZE;
             
             return Caffeine.newBuilder()
                     .maximumSize(maxSize)
@@ -61,6 +69,6 @@ public final class EntityCache {
     }
 
     public boolean isEnabled() {
-        return true;
+        return true; // Global toggle
     }
 }

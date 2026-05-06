@@ -51,19 +51,22 @@ public class SQL4JPhase8Test {
         db.close();
         new File("test_phase8.db").delete();
     }
+    @AfterEach
+    void resetLogger() {
+        SqlRunner.setLogger(SqlLogger.nop());
+    }
 
     @Test
     @DisplayName("L2 Cache: Read Hit (Fetch by ID)")
     void testCacheReadHit() {
         // Find Alice to get her PK
-        User alice = users.select().where(UserTable.NAME.eq("Alice")).execute(con).join().get(0);
+        User alice = users.select().where(UserTable.NAME.eq("Alice")).execute(con).join().getFirst();
         Object pk = alice.getId();
 
         // Setup logger to count queries
         AtomicInteger queryCount = new AtomicInteger();
         SqlRunner.setLogger(message -> {
             if (message.contains("Executing SQL")) {
-                System.out.println("PHASE6 QUERY: " + message);
                 queryCount.incrementAndGet();
             }
         });
@@ -71,7 +74,6 @@ public class SQL4JPhase8Test {
         // Find by PK - should be a cache hit (0 queries)
         User found = users.pk(pk).find().execute(con).join();
         assertNotNull(found);
-        System.out.println("PHASE6 Query count after hit: " + queryCount.get());
         assertEquals(0, queryCount.get(), "Should be a cache hit because alice was just selected/inserted");
 
         // Clear cache and find again
@@ -96,8 +98,8 @@ public class SQL4JPhase8Test {
         assertEquals(3, results.size()); // Ages: 25, 30, 35
         
         // Age 25 has 2 users (Alice and Charlie)
-        assertEquals(25, results.get(0).getInt("age"));
-        assertEquals(2L, ((Number)results.get(0).get("count_id")).longValue());
+        assertEquals(25, results.getFirst().getInt("age"));
+        assertEquals(2L, ((Number)results.getFirst().get("count_id")).longValue());
 
         // Having count > 1
         List<dev.sweety.sql4j.api.obj.Row> filtered = users.select(UserTable.AGE, Aggregate.count(UserTable.ID))
@@ -107,7 +109,7 @@ public class SQL4JPhase8Test {
                 .join();
 
         assertEquals(1, filtered.size());
-        assertEquals(25, filtered.get(0).getInt("age"));
+        assertEquals(25, filtered.getFirst().getInt("age"));
     }
 
     @Test
