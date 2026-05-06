@@ -9,7 +9,7 @@ import java.util.Map;
 public class JsonConfiguration extends TextConfiguration {
 
     public JsonConfiguration() {
-        this("json");
+        super("json");
     }
 
     public JsonConfiguration(String extension) {

@@ -27,7 +27,7 @@ public class PropConfiguration extends Configuration {
     private static final String TYPE_MAP = "@map:{";
 
     public PropConfiguration() {
-        this("properties");
+        super("properties");
     }
 
     public PropConfiguration(String extension) {
@@ -54,7 +54,7 @@ public class PropConfiguration extends Configuration {
         return result;
     }
 
-    private void flatten(Properties properties, Map<String, Object> map, String prefix) {
+    protected void flatten(Properties properties, Map<String, Object> map, String prefix) {
         for (Map.Entry<String, Object> entry : map.entrySet()) {
             String key = prefix.isEmpty() ? entry.getKey() : prefix + "." + entry.getKey();
             Object value = entry.getValue();
@@ -68,7 +68,7 @@ public class PropConfiguration extends Configuration {
         }
     }
 
-    private void putPath(Map<String, Object> root, String path, Object value) {
+    protected void putPath(Map<String, Object> root, String path, Object value) {
         String[] parts = path.split("\\.");
         Map<String, Object> current = root;
 
@@ -117,7 +117,7 @@ public class PropConfiguration extends Configuration {
         };
     }
 
-    private Object decode(String value) {
+    protected Object decode(String value) {
         if (value == null) return null;
 
         if (value.equals(TYPE_NULL)) return null;

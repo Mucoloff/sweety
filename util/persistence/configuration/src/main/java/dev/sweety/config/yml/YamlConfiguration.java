@@ -9,7 +9,7 @@ import java.util.TreeMap;
 public class YamlConfiguration extends TextConfiguration {
 
     public YamlConfiguration() {
-        this("yml");
+        super("yml");
     }
 
     public YamlConfiguration(String extension) {

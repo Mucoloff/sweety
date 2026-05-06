@@ -11,7 +11,7 @@ public class BinaryConfiguration extends Configuration {
     private static final byte VERSION = 1;
 
     public BinaryConfiguration() {
-        this("bin");
+        super("bin");
     }
 
     public BinaryConfiguration(String extension) {

@@ -20,7 +20,7 @@ public class TomlConfiguration extends TextConfiguration {
     }
 
     public TomlConfiguration() {
-        this("toml");
+        super("toml");
     }
 
     public TomlConfiguration(String extension) {

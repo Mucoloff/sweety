@@ -6,10 +6,12 @@ import dev.sweety.config.common.serialization.ConfigSerializable;
 import dev.sweety.config.json.JsonConfiguration;
 import dev.sweety.config.prop.PropConfiguration;
 import dev.sweety.config.toml.TomlConfiguration;
+import dev.sweety.config.xml.XmlConfiguration;
 import dev.sweety.config.yml.YamlConfiguration;
 
+import javax.sql.rowset.spi.XmlReader;
+import java.beans.XMLEncoder;
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 
 public class TestProperties {
@@ -79,6 +81,7 @@ public class TestProperties {
                 new JsonConfiguration(),
                 new PropConfiguration(),
                 new TomlConfiguration(),
+                new XmlConfiguration(),
                 new YamlConfiguration()
 
         );
