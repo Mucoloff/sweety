@@ -26,6 +26,14 @@ public class PropConfiguration extends Configuration {
     private static final String TYPE_LIST = "@list:[";
     private static final String TYPE_MAP = "@map:{";
 
+    public PropConfiguration() {
+        this("properties");
+    }
+
+    public PropConfiguration(String extension) {
+        super(extension);
+    }
+
     @Override
     protected void dumpToStream(Map<String, Object> map, OutputStream out) throws IOException {
         Properties properties = new Properties();
@@ -80,42 +88,19 @@ public class PropConfiguration extends Configuration {
     }
 
     private String encode(Object value) {
-        switch (value) {
-            case null -> {
-                return TYPE_NULL;
-            }
-            case String s -> {
-                return s;
-            }
-            case Integer n -> {
-                return String.valueOf(n);
-            }
-            case Long n -> {
-                return String.valueOf(n);
-            }
-            case Double n -> {
-                return String.valueOf(n);
-            }
-            case Boolean b -> {
-                return String.valueOf(b);
-            }
+        return switch (value) {
+            case null -> TYPE_NULL;
+            case String s -> s;
+            case Integer n -> String.valueOf(n);
+            case Long n -> String.valueOf(n);
+            case Double n -> String.valueOf(n);
+            case Boolean b -> String.valueOf(b);
 
-            // Preserve less-common scalar types without sacrificing readability for common values.
-            case Float n -> {
-                return TYPE_FLOAT + n;
-            }
-            case Byte n -> {
-                return TYPE_BYTE + n;
-            }
-            case Short n -> {
-                return TYPE_SHORT + n;
-            }
-            case Character c -> {
-                return TYPE_CHAR + (int) c;
-            }
-            case List<?> list -> {
-                return encodeListReadable(list);
-            }
+            case Float n -> n + "f";
+            case Byte n -> n + "b";
+            case Short n -> n + "s";
+            case Character c -> encodeCharacter(c);
+            case List<?> list -> encodeListReadable(list);
             case Map<?, ?> map -> {
                 StringBuilder sb = new StringBuilder(TYPE_MAP);
                 int i = 0;
@@ -126,13 +111,10 @@ public class PropConfiguration extends Configuration {
                     sb.append(encode(entry.getValue()));
                 }
                 sb.append('}');
-                return sb.toString();
+                yield sb.toString();
             }
-            default -> {
-            }
-        }
-
-        return TYPE_STRING + escape(String.valueOf(value));
+            default -> TYPE_STRING + escape(String.valueOf(value));
+        };
     }
 
     private Object decode(String value) {
@@ -148,6 +130,12 @@ public class PropConfiguration extends Configuration {
         if (value.startsWith(TYPE_BYTE)) return Byte.parseByte(value.substring(TYPE_BYTE.length()));
         if (value.startsWith(TYPE_SHORT)) return Short.parseShort(value.substring(TYPE_SHORT.length()));
         if (value.startsWith(TYPE_CHAR)) return (char) Integer.parseInt(value.substring(TYPE_CHAR.length()));
+
+        Character parsedChar = parseCharLiteral(value);
+        if (parsedChar != null) return parsedChar;
+
+        Object suffixed = parseSuffixedScalar(value);
+        if (suffixed != null) return suffixed;
 
         if (value.startsWith("[") && value.endsWith("]")) {
             return decodeReadableList(value);
@@ -294,6 +282,8 @@ public class PropConfiguration extends Configuration {
                 || "null".equalsIgnoreCase(input)
                 || "true".equalsIgnoreCase(input)
                 || "false".equalsIgnoreCase(input)
+                || parseCharLiteral(input) != null
+                || looksSuffixedNumeric(input)
                 || looksNumeric(input);
 
         if (!needsQuotes) return input;
@@ -352,6 +342,63 @@ public class PropConfiguration extends Configuration {
         }
 
         return value;
+    }
+
+    private String encodeCharacter(char value) {
+        return switch (value) {
+            case '\\' -> "'\\\\'";
+            case '\'' -> "'\\''";
+            case '\n' -> "'\\n'";
+            case '\r' -> "'\\r'";
+            case '\t' -> "'\\t'";
+            default -> "'" + value + "'";
+        };
+    }
+
+    private Character parseCharLiteral(String value) {
+        if (value.length() < 3 || value.charAt(0) != '\'' || value.charAt(value.length() - 1) != '\'') {
+            return null;
+        }
+
+        String inner = value.substring(1, value.length() - 1);
+        if (inner.length() == 1) {
+            return inner.charAt(0);
+        }
+
+        if (inner.length() == 2 && inner.charAt(0) == '\\') {
+            return switch (inner.charAt(1)) {
+                case 'n' -> '\n';
+                case 'r' -> '\r';
+                case 't' -> '\t';
+                case '\\' -> '\\';
+                case '\'' -> '\'';
+                default -> null;
+            };
+        }
+
+        return null;
+    }
+
+    private Object parseSuffixedScalar(String value) {
+        if (value.length() < 2) return null;
+
+        char suffix = value.charAt(value.length() - 1);
+        String numericPart = value.substring(0, value.length() - 1);
+
+        try {
+            return switch (suffix) {
+                case 'f' -> Float.parseFloat(numericPart);
+                case 'b' -> Byte.parseByte(numericPart);
+                case 's' -> Short.parseShort(numericPart);
+                default -> null;
+            };
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private boolean looksSuffixedNumeric(String value) {
+        return parseSuffixedScalar(value) != null;
     }
 
     private List<String> splitTopLevel(String input, char separator) {

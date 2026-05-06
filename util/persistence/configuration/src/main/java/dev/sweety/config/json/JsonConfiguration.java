@@ -8,7 +8,13 @@ import java.util.Map;
 
 public class JsonConfiguration extends TextConfiguration {
 
-    private final Gson gson = GsonUtils.gson();
+    public JsonConfiguration() {
+        this("json");
+    }
+
+    public JsonConfiguration(String extension) {
+        super(extension);
+    }
 
     @Override
     protected String dumpAsMap(Map<String, Object> map) {

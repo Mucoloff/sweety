@@ -2,7 +2,9 @@ package dev.sweety.config.toml;
 
 import dev.sweety.config.common.TextConfiguration;
 import org.tomlj.Toml;
+import org.tomlj.TomlArray;
 import org.tomlj.TomlParseResult;
+import org.tomlj.TomlTable;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -15,6 +17,14 @@ public class TomlConfiguration extends TextConfiguration {
         StringBuilder sb = new StringBuilder();
         writeTableContent(sb, map, "");
         return sb.toString();
+    }
+
+    public TomlConfiguration() {
+        this("toml");
+    }
+
+    public TomlConfiguration(String extension) {
+        super(extension);
     }
 
     @Override
@@ -178,16 +188,23 @@ public class TomlConfiguration extends TextConfiguration {
     }
 
     private Object convertValue(Object value) {
-        
-        if (value instanceof org.tomlj.TomlTable table) return convert(table.toMap());
+        if (value instanceof TomlTable table) return convert(table.toMap());
 
         if (value instanceof Map<?, ?> map) {
             //noinspection unchecked
             return convert((Map<String, Object>) map);
         }
 
+        if (value instanceof TomlArray list) {
+            List<Object> result = new ArrayList<>(list.size());
+            for (int i = 0; i < list.size(); i++) {
+                result.add(convertValue(list.get(i)));
+            }
+            return result;
+        }
+
         if (value instanceof List<?> list) {
-            List<Object> result = new ArrayList<>();
+            List<Object> result = new ArrayList<>(list.size());
             for (Object item : list) {
                 result.add(convertValue(item));
             }

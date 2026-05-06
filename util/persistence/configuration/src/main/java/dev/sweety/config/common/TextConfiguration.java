@@ -5,6 +5,10 @@ import java.util.Map;
 
 public abstract class TextConfiguration extends Configuration {
 
+    public TextConfiguration(String extension) {
+        super(extension);
+    }
+
     @Override
     protected void dumpToStream(Map<String, Object> map, OutputStream out) throws IOException {
         try (Writer writer = new OutputStreamWriter(out)) {

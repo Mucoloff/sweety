@@ -13,6 +13,16 @@ public abstract class Configuration {
 
     private final Map<String, Object> map = new TreeMap<>();
 
+    private final String extension;
+
+    public Configuration(String extension) {
+        this.extension = extension;
+    }
+
+    public String extension() {
+        return extension;
+    }
+
     protected abstract void dumpToStream(Map<String, Object> map, OutputStream out) throws IOException;
 
     protected abstract Map<String, Object> loadFromStream(InputStream in) throws IOException;

@@ -10,6 +10,14 @@ public class BinaryConfiguration extends Configuration {
     private static final String MAGIC = "CFG1";
     private static final byte VERSION = 1;
 
+    public BinaryConfiguration() {
+        this("bin");
+    }
+
+    public BinaryConfiguration(String extension) {
+        super(extension);
+    }
+
     @Override
     protected void dumpToStream(Map<String, Object> map, OutputStream out) throws IOException {
         DataOutputStream data = new DataOutputStream(out);

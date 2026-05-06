@@ -8,6 +8,14 @@ import java.util.TreeMap;
 
 public class YamlConfiguration extends TextConfiguration {
 
+    public YamlConfiguration() {
+        this("yml");
+    }
+
+    public YamlConfiguration(String extension) {
+        super(extension);
+    }
+
     @Override
     protected String dumpAsMap(Map<String, Object> map) {
         return YamlUtils.yaml().dumpAsMap(map);
