@@ -14,11 +14,13 @@ import dev.sweety.sql4j.api.query.ConditionalDeleteQuery;
 public final class DeleteWhere<T> extends AbstractQuery<Integer> implements ConditionalDeleteQuery<T> {
 
     private final Table<T> table;
+    private final dev.sweety.sql4j.api.connection.dialect.Dialect dialect;
     private Criterion criterion;
     private boolean hardDelete = false;
 
-    public DeleteWhere(Table<T> table) {
+    public DeleteWhere(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect) {
         this.table = Objects.requireNonNull(table, "table cannot be null");
+        this.dialect = Objects.requireNonNull(dialect, "dialect is null");
     }
 
     public DeleteWhere<T> where(Criterion criterion) {
@@ -44,13 +46,13 @@ public final class DeleteWhere<T> extends AbstractQuery<Integer> implements Cond
 
         StringBuilder sql = new StringBuilder();
         if (useSoftDelete) {
-            sql.append("UPDATE ").append(table.name()).append(" SET ").append(softDeleteCol.name()).append(" = 1");
+            sql.append("UPDATE ").append(table.toSql(dialect)).append(" SET ").append(softDeleteCol.toSql(dialect)).append(" = 1");
         } else {
-            sql.append("DELETE FROM ").append(table.name());
+            sql.append("DELETE FROM ").append(table.toSql(dialect));
         }
 
         if (criterion != null) {
-            sql.append(" WHERE ").append(criterion.toSql());
+            sql.append(" WHERE ").append(criterion.toSql(dialect));
         }
         
         return sql.toString();

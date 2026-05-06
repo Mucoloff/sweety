@@ -30,7 +30,7 @@ public final class CreateTable extends AbstractQuery<Void> {
     public java.util.List<String> buildAllSql(Table<?> table, Dialect dialect, boolean ifNotExists) {
         java.util.List<String> list = new java.util.ArrayList<>();
         list.add(sql);
-        list.addAll(buildIndices(table, ifNotExists));
+        list.addAll(buildIndices(table, dialect, ifNotExists));
         return list;
     }
 
@@ -48,7 +48,7 @@ public final class CreateTable extends AbstractQuery<Void> {
     private static String build(Table<?> table, Dialect dialect, boolean ifNotExists) {
         StringBuilder sb = new StringBuilder("CREATE TABLE ");
         if (ifNotExists && dialect.supportsIfNotExists()) sb.append("IF NOT EXISTS ");
-        sb.append(table.name()).append(" (");
+        sb.append(dialect.escape(table.name())).append(" (");
 
         StringJoiner cols = new StringJoiner(", ");
         boolean isSinglePK = table.primaryKeys().size() == 1;
@@ -57,7 +57,7 @@ public final class CreateTable extends AbstractQuery<Void> {
         for (Column<?> c : table.columns()) {
             // Case: single PK + autoIncrement — inline definition only (no separate constraint)
             if (c.isPrimaryKey() && c.isAutoIncrement() && isSinglePK) {
-                cols.add(c.name() + " INTEGER PRIMARY KEY " + dialect.autoIncrement());
+                cols.add(dialect.escape(c.name()) + " INTEGER PRIMARY KEY " + dialect.autoIncrement());
                 continue;
             }
 
@@ -69,7 +69,7 @@ public final class CreateTable extends AbstractQuery<Void> {
             }
 
             StringBuilder col = new StringBuilder();
-            col.append(c.name()).append(" ").append(dialect.sqlType(c.type()));
+            col.append(dialect.escape(c.name())).append(" ").append(dialect.sqlType(c.type()));
 
             // NOT NULL unless explicitly nullable
             if (!c.isNullable() && !c.isPrimaryKey()) {
@@ -94,16 +94,16 @@ public final class CreateTable extends AbstractQuery<Void> {
         // - single PK that is NOT autoIncrement
         if (compositePK || (isSinglePK && !table.primaryKeys().getFirst().isAutoIncrement())) {
             sb.append(", PRIMARY KEY (")
-                    .append(table.primaryKeys().stream().map(Column::name).collect(Collectors.joining(", ")))
+                    .append(table.primaryKeys().stream().map(c -> dialect.escape(c.name())).collect(Collectors.joining(", ")))
                     .append(")");
         }
 
         // FK constraints
         if (dialect.supportsForeignKeys()) {
             for (ForeignKey fk : table.foreignKeys()) {
-                sb.append(", FOREIGN KEY (").append(fk.local().name()).append(")")
-                        .append(" REFERENCES ").append(fk.referencedTable().name())
-                        .append("(").append(fk.referencedColumn().name()).append(")")
+                sb.append(", FOREIGN KEY (").append(dialect.escape(fk.local().name())).append(")")
+                        .append(" REFERENCES ").append(dialect.escape(fk.referencedTable().name()))
+                        .append("(").append(dialect.escape(fk.referencedColumn().name())).append(")")
                         .append(" ON DELETE ").append(dialect.foreignKeyAction(fk.onDelete()))
                         .append(" ON UPDATE ").append(dialect.foreignKeyAction(fk.onUpdate()));
             }
@@ -113,16 +113,16 @@ public final class CreateTable extends AbstractQuery<Void> {
         return sb.toString();
     }
 
-    public static java.util.List<String> buildIndices(Table<?> table, boolean ifNotExists) {
+    public static java.util.List<String> buildIndices(Table<?> table, Dialect dialect, boolean ifNotExists) {
         java.util.List<String> indices = new java.util.ArrayList<>();
         for (Column<?> c : table.columns()) {
             if (c.indexName() != null) {
                 StringBuilder sb = new StringBuilder("CREATE ");
                 if (c.isUnique()) sb.append("UNIQUE ");
                 sb.append("INDEX ");
-                if (ifNotExists) sb.append("IF NOT EXISTS ");
-                sb.append(c.indexName()).append(" ON ").append(table.name())
-                        .append("(").append(c.name()).append(")");
+                if (ifNotExists && dialect.supportsIfNotExists()) sb.append("IF NOT EXISTS ");
+                sb.append(dialect.escape(c.indexName())).append(" ON ").append(dialect.escape(table.name()))
+                        .append("(").append(dialect.escape(c.name())).append(")");
                 indices.add(sb.toString());
             }
         }

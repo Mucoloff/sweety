@@ -21,7 +21,7 @@ public final class UpdateBatch<T> extends AbstractQuery<int[]> implements BatchQ
 
     private record Metadata(List<Column<?>> updateColumns, List<Column<?>> primaryKeys, String sql) {}
 
-    public UpdateBatch(Table<T> table, Collection<T> instances, QueryCache cache) {
+    public UpdateBatch(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, Collection<T> instances, QueryCache cache) {
         this.table = Objects.requireNonNull(table, "table is null");
         this.instances = Objects.requireNonNull(instances, "instances is null");
         Objects.requireNonNull(cache, "cache is null");
@@ -30,22 +30,20 @@ public final class UpdateBatch<T> extends AbstractQuery<int[]> implements BatchQ
             throw new IllegalArgumentException("Cannot update an empty batch");
         }
 
-        String cacheKey = "updateBatch:meta:" + table.name() + ":" + table.clazz().getName();
+        String cacheKey = "updateBatch:meta:" + table.name() + ":" + table.clazz().getName() + ":" + dialect.name();
         this.metadata = cache.getMetadata(cacheKey, _ -> {
             List<Column<?>> primaryKeys = table.primaryKeys();
             List<Column<?>> updateColumns = table.updatableColumns();
 
             String setClause = updateColumns.stream()
-                    .map(Column::name)
-                    .map(n -> n + "=?")
+                    .map(c -> c.toSql(dialect) + "=?")
                     .collect(Collectors.joining(", "));
 
             String whereClause = primaryKeys.stream()
-                    .map(Column::name)
-                    .map(n -> n + "=?")
+                    .map(c -> c.toSql(dialect) + "=?")
                     .collect(Collectors.joining(" AND "));
 
-            String sql = "UPDATE " + table.name() + " SET " + setClause + " WHERE " + whereClause;
+            String sql = "UPDATE " + table.toSql(dialect) + " SET " + setClause + " WHERE " + whereClause;
             return new Metadata(updateColumns, primaryKeys, sql);
         });
     }

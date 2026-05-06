@@ -6,7 +6,10 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 
 public interface Criterion {
-    String toSql();
+    default String toSql() {
+        return toSql(null);
+    }
+    String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect);
     void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException;
     int countParameters();
 
@@ -49,7 +52,9 @@ public interface Criterion {
 
     static Criterion isNull(Column<?> col) {
         return new Criterion() {
-            @Override public String toSql() { return col.name() + " IS NULL"; }
+            @Override public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) { 
+                return (dialect != null ? col.toSql(dialect) : col.name()) + " IS NULL"; 
+            }
             @Override public void bind(java.sql.PreparedStatement ps, int startIdx) {}
             @Override public int countParameters() { return 0; }
         };
@@ -57,7 +62,9 @@ public interface Criterion {
 
     static Criterion isNotNull(Column<?> col) {
         return new Criterion() {
-            @Override public String toSql() { return col.name() + " IS NOT NULL"; }
+            @Override public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) { 
+                return (dialect != null ? col.toSql(dialect) : col.name()) + " IS NOT NULL"; 
+            }
             @Override public void bind(java.sql.PreparedStatement ps, int startIdx) {}
             @Override public int countParameters() { return 0; }
         };
@@ -65,7 +72,9 @@ public interface Criterion {
 
     static Criterion between(Column<?> col, Object min, Object max) {
         return new Criterion() {
-            @Override public String toSql() { return col.name() + " BETWEEN ? AND ?"; }
+            @Override public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) { 
+                return (dialect != null ? col.toSql(dialect) : col.name()) + " BETWEEN ? AND ?"; 
+            }
             @Override public void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException {
                 ps.setObject(startIdx, min);
                 ps.setObject(startIdx + 1, max);
@@ -80,9 +89,9 @@ public interface Criterion {
 
     static Criterion in(Column<?> col, java.util.Collection<?> values) {
         return new Criterion() {
-            @Override public String toSql() {
+            @Override public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) {
                 String placeholders = values.stream().map(_ -> "?").collect(Collectors.joining(", "));
-                return col.name() + " IN (" + placeholders + ")";
+                return (dialect != null ? col.toSql(dialect) : col.name()) + " IN (" + placeholders + ")";
             }
             @Override public void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException {
                 int idx = startIdx;
@@ -94,7 +103,7 @@ public interface Criterion {
 
     static Criterion raw(String sql, Object... params) {
         return new Criterion() {
-            @Override public String toSql() { return sql; }
+            @Override public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) { return sql; }
             @Override public void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException {
                 int idx = startIdx;
                 if (params != null) {
@@ -115,7 +124,9 @@ public interface Criterion {
 
     static Criterion not(Criterion criterion) {
         return new Criterion() {
-            @Override public String toSql() { return "NOT (" + criterion.toSql() + ")"; }
+            @Override public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) { 
+                return "NOT (" + criterion.toSql(dialect) + ")"; 
+            }
             @Override public void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException { criterion.bind(ps, startIdx); }
             @Override public int countParameters() { return criterion.countParameters(); }
         };
@@ -133,8 +144,8 @@ public interface Criterion {
         }
 
         @Override
-        public String toSql() {
-            return column.name() + " " + operator + " ?";
+        public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) {
+            return (dialect != null ? column.toSql(dialect) : column.name()) + " " + operator + " ?";
         }
 
         @Override
@@ -158,8 +169,8 @@ public interface Criterion {
         }
 
         @Override
-        public String toSql() {
-            return "(" + criteria.stream().map(Criterion::toSql).collect(Collectors.joining(" " + operator + " ")) + ")";
+        public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) {
+            return "(" + criteria.stream().map(c -> c.toSql(dialect)).collect(Collectors.joining(" " + operator + " ")) + ")";
         }
 
         @Override

@@ -191,8 +191,9 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
         dev.sweety.sql4j.api.query.Query<List<T>> delegate = getDelegate();
         if (delegate != null) return delegate.sql();
 
+        dev.sweety.sql4j.api.connection.dialect.Dialect dialect = this.dialect;
         String colKey = selectedColumnNames == null || selectedColumnNames.isEmpty() ? "*" : selectedColumnNames.stream().sorted().collect(Collectors.joining(","));
-        String cacheKey = "select:base:" + table.name() + ":" + colKey;
+        String cacheKey = "select:base:" + table.name() + ":" + colKey + ":" + dialect.name();
 
         this.activeMetadata = cache.getMetadata(cacheKey, _ -> {
             List<Column<?>> selected;
@@ -206,11 +207,11 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
 
             String cols = selected.stream().map(c -> {
                 if (c instanceof dev.sweety.sql4j.api.query.Aggregate.AggregateColumn ac) {
-                    return ac.name() + " AS " + ac.alias();
+                    return ac.toSql(dialect) + " AS " + dialect.escape(ac.alias());
                 }
-                return c.name();
+                return c.toSql(dialect);
             }).collect(Collectors.joining(", "));
-            String sqlBase = "SELECT " + cols + " FROM " + table.name();
+            String sqlBase = "SELECT " + cols + " FROM " + table.toSql(dialect);
 
             try {
                 Constructor<T> ctor = table.clazz().getDeclaredConstructor();
@@ -228,20 +229,19 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
         }
 
         if (groupByColumns != null && !groupByColumns.isEmpty()) {
-            sqlBuilder.append(" GROUP BY ").append(groupByColumns.stream().map(Column::name).collect(Collectors.joining(", ")));
+            sqlBuilder.append(" GROUP BY ").append(groupByColumns.stream().map(c -> c.toSql(dialect)).collect(Collectors.joining(", ")));
         }
 
         if (havingCriterion != null) {
-            sqlBuilder.append(" HAVING ").append(havingCriterion.toSql());
+            sqlBuilder.append(" HAVING ").append(havingCriterion.toSql(dialect));
         }
 
         if (orderBy != null) {
-            sqlBuilder.append(" ORDER BY ").append(orderBy).append(ascending ? " ASC" : " DESC");
+            sqlBuilder.append(" ORDER BY ").append(dialect.escape(orderBy)).append(ascending ? " ASC" : " DESC");
         }
 
         if (limit > 0) {
-            sqlBuilder.append(" LIMIT ").append(limit);
-            if (offset > 0) sqlBuilder.append(" OFFSET ").append(offset);
+            sqlBuilder.append(dialect.limitOffsetSyntax(limit, offset));
         }
 
         return sqlBuilder.toString();
@@ -250,10 +250,10 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
     private String buildWhereClause() {
         List<String> wheres = new ArrayList<>();
         if (whereClause != null && !whereClause.isEmpty()) wheres.add(whereClause);
-        if (criterion != null) wheres.add(criterion.toSql());
+        if (criterion != null) wheres.add(criterion.toSql(dialect));
         Column<?> softDeleteCol = table.softDeleteColumn();
         if (softDeleteCol != null && !includeDeleted) {
-            wheres.add(softDeleteCol.name() + " = 0");
+            wheres.add(softDeleteCol.toSql(dialect) + " = 0");
         }
         return wheres.isEmpty() ? "" : " WHERE " + String.join(" AND ", wheres);
     }
@@ -265,7 +265,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
         if (delegatedJoin != null) {
             countSql = delegatedJoin.countSql();
         } else {
-            countSql = "SELECT COUNT(*) FROM " + table.name() + buildWhereClause();
+            countSql = "SELECT COUNT(*) FROM " + table.toSql(dialect) + buildWhereClause();
         }
 
         return con.executeAsync(dev.sweety.sql4j.api.query.Query.generate(countSql, this::bind, ps -> {

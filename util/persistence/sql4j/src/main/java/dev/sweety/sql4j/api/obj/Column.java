@@ -47,6 +47,10 @@ public class Column<T> {
         return name;
     }
 
+    public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) {
+        return dialect.escape(name);
+    }
+
     public Field field() {
         return field;
     }

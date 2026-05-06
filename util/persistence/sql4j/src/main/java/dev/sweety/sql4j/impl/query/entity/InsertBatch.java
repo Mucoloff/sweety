@@ -22,7 +22,7 @@ public final class InsertBatch<T> extends AbstractQuery<int[]> implements BatchQ
 
     private record Metadata(List<Column<?>> insertColumns, @Nullable Column<?> generatedColumn, String sql) {}
 
-    public InsertBatch(Table<T> table, Collection<T> instances, QueryCache cache) {
+    public InsertBatch(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, Collection<T> instances, QueryCache cache) {
         this.table = Objects.requireNonNull(table, "table is null");
         this.instances = Objects.requireNonNull(instances, "instances is null");
         Objects.requireNonNull(cache, "cache is null");
@@ -46,15 +46,15 @@ public final class InsertBatch<T> extends AbstractQuery<int[]> implements BatchQ
         }
 
         String colKey = activeColumns.stream().map(Column::name).sorted().collect(Collectors.joining(","));
-        String cacheKey = "insertBatch:meta:" + table.name() + ":" + colKey;
+        String cacheKey = "insertBatch:meta:" + table.name() + ":" + colKey + ":" + dialect.name();
 
         this.metadata = cache.getMetadata(cacheKey, _ -> {
             Column<?> generatedColumn = table.insertableColumns().autoIncrementColumn();
             int fieldsPerRow = activeColumns.size();
 
-            String colNames = activeColumns.stream().map(Column::name).collect(Collectors.joining(", "));
+            String colNames = activeColumns.stream().map(c -> c.toSql(dialect)).collect(Collectors.joining(", "));
             String placeholders = "(" + "?,".repeat(fieldsPerRow).replaceAll(",$", "") + ")";
-            String sql = "INSERT INTO " + table.name() + " (" + colNames + ") VALUES " + placeholders;
+            String sql = "INSERT INTO " + table.toSql(dialect) + " (" + colNames + ") VALUES " + placeholders;
 
             return new Metadata(activeColumns, generatedColumn, sql);
         });

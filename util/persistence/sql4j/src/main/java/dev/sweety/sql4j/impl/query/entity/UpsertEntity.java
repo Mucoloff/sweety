@@ -31,7 +31,7 @@ public final class UpsertEntity<T> extends AbstractQuery<MutationResult<T>> impl
         this.table = Objects.requireNonNull(table);
         this.instance = Objects.requireNonNull(instance);
 
-        String cacheKey = "upsert:meta:" + table.name() + ":" + table.clazz().getName();
+        String cacheKey = "upsert:meta:" + table.name() + ":" + table.clazz().getName() + ":" + dialect.name();
         this.metadata = cache.getMetadata(cacheKey, _ -> {
             InsertableColumns cols = table.insertableColumns();
             List<Column<?>> insertColumns = cols.columns();
@@ -50,6 +50,7 @@ public final class UpsertEntity<T> extends AbstractQuery<MutationResult<T>> impl
                 throw new IllegalStateException("Table " + table.name() + " has no primary keys, cannot UPSERT.");
             }
 
+            // We pass raw names to upsertSyntax, and let the dialect handle escaping inside it
             String sql = dialect.upsertSyntax(table.name(), insertColNames, updateColNames, pkColNames);
 
             return new Metadata(insertColumns, generatedColumn, sql);

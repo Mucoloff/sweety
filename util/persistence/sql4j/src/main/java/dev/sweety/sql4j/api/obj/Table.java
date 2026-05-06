@@ -213,6 +213,10 @@ public final class Table<T> {
         return name;
     }
 
+    public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) {
+        return dialect.escape(name);
+    }
+
     public Class<T> clazz() {
         return clazz;
     }

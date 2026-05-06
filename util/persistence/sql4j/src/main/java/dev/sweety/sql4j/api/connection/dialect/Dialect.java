@@ -57,5 +57,16 @@ public interface Dialect {
         if (offset >= 0) sb.append(" OFFSET ").append(offset);
         return sb.toString();
     }
+
+    /**
+     * Escapes a database identifier (table or column name).
+     */
+    default String escape(String name) {
+        return name; // Default no escape
+    }
+
+    default boolean supportsUpsert() {
+        return true;
+    }
 }
 

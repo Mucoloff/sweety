@@ -48,15 +48,15 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
         List<String> cols = new ArrayList<>();
         for (Table<?> t : tables) {
             for (Column<?> c : t.columns()) {
-                cols.add(t.name() + "." + c.name() + " AS " + t.name() + "_" + c.name());
+                cols.add(dialect.escape(t.name()) + "." + dialect.escape(c.name()) + " AS " + dialect.escape(t.name() + "_" + c.name()));
             }
         }
         this.selectColsSql = String.join(", ", cols);
 
         // Build FROM and JOINS
-        StringBuilder fj = new StringBuilder(" FROM ").append(tables.get(0).name());
+        StringBuilder fj = new StringBuilder(" FROM ").append(dialect.escape(tables.get(0).name()));
         for (int i = 1; i < tables.size(); i++) {
-            fj.append(" INNER JOIN ").append(tables.get(i).name())
+            fj.append(" INNER JOIN ").append(dialect.escape(tables.get(i).name()))
                     .append(" ON ").append(onClauses.get(i - 1));
         }
         this.fromAndJoinsSql = fj.toString();
@@ -64,14 +64,14 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
         // Build WHERE
         List<String> wheres = new ArrayList<>();
         if (whereClause != null && !whereClause.isEmpty()) wheres.add(whereClause);
-        if (criterion != null) wheres.add(criterion.toSql());
+        if (criterion != null) wheres.add(criterion.toSql(dialect));
         
         // Global Soft Delete Filter
         if (!includeDeleted) {
             for (Table<?> t : tables) {
                 Column<?> sd = t.softDeleteColumn();
                 if (sd != null) {
-                    wheres.add(t.name() + "." + sd.name() + " = 0");
+                    wheres.add(dialect.escape(t.name()) + "." + dialect.escape(sd.name()) + " = 0");
                 }
             }
         }
@@ -83,7 +83,7 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
 
     public String countSql() {
         Table<?> root = tables.get(0);
-        return "SELECT COUNT(DISTINCT " + root.name() + "." + root.primaryKeys().get(0).name() + ")" + fromAndJoinsSql + whereSql;
+        return "SELECT COUNT(DISTINCT " + dialect.escape(root.name()) + "." + dialect.escape(root.primaryKeys().get(0).name()) + ")" + fromAndJoinsSql + whereSql;
     }
 
     @Override

@@ -20,10 +20,10 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> implements Del
     private final Metadata metadata;
     private boolean hardDelete = false;
 
-    private record Metadata(List<Column<?>> primaryKeys, Column<?> softDeleteColumn, String softDeleteSql, String hardDeleteSql) {}
+    private record Metadata(List<Column<?>> primaryKeys, Column<?> softDeleteColumn, String softDeleteSql, String hardDeleteSql, dev.sweety.sql4j.api.connection.dialect.Dialect dialect) {}
 
     @SafeVarargs
-    public DeleteEntity(final Table<T> table, QueryCache cache, final T... instances) {
+    public DeleteEntity(final Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, QueryCache cache, final T... instances) {
         this.table = Objects.requireNonNull(table, "table cannot be null");
         this.instances = Objects.requireNonNull(instances, "instances cannot be null");
         Objects.requireNonNull(cache, "cache cannot be null");
@@ -31,7 +31,7 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> implements Del
         int instancesCount = instances.length;
         Column<?> softDeleteCol = table.softDeleteColumn();
 
-        String cacheKey = "delete:meta:" + table.name() + ":" + table.clazz().getName() + ":" + instancesCount;
+        String cacheKey = "delete:meta:" + table.name() + ":" + table.clazz().getName() + ":" + instancesCount + ":" + dialect.name();
         this.metadata = cache.getMetadata(cacheKey, _ -> {
             List<Column<?>> pks = table.primaryKeys();
             if (pks.isEmpty()) {
@@ -43,14 +43,14 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> implements Del
                 wherePart = "1 = 0"; 
             } else if (pks.size() == 1) {
                 StringBuilder w = new StringBuilder();
-                w.append(pks.getFirst().name()).append(" IN (");
+                w.append(pks.getFirst().toSql(dialect)).append(" IN (");
                 w.repeat("?, ", instancesCount);
                 w.setLength(w.length() - 2);
                 w.append(")");
                 wherePart = w.toString();
             } else {
                 wherePart = "(" +
-                        pks.stream().map(Column::name).collect(Collectors.joining(", ")) +
+                        pks.stream().map(c -> c.toSql(dialect)).collect(Collectors.joining(", ")) +
                         ") IN (" +
                         String.join(", ",
                                 Collections.nCopies(instancesCount,
@@ -58,12 +58,12 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> implements Del
                         ")";
             }
 
-            String hardDeleteSql = "DELETE FROM " + table.name() + " WHERE " + wherePart;
-            String softDeleteSql = softDeleteCol != null 
-                    ? "UPDATE " + table.name() + " SET " + softDeleteCol.name() + " = 1 WHERE " + wherePart
-                    : hardDeleteSql;
+            String hardSql = "DELETE FROM " + table.toSql(dialect) + " WHERE " + wherePart;
+            String softSql = softDeleteCol != null 
+                    ? "UPDATE " + table.toSql(dialect) + " SET " + softDeleteCol.toSql(dialect) + " = 1 WHERE " + wherePart
+                    : hardSql;
 
-            return new Metadata(pks, softDeleteCol, softDeleteSql, hardDeleteSql);
+            return new Metadata(pks, softDeleteCol, softSql, hardSql, dialect);
         });
     }
 
@@ -94,6 +94,7 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> implements Del
 
     @Override
     protected String buildSql() {
+        dev.sweety.sql4j.api.connection.dialect.Dialect dialect = metadata.dialect;
         return (metadata.softDeleteColumn != null && !hardDelete) ? metadata.softDeleteSql : metadata.hardDeleteSql;
     }
 

@@ -26,7 +26,7 @@ public final class InsertEntity<T> extends AbstractQuery<MutationResult<T>> impl
     private record Metadata(List<Column<?>> insertColumns, @Nullable Column<?> generatedColumn, String sql) {
     }
 
-    public InsertEntity(Table<T> table, T instance, QueryCache cache) {
+    public InsertEntity(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, T instance, QueryCache cache) {
         this.table = Objects.requireNonNull(table, "table is null");
         this.instance = Objects.requireNonNull(instance, "instance is null");
         Objects.requireNonNull(cache, "cache is null");
@@ -44,15 +44,15 @@ public final class InsertEntity<T> extends AbstractQuery<MutationResult<T>> impl
         }
 
         String colKey = activeColumns.stream().map(Column::name).sorted().collect(Collectors.joining(","));
-        String cacheKey = "insert:meta:" + table.name() + ":" + colKey;
+        String cacheKey = "insert:meta:" + table.name() + ":" + colKey + ":" + dialect.name();
 
         this.metadata = cache.getMetadata(cacheKey, _ -> {
             Column<?> generatedColumn = table.insertableColumns().autoIncrementColumn();
             int fieldsPerRow = activeColumns.size();
 
-            String colNames = activeColumns.stream().map(Column::name).collect(Collectors.joining(", "));
+            String colNames = activeColumns.stream().map(c -> c.toSql(dialect)).collect(Collectors.joining(", "));
             String placeholders = "(" + "?,".repeat(fieldsPerRow).replaceAll(",$", "") + ")";
-            String sql = "INSERT INTO " + table.name() + " (" + colNames + ") VALUES " + placeholders;
+            String sql = "INSERT INTO " + table.toSql(dialect) + " (" + colNames + ") VALUES " + placeholders;
 
             return new Metadata(activeColumns, generatedColumn, sql);
         });

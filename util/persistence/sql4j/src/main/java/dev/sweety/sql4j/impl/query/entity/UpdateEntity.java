@@ -22,27 +22,25 @@ public final class UpdateEntity<T> extends AbstractQuery<Integer> implements Upd
 
     private record Metadata(List<Column<?>> updateColumns, List<Column<?>> primaryKeys, String sql) {}
 
-    public UpdateEntity(final Table<T> table, @NotNull final T instance, QueryCache cache) {
+    public UpdateEntity(final Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, @NotNull final T instance, QueryCache cache) {
         this.table = Objects.requireNonNull(table, "table cannot be null");
         this.instance = Objects.requireNonNull(instance, "instance cannot be null");
         Objects.requireNonNull(cache, "cache cannot be null");
 
-        String cacheKey = "update:meta:" + table.name() + ":" + table.clazz().getName();
+        String cacheKey = "update:meta:" + table.name() + ":" + table.clazz().getName() + ":" + dialect.name();
         this.metadata = cache.getMetadata(cacheKey, _ -> {
             List<Column<?>> primaryKeys = table.primaryKeys();
             List<Column<?>> updateColumns = table.updatableColumns();
 
             String setClause = updateColumns.stream()
-                    .map(Column::name)
-                    .map(n -> n + "=?")
+                    .map(c -> c.toSql(dialect) + "=?")
                     .collect(Collectors.joining(", "));
 
             String whereClause = primaryKeys.stream()
-                    .map(Column::name)
-                    .map(n -> n + "=?")
+                    .map(c -> c.toSql(dialect) + "=?")
                     .collect(Collectors.joining(" AND "));
 
-            String sql = "UPDATE " + table.name() + " SET " + setClause + " WHERE " + whereClause;
+            String sql = "UPDATE " + table.toSql(dialect) + " SET " + setClause + " WHERE " + whereClause;
             return new Metadata(updateColumns, primaryKeys, sql);
         });
     }

@@ -68,19 +68,24 @@ public class PostgreSQLDialect implements Dialect {
 
     @Override
     public String upsertSyntax(String table, java.util.List<String> insertCols, java.util.List<String> updateCols, java.util.List<String> pkCols) {
-        String cols = String.join(", ", insertCols);
+        String cols = insertCols.stream().map(this::escape).collect(java.util.stream.Collectors.joining(", "));
         String placeholders = insertCols.stream().map(c -> "?").collect(java.util.stream.Collectors.joining(", "));
-        String pks = String.join(", ", pkCols);
+        String pks = pkCols.stream().map(this::escape).collect(java.util.stream.Collectors.joining(", "));
         
         if (updateCols.isEmpty()) {
-            return "INSERT INTO " + table + " (" + cols + ") VALUES (" + placeholders + ") ON CONFLICT (" + pks + ") DO NOTHING";
+            return "INSERT INTO " + escape(table) + " (" + cols + ") VALUES (" + placeholders + ") ON CONFLICT (" + pks + ") DO NOTHING";
         }
 
         String updates = updateCols.stream()
-                .map(c -> c + " = EXCLUDED." + c)
+                .map(c -> escape(c) + " = EXCLUDED." + escape(c))
                 .collect(java.util.stream.Collectors.joining(", "));
         
-        return "INSERT INTO " + table + " (" + cols + ") VALUES (" + placeholders + ") ON CONFLICT (" + pks + ") DO UPDATE SET " + updates;
+        return "INSERT INTO " + escape(table) + " (" + cols + ") VALUES (" + placeholders + ") ON CONFLICT (" + pks + ") DO UPDATE SET " + updates;
+    }
+
+    @Override
+    public String escape(String name) {
+        return "\"" + name + "\"";
     }
 }
 

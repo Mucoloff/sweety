@@ -54,7 +54,7 @@ public class Repository<Entity> {
 
     public InsertQuery<Entity> insert(Entity entity) {
         InsertQuery<Entity> query = cache.getQuery("insertPrototype:" + table.name(),
-                _ -> new InsertEntity<>(table, entity, cache)).copy(entity);
+                _ -> new InsertEntity<>(table, dialect, entity, cache)).copy(entity);
         if (entityCache == null) return query;
 
         return new InsertQueryWrapper<>(query, () -> {
@@ -64,7 +64,7 @@ public class Repository<Entity> {
     }
 
     public BatchQuery<Entity> insertBatch(Collection<Entity> entities) {
-        return new InsertBatch<>(table, entities, cache);
+        return new InsertBatch<>(table, dialect, entities, cache);
     }
 
     public UpsertQuery<Entity> upsert(Entity entity) {
@@ -75,7 +75,7 @@ public class Repository<Entity> {
 
     public UpdateQuery<Entity> update(Entity entity) {
         UpdateQuery<Entity> query = cache.getQuery("updatePrototype:" + table.name(),
-                _ -> new UpdateEntity<>(table, entity, cache)).copy(entity);
+                _ -> new UpdateEntity<>(table, dialect, entity, cache)).copy(entity);
         if (entityCache == null) return query;
 
         return new UpdateQueryWrapper<>(query, () -> {
@@ -85,14 +85,14 @@ public class Repository<Entity> {
     }
 
     public BatchQuery<Entity> updateBatch(Collection<Entity> entities) {
-        return new UpdateBatch<>(table, entities, cache);
+        return new UpdateBatch<>(table, dialect, entities, cache);
     }
 
     @SafeVarargs
     public final DeleteQuery<Entity> delete(Entity... instances) {
         int count = instances != null ? instances.length : 0;
         DeleteQuery<Entity> query = cache.getQuery("deletePrototype:" + table.name() + ":" + count,
-                _ -> new DeleteEntity<>(table, cache, instances)).copy(instances);
+                _ -> new DeleteEntity<>(table, dialect, cache, instances)).copy(instances);
         
         if (entityCache == null) return query;
 
@@ -107,7 +107,7 @@ public class Repository<Entity> {
     }
 
     public ConditionalDeleteQuery<Entity> deleteWhere() {
-        return new DeleteWhere<>(table);
+        return new DeleteWhere<>(table, dialect);
     }
 
     public dev.sweety.sql4j.api.query.PkContext<Entity> pk(Object... values) {
