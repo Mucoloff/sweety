@@ -4,34 +4,46 @@ import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
 import dev.sweety.sql4j.api.query.Criterion;
+import dev.sweety.sql4j.api.query.ConditionalUpdateQuery;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import dev.sweety.sql4j.api.query.ConditionalUpdateQuery;
-
 public final class UpdateWhere<T> extends AbstractQuery<Integer> implements ConditionalUpdateQuery<T> {
 
     private final Table<T> table;
-    private final Map<Column<?>, Object> values = new LinkedHashMap<>();
-    private Criterion criterion;
+    private final Map<Column<?>, Object> values;
+    private final Criterion criterion;
+    private final dev.sweety.sql4j.api.connection.dialect.Dialect dialect;
+    private final dev.sweety.sql4j.impl.cache.EntityCache entityCache;
 
-    public UpdateWhere(Table<T> table) {
+    public UpdateWhere(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, dev.sweety.sql4j.impl.cache.EntityCache entityCache) {
+        this(table, dialect, Collections.emptyMap(), null, entityCache);
+    }
+
+    private UpdateWhere(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, Map<Column<?>, Object> values, Criterion criterion, dev.sweety.sql4j.impl.cache.EntityCache entityCache) {
         this.table = Objects.requireNonNull(table, "table cannot be null");
-    }
-
-    public <V> UpdateWhere<T> set(Column<V> column, V value) {
-        values.put(column, value);
-        return this;
-    }
-
-    public UpdateWhere<T> where(Criterion criterion) {
+        this.dialect = Objects.requireNonNull(dialect, "dialect is null");
+        this.values = new LinkedHashMap<>(values);
         this.criterion = criterion;
-        return this;
+        this.entityCache = entityCache;
+    }
+
+    @Override
+    public <V> UpdateWhere<T> set(Column<V> column, V value) {
+        Map<Column<?>, Object> newValues = new LinkedHashMap<>(this.values);
+        newValues.put(column, value);
+        return new UpdateWhere<>(table, dialect, newValues, criterion, entityCache);
+    }
+
+    @Override
+    public UpdateWhere<T> where(Criterion criterion) {
+        return new UpdateWhere<>(table, dialect, values, criterion, entityCache);
     }
 
     @Override
@@ -41,14 +53,14 @@ public final class UpdateWhere<T> extends AbstractQuery<Integer> implements Cond
         }
 
         StringBuilder sql = new StringBuilder();
-        sql.append("UPDATE ").append(table.name()).append(" SET ");
+        sql.append("UPDATE ").append(table.toSql(dialect)).append(" SET ");
         
         sql.append(values.keySet().stream()
-                .map(c -> c.name() + " = ?")
+                .map(c -> c.toSql(dialect) + " = ?")
                 .collect(Collectors.joining(", ")));
 
         if (criterion != null) {
-            sql.append(" WHERE ").append(criterion.toSql());
+            sql.append(" WHERE ").append(criterion.toSql(dialect));
         }
 
         return sql.toString();
@@ -67,6 +79,10 @@ public final class UpdateWhere<T> extends AbstractQuery<Integer> implements Cond
 
     @Override
     public Integer execute(PreparedStatement ps) throws SQLException {
-        return ps.executeUpdate();
+        int rows = ps.executeUpdate();
+        if (rows > 0 && entityCache != null) {
+            entityCache.evictAll(table.clazz());
+        }
+        return rows;
     }
 }

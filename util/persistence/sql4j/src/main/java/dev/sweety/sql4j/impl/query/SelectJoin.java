@@ -28,21 +28,29 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
     private final String whereSql;
     private final String selectColsSql;
 
-    private int limit = -1;
-    private int offset = -1;
-    private String orderBy = null;
-    private boolean ascending = true;
+    private final int limit;
+    private final int offset;
+    private final String orderBy;
+    private final boolean ascending;
     private final boolean includeDeleted;
+    private final List<Column<?>> groupByColumns;
+    private final Criterion havingCriterion;
 
     private record JoinInfo(Table<?> sourceTable, Table<?> targetTable, Table.Relation relation) {}
 
-    private SelectJoin(List<Table<?>> tables, List<JoinInfo> joins, List<String> onClauses, String whereClause, Criterion criterion, Dialect dialect, boolean includeDeleted, Object... params) {
+    private SelectJoin(List<Table<?>> tables, List<JoinInfo> joins, List<String> onClauses, String whereClause, Criterion criterion, Dialect dialect, boolean includeDeleted, List<Column<?>> groupByColumns, Criterion havingCriterion, int limit, int offset, String orderBy, boolean ascending, Object... params) {
         this.tables = tables;
         this.joins = joins;
         this.params = Arrays.asList(params != null ? params : new Object[0]);
         this.criterion = criterion;
         this.dialect = dialect;
         this.includeDeleted = includeDeleted;
+        this.groupByColumns = groupByColumns;
+        this.havingCriterion = havingCriterion;
+        this.limit = limit;
+        this.offset = offset;
+        this.orderBy = orderBy;
+        this.ascending = ascending;
 
         // Build SELECT columns
         List<String> cols = new ArrayList<>();
@@ -88,33 +96,64 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
 
     @Override
     protected String buildSql() {
-        String base = sql;
+        StringBuilder sb = new StringBuilder(sql);
+        
+        if (groupByColumns != null && !groupByColumns.isEmpty()) {
+            sb.append(" GROUP BY ").append(groupByColumns.stream()
+                .map(c -> dialect.escape(c.table().name()) + "." + dialect.escape(c.name()))
+                .collect(java.util.stream.Collectors.joining(", ")));
+        }
+
+        if (havingCriterion != null) {
+            sb.append(" HAVING ").append(havingCriterion.toSql(dialect));
+        }
+
         if (orderBy != null) {
-            base += " ORDER BY " + orderBy + (ascending ? " ASC" : " DESC");
+            sb.append(" ORDER BY ").append(dialect.escape(orderBy)).append(ascending ? " ASC" : " DESC");
         }
         if (dialect != null) {
-            base += dialect.limitOffsetSyntax(limit, offset);
+            sb.append(dialect.limitOffsetSyntax(limit, offset));
         } else if (limit >= 0) {
-            base += " LIMIT " + limit;
-            if (offset >= 0) base += " OFFSET " + offset;
+            sb.append(" LIMIT ").append(limit);
+            if (offset >= 0) sb.append(" OFFSET ").append(offset);
         }
-        return base;
+        return sb.toString();
+    }
+
+    // Actually, a better way is to use a private copy constructor or similar.
+    private SelectJoin(SelectJoin other, int limit, int offset, String orderBy, boolean ascending) {
+        this.tables = other.tables;
+        this.joins = other.joins;
+        this.sql = other.sql;
+        this.params = other.params;
+        this.criterion = other.criterion;
+        this.dialect = other.dialect;
+        this.fromAndJoinsSql = other.fromAndJoinsSql;
+        this.whereSql = other.whereSql;
+        this.selectColsSql = other.selectColsSql;
+        this.limit = limit;
+        this.offset = offset;
+        this.orderBy = orderBy;
+        this.ascending = ascending;
+        this.includeDeleted = other.includeDeleted;
+        this.groupByColumns = other.groupByColumns;
+        this.havingCriterion = other.havingCriterion;
     }
 
     public SelectJoin limit(int limit) {
-        this.limit = limit;
-        return this;
+        return new SelectJoin(this, limit, this.offset, this.orderBy, this.ascending);
     }
 
     public SelectJoin offset(int offset) {
-        this.offset = offset;
-        return this;
+        return new SelectJoin(this, this.limit, offset, this.orderBy, this.ascending);
     }
 
     public SelectJoin orderBy(String column, boolean ascending) {
-        this.orderBy = column;
-        this.ascending = ascending;
-        return this;
+        return new SelectJoin(this, this.limit, this.offset, column, ascending);
+    }
+
+    public java.util.concurrent.CompletableFuture<List<Row>> executeAggregate(dev.sweety.sql4j.api.connection.SqlConnection con) {
+        return con.executeAsync(this);
     }
 
     @Override
@@ -125,6 +164,9 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
         }
         if (criterion != null) {
             criterion.bind(ps, idx);
+        }
+        if (havingCriterion != null) {
+            havingCriterion.bind(ps, idx + (criterion != null ? criterion.countParameters() : 0));
         }
     }
 
@@ -218,6 +260,8 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
         private final List<Object> params = new ArrayList<>();
         private Dialect dialect;
         private boolean includeDeleted = false;
+        private List<Column<?>> groupByColumns;
+        private Criterion havingCriterion;
 
         public Builder() {
             this(TableRegistry.getDefault());
@@ -275,7 +319,7 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
         }
 
         public Builder on(Column<?> left, Column<?> right) {
-            onClausesList.add(left.table().name() + "." + left.name() + " = " + right.table().name() + "." + right.name());
+            onClausesList.add(dialect.escape(left.table().name()) + "." + dialect.escape(left.name()) + " = " + dialect.escape(right.table().name()) + "." + dialect.escape(right.name()));
             return this;
         }
 
@@ -295,8 +339,18 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
             return this;
         }
 
+        public Builder groupBy(Column<?>... columns) {
+            this.groupByColumns = Arrays.asList(columns);
+            return this;
+        }
+
+        public Builder having(Criterion criterion) {
+            this.havingCriterion = criterion;
+            return this;
+        }
+
         public SelectJoin build() {
-            return new SelectJoin(tablesList, joinsList, onClausesList, whereClause, criterion, dialect, includeDeleted, params.toArray());
+            return new SelectJoin(tablesList, joinsList, onClausesList, whereClause, criterion, dialect, includeDeleted, groupByColumns, havingCriterion, -1, -1, null, true, params.toArray());
         }
     }
 }

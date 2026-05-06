@@ -8,7 +8,6 @@ import dev.sweety.sql4j.impl.query.QueryCache;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -18,66 +17,37 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> implements Del
     private final Table<T> table;
     private final T[] instances;
     private final Metadata metadata;
-    private boolean hardDelete = false;
+    private final boolean hardDelete;
 
-    private record Metadata(List<Column<?>> primaryKeys, Column<?> softDeleteColumn, String softDeleteSql, String hardDeleteSql, dev.sweety.sql4j.api.connection.dialect.Dialect dialect) {}
+    private record Metadata(List<Column<?>> primaryKeys, String deleteSql, String softDeleteSql) {}
 
-    @SafeVarargs
-    public DeleteEntity(final Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, QueryCache cache, final T... instances) {
-        this.table = Objects.requireNonNull(table, "table cannot be null");
-        this.instances = Objects.requireNonNull(instances, "instances cannot be null");
-        Objects.requireNonNull(cache, "cache cannot be null");
+    public DeleteEntity(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, QueryCache cache, T... instances) {
+        this(table, dialect, cache, false, instances);
+    }
 
-        int instancesCount = instances.length;
-        Column<?> softDeleteCol = table.softDeleteColumn();
+    private DeleteEntity(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, QueryCache cache, boolean hardDelete, T... instances) {
+        this.table = Objects.requireNonNull(table, "table is null");
+        this.instances = instances;
+        this.hardDelete = hardDelete;
+        Objects.requireNonNull(cache, "cache is null");
 
-        String cacheKey = "delete:meta:" + table.name() + ":" + table.clazz().getName() + ":" + instancesCount + ":" + dialect.name();
+        String cacheKey = "delete:meta:" + table.name() + ":" + dialect.name();
         this.metadata = cache.getMetadata(cacheKey, _ -> {
-            List<Column<?>> pks = table.primaryKeys();
-            if (pks.isEmpty()) {
-                throw new IllegalStateException("Table " + table.name() + " must have a primary key for entity-based deletion");
+            List<Column<?>> primaryKeys = table.primaryKeys();
+            String whereClause = primaryKeys.stream()
+                    .map(c -> c.toSql(dialect) + "=?")
+                    .collect(Collectors.joining(" AND "));
+
+            String deleteSql = "DELETE FROM " + table.toSql(dialect) + " WHERE " + whereClause;
+            
+            String softDeleteSql = null;
+            Column<?> sd = table.softDeleteColumn();
+            if (sd != null) {
+                softDeleteSql = "UPDATE " + table.toSql(dialect) + " SET " + sd.toSql(dialect) + "=1 WHERE " + whereClause;
             }
             
-            String wherePart;
-            if (instancesCount == 0) {
-                wherePart = "1 = 0"; 
-            } else if (pks.size() == 1) {
-                StringBuilder w = new StringBuilder();
-                w.append(pks.getFirst().toSql(dialect)).append(" IN (");
-                w.repeat("?, ", instancesCount);
-                w.setLength(w.length() - 2);
-                w.append(")");
-                wherePart = w.toString();
-            } else {
-                wherePart = "(" +
-                        pks.stream().map(c -> c.toSql(dialect)).collect(Collectors.joining(", ")) +
-                        ") IN (" +
-                        String.join(", ",
-                                Collections.nCopies(instancesCount,
-                                        "(" + "?, ".repeat(pks.size()).replaceAll(", $", "") + ")")) +
-                        ")";
-            }
-
-            String hardSql = "DELETE FROM " + table.toSql(dialect) + " WHERE " + wherePart;
-            String softSql = softDeleteCol != null 
-                    ? "UPDATE " + table.toSql(dialect) + " SET " + softDeleteCol.toSql(dialect) + " = 1 WHERE " + wherePart
-                    : hardSql;
-
-            return new Metadata(pks, softDeleteCol, softSql, hardSql, dialect);
+            return new Metadata(primaryKeys, deleteSql, softDeleteSql);
         });
-    }
-
-    public DeleteEntity<T> hardDelete() {
-        DeleteEntity<T> copy = copy(instances);
-        copy.hardDelete = true;
-        return copy;
-    }
-
-    @Override
-    public DeleteEntity<T> softDelete() {
-        DeleteEntity<T> copy = copy(instances);
-        copy.hardDelete = false;
-        return copy;
     }
 
     private DeleteEntity(Table<T> table, Metadata metadata, T[] instances, boolean hardDelete) {
@@ -87,47 +57,38 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> implements Del
         this.hardDelete = hardDelete;
     }
 
-    @SafeVarargs
-    public final DeleteEntity<T> copy(T... instances) {
+    public DeleteEntity<T> hardDelete() {
+        return new DeleteEntity<>(table, metadata, instances, true);
+    }
+
+    public DeleteEntity<T> softDelete() {
         return new DeleteEntity<>(table, metadata, instances, false);
     }
 
     @Override
     protected String buildSql() {
-        dev.sweety.sql4j.api.connection.dialect.Dialect dialect = metadata.dialect;
-        return (metadata.softDeleteColumn != null && !hardDelete) ? metadata.softDeleteSql : metadata.hardDeleteSql;
+        if (!hardDelete && metadata.softDeleteSql != null) {
+            return metadata.softDeleteSql;
+        }
+        return metadata.deleteSql;
     }
 
     @Override
     public void bind(final PreparedStatement ps) throws SQLException {
-        if (instances == null) return;
-        int idx = 1;
-        for (T instance : instances) {
+        if (instances != null && instances.length > 0) {
+            int idx = 1;
             for (Column<?> pk : metadata.primaryKeys) {
-                ps.setObject(idx++, pk.get(instance));
+                ps.setObject(idx++, pk.get(instances[0]));
             }
         }
     }
 
     @Override
     public Integer execute(final PreparedStatement ps) throws SQLException {
-        int rows = ps.executeUpdate();
-        if (rows > 0 && metadata.softDeleteColumn != null && !hardDelete && instances != null) {
-            for (T instance : instances) {
-                try {
-                    // Logic for soft delete value (could be boolean or int)
-                    // We assume 1/true for deleted.
-                    Class<?> type = metadata.softDeleteColumn.field().getType();
-                    if (type == boolean.class || type == Boolean.class) {
-                        metadata.softDeleteColumn.set(instance, true);
-                    } else {
-                        metadata.softDeleteColumn.set(instance, 1);
-                    }
-                } catch (Exception ignored) {
-                    // Fail silently for in-memory update if something is wrong with the field
-                }
-            }
-        }
-        return rows;
+        return ps.executeUpdate();
+    }
+
+    public final DeleteEntity<T> copy(T... instances) {
+        return new DeleteEntity<>(table, metadata, instances, hardDelete);
     }
 }

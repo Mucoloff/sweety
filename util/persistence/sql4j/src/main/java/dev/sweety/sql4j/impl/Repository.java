@@ -107,7 +107,7 @@ public class Repository<Entity> {
     }
 
     public ConditionalDeleteQuery<Entity> deleteWhere() {
-        return new DeleteWhere<>(table, dialect);
+        return new DeleteWhere<>(table, dialect, entityCache);
     }
 
     public dev.sweety.sql4j.api.query.PkContext<Entity> pk(Object... values) {
@@ -149,7 +149,7 @@ public class Repository<Entity> {
     }
 
     public ConditionalUpdateQuery<Entity> updateWhere() {
-        return new UpdateWhere<>(table);
+        return new UpdateWhere<>(table, dialect, entityCache);
     }
 
     public ConditionalUpdateQuery<Entity> updateWhere(Criterion criterion) {
@@ -224,7 +224,7 @@ public class Repository<Entity> {
      * }</pre>
      */
     public SelectQuery<Entity> selectWhere(String where, Object... params) {
-        return new SelectEntity<>(table, where, cache, dialect, registry, params);
+        return new SelectEntity<>(table, where, cache, dialect, registry, params).withCache(entityCache);
     }
 
     public SelectQuery<Entity> select(Column<?>... columns) {
@@ -232,7 +232,7 @@ public class Repository<Entity> {
     }
 
     public SelectQuery<Entity> select(String... columnNames) {
-        return new SelectEntity<Entity>(table, null, Set.of(columnNames), cache, dialect, registry, (Object[]) null);
+        return new SelectEntity<Entity>(table, null, Set.of(columnNames), cache, dialect, registry, (Object[]) null).withCache(entityCache);
     }
 
     public SelectRawQuery selectRaw(Column<?>... columns) {
@@ -248,7 +248,7 @@ public class Repository<Entity> {
      * Unspecified entity fields are left at zero/null.
      */
     public SelectQuery<Entity> selectWhere(String where, Set<String> columnNames, Object... params) {
-        return new SelectEntity<Entity>(table, where, columnNames, cache, dialect, registry, params);
+        return new SelectEntity<Entity>(table, where, columnNames, cache, dialect, registry, params).withCache(entityCache);
     }
 
     // ─── Row-based reads (lightweight, no entity instantiation) ────────────────

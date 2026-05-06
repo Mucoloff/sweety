@@ -4,39 +4,49 @@ import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
 import dev.sweety.sql4j.api.query.Criterion;
+import dev.sweety.sql4j.api.query.ConditionalDeleteQuery;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Objects;
 
-import dev.sweety.sql4j.api.query.ConditionalDeleteQuery;
-
 public final class DeleteWhere<T> extends AbstractQuery<Integer> implements ConditionalDeleteQuery<T> {
 
     private final Table<T> table;
     private final dev.sweety.sql4j.api.connection.dialect.Dialect dialect;
-    private Criterion criterion;
-    private boolean hardDelete = false;
+    private final Criterion criterion;
+    private final boolean hardDelete;
+    private final dev.sweety.sql4j.impl.cache.EntityCache entityCache;
 
     public DeleteWhere(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect) {
+        this(table, dialect, null, false, null);
+    }
+
+    public DeleteWhere(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, dev.sweety.sql4j.impl.cache.EntityCache entityCache) {
+        this(table, dialect, null, false, entityCache);
+    }
+
+    private DeleteWhere(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, Criterion criterion, boolean hardDelete, dev.sweety.sql4j.impl.cache.EntityCache entityCache) {
         this.table = Objects.requireNonNull(table, "table cannot be null");
         this.dialect = Objects.requireNonNull(dialect, "dialect is null");
-    }
-
-    public DeleteWhere<T> where(Criterion criterion) {
         this.criterion = criterion;
-        return this;
+        this.hardDelete = hardDelete;
+        this.entityCache = entityCache;
     }
 
+    @Override
+    public DeleteWhere<T> where(Criterion criterion) {
+        return new DeleteWhere<>(table, dialect, criterion, hardDelete, entityCache);
+    }
+
+    @Override
     public DeleteWhere<T> hardDelete() {
-        this.hardDelete = true;
-        return this;
+        return new DeleteWhere<>(table, dialect, criterion, true, entityCache);
     }
 
     @Override
     public DeleteWhere<T> softDelete() {
-        this.hardDelete = false;
-        return this;
+        return new DeleteWhere<>(table, dialect, criterion, false, entityCache);
     }
 
     @Override
@@ -67,6 +77,10 @@ public final class DeleteWhere<T> extends AbstractQuery<Integer> implements Cond
 
     @Override
     public Integer execute(PreparedStatement ps) throws SQLException {
-        return ps.executeUpdate();
+        int rows = ps.executeUpdate();
+        if (rows > 0 && entityCache != null) {
+            entityCache.evictAll(table.clazz());
+        }
+        return rows;
     }
 }

@@ -25,8 +25,8 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
     private final Table<T> table;
     private final QueryCache cache;
     private final Dialect dialect;
-    private final Object[] params;
     private final String whereClause;
+    private final Object[] whereParams;
     
     private Criterion criterion;
     private Set<String> selectedColumnNames;
@@ -61,7 +61,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
         this.dialect = Objects.requireNonNull(dialect, "dialect cannot be null");
         this.registry = Objects.requireNonNull(registry, "registry cannot be null");
         this.whereClause = whereClause;
-        this.params = params;
+        this.whereParams = params;
         this.selectedColumnNames = columnNames;
     }
 
@@ -70,7 +70,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
         this.cache = other.cache;
         this.dialect = other.dialect;
         this.registry = other.registry;
-        this.params = other.params;
+        this.whereParams = other.whereParams;
         this.whereClause = other.whereClause;
         this.criterion = other.criterion;
         this.selectedColumnNames = other.selectedColumnNames;
@@ -173,13 +173,13 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
             for (Table.Relation rel : fetchRelations) {
                 builder.join(rel);
             }
-            if (whereClause != null) builder.where(whereClause, params);
+            if (whereClause != null) builder.where(whereClause, whereParams);
             if (criterion != null) builder.where(criterion);
             
             this.delegatedJoin = builder.build();
-            if (limit > 0) delegatedJoin.limit(limit);
-            if (offset > 0) delegatedJoin.offset(offset);
-            if (orderBy != null) delegatedJoin.orderBy(orderBy, ascending);
+            if (limit > 0) delegatedJoin = delegatedJoin.limit(limit);
+            if (offset > 0) delegatedJoin = delegatedJoin.offset(offset);
+            if (orderBy != null) delegatedJoin = delegatedJoin.orderBy(orderBy, ascending);
             
             delegatedJoinQuery = delegatedJoin.mapToHierarchy(table.clazz());
         }
@@ -298,8 +298,8 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
         }
 
         int idx = 1;
-        if (params != null) {
-            for (Object p : params) ps.setObject(idx++, p);
+        if (whereParams != null) {
+            for (Object p : whereParams) ps.setObject(idx++, p);
         }
         if (criterion != null) {
             criterion.bind(ps, idx);
@@ -308,6 +308,43 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
         if (havingCriterion != null) {
             havingCriterion.bind(ps, idx);
         }
+    }
+
+    @Override
+    public java.util.concurrent.CompletableFuture<List<T>> execute(dev.sweety.sql4j.api.connection.SqlConnection con) {
+        if (entityCache != null && entityCache.isEnabled()) {
+            // Check if it's a simple "select * from table where id = ?"
+            boolean selectAll = selectedColumnNames == null || selectedColumnNames.isEmpty();
+            boolean noJoin = fetchRelations == null || fetchRelations.length == 0;
+            boolean noComplexWhere = whereClause == null || whereClause.isEmpty();
+            
+            if (selectAll && noJoin && noComplexWhere && criterion != null) {
+                Object pkValue = criterion.getPkValue(table);
+                if (pkValue != null) {
+                    T cached = entityCache.get(table.clazz(), pkValue);
+                    if (cached != null) {
+                        return java.util.concurrent.CompletableFuture.completedFuture(java.util.Collections.singletonList(cached));
+                    }
+                }
+            }
+        }
+
+        return super.execute(con).thenApply(list -> {
+            if (entityCache != null && entityCache.isEnabled() && list != null && !list.isEmpty()) {
+                // If it was a by-id query, we might want to cache it now if not already cached.
+                // But generally Repository.wrapWithCache or execute handles this.
+                // Here we just ensure that if we got results, and it's a @Cacheable entity, we could cache them.
+                // However, we only cache if it's a full select.
+                boolean selectAll = selectedColumnNames == null || selectedColumnNames.isEmpty();
+                if (selectAll) {
+                    for (T entity : list) {
+                        Object pk = table.primaryKeys().get(0).get(entity);
+                        if (pk != null) entityCache.put(table.clazz(), pk, entity);
+                    }
+                }
+            }
+            return list;
+        });
     }
 
     @Override

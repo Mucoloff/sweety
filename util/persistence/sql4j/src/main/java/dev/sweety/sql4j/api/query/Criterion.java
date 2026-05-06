@@ -1,6 +1,7 @@
 package dev.sweety.sql4j.api.query;
 
 import dev.sweety.sql4j.api.obj.Column;
+import dev.sweety.sql4j.api.obj.Table;
 import java.util.List;
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -132,6 +133,10 @@ public interface Criterion {
         };
     }
 
+    default Object getPkValue(Table<?> table) {
+        return null;
+    }
+
     class ComparisonCriterion implements Criterion {
         private final Column<?> column;
         private final String operator;
@@ -142,6 +147,10 @@ public interface Criterion {
             this.operator = operator;
             this.value = value;
         }
+
+        public Column<?> column() { return column; }
+        public String operator() { return operator; }
+        public Object value() { return value; }
 
         @Override
         public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) {
@@ -156,6 +165,14 @@ public interface Criterion {
         @Override
         public int countParameters() {
             return 1;
+        }
+
+        @Override
+        public Object getPkValue(Table<?> table) {
+            if (column.table().equals(table) && column.isPrimaryKey() && operator.equals("=")) {
+                return value;
+            }
+            return null;
         }
     }
 

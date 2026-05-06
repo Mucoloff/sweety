@@ -10,6 +10,7 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -58,12 +59,14 @@ public class SQL4JProcessor extends AbstractProcessor {
         String packageName = processingEnv.getElementUtils().getPackageOf(typeElement).getQualifiedName().toString();
         String simpleName = typeElement.getSimpleName().toString();
         
-        String mirrorName = simpleName + "Table";
+        String mirrorName;
         Element enclosing = typeElement.getEnclosingElement();
+        StringBuilder mirrorNameBuilder = new StringBuilder(simpleName + "Table");
         while (enclosing != null && enclosing.getKind() == ElementKind.CLASS) {
-            mirrorName = enclosing.getSimpleName().toString() + "_" + mirrorName;
+            mirrorNameBuilder.insert(0, enclosing.getSimpleName() + "_");
             enclosing = enclosing.getEnclosingElement();
         }
+        mirrorName = mirrorNameBuilder.toString();
 
         ClassName entityClass = ClassName.get(typeElement);
         ClassName columnClass = ClassName.bestGuess(COLUMN);
@@ -136,7 +139,7 @@ public class SQL4JProcessor extends AbstractProcessor {
                             .build());
 
                     // Field cache for both private and relation fields
-                    mirrorBuilder.addField(FieldSpec.builder(java.lang.reflect.Field.class, "FIELD_" + fieldName)
+                    mirrorBuilder.addField(FieldSpec.builder(Field.class, "FIELD_" + fieldName)
                             .addModifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
                             .initializer("getPrivateField($T.class, $S)", entityClass, fieldName)
                             .build());
@@ -150,7 +153,7 @@ public class SQL4JProcessor extends AbstractProcessor {
                 if (mtoAnn != null || otmAnn != null || mtmAnn != null) {
                     if (getAnnotation(field, COLUMN_INFO) == null && getAnnotation(field, MANY_TO_ONE) == null) {
                         // Field cache for non-column relations
-                        mirrorBuilder.addField(FieldSpec.builder(java.lang.reflect.Field.class, "FIELD_" + fieldName)
+                        mirrorBuilder.addField(FieldSpec.builder(Field.class, "FIELD_" + fieldName)
                                 .addModifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
                                 .initializer("getPrivateField($T.class, $S)", entityClass, fieldName)
                                 .build());
@@ -201,12 +204,14 @@ public class SQL4JProcessor extends AbstractProcessor {
                 .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
                 .addParameter(Class.class, "clazz")
                 .addParameter(String.class, "name")
-                .returns(java.lang.reflect.Field.class)
-                .addCode("try {\n" +
-                        "    java.lang.reflect.Field f = clazz.getDeclaredField(name);\n" +
-                        "    f.setAccessible(true);\n" +
-                        "    return f;\n" +
-                        "} catch (Exception e) { throw new RuntimeException(e); }\n")
+                .returns(Field.class)
+                .addCode("""
+                        try {
+                            Field f = clazz.getDeclaredField(name);
+                            f.setAccessible(true);
+                            return f;
+                        } catch (Exception e) { throw new RuntimeException(e); }
+                        """)
                 .build());
 
         JavaFile javaFile = JavaFile.builder(packageName, mirrorBuilder.build()).build();
@@ -284,24 +289,12 @@ public class SQL4JProcessor extends AbstractProcessor {
         TypeMirror type = field.asType();
         if (type instanceof DeclaredType dt) {
             List<? extends TypeMirror> typeArgs = dt.getTypeArguments();
-            if (!typeArgs.isEmpty()) return TypeName.get(typeArgs.get(0));
+            if (!typeArgs.isEmpty()) return TypeName.get(typeArgs.getFirst());
         }
         return TypeName.get(type);
     }
 
-    private static class FieldData {
-        final String fieldName;
-        final String colName;
-        final TypeName fieldType;
-        final TypeName boxedType;
-        final boolean isPrivate;
-
-        FieldData(String fieldName, String colName, TypeName fieldType, TypeName boxedType, boolean isPrivate) {
-            this.fieldName = fieldName;
-            this.colName = colName;
-            this.fieldType = fieldType;
-            this.boxedType = boxedType;
-            this.isPrivate = isPrivate;
-        }
+    private record FieldData(String fieldName, String colName, TypeName fieldType, TypeName boxedType,
+                             boolean isPrivate) {
     }
 }
