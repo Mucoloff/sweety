@@ -84,12 +84,9 @@ public enum MinecraftVersion implements Version<MinecraftVersion> {
     /**
      * Finds the latest version for a protocol using binary search.
      */
-    public static @NotNull MinecraftVersion get(int protocolVersion) {
-        int index = Arrays.binarySearch(VALUES, null, (v, _) -> Integer.compare(v.protocolVersion(), protocolVersion));
-        if (index < 0) return ERROR;
-        // Move to the last one for that protocol
-        while (index + 1 < VALUES.length && VALUES[index + 1].protocolVersion() == protocolVersion) index++;
-        return VALUES[index];
+    public static @Nullable MinecraftVersion get(int protocolVersion) {
+        List<MinecraftVersion> list = BY_PROTOCOL.get(protocolVersion);
+        return list.isEmpty() ? null : list.getFirst();
     }
 
     public static @NotNull List<MinecraftVersion> getAll(int protocolVersion) {

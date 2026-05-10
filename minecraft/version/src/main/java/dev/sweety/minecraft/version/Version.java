@@ -2,6 +2,8 @@ package dev.sweety.minecraft.version;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Comparator;
+
 public interface Version<T extends Version<T>> extends Comparable<T> {
 
     int protocolVersion();
@@ -45,10 +47,12 @@ public interface Version<T extends Version<T>> extends Comparable<T> {
         return isNewerThanOrEquals(start) && isOlderThanOrEquals(end);
     }
 
-    int ordinal();
-
     @Override
     default int compareTo(@NotNull T o) {
-        return Integer.compare(this.ordinal(), o.ordinal());
+        return Comparator.comparingInt(T::protocolVersion)
+                .thenComparingInt(T::major)
+                .thenComparingInt(T::minor)
+                .thenComparingInt(T::patch)
+                .compare((T) this, o);
     }
 }
