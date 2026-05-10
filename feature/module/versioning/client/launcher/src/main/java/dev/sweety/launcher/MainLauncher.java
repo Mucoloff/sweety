@@ -1,20 +1,10 @@
 package dev.sweety.launcher;
 
-import dev.sweety.launcher.config.LauncherConfig;
-import dev.sweety.launcher.update.*;
-import dev.sweety.netty.messaging.model.Messenger;
-import dev.sweety.patch.applier.PatchApplier;
-import dev.sweety.patch.hash.Sha256Hash;
-import dev.sweety.patch.model.type.PatchTypes;
-import dev.sweety.versioning.protocol.PacketRegistry;
-import dev.sweety.versioning.protocol.handshake.State;
 import dev.sweety.versioning.version.artifact.Artifact;
 
 import java.nio.file.Path;
-import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
 public class MainLauncher {
 
@@ -23,46 +13,25 @@ public class MainLauncher {
         final Path appJar = Path.of("app.jar");
         final Path selfJar = Path.of("launcher.jar");
 
-        final AtomicReference<LauncherConfig> config = new AtomicReference<>(LauncherConfig.load(configFile));
+        Map<Artifact, Path> artifacts = new HashMap<>();
+        artifacts.put(Artifact.APP, appJar);
+        artifacts.put(Artifact.LAUNCHER, selfJar);
 
-        final Runnable save = () -> config.get().save(configFile);
+        final SweetyLauncher launcher = new SweetyLauncher(configFile, artifacts);
 
-        final Consumer<State> handshake = state -> {
-            if (state == null) {
-                System.err.println("Handshake failed with unknown error.");
-                return;
-            }
+        launcher.setHandshakeListener(state -> {
+            if (state == null) return;
             switch (state) {
-                case UNAVAILABLE -> System.out.println("Update server is currently unavailable. Please try again later.");
+                case UNAVAILABLE -> System.out.println("Update server is currently unavailable.");
                 case UP_TO_DATE -> System.out.println("You are up to date!");
-                default -> {
-                    System.out.println("updated");
-                    save.run();
+                case UPDATED -> {
+                    System.out.println("Updates applied successfully.");
+                    launcher.saveConfig();
                 }
             }
-        };
+        });
 
-        final PatchApplier applier = new PatchApplier(PatchTypes.BIN, new Sha256Hash());
-
-        final UpdateManager updateManager = new UpdateManager(config, new EnumMap<>(Map.of(
-                Artifact.APP, appJar,
-                Artifact.LAUNCHER, selfJar
-        )), applier, handshake);
-        final UpdaterClient updater = new UpdaterClient(config, PacketRegistry.REGISTRY, updateManager, save);
-
-        if (appJar.toFile().exists()) {
-            new ProcessBuilder(Path.of(System.getProperty("java.home"), "bin", "java").toString(), "-jar", appJar.toAbsolutePath().toString())
-                    .inheritIO()
-                    .start()
-                    .onExit().thenRun(() -> {
-                        updater.stop();
-                        save.run();
-                        System.exit(0);
-                    });
-        }
-
-        
-        Messenger.init(updater);
+        launcher.start();
+        launcher.launchApp(appJar);
     }
-
 }

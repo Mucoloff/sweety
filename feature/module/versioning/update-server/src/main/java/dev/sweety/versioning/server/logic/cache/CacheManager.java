@@ -1,26 +1,24 @@
 package dev.sweety.versioning.server.logic.cache;
 
 import dev.sweety.versioning.server.logic.storage.Storage;
-import dev.sweety.versioning.version.artifact.Artifact;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.EnumMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class CacheManager {
 
-    private final EnumMap<Artifact, Path> artifacts;
+    private final Storage storage;
     private final ConcurrentHashMap<CacheKey, Object> locks = new ConcurrentHashMap<>();
 
     public CacheManager(Storage storage) {
-        this.artifacts = storage.artifacts();
+        this.storage = storage;
     }
 
     public byte[] getOrCreate(CacheKey key, CacheProducer producer) throws IOException {
-        Path artifactRoot = artifacts.get(key.artifact());
+        Path artifactRoot = storage.resolveArtifactPath(key.artifact());
         Path cachedPath = key.toPath(artifactRoot);
         Path tempPath = cachedPath.resolveSibling(cachedPath.getFileName() + ".tmp");
 

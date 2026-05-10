@@ -19,6 +19,9 @@
             <option value="$PROJECT_DIR$/feature/event/impl" />
             <option value="$PROJECT_DIR$/feature/module" />
             <option value="$PROJECT_DIR$/feature/module/extension" />
+            <option value="$PROJECT_DIR$/feature/module/extension-versioning" />
+            <option value="$PROJECT_DIR$/feature/module/extension-versioning/api" />
+            <option value="$PROJECT_DIR$/feature/module/extension-versioning/manager" />
             <option value="$PROJECT_DIR$/feature/module/extension/api" />
             <option value="$PROJECT_DIR$/feature/module/extension/common" />
             <option value="$PROJECT_DIR$/feature/module/extension/manager" />

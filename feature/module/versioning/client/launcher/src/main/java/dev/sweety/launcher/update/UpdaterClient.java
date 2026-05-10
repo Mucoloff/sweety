@@ -4,15 +4,15 @@ import dev.sweety.launcher.config.LauncherConfig;
 import dev.sweety.netty.messaging.impl.SimpleClient;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.versioning.protocol.handshake.*;
 import dev.sweety.versioning.protocol.update.ReleaseBroadcastType;
 import dev.sweety.versioning.protocol.update.ReleasePacket;
-import dev.sweety.versioning.version.artifact.Artifact;
-import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.LauncherInfo;
-import dev.sweety.versioning.protocol.handshake.*;
+import dev.sweety.versioning.version.ReleaseInfo;
+import dev.sweety.versioning.version.artifact.Artifact;
 import io.netty.channel.ChannelHandlerContext;
 
-import java.util.EnumMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
@@ -52,13 +52,13 @@ public class UpdaterClient extends SimpleClient {
             final HandshakeResponse response = transaction.getResponse();
 
             final State state = response.getState();
-            EnumMap<Artifact, ResponseData> versions = response.getVersions();
+            Map<Artifact, ResponseData> versions = response.getVersions();
 
             switch (state) {
                 case UPDATED -> {
-                    for (Artifact artifact : Artifact.values()) {
-                        ResponseData data = versions.get(artifact);
-                        if (data == null) continue;
+                    for (Map.Entry<Artifact, ResponseData> entry : versions.entrySet()) {
+                        Artifact artifact = entry.getKey();
+                        ResponseData data = entry.getValue();
                         updateManager.downloadUpdate(artifact, data.token(), data.version(), data.type());
                         config.getAndUpdate(conf -> conf.with(artifact, data.version()));
                     }
@@ -77,7 +77,6 @@ public class UpdaterClient extends SimpleClient {
                 System.out.println("Current version: " + config.versions().get(artifact) + " " + config.channel());
                 System.out.println("Target update version: " + info);
                 System.out.println("Broadcast type: " + releasePacket.type());
-                //todo remove
             }
 
             this.requestDownload.accept(ctx, config.info());

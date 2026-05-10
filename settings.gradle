@@ -26,6 +26,10 @@ include 'feature:module:versioning:client:app'
 include 'feature:module:versioning:client:launcher'
 include 'feature:module:versioning:update-server'
 
+include 'feature:module:extension-versioning'
+include 'feature:module:extension-versioning:api'
+include 'feature:module:extension-versioning:manager'
+
 
 include 'feature:service'
 include 'feature:service:api'
