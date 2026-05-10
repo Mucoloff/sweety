@@ -52,7 +52,6 @@ public class GenericServer extends SimpleServer {
     @Override
     public void onPacketReceive(ChannelHandlerContext ctx, dev.sweety.netty.packet.model.Packet packet) {
         if (packetReceiveHandler != null) packetReceiveHandler.accept(ctx, packet);
-        else super.onPacketReceive(ctx, packet);
     }
 
     @Override

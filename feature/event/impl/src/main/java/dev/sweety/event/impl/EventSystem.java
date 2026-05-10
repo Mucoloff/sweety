@@ -1,5 +1,7 @@
 package dev.sweety.event.impl;
 
+import org.jetbrains.annotations.NotNull;
+
 import dev.sweety.event.api.IEvent;
 import dev.sweety.event.api.IEventSystem;
 import dev.sweety.event.api.listener.LinkEvent;
@@ -28,7 +30,10 @@ public class EventSystem implements IEventSystem {
     private static final Map<Class<?>, Object> CONTAINER_CACHE = new ConcurrentHashMap<>();
 
     @Override
-    public <T extends IEvent> void subscribe(final Class<T> eventType, final Listener<T> listener, int priority, State state) {
+    public <T extends IEvent> void subscribe(@NotNull final Class<T> eventType, @NotNull final Listener<T> listener, int priority, @NotNull State state) {
+        java.util.Objects.requireNonNull(eventType, "eventType cannot be null");
+        java.util.Objects.requireNonNull(listener, "listener cannot be null");
+        java.util.Objects.requireNonNull(state, "state cannot be null");
         final List<EventCallback<?>> callSites = this.callSiteMap.computeIfAbsent(eventType, k -> new CopyOnWriteArrayList<>());
         final Object container = CONTAINER_CACHE.computeIfAbsent(eventType, k -> new Object());
         callSites.add(new EventCallback<>(container, listener, priority, state));
@@ -36,7 +41,8 @@ public class EventSystem implements IEventSystem {
     }
 
     @Override
-    public <T extends IEvent> dev.sweety.event.api.SubscriptionBuilder<T> on(Class<T> eventType) {
+    public <T extends IEvent> dev.sweety.event.api.SubscriptionBuilder<T> on(@NotNull Class<T> eventType) {
+        java.util.Objects.requireNonNull(eventType, "eventType cannot be null");
         return new SubscriptionBuilderImpl<>(this, eventType);
     }
 
@@ -77,7 +83,8 @@ public class EventSystem implements IEventSystem {
 
 
     @Override
-    public void subscribe(Object container) {
+    public void subscribe(@NotNull Object container) {
+        java.util.Objects.requireNonNull(container, "container cannot be null");
         for (final Field field : container.getClass().getDeclaredFields()) {
             final LinkEvent annotation = field.getAnnotation(LinkEvent.class);
             if (annotation == null) continue;
@@ -114,9 +121,12 @@ public class EventSystem implements IEventSystem {
     }
 
     @Override
-    public <T extends IEvent> T dispatch(T event) {
+    public <T extends IEvent> T dispatch(@NotNull T event) {
+        java.util.Objects.requireNonNull(event, "event cannot be null");
         event.setCancelled(false);
-        event.setChanged(false);
+        if (event instanceof dev.sweety.event.api.Event e) {
+            e.setChanged(false);
+        }
 
         final int hash = event.hashCode();
         final List<EventCallback<?>> callbacks = this.callSiteMap.get(event.getClass());
@@ -132,7 +142,11 @@ public class EventSystem implements IEventSystem {
                 cb.listener().call(event);
             }
 
-            if (hash != event.hashCode()) event.setChanged(true);
+            if (hash != event.hashCode()) {
+                if (event instanceof dev.sweety.event.api.Event e) {
+                    e.setChanged(true);
+                }
+            }
             if (event.isCancelled()) break;
         }
         return event;

@@ -13,11 +13,12 @@ public class DependencyInjector {
 
     private final ServiceRegistry registry;
 
-    public DependencyInjector(ServiceRegistry registry) {
-        this.registry = registry;
+    public DependencyInjector(@NotNull ServiceRegistry registry) {
+        this.registry = java.util.Objects.requireNonNull(registry, "registry cannot be null");
     }
 
     public <T> T instantiate(@NotNull Class<T> type) {
+        java.util.Objects.requireNonNull(type, "type cannot be null");
         try {
             T instance = createInstance(type);
             injectFields(instance);

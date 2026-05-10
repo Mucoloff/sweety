@@ -51,15 +51,13 @@ public class Event implements IEvent {
 
     @Override
     public final boolean equals(Object o) {
+        if (this == o) return true;
         if (!(o instanceof Event event)) return false;
-        return isCancelled() == event.isCancelled() && isChanged() == event.isChanged() && isPre() == event.isPre();
+        return cancelled == event.cancelled && changed == event.changed && pre == event.pre;
     }
 
     @Override
     public int hashCode() {
-        int result = Boolean.hashCode(isCancelled());
-        result = 31 * result + Boolean.hashCode(isChanged());
-        result = 31 * result + Boolean.hashCode(isPre());
-        return result;
+        return java.util.Objects.hash(cancelled, changed, pre);
     }
 }

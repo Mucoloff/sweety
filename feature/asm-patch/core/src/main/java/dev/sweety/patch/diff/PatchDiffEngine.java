@@ -8,6 +8,7 @@ import dev.sweety.patch.model.PatchOperation;
 import dev.sweety.patch.model.AddOperation;
 import dev.sweety.patch.model.DeleteOperation;
 import dev.sweety.patch.model.ModifyOperation;
+import org.jetbrains.annotations.NotNull;
 
 import com.github.difflib.DiffUtils;
 import com.github.difflib.UnifiedDiffUtils;
@@ -19,12 +20,17 @@ public class PatchDiffEngine {
     private final HashFunction hashFunction;
     private final ClassNormalizer normalizer;
 
-    public PatchDiffEngine(HashFunction hashFunction, ClassNormalizer classNormalizer) {
-        this.hashFunction = hashFunction;
+    public PatchDiffEngine(@NotNull HashFunction hashFunction, ClassNormalizer classNormalizer) {
+        this.hashFunction = java.util.Objects.requireNonNull(hashFunction, "hashFunction cannot be null");
         this.normalizer = classNormalizer;
     }
 
-    public Patch diff(Archive oldArchive, Archive newArchive, String fromVersion, String toVersion) {
+    public Patch diff(@NotNull Archive oldArchive, @NotNull Archive newArchive, @NotNull String fromVersion, @NotNull String toVersion) {
+        java.util.Objects.requireNonNull(oldArchive, "oldArchive cannot be null");
+        java.util.Objects.requireNonNull(newArchive, "newArchive cannot be null");
+        java.util.Objects.requireNonNull(fromVersion, "fromVersion cannot be null");
+        java.util.Objects.requireNonNull(toVersion, "toVersion cannot be null");
+        
         Map<String, byte[]> oldEntries = oldArchive.entries();
         Map<String, byte[]> newEntries = newArchive.entries();
 

@@ -73,9 +73,14 @@ public class AltStorage {
 
     @Override
     public final boolean equals(Object o) {
+        if (this == o) return true;
         if (!(o instanceof AltStorage that)) return false;
 
-        return Objects.equals(username, that.username) && Objects.equals(uuid, that.uuid) && Objects.equals(accessToken, that.accessToken) && Objects.equals(refreshToken, that.refreshToken) && type == that.type;
+        return Objects.equals(username, that.username) && 
+               Objects.equals(uuid, that.uuid) && 
+               Objects.equals(accessToken, that.accessToken) && 
+               Objects.equals(refreshToken, that.refreshToken) && 
+               type == that.type;
     }
 
     @Override
@@ -91,11 +96,6 @@ public class AltStorage {
 
     @Override
     public int hashCode() {
-        int result = Objects.hashCode(username);
-        result = 31 * result + Objects.hashCode(uuid);
-        result = 31 * result + Objects.hashCode(accessToken);
-        result = 31 * result + Objects.hashCode(refreshToken);
-        result = 31 * result + Objects.hashCode(type);
-        return result;
+        return Objects.hash(username, uuid, accessToken, refreshToken, type);
     }
 }
