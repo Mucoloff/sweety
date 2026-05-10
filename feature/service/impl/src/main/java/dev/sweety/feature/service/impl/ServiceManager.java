@@ -16,6 +16,7 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
     private final Map<ServiceKey<?>, Provider<?>> services = new ConcurrentHashMap<>();
+    private final DependencyInjector injector = new DependencyInjector(this);
 
     private void ensureOpen() {
         if (closed.get()) throw new IllegalStateException("ServiceManager is closed");
@@ -68,6 +69,7 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
     @Nullable
     public <T> T put(@NotNull final ServiceKey<T> key, final T service) {
         ensureOpen();
+        if (service instanceof Service s) s.onEnable();
         return put(key, singleton(service));
     }
 
@@ -76,7 +78,12 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
         ensureOpen();
         // noinspection unchecked
         final Provider<T> provider = (Provider<T>) services.put(key, service);
-        return provider == null ? null : provider.get();
+        T value = provider == null ? null : provider.get();
+        if (value instanceof Service s) s.onDisable();
+        
+        // If it's a provider, we might want to enable the new value if it's already instantiated
+        // But providers are usually lazy. Let's stick to direct instances for lifecycle for now.
+        return value;
     }
 
     @Nullable
@@ -94,12 +101,25 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
     }
 
     @Override
+    public <T> T registerByClass(Class<T> type) {
+        ensureOpen();
+        T instance = injector.instantiate(type);
+        put(type, instance);
+        return instance;
+    }
+
+    @Override
     public void close() {
         if (closed.get()) return;
         closed.set(true);
 
         services.values().forEach(provider -> {
             Object value = provider.get();
+            if (value instanceof Service s) {
+                try {
+                    s.onDisable();
+                } catch (Exception ignored) {}
+            }
             if (value instanceof AutoCloseable) {
                 try {
                     ((AutoCloseable) value).close();

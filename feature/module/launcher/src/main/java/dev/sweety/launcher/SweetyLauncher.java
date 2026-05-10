@@ -1,5 +1,6 @@
 package dev.sweety.launcher;
 
+import dev.sweety.extension.versioning.UpdateableExtensionManager;
 import dev.sweety.launcher.config.LauncherConfig;
 import dev.sweety.launcher.extension.LauncherExtension;
 import dev.sweety.launcher.update.UpdateManager;
@@ -12,9 +13,9 @@ import dev.sweety.versioning.protocol.PacketRegistry;
 import dev.sweety.versioning.protocol.handshake.State;
 import dev.sweety.versioning.version.artifact.Artifact;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -26,7 +27,7 @@ public class SweetyLauncher {
     private final UpdateManager updateManager;
     private final UpdaterClient updater;
     private final PatchApplier applier;
-    //private final ExtensionManager<LauncherExtension> extensionManager;
+    private final UpdateableExtensionManager<LauncherExtension> extensionManager;
 
     private Consumer<State> handshakeListener;
 
@@ -41,7 +42,7 @@ public class SweetyLauncher {
 
         this.updater = new UpdaterClient(config, PacketRegistry.REGISTRY, updateManager, this::saveConfig);
         
-        //this.extensionManager = new ExtensionManager<>(new File("."), LauncherExtension.class);
+        this.extensionManager = new UpdateableExtensionManager<>(new File("."), LauncherExtension.class);
     }
 
     public void setHandshakeListener(Consumer<State> handshakeListener) {
@@ -49,15 +50,15 @@ public class SweetyLauncher {
     }
 
     public void start() {
-        //this.extensionManager.load();
-        //this.extensionManager.extensions().values().forEach(ext -> ext.init(this, ext.file()));
-        //this.extensionManager.extensions().values().forEach(LauncherExtension::onInitialize);
+        this.extensionManager.load();
+        this.extensionManager.extensions().values().forEach(ext -> ext.init(this));
+        this.extensionManager.extensions().values().forEach(LauncherExtension::onInitialize);
         
         Messenger.init(updater);
     }
 
     public void shutdown() {
-        //this.extensionManager.shutdown();
+        this.extensionManager.shutdown();
         updater.stop();
         saveConfig();
     }
