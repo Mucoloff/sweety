@@ -58,7 +58,7 @@ public class DependencyInjector {
         return (T) injectConstructor.newInstance(params);
     }
 
-    private void injectFields(Object instance) throws IllegalAccessException {
+    public void injectFields(Object instance) throws IllegalAccessException {
         Class<?> clazz = instance.getClass();
         while (clazz != null && clazz != Object.class) {
             for (Field field : clazz.getDeclaredFields()) {

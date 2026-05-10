@@ -59,8 +59,4 @@ public enum MajorVersion implements Version<MajorVersion> {
         return start;
     }
 
-    @Override
-    public int ordinal() {
-        return super.ordinal();
-    }
 }

@@ -135,8 +135,4 @@ public enum MinecraftVersion implements Version<MinecraftVersion> {
         return releaseName;
     }
 
-    @Override
-    public int ordinal() {
-        return super.ordinal();
-    }
 }

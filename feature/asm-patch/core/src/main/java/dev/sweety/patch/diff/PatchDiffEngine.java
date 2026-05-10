@@ -5,6 +5,9 @@ import dev.sweety.patch.hash.HashFunction;
 import dev.sweety.patch.archive.Archive;
 import dev.sweety.patch.model.Patch;
 import dev.sweety.patch.model.PatchOperation;
+import dev.sweety.patch.model.AddOperation;
+import dev.sweety.patch.model.DeleteOperation;
+import dev.sweety.patch.model.ModifyOperation;
 
 import com.github.difflib.DiffUtils;
 import com.github.difflib.UnifiedDiffUtils;
@@ -22,12 +25,10 @@ public class PatchDiffEngine {
     }
 
     public Patch diff(Archive oldArchive, Archive newArchive, String fromVersion, String toVersion) {
-
         Map<String, byte[]> oldEntries = oldArchive.entries();
         Map<String, byte[]> newEntries = newArchive.entries();
 
         List<PatchOperation> ops = new ArrayList<>();
-        // Use TreeSet for deterministic iteration order
         Set<String> allPaths = new TreeSet<>();
         allPaths.addAll(oldEntries.keySet());
         allPaths.addAll(newEntries.keySet());
@@ -37,13 +38,10 @@ public class PatchDiffEngine {
             byte[] newData = newEntries.get(path);
 
             if (oldData == null && newData != null) {
-                // ADD
                 ops.add(add(path, newData));
             } else if (oldData != null && newData == null) {
-                // DELETE
                 ops.add(delete(path));
             } else if (oldData != null) {
-                // MODIFY
                 if (shouldModify(path, oldData, newData)) {
                     ops.add(modify(path, oldData, newData));
                 }
@@ -51,10 +49,6 @@ public class PatchDiffEngine {
         }
 
         return new Patch(fromVersion, toVersion, ops);
-    }
-
-    public ClassNormalizer normalizer() {
-        return normalizer;
     }
 
     private boolean shouldModify(String path, byte[] oldData, byte[] newData) {
@@ -82,33 +76,33 @@ public class PatchDiffEngine {
                 List<String> newLines = toLines(newData);
 
                 com.github.difflib.patch.Patch<String> patch = DiffUtils.diff(originalLines, newLines);
+                if (patch.getDeltas().isEmpty()) return null; // Should not happen if shouldModify is true
+
                 List<String> unifiedDiff = UnifiedDiffUtils.generateUnifiedDiff(path, path, originalLines, patch, 3);
                 
+                // Verification
                 List<String> patchedLines = DiffUtils.patch(originalLines, patch);
-                StringBuilder sbCheck = new StringBuilder();
-                for (int i = 0; i < patchedLines.size(); i++) {
-                    sbCheck.append(patchedLines.get(i));
-                    if (i < patchedLines.size() - 1) {
-                        sbCheck.append("\n");
-                    }
-                }
-                sbCheck.append("\n");
-                
-                byte[] reconstructed = sbCheck.toString().getBytes(StandardCharsets.UTF_8);
-                
-                if (Arrays.equals(reconstructed, newData)) {
+                if (compareLines(patchedLines, newLines)) {
                     StringBuilder sb = new StringBuilder();
                     for (String line : unifiedDiff) {
                         sb.append(line).append("\n");
                     }
                     return new ModifyOperation(path, hash, sb.toString().getBytes(StandardCharsets.UTF_8), PatchOperation.Method.TEXT_DIFF);
                 }
-            } catch (Exception e) {
-                // Fallback to replacement
+            } catch (Exception ignored) {
+                // Fallback
             }
         }
 
         return new ModifyOperation(path, hash, newData, PatchOperation.Method.REPLACEMENT);
+    }
+
+    private boolean compareLines(List<String> a, List<String> b) {
+        if (a.size() != b.size()) return false;
+        for (int i = 0; i < a.size(); i++) {
+            if (!a.get(i).equals(b.get(i))) return false;
+        }
+        return true;
     }
 
     private PatchOperation delete(String path) {
@@ -117,19 +111,13 @@ public class PatchDiffEngine {
 
     private boolean isTextFile(String path) {
         String p = path.toLowerCase();
-        return p.endsWith(".json") ||
-                p.endsWith(".yaml") ||
-                p.endsWith(".yml") ||
-                p.endsWith(".txt") ||
-                p.endsWith(".properties") ||
-                p.endsWith(".xml") ||
-                p.endsWith(".cfg") ||
-                p.endsWith(".conf");
+        return p.endsWith(".json") || p.endsWith(".yaml") || p.endsWith(".yml") ||
+                p.endsWith(".txt") || p.endsWith(".properties") || p.endsWith(".xml") ||
+                p.endsWith(".cfg") || p.endsWith(".conf") || p.endsWith(".md");
     }
 
     private List<String> toLines(byte[] data) {
         String content = new String(data, StandardCharsets.UTF_8);
         return Arrays.asList(content.split("\\r?\\n", -1));
     }
-
 }
