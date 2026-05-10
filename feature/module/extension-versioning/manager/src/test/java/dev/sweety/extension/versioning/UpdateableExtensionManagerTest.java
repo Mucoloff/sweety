@@ -16,7 +16,7 @@ class UpdateableExtensionManagerTest {
 
     @Test
     void testFileResolution() throws IOException {
-        UpdateableExtensionManager manager = new UpdateableExtensionManager(tempDir.toFile());
+        UpdateableExtensionManager<?> manager = new UpdateableExtensionManager<>(tempDir.toFile());
         
         Path jarPath = tempDir.resolve("test.jar");
         Files.createFile(jarPath);
