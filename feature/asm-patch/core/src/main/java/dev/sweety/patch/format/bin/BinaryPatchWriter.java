@@ -38,19 +38,19 @@ public class BinaryPatchWriter implements PatchWriter {
 
     private void writeOperation(DataOutputStream out, PatchOperation op) throws IOException {
         // Type
-        out.writeByte(op.getType().ordinal());
+        out.writeByte(op.type().ordinal());
 
         // Method
-        out.writeByte(op.getMethod().ordinal());
+        out.writeByte(op.method().ordinal());
 
         // Path
-        writeString(out, op.getPath());
+        writeString(out, op.path());
 
         // Hash
-        writeString(out, op.getHash());
+        writeString(out, op.hash());
 
         // Data
-        byte[] data = op.getData();
+        byte[] data = op.data();
         if (data == null) {
             writeVarInt(out, -1);
             return;

@@ -40,11 +40,11 @@ public class JsonPatchWriter implements PatchWriter {
     private void writeOperation(JsonArray operations, PatchOperation op) {
         JsonObject operation = new JsonObject();
 
-        operation.addProperty("type", op.getType().name().toLowerCase());
-        operation.addProperty("path", op.getPath());
-        operation.addProperty("hash", op.getHash());
+        operation.addProperty("type", op.type().name().toLowerCase());
+        operation.addProperty("path", op.path());
+        operation.addProperty("hash", op.hash());
 
-        byte[] data = op.getData();
+        byte[] data = op.data();
         if (data != null) {
 
             boolean zip = false;

@@ -7,6 +7,9 @@ import dev.sweety.patch.format.Header;
 import dev.sweety.patch.format.PatchReader;
 import dev.sweety.patch.model.Patch;
 import dev.sweety.patch.model.PatchOperation;
+import dev.sweety.patch.model.AddOperation;
+import dev.sweety.patch.model.ModifyOperation;
+import dev.sweety.patch.model.DeleteOperation;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -62,12 +65,11 @@ public class JsonPatchReader implements PatchReader {
         String hash = getOrElse(operation, "hash");
         byte[] data = getOrElse(operation, "data", this::decode);
 
-        return PatchOperation.builder()
-                .type(type)
-                .path(path)
-                .hash(hash)
-                .data(data)
-                .build();
+        return switch (type) {
+            case ADD -> new AddOperation(path, hash, data);
+            case MODIFY -> new ModifyOperation(path, hash, data, PatchOperation.Method.REPLACEMENT);
+            case DELETE -> new DeleteOperation(path, hash);
+        };
     }
 
     private byte[] decode(String zippedBase64) {

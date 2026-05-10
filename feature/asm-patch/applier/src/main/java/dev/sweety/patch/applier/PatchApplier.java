@@ -64,64 +64,65 @@ public class PatchApplier {
         Map<String, byte[]> entries = new TreeMap<>(archive.entries());
 
         for (PatchOperation op : patch.getOperations()) {
-            switch (op.getType()) {
-                case ADD, MODIFY -> {
-                    if (op.getData() == null)
-                        throw new RuntimeException("Invalid patch: Data is missing for " + op.getType() + " operation on " + op.getPath());
-
-                    // Retrieve original data for patching or replacement verification
-                    byte[] originalData = entries.get(op.getPath());
-                    if (originalData == null && op.getType().equals(PatchOperation.Type.MODIFY))
-                        throw new RuntimeException("Original file not found for patch: " + op.getPath());
-
-                    byte[] data;
-
-                    if (op.getMethod() == PatchOperation.Method.TEXT_DIFF) {
-                        try {
-                            List<String> originalLines = toLines(originalData);
-                            List<String> diffLines = toLines(op.getData());
-                            com.github.difflib.patch.Patch<String> patchObj = UnifiedDiffUtils.parseUnifiedDiff(diffLines);
-                            List<String> patchedLines = com.github.difflib.DiffUtils.patch(originalLines, patchObj);
-
-                            // Ricostruisci il file usando newline standard UNIX
-                            StringBuilder sb = new StringBuilder();
-                            for (int i = 0; i < patchedLines.size(); i++) {
-                                sb.append(patchedLines.get(i));
-                                if (i < patchedLines.size() - 1) { // Evita newline extra alla fine se non necessario, ma standard diff di solito ha newline finale
-                                    sb.append("\n");
-                                }
-                            }
-                            // Aggiungi un newline finale se era comune nel formato
-                            sb.append("\n");
-                            
-                            data = sb.toString().getBytes(StandardCharsets.UTF_8);
-                        } catch (Exception e) {
-                            throw new RuntimeException("Failed to apply text diff for " + op.getPath(), e);
-                        }
-                    } else {
-                        data = op.getData();
-                    }
-
-                    // Verify hash if available
-                    if (op.getHash() != null) {
-                        String calculatedHash = hashFunction.calculateHash(data);
-                        if (!calculatedHash.equalsIgnoreCase(op.getHash())) {
-                            throw new RuntimeException("Patch integrity check failed for " + op.getPath()
-                                    + ". Expected hash: " + op.getHash() + ", Actual: " + calculatedHash);
-                        }
-                    }
-
-                    entries.put(op.getPath(), data);
+            switch (op) {
+                case AddOperation(String path, String hash, byte[] data) -> {
+                    verifyAndPut(entries, path, data, hash);
                 }
-                case DELETE -> {
-                    if (!entries.containsKey(op.getPath()))
-                        throw new RuntimeException("Trying to delete non-existing file: " + op.getPath());
-                    entries.remove(op.getPath());
+                case ModifyOperation(String path, String hash, byte[] data, PatchOperation.Method method) -> {
+                    byte[] originalData = entries.get(path);
+                    if (originalData == null)
+                        throw new RuntimeException("Original file not found for modification: " + path);
+
+                    byte[] finalData;
+                    if (method == PatchOperation.Method.TEXT_DIFF) {
+                        finalData = applyTextDiff(path, originalData, data);
+                    } else {
+                        finalData = data;
+                    }
+
+                    verifyAndPut(entries, path, finalData, hash);
+                }
+                case DeleteOperation(String path, String hash) -> {
+                    if (!entries.containsKey(path))
+                        throw new RuntimeException("Trying to delete non-existing file: " + path);
+                    entries.remove(path);
                 }
             }
         }
 
         writeJar(entries, output);
+    }
+
+    private byte[] applyTextDiff(String path, byte[] originalData, byte[] diffData) {
+        try {
+            List<String> originalLines = toLines(originalData);
+            List<String> diffLines = toLines(diffData);
+            com.github.difflib.patch.Patch<String> patchObj = UnifiedDiffUtils.parseUnifiedDiff(diffLines);
+            List<String> patchedLines = com.github.difflib.DiffUtils.patch(originalLines, patchObj);
+
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < patchedLines.size(); i++) {
+                sb.append(patchedLines.get(i));
+                if (i < patchedLines.size() - 1) {
+                    sb.append("\n");
+                }
+            }
+            sb.append("\n");
+            return sb.toString().getBytes(StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to apply text diff for " + path, e);
+        }
+    }
+
+    private void verifyAndPut(Map<String, byte[]> entries, String path, byte[] data, String expectedHash) {
+        if (expectedHash != null) {
+            String calculatedHash = hashFunction.calculateHash(data);
+            if (!calculatedHash.equalsIgnoreCase(expectedHash)) {
+                throw new RuntimeException("Patch integrity check failed for " + path
+                        + ". Expected hash: " + expectedHash + ", Actual: " + calculatedHash);
+            }
+        }
+        entries.put(path, data);
     }
 
     private java.util.List<String> toLines(byte[] data) {

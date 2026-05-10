@@ -1,29 +1,29 @@
 package dev.sweety.patch.model;
 
-import lombok.Builder;
 import lombok.Getter;
-import lombok.AllArgsConstructor;
 
-@Getter
-@Builder
-@AllArgsConstructor
-public class PatchOperation {
+public sealed interface PatchOperation permits AddOperation, ModifyOperation, DeleteOperation {
 
-    public enum Type {
+    enum Type {
         ADD,
         MODIFY,
         DELETE
     }
 
-    public enum Method {
+    enum Method {
         REPLACEMENT,
         TEXT_DIFF
     }
 
-    private Type type;
-    @lombok.Builder.Default
-    private Method method = Method.REPLACEMENT;
-    private String path;
-    private byte[] data;   // null per DELETE
-    private String hash;
+    Type type();
+    String path();
+    String hash();
+    
+    default Method method() {
+        return Method.REPLACEMENT;
+    }
+
+    default byte[] data() {
+        return null;
+    }
 }

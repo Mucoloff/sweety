@@ -70,20 +70,11 @@ public class PatchDiffEngine {
     }
 
     private PatchOperation add(String path, byte[] data) {
-        return PatchOperation.builder()
-                .type(PatchOperation.Type.ADD)
-                .path(path)
-                .data(data)
-                .hash(hashFunction.calculateHash(data))
-                .build();
+        return new AddOperation(path, hashFunction.calculateHash(data), data);
     }
 
     private PatchOperation modify(String path, byte[] oldData, byte[] newData) {
-
-        PatchOperation.PatchOperationBuilder base = PatchOperation.builder()
-                .type(PatchOperation.Type.MODIFY)
-                .path(path)
-                .hash(hashFunction.calculateHash(newData));
+        String hash = hashFunction.calculateHash(newData);
 
         if (isTextFile(path)) {
             try {
@@ -93,9 +84,6 @@ public class PatchDiffEngine {
                 com.github.difflib.patch.Patch<String> patch = DiffUtils.diff(originalLines, newLines);
                 List<String> unifiedDiff = UnifiedDiffUtils.generateUnifiedDiff(path, path, originalLines, patch, 3);
                 
-                // --- VERIFICA PREVENTIVA ---
-                // Verifica che applicando la patch otteniamo esattamente newData byte-per-byte.
-                // Questo protegge da problemi di encoding o line-endings (\r\n vs \n).
                 List<String> patchedLines = DiffUtils.patch(originalLines, patch);
                 StringBuilder sbCheck = new StringBuilder();
                 for (int i = 0; i < patchedLines.size(); i++) {
@@ -104,41 +92,27 @@ public class PatchDiffEngine {
                         sbCheck.append("\n");
                     }
                 }
-                sbCheck.append("\n"); // PatchApplier aggiunge sempre un newline finale
+                sbCheck.append("\n");
                 
                 byte[] reconstructed = sbCheck.toString().getBytes(StandardCharsets.UTF_8);
                 
-                if (!Arrays.equals(reconstructed, newData)) {
-                    // La patch testuale produrrebbe un file diverso (es. line endings). 
-                    // Fallback al replacement binario sicuro.
-                    // System.out.println("Text diff skipped for " + path + " due to binary mismatch (crlf?)");
-                    return base
-                            .method(PatchOperation.Method.REPLACEMENT)
-                            .data(newData)
-                            .build();
+                if (Arrays.equals(reconstructed, newData)) {
+                    StringBuilder sb = new StringBuilder();
+                    for (String line : unifiedDiff) {
+                        sb.append(line).append("\n");
+                    }
+                    return new ModifyOperation(path, hash, sb.toString().getBytes(StandardCharsets.UTF_8), PatchOperation.Method.TEXT_DIFF);
                 }
-                // ---------------------------
-
-                StringBuilder sb = new StringBuilder();
-                for (String line : unifiedDiff) {
-                    sb.append(line).append("\n");
-                }
-
-                return base
-                        .method(PatchOperation.Method.TEXT_DIFF)
-                        .data(sb.toString().getBytes(StandardCharsets.UTF_8))
-                        .build();
-
             } catch (Exception e) {
-                // Fallback a replacement in caso di errore
-                e.printStackTrace();
+                // Fallback to replacement
             }
         }
 
-        return base
-                .method(PatchOperation.Method.REPLACEMENT)
-                .data(newData)
-                .build();
+        return new ModifyOperation(path, hash, newData, PatchOperation.Method.REPLACEMENT);
+    }
+
+    private PatchOperation delete(String path) {
+        return new DeleteOperation(path, null);
     }
 
     private boolean isTextFile(String path) {
@@ -155,17 +129,7 @@ public class PatchDiffEngine {
 
     private List<String> toLines(byte[] data) {
         String content = new String(data, StandardCharsets.UTF_8);
-        // Gestione fine riga universale per evitare problemi di piattaforma
         return Arrays.asList(content.split("\\r?\\n", -1));
-    }
-
-    private PatchOperation delete(String path) {
-        return PatchOperation.builder()
-                .type(PatchOperation.Type.DELETE)
-                .path(path)
-                .data(null)
-                .hash(null)
-                .build();
     }
 
 }
