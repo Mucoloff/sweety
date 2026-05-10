@@ -1,5 +1,6 @@
 package dev.sweety.versioning.server.logic.patch;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import dev.sweety.patch.bytecode.AsmClassNormalizer;
 import dev.sweety.patch.diff.PatchFilter;
@@ -7,10 +8,11 @@ import dev.sweety.patch.filter.DefaultPatchFilter;
 import dev.sweety.patch.generator.PatchGenerator;
 import dev.sweety.patch.hash.Sha256Hash;
 import dev.sweety.patch.model.type.PatchTypes;
+import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.server.logic.cache.CacheKey;
-import dev.sweety.versioning.server.logic.release.ReleaseManager;
 import dev.sweety.versioning.server.logic.storage.Storage;
+import dev.sweety.versioning.version.IReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
@@ -21,10 +23,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.*;
-
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.Optional;
 
 public class PatchManager {
 
@@ -44,20 +45,21 @@ public class PatchManager {
 
     private final PatchGenerator generator = new PatchGenerator(new Sha256Hash(), new AsmClassNormalizer(), PatchTypes.BIN);
 
-    private final EnumMap<Artifact, Path> artifacts;
-    private final ReleaseManager releaseManager;
+    private final Storage storage;
+    private final IReleaseService releaseManager;
 
-    public PatchManager(Storage storage, ReleaseManager releaseManager) {
-        this.artifacts = storage.artifacts();
+    public PatchManager(Storage storage, IReleaseService releaseManager) {
+        this.storage = storage;
         this.releaseManager = releaseManager;
     }
 
     public File generatePatch(CacheKey key, Version from) throws IOException {
-        File cachedPath = key.toPath(artifacts.get(key.artifact())).toFile();
-        File dir = key.toPath(artifacts.get(key.artifact()), "v" + from.toString()).toFile();
+        Path artifactPath = storage.resolveArtifactPath(key.artifact());
+        File cachedPath = key.toPath(artifactPath).toFile();
+        File dir = key.toPath(artifactPath, "v" + from.toString()).toFile();
         dir.mkdirs();
         CacheKey oldKey = new CacheKey(key.artifact(), key.channel(), from, key.clientId());
-        File oldPath = oldKey.toPath(artifacts.get(oldKey.artifact())).toFile();
+        File oldPath = oldKey.toPath(artifactPath).toFile();
 
         return generator.generate(oldPath, cachedPath, dir, key.clientId().toString(), from.toString(), key.version().toString(), ONLY_SIGNATURE);
     }
@@ -99,7 +101,7 @@ public class PatchManager {
         final String fromVer = old.toString();
         final String toVer = latest.toString();
 
-        Path versionRoot = latest.resolve(this.artifacts.get(artifact).resolve(channel.prettyName()));
+        Path versionRoot = latest.resolve(storage.resolveArtifactPath(artifact).resolve(channel.prettyName()));
         File path = versionRoot.resolve("patch").toFile();
         path.mkdirs();
 

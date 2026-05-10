@@ -4,6 +4,9 @@ import dev.sweety.patch.format.Header;
 import dev.sweety.patch.format.PatchReader;
 import dev.sweety.patch.model.Patch;
 import dev.sweety.patch.model.PatchOperation;
+import dev.sweety.patch.model.AddOperation;
+import dev.sweety.patch.model.ModifyOperation;
+import dev.sweety.patch.model.DeleteOperation;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -70,13 +73,11 @@ public class BinaryPatchReader implements PatchReader {
             if (zip) data = Header.unzipFirstFileFromZip(data);
         }
 
-        return PatchOperation.builder()
-                .type(type)
-                .method(method)
-                .path(path)
-                .hash(hash)
-                .data(data)
-                .build();
+        return switch (type) {
+            case ADD -> new AddOperation(path, hash, data);
+            case MODIFY -> new ModifyOperation(path, hash, data, method);
+            case DELETE -> new DeleteOperation(path, hash);
+        };
     }
 
     private String readString(DataInputStream in) throws IOException {

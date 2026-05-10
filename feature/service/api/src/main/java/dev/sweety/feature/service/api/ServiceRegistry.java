@@ -8,6 +8,15 @@ import java.util.Map;
 import java.util.Set;
 
 public interface ServiceRegistry {
+
+    static ServiceRegistry create() {
+        return new dev.sweety.feature.service.impl.ServiceManager();
+    }
+
+    static <T> ServiceRegistry typed(Class<T> baseType) {
+        return new dev.sweety.feature.service.impl.TypedServiceManager<>(baseType);
+    }
+
     @NotNull
     Set<ServiceKey<?>> keySet();
 
@@ -73,5 +82,41 @@ public interface ServiceRegistry {
     @Nullable
     default <T> T putIfAbsent(@NotNull final Class<T> type, final Provider<T> service) {
         return putIfAbsent(ServiceKey.key(type), service);
+    }
+
+    default <T> RegistrationBuilder<T> register(Class<T> type) {
+        return new RegistrationBuilder<>(this, type);
+    }
+
+    class RegistrationBuilder<T> {
+        private final ServiceRegistry registry;
+        private final Class<T> type;
+        private String name;
+
+        public RegistrationBuilder(ServiceRegistry registry, Class<T> type) {
+            this.registry = registry;
+            this.type = type;
+        }
+
+        public RegistrationBuilder<T> named(String name) {
+            this.name = name;
+            return this;
+        }
+
+        public T with(T service) {
+            return registry.put(ServiceKey.key(type, name), service);
+        }
+
+        public T with(Provider<T> provider) {
+            return registry.put(ServiceKey.key(type, name), provider);
+        }
+
+        public T ifAbsent(T service) {
+            return registry.putIfAbsent(ServiceKey.key(type, name), service);
+        }
+
+        public T ifAbsent(Provider<T> provider) {
+            return registry.putIfAbsent(ServiceKey.key(type, name), provider);
+        }
     }
 }

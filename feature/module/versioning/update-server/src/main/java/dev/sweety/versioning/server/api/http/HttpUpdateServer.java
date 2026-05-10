@@ -4,15 +4,16 @@ import com.sun.net.httpserver.HttpServer;
 import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.server.api.http.handler.RollbackHandler;
 import dev.sweety.versioning.server.api.http.handler.WebhookHandler;
+import dev.sweety.versioning.server.logic.actions.ReleaseBroadcastConsumer;
+import dev.sweety.versioning.server.logic.artifact.ArtifactRegistry;
 import dev.sweety.versioning.server.logic.cache.CacheManager;
 import dev.sweety.versioning.server.logic.client.ClientRegistry;
 import dev.sweety.versioning.server.logic.download.DownloadHandler;
 import dev.sweety.versioning.server.logic.download.DownloadManager;
 import dev.sweety.versioning.server.logic.patch.PatchManager;
-import dev.sweety.versioning.server.logic.actions.ReleaseBroadcastConsumer;
-import dev.sweety.versioning.server.logic.release.ReleaseManager;
 import dev.sweety.versioning.server.logic.webhook.WebhookIdempotencyStore;
 import dev.sweety.versioning.server.logic.webhook.WebhookRateLimiter;
+import dev.sweety.versioning.version.IReleaseService;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -25,8 +26,8 @@ public class HttpUpdateServer {
 
     public HttpUpdateServer(int port,
                             final String rollbackToken,
-                            final String webhookSecret,
-                            ReleaseManager releaseManager,
+                            final ArtifactRegistry artifactRegistry,
+                            IReleaseService releaseManager,
                             PatchManager patchManager,
                             DownloadManager downloadManager,
                             CacheManager cacheManager,
@@ -36,7 +37,7 @@ public class HttpUpdateServer {
 
 
         this.rollbackHandler = new RollbackHandler(rollbackToken, releaseManager);
-        this.webhookHandler = new WebhookHandler(webhookSecret, releaseManager, patchManager, new WebhookIdempotencyStore(Settings.DEFAULT_TTL), new WebhookRateLimiter(Settings.RATE_LIMIT_WINDOW, Settings.GLOBAL_RATE_LIMIT, Settings.PER_IP_RATE_LIMIT));
+        this.webhookHandler = new WebhookHandler(artifactRegistry, releaseManager, patchManager, new WebhookIdempotencyStore(Settings.DEFAULT_TTL), new WebhookRateLimiter(Settings.RATE_LIMIT_WINDOW, Settings.GLOBAL_RATE_LIMIT, Settings.PER_IP_RATE_LIMIT));
 
         this.server.createContext("/download", new DownloadHandler(downloadManager, cacheManager, clientRegistry, releaseManager, patchManager));
         this.server.createContext("/rollback", this.rollbackHandler);

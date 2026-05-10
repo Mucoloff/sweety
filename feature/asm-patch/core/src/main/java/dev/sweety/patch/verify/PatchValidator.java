@@ -19,9 +19,9 @@ public class PatchValidator {
         Map<String, byte[]> entries = resultArchive.entries();
 
         for (PatchOperation op : patch.getOperations()) {
-            String path = op.getPath();
+            String path = op.path();
 
-            if (op.getType() == PatchOperation.Type.DELETE) {
+            if (op.type() == PatchOperation.Type.DELETE) {
                 if (entries.containsKey(path)) {
                     throw new RuntimeException("Validation failed: File " + path + " should be deleted but exists.");
                 }
@@ -32,7 +32,7 @@ public class PatchValidator {
                 }
 
                 byte[] actualData = entries.get(path);
-                String expectedHash = op.getHash();
+                String expectedHash = op.hash();
                 String actualHash = hashFunction.calculateHash(actualData);
 
                 if (!expectedHash.equalsIgnoreCase(actualHash)) {

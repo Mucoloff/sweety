@@ -5,15 +5,10 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 
-public final class ServiceKey<T> {
-    private final Class<T> type;
-    private final int hashCode;
-    private final String name;
+public record ServiceKey<T>(@NotNull Class<T> type, @Nullable String name) {
 
-    private ServiceKey(final Class<T> type, final String name) {
-        this.type = type;
-        this.name = name;
-        this.hashCode = Objects.hash(type, name);
+    public ServiceKey {
+        Objects.requireNonNull(type, "type cannot be null");
     }
 
     @NotNull
@@ -26,26 +21,8 @@ public final class ServiceKey<T> {
         return new ServiceKey<>(type, name);
     }
 
-    @NotNull
-    public Class<T> getType() {
-        return this.type;
-    }
-
-    @Nullable
-    public String getName() {
-        return this.name;
-    }
-
-    public boolean equals(final Object obj) {
-        if (!(obj instanceof ServiceKey<?> that)) return false;
-        return this.getType() == that.getType() && Objects.equals(this.getName(), that.getName());
-    }
-
-    public int hashCode() {
-        return this.hashCode;
-    }
-
+    @Override
     public String toString() {
-        return this.name == null ? this.type.getName() : this.type.getName() + "(" + this.name + ")";
+        return name == null ? type.getName() : type.getName() + "(" + name + ")";
     }
 }

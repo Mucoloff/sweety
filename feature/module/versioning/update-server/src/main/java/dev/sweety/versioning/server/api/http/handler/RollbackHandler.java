@@ -5,12 +5,13 @@ import com.sun.net.httpserver.HttpHandler;
 import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.versioning.protocol.update.ReleaseBroadcastType;
 import dev.sweety.versioning.server.logic.actions.ReleaseBroadcastConsumer;
-import dev.sweety.versioning.server.logic.release.ReleaseManager;
 import dev.sweety.versioning.server.util.http.HttpUtils;
 import dev.sweety.versioning.server.util.http.Multipart;
+import dev.sweety.versioning.version.IReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.channel.Channel;
+
 import java.io.IOException;
 
 import static dev.sweety.versioning.server.util.http.HttpUtils.constantTimeEquals;
@@ -21,7 +22,7 @@ public class RollbackHandler implements HttpHandler {
     private static final SimpleLogger LOGGER = new SimpleLogger(RollbackHandler.class);
 
     private final String rollbackToken;
-    private final ReleaseManager releaseManager;
+    private final IReleaseService releaseManager;
 
     private ReleaseBroadcastConsumer broadcast;
 
@@ -30,7 +31,7 @@ public class RollbackHandler implements HttpHandler {
         return this;
     }
 
-    public RollbackHandler(String rollbackToken, ReleaseManager releaseManager) {
+    public RollbackHandler(String rollbackToken, IReleaseService releaseManager) {
         this.rollbackToken = rollbackToken;
         this.releaseManager = releaseManager;
     }
