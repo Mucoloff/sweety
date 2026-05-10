@@ -28,8 +28,8 @@ public class ExtensionManager<T extends Extension> {
      */
 
     protected final File rootDir;
-    private final Map<String, T> extensions = new HashMap<>();
-    private final Map<T, ExtensionInfo> infos = new HashMap<>();
+    private final Map<String, T> extensions = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<T, ExtensionInfo> infos = new java.util.concurrent.ConcurrentHashMap<>();
     private final SimpleLogger logger = new SimpleLogger(ExtensionManager.class);
     private final Class<T> extensionClass;
     private final String extensionName;
@@ -94,11 +94,16 @@ public class ExtensionManager<T extends Extension> {
 
     public void load() {
         final File[] jars = this.rootDir.listFiles((dir, name) -> name.endsWith(".jar"));
-
         if (jars == null) return;
 
-        for (final File jarFile : jars) {
-            loadExtension(jarFile);
+        try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
+            for (final File jarFile : jars) {
+                scope.fork(() -> loadExtension(jarFile));
+            }
+            scope.join();
+            scope.throwIfFailed();
+        } catch (Exception e) {
+            logger.error("Failed to load extensions in parallel", e);
         }
     }
 
