@@ -5,6 +5,7 @@ import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.channel.Channel;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -20,9 +21,9 @@ public class ReleaseState {
     private final Path metadata;
     private final Path root;
 
-    ReleaseState(Artifact artifact, Storage storage) {
-        this.metadata = storage.metadata().get(artifact);
-        this.root = storage.artifacts().get(artifact);
+    ReleaseState(Artifact artifact, Storage storage) throws IOException {
+        this.metadata = storage.resolveMetadataPath(artifact);
+        this.root = storage.resolveArtifactPath(artifact);
         for (Channel channel : Channel.values()) {
             history.put(channel, new ArrayDeque<>());
         }

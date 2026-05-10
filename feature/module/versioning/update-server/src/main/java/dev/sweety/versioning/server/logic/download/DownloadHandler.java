@@ -7,20 +7,21 @@ import dev.sweety.patch.format.PatchEditor;
 import dev.sweety.patch.model.Patch;
 import dev.sweety.patch.model.type.PatchTypes;
 import dev.sweety.util.logger.SimpleLogger;
-import dev.sweety.versioning.exception.*;
+import dev.sweety.versioning.exception.InvalidTokenException;
+import dev.sweety.versioning.exception.TokenExpiredException;
 import dev.sweety.versioning.server.Settings;
-import dev.sweety.versioning.server.logic.patch.PatchManager;
-import dev.sweety.versioning.server.logic.release.ReleaseManager;
 import dev.sweety.versioning.server.logic.cache.CacheKey;
 import dev.sweety.versioning.server.logic.cache.CacheManager;
 import dev.sweety.versioning.server.logic.client.ClientRegistry;
+import dev.sweety.versioning.server.logic.download.token.Token;
 import dev.sweety.versioning.server.logic.patch.JarInjector;
 import dev.sweety.versioning.server.logic.patch.PatchDefinition;
-import dev.sweety.versioning.server.logic.download.token.Token;
+import dev.sweety.versioning.server.logic.patch.PatchManager;
 import dev.sweety.versioning.server.util.http.HttpUtils;
 import dev.sweety.versioning.util.Utils;
-import dev.sweety.versioning.version.artifact.Artifact;
+import dev.sweety.versioning.version.IReleaseService;
 import dev.sweety.versioning.version.Version;
+import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.channel.Channel;
 
 import java.io.File;
@@ -38,10 +39,10 @@ public class DownloadHandler implements HttpHandler {
     private final DownloadManager downloadManager;
     private final CacheManager cacheManager;
     private final ClientRegistry clientRegistry;
-    private final ReleaseManager releaseManager;
+    private final IReleaseService releaseManager;
     private final PatchManager patchManager;
 
-    public DownloadHandler(DownloadManager downloadManager, CacheManager cacheManager, ClientRegistry clientRegistry, ReleaseManager releaseManager, PatchManager patchManager) {
+    public DownloadHandler(DownloadManager downloadManager, CacheManager cacheManager, ClientRegistry clientRegistry, IReleaseService releaseManager, PatchManager patchManager) {
         this.downloadManager = downloadManager;
         this.cacheManager = cacheManager;
         this.clientRegistry = clientRegistry;

@@ -5,11 +5,12 @@ import com.sun.net.httpserver.HttpHandler;
 import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.versioning.protocol.update.ReleaseBroadcastType;
 import dev.sweety.versioning.server.logic.actions.ReleaseBroadcastConsumer;
+import dev.sweety.versioning.server.logic.artifact.ArtifactRegistry;
 import dev.sweety.versioning.server.logic.patch.PatchManager;
-import dev.sweety.versioning.server.logic.release.ReleaseManager;
 import dev.sweety.versioning.server.logic.webhook.WebhookIdempotencyStore;
 import dev.sweety.versioning.server.logic.webhook.WebhookRateLimiter;
 import dev.sweety.versioning.server.util.http.Multipart;
+import dev.sweety.versioning.version.IReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
@@ -20,12 +21,11 @@ import java.io.IOException;
 import static dev.sweety.versioning.server.util.http.HttpUtils.sendText;
 import static dev.sweety.versioning.server.util.http.HttpUtils.verifySignature;
 
-
 public class WebhookHandler implements HttpHandler {
     private static final SimpleLogger LOGGER = new SimpleLogger(WebhookHandler.class);
 
-    private final String secret;
-    private final ReleaseManager releaseManager;
+    private final ArtifactRegistry artifactRegistry;
+    private final IReleaseService releaseManager;
 
     private final WebhookIdempotencyStore idempotencyStore;
     private final WebhookRateLimiter rateLimiter;
@@ -39,12 +39,12 @@ public class WebhookHandler implements HttpHandler {
     }
 
     public WebhookHandler(
-            String secret,
-            ReleaseManager releaseManager,
+            ArtifactRegistry artifactRegistry,
+            IReleaseService releaseManager,
             PatchManager patchManager, WebhookIdempotencyStore idempotencyStore,
             WebhookRateLimiter rateLimiter
     ) {
-        this.secret = secret;
+        this.artifactRegistry = artifactRegistry;
         this.releaseManager = releaseManager;
         this.patchManager = patchManager;
         this.idempotencyStore = idempotencyStore;
@@ -75,30 +75,28 @@ public class WebhookHandler implements HttpHandler {
             }
 
             byte[] body = exchange.getRequestBody().readNBytes(50 * 1024 * 1024);
+            Multipart form = Multipart.parse(exchange, body);
+
+            String art = form.getField("artifact");
+            if (art == null || art.isBlank()) {
+                sendText(exchange, 400, "Missing artifact field");
+                return;
+            }
+
+            Artifact artifact = new Artifact(art);
+            String secret = artifactRegistry.getSecret(artifact);
 
             if (!verifySignature(
                     secret,
                     exchange.getRequestHeaders().getFirst("X-Signature"),
                     body)) {
 
+                LOGGER.warn("Invalid signature for artifact=" + art + " from ip=" + ip);
                 sendText(exchange, 401, "Invalid signature");
                 return;
             }
 
             idempotencyStore.mark(deliveryId);
-
-            Multipart form = Multipart.parse(exchange, body);
-
-            String art = form.getField("artifact");
-
-            Artifact artifact;
-            try {
-                artifact = Artifact.valueOf(art);
-            } catch (NullPointerException | IllegalArgumentException e) {
-                LOGGER.warn("Invalid webhook artifact value: " + art);
-                sendText(exchange, 404, "Invalid artifact: " + art);
-                return;
-            }
 
             final String channelStr = form.getField("channel");
             final String versionStr = form.getField("version");
@@ -144,7 +142,10 @@ public class WebhookHandler implements HttpHandler {
 
             } else rolloutFloat = null;
 
-            final ReleaseInfo release = version != null || rolloutFloat == null ? releaseManager.applyRelease(artifact, channel, version, rolloutFloat, jar) : releaseManager.updateRollout(artifact, channel, rolloutFloat);
+            final ReleaseInfo release = version != null || rolloutFloat == null 
+                    ? releaseManager.applyRelease(artifact, channel, version, rolloutFloat, jar) 
+                    : releaseManager.updateRollout(artifact, channel, rolloutFloat);
+            
             boolean updated = release != null;
 
             if (updated) {
@@ -159,11 +160,7 @@ public class WebhookHandler implements HttpHandler {
             LOGGER.error("Webhook processing failed", e);
             sendText(exchange, 500, "Internal server error");
         } finally {
-
             exchange.close();
-
         }
-
     }
-
 }

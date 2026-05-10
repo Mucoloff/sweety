@@ -6,6 +6,7 @@ import dev.sweety.thread.ProfileThread;
 import dev.sweety.versioning.protocol.PacketRegistry;
 import dev.sweety.versioning.server.api.http.HttpUpdateServer;
 import dev.sweety.versioning.server.api.netty.NettyUpdateServer;
+import dev.sweety.versioning.server.logic.artifact.ArtifactRegistry;
 import dev.sweety.versioning.server.logic.cache.CacheManager;
 import dev.sweety.versioning.server.logic.client.ClientRegistry;
 import dev.sweety.versioning.server.logic.download.DownloadManager;
@@ -23,18 +24,19 @@ import java.nio.file.StandardCopyOption;
 public class MainServer {
 
     public static void main(String[] args) throws IOException {
-        int port = 8080;//Integer.parseInt(System.getenv().getOrDefault("UPDATE_SERVER_PORT", "8080"));
+        int port = 8080;
 
         final Storage storage = new Storage();
         loadSettings(storage.settings());
 
+        final ArtifactRegistry artifactRegistry = new ArtifactRegistry(Settings.WEBHOOK_SECRET);
         final ReleaseManager releaseManager = new ReleaseManager(storage);
         final PatchManager patchManager = new PatchManager(storage, releaseManager);
         final CacheManager cacheManager = new CacheManager(storage);
         final ClientRegistry clientRegistry = new ClientRegistry();
         final DownloadManager downloadManager = new DownloadManager();
 
-        final HttpUpdateServer httpServer = new HttpUpdateServer(port, Settings.ROLLBACK_TOKEN, Settings.WEBHOOK_SECRET, releaseManager, patchManager, downloadManager, cacheManager, clientRegistry);
+        final HttpUpdateServer httpServer = new HttpUpdateServer(port, Settings.ROLLBACK_TOKEN, artifactRegistry, releaseManager, patchManager, downloadManager, cacheManager, clientRegistry);
         final ProfileThread t = new ProfileThread("http");
 
         Runnable stop = () -> {

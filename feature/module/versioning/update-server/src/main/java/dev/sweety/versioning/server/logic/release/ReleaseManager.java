@@ -7,45 +7,63 @@ import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.server.logic.storage.Storage;
 import dev.sweety.versioning.util.Utils;
-import dev.sweety.versioning.version.artifact.Artifact;
+import dev.sweety.versioning.version.IReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
+import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.channel.Channel;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Deque;
 import java.util.EnumMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class ReleaseManager {
+public class ReleaseManager implements IReleaseService {
     private static final SimpleLogger LOGGER = new SimpleLogger(ReleaseManager.class);
 
-    private final EnumMap<Artifact, ReleaseState> states = new EnumMap<>(Artifact.class);
+    private final Map<Artifact, ReleaseState> states = new ConcurrentHashMap<>();
+    private final Storage storage;
 
     public ReleaseManager(Storage storage) throws IOException {
-        for (Artifact artifact : Artifact.values()) {
-            ReleaseState state = new ReleaseState(artifact, storage);
-            loadOrDefault(state);
-            states.put(artifact, state);
-        }
+        this.storage = storage;
+        // Pre-register core artifacts
+        getOrRegister(Artifact.APP);
+        getOrRegister(Artifact.LAUNCHER);
     }
 
-    public ReleaseInfo latest(Artifact artifact, Channel channel) {
-        ReleaseState s = states.get(artifact);
+    private ReleaseState getOrRegister(Artifact artifact) {
+        return states.computeIfAbsent(artifact, a -> {
+            try {
+                ReleaseState state = new ReleaseState(a, storage);
+                loadOrDefault(state);
+                return state;
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        });
+    }
 
+    @Override
+    public ReleaseInfo latest(Artifact artifact, Channel channel) {
+        ReleaseState s = getOrRegister(artifact);
         synchronized (s.lock) {
             return s.latest(channel);
         }
     }
 
-    public Deque<ReleaseInfo> history(Artifact artifact, Channel channel) {
-        ReleaseState s = states.get(artifact);
-
+    @Override
+    @NotNull
+    public Collection<ReleaseInfo> history(Artifact artifact, Channel channel) {
+        ReleaseState s = getOrRegister(artifact);
         synchronized (s.lock) {
             return s.history(channel);
         }
@@ -58,10 +76,7 @@ public class ReleaseManager {
             return;
         }
 
-        JsonObject root = Utils.gson().fromJson(
-                Files.readString(s.metadata()),
-                JsonObject.class
-        );
+        JsonObject root = Utils.gson().fromJson(Files.readString(s.metadata()), JsonObject.class);
 
         for (Channel channel : Channel.values()) {
             JsonObject channelEntry = root.getAsJsonObject(channel.prettyName());
@@ -70,17 +85,16 @@ public class ReleaseManager {
             JsonObject latest = channelEntry.getAsJsonObject("latest");
             JsonArray hist = channelEntry.getAsJsonArray("history");
             if (hist != null) {
-                for (JsonElement el : hist) {
-                    final ReleaseInfo info = deserialize(el.getAsJsonObject());
-                    if (info.channel() != channel) {
-                        LOGGER.warn("Invalid channel for release " + info + ", expected " + channel);
-                        continue;
-                    }
-                    s.history(channel).addLast(info);
-                }
-
+                hist.asList().stream()
+                        .map(JsonElement::getAsJsonObject)
+                        .map(this::deserialize)
+                        .filter(info -> {
+                            if (info.channel() == channel) return true;
+                            LOGGER.warn("Invalid channel for release " + info + ", expected " + channel);
+                            return false;
+                        })
+                        .forEach(s.history(channel)::addLast);
             }
-
             s.latest(channel, deserialize(latest));
         }
     }
@@ -90,39 +104,29 @@ public class ReleaseManager {
 
         for (Channel channel : Channel.values()) {
             JsonObject channelEntry = new JsonObject();
-
             channelEntry.add("latest", serialize(s.latest(channel)));
+            
             JsonArray hist = new JsonArray();
-
-            for (ReleaseInfo info : s.history(channel)) {
-                hist.add(serialize(info));
-            }
-
+            s.history(channel).stream()
+                    .map(this::serialize)
+                    .forEach(hist::add);
+            
             channelEntry.add("history", hist);
-
             root.add(channel.prettyName(), channelEntry);
         }
-
 
         Path tmpFile = Storage.temp(s.metadata());
         Files.writeString(tmpFile, Utils.gson().toJson(root));
 
-        Files.move(
-                tmpFile,
-                s.metadata(),
-                StandardCopyOption.REPLACE_EXISTING,
-                StandardCopyOption.ATOMIC_MOVE
-        );
+        Files.move(tmpFile, s.metadata(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
     }
 
     private JsonObject serialize(ReleaseInfo state) {
         JsonObject obj = new JsonObject();
-
         obj.addProperty("version", state.version().toString());
         obj.addProperty("channel", state.channel().prettyName());
         obj.addProperty("updatedAt", state.updatedAt().toString());
         obj.addProperty("rollout", state.rollout());
-
         return obj;
     }
 
@@ -130,54 +134,49 @@ public class ReleaseManager {
         return new ReleaseInfo(
                 Version.parse(obj.get("version").getAsString()),
                 Channel.valueOf(obj.get("channel").getAsString().toUpperCase()),
-                Float.parseFloat(obj.get("rollout").getAsString()), Instant.parse(obj.get("updatedAt").getAsString())
+                Float.parseFloat(obj.get("rollout").getAsString()), 
+                Instant.parse(obj.get("updatedAt").getAsString())
         );
     }
 
     private Path resolveFile(Path path, Artifact artifact, Channel channel, Version version) throws IOException {
-        final String name = artifact.prettyName();
         final Path dir = version.resolve(path.resolve(channel.prettyName()));
         Files.createDirectories(dir);
-        return dir.resolve(name + "-" + version + ".jar");
+        return dir.resolve(artifact.name() + "-" + version + ".jar");
     }
 
     private Path resolveTempJar(ReleaseState s, @NotNull Artifact artifact, Channel channel, Version version) throws IOException {
-        Path base = resolveBaseJar(s, artifact, channel, version);
-        return Storage.temp(base);
+        return Storage.temp(resolveBaseJar(s, artifact, channel, version));
     }
 
     private Path resolveBaseJar(ReleaseState s, @NotNull Artifact artifact, Channel channel, Version version) throws IOException {
         return resolveFile(s.root(), artifact, channel, version);
     }
 
+    @Override
+    @NotNull
     public Path resolveBaseJar(@NotNull Artifact artifact, Channel channel, Version version) throws IOException {
-        final ReleaseState s = states.get(artifact);
+        final ReleaseState s = getOrRegister(artifact);
         synchronized (s.lock) {
             return resolveBaseJar(s, artifact, channel, version);
         }
     }
 
+    @Override
     public ReleaseInfo rollback(Artifact artifact, Channel channel) throws IOException {
-        ReleaseState s = states.get(artifact);
-
+        ReleaseState s = getOrRegister(artifact);
         synchronized (s.lock) {
-
             ReleaseInfo prev = s.history(channel).pollFirst();
-
-            if (prev == null)
-                return null;
-
+            if (prev == null) return null;
             s.latest(channel, prev);
-
             persist(s);
-
             return prev;
         }
     }
 
+    @Override
     public ReleaseInfo updateRollout(Artifact artifact, Channel channel, float rollout) throws IOException {
-        ReleaseState s = states.get(artifact);
-
+        ReleaseState s = getOrRegister(artifact);
         synchronized (s.lock) {
             ReleaseInfo current = s.latest(channel);
             ReleaseInfo next = current.withRollout(rollout);
@@ -185,37 +184,28 @@ public class ReleaseManager {
         }
     }
 
+    @Override
     public ReleaseInfo applyRelease(
-            Artifact artifact,
-            Channel channel,
-            Version version,
+            @NotNull Artifact artifact,
+            @NotNull Channel channel,
+            @Nullable Version version,
             @Nullable Float rollout,
-            byte[] jar
+            @Nullable byte[] jar
     ) throws IOException {
         if (version != null && jar == null) throw new IllegalArgumentException(artifact + ".jar missing");
         if (version == null && jar != null) throw new IllegalArgumentException("Version is required when jar is provided");
 
-        ReleaseState s = states.get(artifact);
-
+        ReleaseState s = getOrRegister(artifact);
         synchronized (s.lock) {
-
             if (version != null) writeJar(s, artifact, version, channel, jar);
-
             final ReleaseInfo current = s.latest(channel);
-
             final Version nextVer = version != null ? version : current.version();
-
             final ReleaseInfo next = ReleaseInfo.of(nextVer, channel, rollout);
             return applyNextRelease(s, channel, current, next);
         }
     }
 
-    private ReleaseInfo applyNextRelease(
-            ReleaseState s,
-            Channel channel,
-            ReleaseInfo current,
-            ReleaseInfo next
-    ) throws IOException {
+    private ReleaseInfo applyNextRelease(ReleaseState s, Channel channel, ReleaseInfo current, ReleaseInfo next) throws IOException {
         if (next.version().equals(current.version())
                 && next.channel().equals(current.channel())
                 && Float.compare(next.rollout(), current.rollout()) == 0) {
@@ -223,39 +213,24 @@ public class ReleaseManager {
         }
 
         s.history(channel).addFirst(current);
-
         while (s.history(channel).size() > Settings.HISTORY_LIMIT)
             s.history(channel).removeLast();
 
         s.latest(channel, next);
-
         persist(s);
-
         return next;
     }
 
-    private void writeJar(
-            ReleaseState s,
-            Artifact artifact,
-            Version version,
-            Channel channel,
-            byte[] data
-    ) throws IOException {
+    private void writeJar(ReleaseState s, Artifact artifact, Version version, Channel channel, byte[] data) throws IOException {
         Path temp = resolveTempJar(s, artifact, channel, version);
-
         Path target = resolveBaseJar(s, artifact, channel, version);
-
         Files.write(temp, data);
-
-        Files.move(
-                temp,
-                target,
-                StandardCopyOption.REPLACE_EXISTING,
-                StandardCopyOption.ATOMIC_MOVE
-        );
+        Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
     }
 
-    public ReleaseInfo resolveLatest(Artifact artifact, Channel channel) {
+    @Override
+    @NotNull
+    public ReleaseInfo resolveLatest(@NotNull Artifact artifact, @NotNull Channel channel) {
         ReleaseInfo latest = null;
         for (Channel ch : Channel.values()) {
             if (channel.accepts(ch)) {
@@ -265,8 +240,6 @@ public class ReleaseManager {
                 }
             }
         }
-
-        if (latest == null) latest = latest(artifact, channel);
-        return latest;
+        return latest != null ? latest : latest(artifact, channel);
     }
 }

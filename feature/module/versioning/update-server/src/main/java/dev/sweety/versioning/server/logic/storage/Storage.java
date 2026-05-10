@@ -3,30 +3,20 @@ package dev.sweety.versioning.server.logic.storage;
 import dev.sweety.versioning.version.artifact.Artifact;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.EnumMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Storage {
 
     private final Path root, settings;
-
-    private final EnumMap<Artifact, Path> metadata = new EnumMap<>(Artifact.class);
-    private final EnumMap<Artifact, Path> artifacts = new EnumMap<>(Artifact.class);
+    private final Map<Artifact, Path> pathCache = new ConcurrentHashMap<>();
 
     public Storage() throws IOException {
         this.root = Path.of(System.getenv().getOrDefault("UPDATE_SERVER_ROOT", "storage"));
-
-        for (Artifact value : Artifact.values()) {
-            final String artifact = value.prettyName();
-            final Path basePath = this.root.resolve(artifact);
-
-            Files.createDirectories(basePath);
-
-            this.artifacts.put(value, basePath);
-            this.metadata.put(value, basePath.resolve("releases.json"));
-        }
-
+        Files.createDirectories(this.root);
         this.settings = this.root.resolve("settings.json");
     }
 
@@ -34,12 +24,20 @@ public class Storage {
         return this.root;
     }
 
-    public EnumMap<Artifact, Path> metadata() {
-        return metadata;
+    public Path resolveArtifactPath(Artifact artifact) {
+        return pathCache.computeIfAbsent(artifact, a -> {
+            try {
+                Path path = this.root.resolve(a.name());
+                Files.createDirectories(path);
+                return path;
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        });
     }
 
-    public EnumMap<Artifact, Path> artifacts() {
-        return artifacts;
+    public Path resolveMetadataPath(Artifact artifact) {
+        return resolveArtifactPath(artifact).resolve("releases.json");
     }
 
     public Path settings() {
