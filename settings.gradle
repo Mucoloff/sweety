@@ -12,6 +12,7 @@ include 'feature:module:extension:api'
 include 'feature:module:extension:common'
 include 'feature:module:extension:manager'
 include 'feature:module:extension-versioning'
+include 'feature:module:extension-versioning:api'
 include 'feature:module:extension-versioning:manager'
 include 'feature:module:launcher'
 

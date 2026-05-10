@@ -15,7 +15,15 @@ version = "1.0.0"
 
 subprojects {
     apply(plugin = "java")
-    apply(plugin = "org.jetbrains.kotlin.jvm")
+    // Apply Kotlin plugin only to modules that contain .kt sources.
+    // KGP 2.x creates a compileKotlin→jar→classes→compileJava→compileKotlin cycle
+    // in pure-Java modules, so we apply it selectively.
+    val hasKotlinSources = projectDir.walkTopDown()
+        .filter { it.extension == "kt" }
+        .any()
+    if (hasKotlinSources) {
+        apply(plugin = "org.jetbrains.kotlin.jvm")
+    }
     //apply(plugin = "io.freefair.lombok")
     apply(plugin = "maven-publish")
 
@@ -32,7 +40,11 @@ subprojects {
     dependencies {
         add("implementation", "org.jetbrains:annotations:26.0.2")
 
-        add("implementation", "org.jetbrains.kotlin:kotlin-stdlib")
+        // kotlin-stdlib is added automatically by the Kotlin plugin for modules that use it.
+        // Manually adding it only for pure-Java modules that explicitly need it.
+        if (hasKotlinSources) {
+            add("implementation", "org.jetbrains.kotlin:kotlin-stdlib")
+        }
         add("implementation", "com.google.code.gson:gson:2.13.1")
         add("implementation", "org.yaml:snakeyaml:2.3")
         add("implementation", "org.tomlj:tomlj:1.1.1")
@@ -80,6 +92,9 @@ subprojects {
                 publications {
                     if (findByName("mavenJava") == null) {
                         create<MavenPublication>("mavenJava") {
+                            // Use full path as artifactId to avoid collisions between
+                            // modules with the same leaf name (e.g., two "manager" modules).
+                            artifactId = project.path.removePrefix(":").replace(":", "-")
                             from(components["java"])
                         }
                     }
@@ -88,6 +103,11 @@ subprojects {
         }
     }
 }
+
+// Give extension-versioning submodules distinct groups to prevent Gradle from substituting
+// them for extension submodules (same leaf name + same group = same artifact in Gradle's eyes).
+project(":feature:module:extension-versioning:manager").group = "dev.sweety.versioning"
+project(":feature:module:extension-versioning:api").group = "dev.sweety.versioning"
 
 tasks.register("buildAll") {
     dependsOn(subprojects.map { it.tasks.named("build") })
