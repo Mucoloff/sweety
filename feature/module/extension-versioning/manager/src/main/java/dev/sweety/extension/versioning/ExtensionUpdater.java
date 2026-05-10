@@ -1,6 +1,5 @@
 package dev.sweety.extension.versioning;
 
-import dev.sweety.extension.manager.ExtensionManager;
 import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.versioning.version.IReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;
@@ -19,10 +18,10 @@ public class ExtensionUpdater<T extends VersionableExtension> {
 
     private static final SimpleLogger LOGGER = new SimpleLogger(ExtensionUpdater.class);
 
-    private final ExtensionManager<T> manager;
+    private final UpdateableExtensionManager<T> manager;
     private final IReleaseService releaseService;
 
-    public ExtensionUpdater(ExtensionManager<T> manager, IReleaseService releaseService) {
+    public ExtensionUpdater(UpdateableExtensionManager<T> manager, IReleaseService releaseService) {
         this.manager = manager;
         this.releaseService = releaseService;
     }
@@ -36,7 +35,7 @@ public class ExtensionUpdater<T extends VersionableExtension> {
                 Version current = Version.parse(extension.version());
                 if (latest.version().newerThan(current)) {
                     LOGGER.info("Updating " + extension.name() + " from " + current + " to " + latest.version());
-                    return downloadAndApplyUpdate(extension, latest);
+                    return downloadAndPrepareUpdate(extension, latest);
                 }
 
                 return false;
@@ -47,35 +46,25 @@ public class ExtensionUpdater<T extends VersionableExtension> {
         });
     }
 
-    private boolean downloadAndApplyUpdate(T extension, ReleaseInfo release) throws IOException {
+    private boolean downloadAndPrepareUpdate(T extension, ReleaseInfo release) throws IOException {
         Path newJar = releaseService.resolveBaseJar(extension.artifact(), release.channel(), release.version());
         if (!Files.exists(newJar)) {
             LOGGER.error("Latest jar not found on server for artifact=" + extension.artifact().name());
             return false;
         }
 
-        File currentFile = extension.file();
+        File currentFile = manager.getFile(extension);
         if (currentFile == null) {
-            LOGGER_ERROR("Could not resolve local file for extension " + extension.name());
+            LOGGER.error("Could not resolve local file for extension " + extension.name());
             return false;
         }
 
         Path targetPath = currentFile.toPath();
         Path updatePath = targetPath.resolveSibling(targetPath.getFileName() + ".update");
 
-        // Copy new jar to .update file
         Files.copy(newJar, updatePath, StandardCopyOption.REPLACE_EXISTING);
-        
-        // We don't replace immediately to avoid locking issues if the extension is running.
-        // We suggest a restart or use a specific strategy.
         LOGGER.info("Update for " + extension.name() + " downloaded. It will be applied on next restart.");
-        
-        // Strategy: on next load, ExtensionManager could check for .update files and swap them.
         return true;
-    }
-
-    private void LOGGER_ERROR(String msg) {
-        LOGGER.error(msg);
     }
 
     public void updateAll(@NotNull Channel channel) {

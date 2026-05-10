@@ -16,8 +16,7 @@ public abstract class LauncherExtension extends Extension {
         super(name, version, description, folder, logger);
     }
 
-    public void init(@NotNull SweetyLauncher launcher, @NotNull File file) {
-        super.init(file);
+    public void init(@NotNull SweetyLauncher launcher) {
         this.launcher = launcher;
     }
 
