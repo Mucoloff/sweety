@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public enum MinecraftVersion implements Version {
     V_1_7_2(4), V_1_7_4(4), V_1_7_5(4),
@@ -32,8 +33,22 @@ public enum MinecraftVersion implements Version {
 
     private static final MinecraftVersion[] VALUES = values();
 
+    private static final Map<Integer, List<MinecraftVersion>> BY_PROTOCOL =
+            Arrays.stream(VALUES)
+                    .collect(Collectors.groupingBy(MinecraftVersion::protocolVersion));
+
+    private static final Map<String, MinecraftVersion> BY_NAME = new HashMap<>();
+
+    static {
+        for (MinecraftVersion value : VALUES) {
+            BY_NAME.put(value.name().toUpperCase(Locale.ROOT), value);
+            BY_NAME.put(value.releaseName().toUpperCase(Locale.ROOT), value);
+        }
+    }
+
     private final int protocolVersion;
     private final String releaseName;
+    private final int major, minor, patch;
     private final boolean error;
 
     MinecraftVersion(int protocolVersion) {
@@ -42,45 +57,38 @@ public enum MinecraftVersion implements Version {
 
     MinecraftVersion(int protocolVersion, boolean error) {
         this.protocolVersion = protocolVersion;
-        this.releaseName = error ? name() : name().substring(2).replace("_", ".");
         this.error = error;
+        this.releaseName = error ? name() : name().substring(2).replace("_", ".");
+        
+        if (error) {
+            this.major = this.minor = this.patch = -1;
+        } else {
+            String[] split = releaseName.split("\\.");
+            this.major = Integer.parseInt(split[0]);
+            this.minor = Integer.parseInt(split[1]);
+            this.patch = split.length > 2 ? Integer.parseInt(split[2]) : 0;
+        }
+    }
+
+    @Override
+    public @NotNull MinecraftVersion specific() {
+        return this;
     }
 
     public static @NotNull MinecraftVersion get(int protocolVersion) {
-        int index = Arrays.binarySearch(VALUES, null, (v, key) -> {
-            int p = v.protocolVersion();
-            int target = (int) (Integer) protocolVersion;
-            if (p == target) return 0;
-            return p < target ? -1 : 1;
-        });
-        
+        int index = Arrays.binarySearch(VALUES, null, (v, key) -> Integer.compare(v.protocolVersion(), protocolVersion));
         if (index < 0) return ERROR;
-        
-        // binarySearch might return any match, we usually want the latest for that protocol
-        while (index + 1 < VALUES.length && VALUES[index + 1].protocolVersion() == protocolVersion) {
-            index++;
-        }
+        while (index + 1 < VALUES.length && VALUES[index + 1].protocolVersion() == protocolVersion) index++;
         return VALUES[index];
+    }
+
+    public static @NotNull List<MinecraftVersion> getAll(int protocolVersion) {
+        return BY_PROTOCOL.getOrDefault(protocolVersion, Collections.emptyList());
     }
 
     public static @NotNull MinecraftVersion get(@Nullable String name) {
         if (name == null) return ERROR;
-        String clean = name.toUpperCase(Locale.ROOT).replace(".", "_");
-        if (!clean.startsWith("V_")) clean = "V_" + clean;
-        
-        try {
-            return valueOf(clean);
-        } catch (IllegalArgumentException e) {
-            // Fallback for release names if they don't match exactly
-            for (MinecraftVersion value : VALUES) {
-                if (value.releaseName().equalsIgnoreCase(name)) return value;
-            }
-            return ERROR;
-        }
-    }
-
-    public static @NotNull MinecraftVersion getLatest() {
-        return VALUES[VALUES.length - 2];
+        return BY_NAME.getOrDefault(name.toUpperCase(Locale.ROOT), ERROR);
     }
 
     @Override
@@ -93,6 +101,21 @@ public enum MinecraftVersion implements Version {
         return releaseName;
     }
 
+    @Override
+    public int major() {
+        return major;
+    }
+
+    @Override
+    public int minor() {
+        return minor;
+    }
+
+    @Override
+    public int patch() {
+        return patch;
+    }
+
     public boolean isError() {
         return error;
     }
@@ -100,13 +123,5 @@ public enum MinecraftVersion implements Version {
     @Override
     public String toString() {
         return releaseName;
-    }
-
-    @Override
-    public int compareTo(@NotNull Version o) {
-        if (o instanceof MinecraftVersion other) {
-            return Integer.compare(this.ordinal(), other.ordinal());
-        }
-        return Integer.compare(this.protocolVersion(), o.protocolVersion());
     }
 }
