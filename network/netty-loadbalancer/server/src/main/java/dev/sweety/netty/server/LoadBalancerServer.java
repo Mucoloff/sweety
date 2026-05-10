@@ -29,6 +29,7 @@ import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
+import java.util.concurrent.StructuredTaskScope;
 
 import java.awt.*;
 import java.net.InetSocketAddress;
@@ -57,6 +58,8 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
     protected final TransactionManager transactionManager = new TransactionManager(this);
     protected final PacketReorder reorder = new PacketReorder();
 
+    private final java.util.concurrent.ScheduledExecutorService healthCheckExecutor = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(ThreadUtil.factory("health-check"));
+
     private final TriFunction<Packet, Integer, Long, byte[]> constructor;
 
     public <T extends IDynamicBackendNodePool<Node>> LoadBalancerServer(String host, int port, T backendPool,
@@ -64,6 +67,8 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
         super(host, port, packetRegistry);
         this.backendPool = backendPool;
         this.constructor = (id, ts, data) -> packetRegistry.construct(id, ts, data, this.logger);
+
+        this.healthCheckExecutor.scheduleAtFixedRate(this::checkHealth, 30, 30, java.util.concurrent.TimeUnit.SECONDS);
 
         this.logger.push("<init>", AnsiColor.fromColor(new Color(148, 186, 76)))
                 .info("LoadBalancerServer started on " + host + ":" + port)
@@ -173,6 +178,32 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
         }
         this.pendingPackets.offerLast(packetContext);
         this.drainPending();
+    }
+
+    /**
+     * Performs a parallel health check on all backend nodes using Java 24 StructuredTaskScope.
+     */
+    public void checkHealth() {
+        try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
+            this.logger.info("Starting structured health check for " + backendPool.pool().size() + " nodes...");
+            
+            for (Node node : backendPool.pool()) {
+                scope.fork(() -> {
+                    // In a real scenario, this would send a heartbeat packet and wait for a response.
+                    // Here we just simulate a check.
+                    if (node.context() == null || !node.context().channel().isActive()) {
+                        throw new RuntimeException("Node " + node.typeName() + " is unreachable");
+                    }
+                    return null;
+                });
+            }
+
+            scope.join();
+            scope.throwIfFailed();
+            this.logger.info("Structured health check completed successfully.");
+        } catch (Exception e) {
+            this.logger.error("Health check failed for one or more nodes", e);
+        }
     }
 
     private Node resolveNodeByChannel(Channel channel) {
@@ -375,6 +406,7 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
             this.ingressDisruptor.shutdown();
         }
         super.stop();
+        this.healthCheckExecutor.shutdownNow();
         this.drain_executor.shutdownNow();
         this.transactionManager.shutdown();
         this.reorder.shutdown();

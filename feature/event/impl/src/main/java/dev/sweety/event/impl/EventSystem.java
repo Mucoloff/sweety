@@ -48,6 +48,40 @@ public class EventSystem implements IEventSystem {
         callSites.sort(priorityFilter);
     }
 
+    @Override
+    public <T extends IEvent> dev.sweety.event.api.SubscriptionBuilder<T> on(Class<T> eventType) {
+        return new SubscriptionBuilderImpl<>(this, eventType);
+    }
+
+    private static class SubscriptionBuilderImpl<T extends IEvent> implements dev.sweety.event.api.SubscriptionBuilder<T> {
+        private final EventSystem system;
+        private final Class<T> eventType;
+        private int priority = 0;
+        private State state = State.BOTH;
+
+        public SubscriptionBuilderImpl(EventSystem system, Class<T> eventType) {
+            this.system = system;
+            this.eventType = eventType;
+        }
+
+        @Override
+        public dev.sweety.event.api.SubscriptionBuilder<T> priority(int priority) {
+            this.priority = priority;
+            return this;
+        }
+
+        @Override
+        public dev.sweety.event.api.SubscriptionBuilder<T> state(State state) {
+            this.state = state;
+            return this;
+        }
+
+        @Override
+        public void handle(Listener<T> listener) {
+            system.subscribe(eventType, listener, priority, state);
+        }
+    }
+
     public <T extends IEvent> void unsubscribe(final Class<T> eventType) {
         final List<EventCallback<?>> callSites = this.callSiteMap.get(eventType);
         if (callSites != null) callSites.clear();

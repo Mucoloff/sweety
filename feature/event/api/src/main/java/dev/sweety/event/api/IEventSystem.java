@@ -10,6 +10,8 @@ import java.util.function.Function;
 public interface IEventSystem {
     <T extends IEvent> void subscribe(Class<T> eventType, Listener<T> listener, int priority, State state);
 
+    <T extends IEvent> SubscriptionBuilder<T> on(Class<T> eventType);
+
     <T extends IEvent> void unsubscribe(final Class<T> eventType);
 
     void subscribe(Object container);

@@ -31,6 +31,45 @@ public class SimpleLogger implements LogHelper {
         this.name = clazz.getSimpleName();
     }
 
+    public static SimpleLogger of(String name) {
+        return new SimpleLogger(name);
+    }
+
+    public static SimpleLogger of(Class<?> clazz) {
+        return new SimpleLogger(clazz);
+    }
+
+    public static Builder builder(String name) {
+        return new Builder(name);
+    }
+
+    public static class Builder {
+        private final String name;
+        private LoggerBackend backend = new ConsoleBackend();
+        private FileBackend fileBackend;
+
+        public Builder(String name) {
+            this.name = name;
+        }
+
+        public Builder backend(LoggerBackend backend) {
+            this.backend = backend;
+            return this;
+        }
+
+        public Builder fileBackend(FileBackend fileBackend) {
+            this.fileBackend = fileBackend;
+            return this;
+        }
+
+        public SimpleLogger build() {
+            SimpleLogger logger = new SimpleLogger(name);
+            logger.setBackend(backend);
+            if (fileBackend != null) logger.setFileBackend(fileBackend);
+            return logger;
+        }
+    }
+
     // Allow setting a custom backend (e.g., SLF4J, Log4j, java.util.logging, etc.)
     public SimpleLogger setBackend(final LoggerBackend backend) {
         return setBackend(ignored -> backend);
