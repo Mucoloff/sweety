@@ -8,7 +8,7 @@ import java.util.function.Predicate;
 /**
  * This enum defines comparison predicates and strategies for Minecraft versions.
  */
-public enum VersionComparison implements Predicate<Integer>, Comparator<Version> {
+public enum VersionComparison implements Predicate<Integer>, Comparator<Version<?>> {
 
     /**
      * == (Equality)
@@ -42,16 +42,16 @@ public enum VersionComparison implements Predicate<Integer>, Comparator<Version>
 
     /* --- STATIC STRATEGIES (Using Comparator Factories) --- */
 
-    public static final Comparator<Version> RELEASE = Comparator
-            .comparingInt(Version::major)
+    public static final Comparator<Version<?>> RELEASE = Comparator
+            .<Version<?>>comparingInt(Version::major)
             .thenComparingInt(Version::minor)
             .thenComparingInt(Version::patch)
             .thenComparingInt(Version::protocolVersion);
 
-    public static final Comparator<Version> PROTOCOL = Comparator
+    public static final Comparator<Version<?>> PROTOCOL = Comparator
             .comparingInt(Version::protocolVersion);
 
-    public static final Comparator<Version> ORDINAL = Comparator
+    public static final Comparator<Version<?>> ORDINAL = Comparator
             .comparingInt(v -> v.specific().ordinal());
 
     /* --- FIELDS & LOGIC --- */
@@ -73,14 +73,14 @@ public enum VersionComparison implements Predicate<Integer>, Comparator<Version>
      * Evaluates if the relationship between two versions satisfies this comparison type
      * using the default RELEASE strategy.
      */
-    public boolean test(@NotNull Version a, @NotNull Version b) {
+    public boolean test(@NotNull Version<?> a, @NotNull Version<?> b) {
         return test(RELEASE.compare(a, b));
     }
 
     /**
      * Evaluates the relationship using a specific strategy.
      */
-    public boolean test(@NotNull Version a, @NotNull Version b, @NotNull Comparator<Version> strategy) {
+    public boolean test(@NotNull Version<?> a, @NotNull Version<?> b, @NotNull Comparator<Version<?>> strategy) {
         return test(strategy.compare(a, b));
     }
 
@@ -88,7 +88,7 @@ public enum VersionComparison implements Predicate<Integer>, Comparator<Version>
      * Standard Comparator implementation that respects the direction of the comparison type.
      */
     @Override
-    public int compare(Version a, Version b) {
+    public int compare(Version<?> a, Version<?> b) {
         return multiplier * RELEASE.compare(a, b);
     }
 }

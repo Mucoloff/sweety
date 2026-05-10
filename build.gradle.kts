@@ -54,6 +54,7 @@ subprojects {
 
         add("testImplementation", platform("org.junit:junit-bom:5.10.0"))
         add("testImplementation", "org.junit.jupiter:junit-jupiter")
+        add("testImplementation", "org.junit.platform:junit-platform-suite")
         add("testRuntimeOnly", "org.junit.platform:junit-platform-launcher")
 
         add("implementation", "com.sun.mail:javax.mail:1.6.2")

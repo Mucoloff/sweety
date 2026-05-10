@@ -1,6 +1,5 @@
 package dev.sweety.event.impl;
 
-import dev.sweety.event.api.Event;
 import dev.sweety.event.api.IEvent;
 import dev.sweety.event.api.IEventSystem;
 import dev.sweety.event.api.listener.LinkEvent;
@@ -14,28 +13,16 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 public class EventSystem implements IEventSystem {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
     private static final Comparator<EventCallback<?>> priorityFilter =
             Comparator.comparingInt(EventCallback::priority);
-
-    private static final BiConsumer<IEvent, Boolean> CHANGED = (event, state) -> {
-        try {
-            Field changed = Event.class.getDeclaredField("changed");
-            if (!changed.canAccess(event)) changed.setAccessible(true);
-            changed.setBoolean(event, state);
-        } catch (IllegalAccessException | NoSuchFieldException e) {
-            e.printStackTrace(System.err);
-        }
-    };
 
     private final Map<Type, List<EventCallback<?>>> callSiteMap = new ConcurrentHashMap<>();
     private static final Map<Class<?>, Object> CONTAINER_CACHE = new ConcurrentHashMap<>();
@@ -82,6 +69,7 @@ public class EventSystem implements IEventSystem {
         }
     }
 
+    @Override
     public <T extends IEvent> void unsubscribe(final Class<T> eventType) {
         final List<EventCallback<?>> callSites = this.callSiteMap.get(eventType);
         if (callSites != null) callSites.clear();
@@ -125,27 +113,26 @@ public class EventSystem implements IEventSystem {
         }
     }
 
-    @SuppressWarnings("ForLoopReplaceableByForEach")
     @Override
     public <T extends IEvent> T dispatch(T event) {
         event.setCancelled(false);
-        CHANGED.accept(event, false);
+        event.setChanged(false);
 
         final int hash = event.hashCode();
         final List<EventCallback<?>> callbacks = this.callSiteMap.get(event.getClass());
         if (callbacks == null || callbacks.isEmpty()) return event;
 
-        for (Iterator<EventCallback<?>> iterator = callbacks.iterator(); iterator.hasNext(); ) {
+        for (EventCallback<?> callback : callbacks) {
             //noinspection unchecked
-            EventCallback<T> cb = (EventCallback<T>) iterator.next();
+            EventCallback<T> cb = (EventCallback<T>) callback;
 
             if (cb.state() == State.BOTH ||
-                    (cb.state() == State.PRE && !event.isPost()) ||
+                    (cb.state() == State.PRE && event.isPre()) ||
                     (cb.state() == State.POST && event.isPost())) {
                 cb.listener().call(event);
             }
 
-            if (hash != event.hashCode()) CHANGED.accept(event, true);
+            if (hash != event.hashCode()) event.setChanged(true);
             if (event.isCancelled()) break;
         }
         return event;

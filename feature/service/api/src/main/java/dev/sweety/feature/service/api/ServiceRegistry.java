@@ -9,13 +9,6 @@ import java.util.Set;
 
 public interface ServiceRegistry {
 
-    static ServiceRegistry create() {
-        return new dev.sweety.feature.service.impl.ServiceManager();
-    }
-
-    static <T> ServiceRegistry typed(Class<T> baseType) {
-        return new dev.sweety.feature.service.impl.TypedServiceManager<>(baseType);
-    }
 
     @NotNull
     Set<ServiceKey<?>> keySet();
@@ -89,6 +82,14 @@ public interface ServiceRegistry {
     }
 
     <T> T registerByClass(Class<T> type);
+
+    @Nullable
+    <T> T remove(@NotNull ServiceKey<T> key);
+
+    @Nullable
+    default <T> T remove(@NotNull Class<T> type) {
+        return remove(ServiceKey.key(type));
+    }
 
     class RegistrationBuilder<T> {
         private final ServiceRegistry registry;

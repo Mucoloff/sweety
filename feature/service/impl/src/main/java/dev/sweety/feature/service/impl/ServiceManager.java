@@ -109,6 +109,16 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
     }
 
     @Override
+    public <T> T remove(@NotNull ServiceKey<T> key) {
+        ensureOpen();
+        // noinspection unchecked
+        Provider<T> provider = (Provider<T>) services.remove(key);
+        T value = provider == null ? null : provider.get();
+        if (value instanceof Service s) s.onDisable();
+        return value;
+    }
+
+    @Override
     public void close() {
         if (closed.get()) return;
         closed.set(true);

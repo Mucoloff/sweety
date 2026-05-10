@@ -107,6 +107,16 @@ public class TypedServiceManager<Type> implements ServiceRegistry, AutoCloseable
     }
 
     @Override
+    public @Nullable <T> T remove(@NotNull ServiceKey<T> key) {
+        return internal.remove(key);
+    }
+
+    @Override
+    public @Nullable <T> T remove(@NotNull Class<T> type) {
+        return internal.remove(type);
+    }
+
+    @Override
     public void close() {
         internal.close();
     }

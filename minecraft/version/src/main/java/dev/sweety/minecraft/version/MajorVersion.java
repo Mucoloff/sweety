@@ -58,4 +58,5 @@ public enum MajorVersion implements Version<MajorVersion> {
     public MinecraftVersion start() {
         return start;
     }
+
 }
