@@ -19,6 +19,9 @@ public abstract class Extension implements Toggleable {
     @NotNull
     private final SimpleLogger logger;
 
+    @Nullable
+    private File file;
+
     private boolean enabled;
 
     protected Extension(final @NotNull String name, @NotNull String version, @Nullable String description, @NotNull final File folder, @NotNull SimpleLogger logger) {
@@ -27,6 +30,14 @@ public abstract class Extension implements Toggleable {
         this.description = description;
         this.dataFolder = new File(folder, name);
         this.logger = logger;
+    }
+
+    public void init(@NotNull File file) {
+        this.file = file;
+    }
+
+    public @Nullable File file() {
+        return file;
     }
 
     @Override

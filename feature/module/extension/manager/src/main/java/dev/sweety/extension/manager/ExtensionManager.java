@@ -81,6 +81,7 @@ public class ExtensionManager<T extends Extension> {
             }
 
             this.logger.info(extension.name() + " v" + info.version() + " è ora abilitato.");
+            extension.init(jarFile);
             extension.setEnabled(true);
 
             this.extensions.put(extension.name(), extension);
@@ -93,6 +94,19 @@ public class ExtensionManager<T extends Extension> {
     }
 
     public void load() {
+        final File[] updates = this.rootDir.listFiles((dir, name) -> name.endsWith(".jar.update"));
+        if (updates != null) {
+            for (File update : updates) {
+                File target = new File(update.getParent(), update.getName().replace(".update", ""));
+                try {
+                    Files.move(update.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+                    logger.info("Applied update for " + target.getName());
+                } catch (IOException e) {
+                    logger.error("Failed to apply update for " + target.getName(), e);
+                }
+            }
+        }
+
         final File[] jars = this.rootDir.listFiles((dir, name) -> name.endsWith(".jar"));
         if (jars == null) return;
 

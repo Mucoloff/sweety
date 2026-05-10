@@ -17,36 +17,38 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import static java.nio.file.StandardCopyOption.*;
+import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class UpdateManager {
 
-    private final EnumMap<Artifact, Path> artifactPathMap;
+    private final Map<Artifact, Path> artifactPathMap;
 
     private final PatchApplier applier;
     private final Consumer<State> handshakeState;
 
     private final AtomicReference<LauncherConfig> config;
 
-    public UpdateManager(AtomicReference<LauncherConfig> config, EnumMap<Artifact, Path> artifactPathMap, PatchApplier applier, Consumer<State> handshakeState) {
+    public UpdateManager(AtomicReference<LauncherConfig> config, Map<Artifact, Path> artifactPathMap, PatchApplier applier, Consumer<State> handshakeState) {
         this.config = config;
-        this.artifactPathMap = artifactPathMap;
+        this.artifactPathMap = new HashMap<>(artifactPathMap);
         this.applier = applier;
         this.handshakeState = handshakeState;
 
         config.getAndUpdate(cfg -> {
-
-            final EnumMap<Artifact, Version> versions = cfg.versions();
+            final Map<Artifact, Version> versions = new HashMap<>(cfg.versions());
 
             boolean edited = false;
-            for (Artifact artifact : Artifact.values()) {
-                Path path = artifactPathMap.get(artifact);
-                if (path == null || !path.toFile().exists()) {
+            for (Map.Entry<Artifact, Path> entry : artifactPathMap.entrySet()) {
+                Artifact artifact = entry.getKey();
+                Path path = entry.getValue();
+                if (!Files.exists(path)) {
                     versions.put(artifact, Version.ZERO);
                     edited = true;
                 }
@@ -56,12 +58,24 @@ public class UpdateManager {
 
             return cfg.with(versions);
         });
+    }
 
-
+    public void registerArtifact(Artifact artifact, Path localPath) {
+        this.artifactPathMap.put(artifact, localPath);
+        config.getAndUpdate(cfg -> {
+            if (!cfg.versions().containsKey(artifact)) {
+                return cfg.with(artifact, Version.ZERO);
+            }
+            return cfg;
+        });
     }
 
     public void downloadUpdate(Artifact artifact, String token, Version version, DownloadType type) {
         Path original = artifactPathMap.get(artifact);
+        if (original == null) {
+            LOGGER_ERROR("No path registered for artifact: " + artifact);
+            return;
+        }
         Path newFile = original.resolveSibling(original.getFileName() + ".new");
 
         boolean isPatch = type == DownloadType.PATCH;
@@ -76,6 +90,10 @@ public class UpdateManager {
         if (!artifact.equals(Artifact.LAUNCHER)) replaceJarSafe(newFile, original);
 
         complete(State.UPDATED);
+    }
+
+    private void LOGGER_ERROR(String msg) {
+        System.err.println("[UpdateManager] " + msg);
     }
 
     private boolean downloadArtifactSafe(String token, Path downloaded) {

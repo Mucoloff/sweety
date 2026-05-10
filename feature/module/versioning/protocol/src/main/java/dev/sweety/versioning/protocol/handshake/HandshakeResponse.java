@@ -4,18 +4,19 @@ import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.PacketTransaction;
 import dev.sweety.versioning.version.artifact.Artifact;
 
-import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 public class HandshakeResponse extends PacketTransaction.Transaction {
 
     private State state;
-    private EnumMap<Artifact, ResponseData> versions;
+    private Map<Artifact, ResponseData> versions;
 
     public HandshakeResponse() {
     }
 
-    public HandshakeResponse(final State state, final EnumMap<Artifact, ResponseData> versions) {
+    public HandshakeResponse(final State state, final Map<Artifact, ResponseData> versions) {
         this.state = state;
         this.versions = versions;
     }
@@ -28,27 +29,32 @@ public class HandshakeResponse extends PacketTransaction.Transaction {
         this.state = state;
     }
 
-    public EnumMap<Artifact, ResponseData> getVersions() {
+    public Map<Artifact, ResponseData> getVersions() {
         return versions;
     }
 
-    public void setVersions(final EnumMap<Artifact, ResponseData> versions) {
+    public void setVersions(final Map<Artifact, ResponseData> versions) {
         this.versions = versions;
     }
 
     @Override
     public void write(final PacketBuffer buffer) {
-        buffer.writeEnum(this.state).writeEnumMap(versions, PacketBuffer::writeObject);
+        buffer.writeEnum(this.state);
+        buffer.writeMap(versions, (b, artifact) -> b.writeString(artifact.name()), (b, data) -> b.writeObject(data));
     }
 
     @Override
     public void read(final PacketBuffer buffer) {
         this.state = buffer.readEnum(State.class);
-        this.versions = buffer.readEnumMap(Artifact.class, ResponseData.DECODER);
+        this.versions = buffer.readMap(
+                b -> new Artifact(b.readString()),
+                b -> b.readObject(ResponseData.DECODER),
+                HashMap::new
+        );
     }
 
     private static HandshakeResponse empty(State state) {
-        return new HandshakeResponse(state, new EnumMap<>(Artifact.class));
+        return new HandshakeResponse(state, new HashMap<>());
     }
 
     public static HandshakeResponse upToDate() {

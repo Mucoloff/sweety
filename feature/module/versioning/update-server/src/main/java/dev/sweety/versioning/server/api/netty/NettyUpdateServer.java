@@ -11,24 +11,21 @@ import dev.sweety.versioning.protocol.update.ReleasePacket;
 import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.server.logic.decision.UpdateDecision;
 import dev.sweety.versioning.server.logic.decision.UpdateResolver;
-import dev.sweety.versioning.server.logic.patch.PatchManager;
-import dev.sweety.versioning.server.util.garbage.ExpirableGarbage;
-import dev.sweety.versioning.version.artifact.Artifact;
-import dev.sweety.versioning.version.ReleaseInfo;
-import dev.sweety.versioning.version.LauncherInfo;
 import dev.sweety.versioning.server.logic.download.DownloadManager;
+import dev.sweety.versioning.server.logic.patch.PatchManager;
 import dev.sweety.versioning.server.logic.release.ReleaseManager;
+import dev.sweety.versioning.server.util.garbage.ExpirableGarbage;
+import dev.sweety.versioning.version.LauncherInfo;
+import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
+import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
-import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -40,7 +37,7 @@ public class NettyUpdateServer extends SimpleServer {
 
     private final PatchManager patchManager;
 
-    private final EnumMap<Artifact, ExpirableGarbage<UUID, ForcedUpdate>> forcedUpdates = new EnumMap<>(Artifact.class);
+    private final Map<Artifact, ExpirableGarbage<UUID, ForcedUpdate>> forcedUpdates = new ConcurrentHashMap<>();
 
     private final ConcurrentHashMap<ChannelHandlerContext, ClientInfo> clientInfos = new ConcurrentHashMap<>();
 
@@ -50,9 +47,10 @@ public class NettyUpdateServer extends SimpleServer {
         this.releaseManager = releaseManager;
         this.patchManager = patchManager;
         this.stop = stop;
+    }
 
-        for (Artifact value : Artifact.values())
-            forcedUpdates.put(value, new ExpirableGarbage<>(Settings.MAX_CONCURRENT_DOWNLOADS));
+    private ExpirableGarbage<UUID, ForcedUpdate> getForcedUpdates(Artifact artifact) {
+        return forcedUpdates.computeIfAbsent(artifact, a -> new ExpirableGarbage<>(Settings.MAX_CONCURRENT_DOWNLOADS));
     }
 
     @Override
@@ -67,27 +65,27 @@ public class NettyUpdateServer extends SimpleServer {
             final HandshakeRequest request = transaction.getRequest();
             final LauncherInfo info = request.getInfo();
 
-            final EnumMap<Artifact, Version> versions = info.versions();
+            final Map<Artifact, Version> versions = info.versions();
 
             //todo client trust based !!!
-            final UUID buildId = info.buildId();
             final UUID clientId = info.clientId();
             final Channel channel = info.channel();
 
             this.clientInfos.put(ctx, new ClientInfo(clientId, channel));
 
-            final EnumMap<Artifact, ResponseData> responseData = new EnumMap<>(Artifact.class);
+            final Map<Artifact, ResponseData> responseData = new HashMap<>();
 
             State state = State.UP_TO_DATE;
 
-            for (Artifact artifact : Artifact.values()) {
+            for (Map.Entry<Artifact, Version> entry : versions.entrySet()) {
+                Artifact artifact = entry.getKey();
+                Version current = entry.getValue();
+                
                 ReleaseInfo latest = releaseManager.resolveLatest(artifact, channel);
-
-                final Version current = versions.get(artifact);
 
                 ForcedUpdate forcedUpdate = null;
 
-                final ExpirableGarbage<UUID, ForcedUpdate> garbage = forcedUpdates.get(artifact);
+                final ExpirableGarbage<UUID, ForcedUpdate> garbage = getForcedUpdates(artifact);
                 try {
                     forcedUpdate = garbage.get(clientId);
                 } catch (InvalidTokenException | TokenExpiredException ignored) {}
@@ -153,8 +151,7 @@ public class NettyUpdateServer extends SimpleServer {
             );
         } else forcedUpdate = null;
 
-        final ExpirableGarbage<UUID, ForcedUpdate> garbage =
-                this.forcedUpdates.get(artifact);
+        final ExpirableGarbage<UUID, ForcedUpdate> garbage = getForcedUpdates(artifact);
 
         this.clientInfos.entrySet()
                 .stream()
