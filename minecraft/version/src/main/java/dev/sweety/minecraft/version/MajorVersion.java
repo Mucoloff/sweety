@@ -2,8 +2,8 @@ package dev.sweety.minecraft.version;
 
 import org.jetbrains.annotations.NotNull;
 
-public enum MajorVersion implements Version {
-    V_1_7(MinecraftVersion.V_1_7_2),
+public enum MajorVersion implements Version<MajorVersion> {
+    V_1_7(MinecraftVersion.V_1_7_10),
     V_1_8(MinecraftVersion.V_1_8),
     V_1_9(MinecraftVersion.V_1_9),
     V_1_10(MinecraftVersion.V_1_10),
@@ -57,5 +57,10 @@ public enum MajorVersion implements Version {
 
     public MinecraftVersion start() {
         return start;
+    }
+
+    @Override
+    public int ordinal() {
+        return super.ordinal();
     }
 }

@@ -6,7 +6,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public enum MinecraftVersion implements Version {
+public enum MinecraftVersion implements Version<MinecraftVersion> {
     V_1_7_2(4), V_1_7_4(4), V_1_7_5(4),
     V_1_7_6(5), V_1_7_7(5), V_1_7_8(5), V_1_7_9(5), V_1_7_10(5),
     V_1_8(47), V_1_8_3(47), V_1_8_8(47),
@@ -33,13 +33,19 @@ public enum MinecraftVersion implements Version {
 
     private static final MinecraftVersion[] VALUES = values();
 
-    private static final Map<Integer, List<MinecraftVersion>> BY_PROTOCOL =
-            Arrays.stream(VALUES)
-                    .collect(Collectors.groupingBy(MinecraftVersion::protocolVersion));
+    /* SortedMap for Protocol-based range/exact lookups */
+    private static final SortedMap<Integer, List<MinecraftVersion>> BY_PROTOCOL = new TreeMap<>();
 
-    private static final Map<String, MinecraftVersion> BY_NAME = new HashMap<>();
+    /* LinkedHashMap for Name-based lookups to maintain order */
+    private static final Map<String, MinecraftVersion> BY_NAME = new LinkedHashMap<>();
 
     static {
+        // Group by protocol into TreeMap
+        Map<Integer, List<MinecraftVersion>> grouped = Arrays.stream(VALUES)
+                .collect(Collectors.groupingBy(MinecraftVersion::protocolVersion));
+        BY_PROTOCOL.putAll(grouped);
+
+        // Populate LinkedHashMap
         for (MinecraftVersion value : VALUES) {
             BY_NAME.put(value.name().toUpperCase(Locale.ROOT), value);
             BY_NAME.put(value.releaseName().toUpperCase(Locale.ROOT), value);
@@ -59,7 +65,7 @@ public enum MinecraftVersion implements Version {
         this.protocolVersion = protocolVersion;
         this.error = error;
         this.releaseName = error ? name() : name().substring(2).replace("_", ".");
-        
+
         if (error) {
             this.major = this.minor = this.patch = -1;
         } else {
@@ -75,9 +81,13 @@ public enum MinecraftVersion implements Version {
         return this;
     }
 
+    /**
+     * Finds the latest version for a protocol using binary search.
+     */
     public static @NotNull MinecraftVersion get(int protocolVersion) {
         int index = Arrays.binarySearch(VALUES, null, (v, key) -> Integer.compare(v.protocolVersion(), protocolVersion));
         if (index < 0) return ERROR;
+        // Move to the last one for that protocol
         while (index + 1 < VALUES.length && VALUES[index + 1].protocolVersion() == protocolVersion) index++;
         return VALUES[index];
     }
@@ -123,5 +133,10 @@ public enum MinecraftVersion implements Version {
     @Override
     public String toString() {
         return releaseName;
+    }
+
+    @Override
+    public int ordinal() {
+        return super.ordinal();
     }
 }

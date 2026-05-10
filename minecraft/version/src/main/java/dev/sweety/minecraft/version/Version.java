@@ -2,7 +2,7 @@ package dev.sweety.minecraft.version;
 
 import org.jetbrains.annotations.NotNull;
 
-public interface Version extends Comparable<Version> {
+public interface Version<T extends Version<T>> extends Comparable<T> {
 
     int protocolVersion();
 
@@ -21,37 +21,34 @@ public interface Version extends Comparable<Version> {
     @NotNull
     MinecraftVersion specific();
 
-    default boolean isNewerThan(@NotNull Version other) {
-        return compareTo(other) > 0;
+    default boolean isNewerThan(@NotNull Version<?> other) {
+        return specific().compareTo(other.specific()) > 0;
     }
 
-    default boolean isOlderThan(@NotNull Version other) {
-        return compareTo(other) < 0;
+    default boolean isOlderThan(@NotNull Version<?> other) {
+        return specific().compareTo(other.specific()) < 0;
     }
 
-    default boolean isNewerThanOrEquals(@NotNull Version other) {
-        return compareTo(other) >= 0;
+    default boolean isNewerThanOrEquals(@NotNull Version<?> other) {
+        return specific().compareTo(other.specific()) >= 0;
     }
 
-    default boolean isOlderThanOrEquals(@NotNull Version other) {
-        return compareTo(other) <= 0;
+    default boolean isOlderThanOrEquals(@NotNull Version<?> other) {
+        return specific().compareTo(other.specific()) <= 0;
     }
 
-    default boolean isAtLeast(@NotNull Version other) {
+    default boolean isAtLeast(@NotNull Version<?> other) {
         return isNewerThanOrEquals(other);
     }
 
-    default boolean isBetween(@NotNull Version start, @NotNull Version end) {
+    default boolean isBetween(@NotNull Version<?> start, @NotNull Version<?> end) {
         return isNewerThanOrEquals(start) && isOlderThanOrEquals(end);
     }
 
     int ordinal();
 
     @Override
-    default int compareTo(@NotNull Version o) {
-        if (this.major() != o.major()) return Integer.compare(this.major(), o.major());
-        if (this.minor() != o.minor()) return Integer.compare(this.minor(), o.minor());
-        if (this.patch() != o.patch()) return Integer.compare(this.patch(), o.patch());
-        return Integer.compare(this.protocolVersion(), o.protocolVersion());
+    default int compareTo(@NotNull T o) {
+        return Integer.compare(this.ordinal(), o.ordinal());
     }
 }
