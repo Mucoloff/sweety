@@ -88,6 +88,8 @@ public interface ServiceRegistry {
         return new RegistrationBuilder<>(this, type);
     }
 
+    <T> T registerByClass(Class<T> type);
+
     class RegistrationBuilder<T> {
         private final ServiceRegistry registry;
         private final Class<T> type;

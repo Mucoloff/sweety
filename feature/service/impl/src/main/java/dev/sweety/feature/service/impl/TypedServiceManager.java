@@ -100,6 +100,13 @@ public class TypedServiceManager<Type> implements ServiceRegistry, AutoCloseable
     }
 
     @Override
+    public <T> T registerByClass(Class<T> type) {
+        T instance = internal.registerByClass(type);
+        checkType(instance);
+        return instance;
+    }
+
+    @Override
     public void close() {
         internal.close();
     }
