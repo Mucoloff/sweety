@@ -61,6 +61,15 @@ class EventSystemTest {
         assertTrue(container.called);
     }
 
+    @Test
+    void testErrorPaths() {
+        assertThrows(NullPointerException.class, () -> system.subscribe(null, e -> {}, 0, dev.sweety.event.api.info.State.PRE));
+        assertThrows(NullPointerException.class, () -> system.subscribe(TestEvent.class, null, 0, dev.sweety.event.api.info.State.PRE));
+        assertThrows(NullPointerException.class, () -> system.subscribe(TestEvent.class, e -> {}, 0, null));
+        assertThrows(NullPointerException.class, () -> system.dispatch(null));
+        assertThrows(NullPointerException.class, () -> system.subscribe(null));
+    }
+
     public static class TestEvent extends Event {
         public String data = "original";
     }

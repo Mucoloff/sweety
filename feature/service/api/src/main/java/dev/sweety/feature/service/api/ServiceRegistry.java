@@ -37,56 +37,58 @@ public interface ServiceRegistry {
         return contains(ServiceKey.key(type));
     }
 
-    @Nullable
+    
     <T> T getOrNull(@NotNull ServiceKey<T> key);
 
-    @Nullable
+    
     default <T> T getOrNull(@NotNull final Class<T> type) {
         return getOrNull(ServiceKey.key(type));
     }
 
-    @Nullable
+    
     default <T> T put(@NotNull final Class<T> type, final Provider<T> service) {
         return put(ServiceKey.key(type), service);
     }
 
-    @Nullable
+    
     <T> T put(@NotNull ServiceKey<T> key, Provider<T> service);
 
-    @Nullable
+    
     default <T> T put(@NotNull final Class<T> type, final T service) {
         return put(ServiceKey.key(type), service);
     }
 
-    @Nullable
+    
     <T> T put(@NotNull ServiceKey<T> key, T service);
 
-    @Nullable
+    
     <T> T putIfAbsent(@NotNull ServiceKey<T> key, T service);
 
-    @Nullable
+    
     default <T> T putIfAbsent(@NotNull final Class<T> type, final T service) {
         return putIfAbsent(ServiceKey.key(type), service);
     }
 
-    @Nullable
+    
     <T> T putIfAbsent(@NotNull ServiceKey<T> key, Provider<T> service);
 
-    @Nullable
+    
     default <T> T putIfAbsent(@NotNull final Class<T> type, final Provider<T> service) {
         return putIfAbsent(ServiceKey.key(type), service);
     }
 
-    default <T> RegistrationBuilder<T> register(Class<T> type) {
+    default <T> RegistrationBuilder<T> register(@NotNull Class<T> type) {
+        java.util.Objects.requireNonNull(type, "type cannot be null");
         return new RegistrationBuilder<>(this, type);
     }
 
-    <T> T registerByClass(Class<T> type);
+    @NotNull
+    <T> T registerByClass(@NotNull Class<T> type);
 
-    @Nullable
+    
     <T> T remove(@NotNull ServiceKey<T> key);
 
-    @Nullable
+    
     default <T> T remove(@NotNull Class<T> type) {
         return remove(ServiceKey.key(type));
     }

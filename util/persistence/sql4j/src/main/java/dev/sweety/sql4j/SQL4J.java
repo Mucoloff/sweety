@@ -28,22 +28,22 @@ public class SQL4J {
         }
 
         public DatabaseBuilder mysql(String host, int port, String database, String user, String password) {
-            this.config = new MySQLConfig(host, port, database, user, password);
+            this.config = new MySQLConfig(host, port, database, user, password, "");
             return this;
         }
         
         public DatabaseBuilder postgres(String host, int port, String database, String user, String password) {
-            this.config = new PostgreSQLConfig(host, port, database, user, password);
+            this.config = new PostgreSQLConfig(host, port, database, user, password, "");
             return this;
         }
 
         public DatabaseBuilder mariadb(String host, int port, String database, String user, String password) {
-            this.config = new MariaDBConfig(host, port, database, user, password);
+            this.config = new MariaDBConfig(host, port, database, user, password, "");
             return this;
         }
 
         public DatabaseBuilder h2(String path) {
-            this.config = new H2Config(path);
+            this.config = new H2Config(path, "sa", "");
             return this;
         }
 

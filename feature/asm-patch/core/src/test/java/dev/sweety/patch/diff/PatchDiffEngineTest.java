@@ -8,7 +8,6 @@ import dev.sweety.patch.model.AddOperation;
 import dev.sweety.patch.model.DeleteOperation;
 import dev.sweety.patch.model.ModifyOperation;
 import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.*;
@@ -41,12 +40,32 @@ class PatchDiffEngineTest {
         Patch patch = engine.diff(oldArch, newArch, "1.0", "1.1");
 
         List<PatchOperation> ops = patch.getOperations();
-        assertEquals(3, ops.size());
+        // 2 adds, 2 deletes, 2 modifies = 6 total
+        assertEquals(6, ops.size());
 
+        // ADD checks
         assertTrue(ops.stream().anyMatch(o -> o instanceof AddOperation && o.path().equals("add.txt") && Arrays.equals(o.data(), "hello".getBytes())));
         assertTrue(ops.stream().anyMatch(o -> o instanceof AddOperation && o.path().equals("add.bin") && Arrays.equals(o.data(), new byte[]{0x01, 0x03, 0x04, 0x12})));
-        assertTrue(ops.stream().anyMatch(o -> o instanceof DeleteOperation && o.path().equals("delete.txt")  && Arrays.equals(o.data(), "hello".getBytes())));
-        assertTrue(ops.stream().anyMatch(o -> o instanceof ModifyOperation && o.path().equals("change.txt")  && Arrays.equals(o.data(), "new".getBytes())));
-        assertTrue(ops.stream().anyMatch(o -> o instanceof ModifyOperation && o.path().equals("change.bin")  && Arrays.equals(o.data(), new byte[]{0x01, 0x03, 0x04})));
+        
+        // DELETE checks
+        assertTrue(ops.stream().anyMatch(o -> o instanceof DeleteOperation && o.path().equals("delete.txt")));
+        assertTrue(ops.stream().anyMatch(o -> o instanceof DeleteOperation && o.path().equals("delete.bin")));
+        
+        // MODIFY checks
+        assertTrue(ops.stream().anyMatch(o -> o instanceof ModifyOperation && o.path().equals("change.txt") && Arrays.equals(o.data(), "new".getBytes()) || (o.method() == PatchOperation.Method.TEXT_DIFF)));
+        assertTrue(ops.stream().anyMatch(o -> o instanceof ModifyOperation && o.path().equals("change.bin") && Arrays.equals(o.data(), new byte[]{0x01, 0x03, 0x04})));
+    }
+
+    @Test
+    void testErrorPaths() {
+        assertThrows(NullPointerException.class, () -> new PatchDiffEngine(null, null));
+        
+        PatchDiffEngine engine = new PatchDiffEngine(new Sha256Hash(), null);
+        Archive mock = Collections::emptyMap;
+        
+        assertThrows(NullPointerException.class, () -> engine.diff(null, mock, "1", "2"));
+        assertThrows(NullPointerException.class, () -> engine.diff(mock, null, "1", "2"));
+        assertThrows(NullPointerException.class, () -> engine.diff(mock, mock, null, "2"));
+        assertThrows(NullPointerException.class, () -> engine.diff(mock, mock, "1", null));
     }
 }

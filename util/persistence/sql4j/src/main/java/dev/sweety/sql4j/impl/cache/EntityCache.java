@@ -15,7 +15,18 @@ public final class EntityCache {
     private final Map<Class<?>, Cache<Object, Object>> caches = new ConcurrentHashMap<>();
     private final Map<Class<?>, Boolean> cacheableStatus = new ConcurrentHashMap<>();
 
+    private boolean enabled = true;
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
     public boolean isCacheable(Class<?> clazz) {
+        if (!enabled) return false;
         return cacheableStatus.computeIfAbsent(clazz, k -> {
             Cacheable ann = k.getAnnotation(Cacheable.class);
             return ann != null && ann.maxSize() > 0;
@@ -68,7 +79,4 @@ public final class EntityCache {
         });
     }
 
-    public boolean isEnabled() {
-        return true; // Global toggle
-    }
 }

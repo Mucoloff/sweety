@@ -239,7 +239,7 @@ public class PacketBuffer {
         return this;
     }
 
-    public <T extends Enum<T>, S> T readEnum(CallableDecoder<? extends S> stateDecoder, Function<S, T> mapper) {
+    public <T extends Enum<T>, S> T readEnumMapped(CallableDecoder<? extends S> stateDecoder, Function<S, T> mapper) {
         return mapper.apply(stateDecoder.read(this));
     }
 

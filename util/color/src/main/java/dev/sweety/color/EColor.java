@@ -202,11 +202,4 @@ public record EColor(int rgba) {
         return String.format("#%02x%02x%02x", getR() & 0xFF, getG() & 0xFF, getB() & 0xFF);
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (!(obj instanceof EColor(int val))) return false;
-        return this.rgba() == val;
-    }
-
 }

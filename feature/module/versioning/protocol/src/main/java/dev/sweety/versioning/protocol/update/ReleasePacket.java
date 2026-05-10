@@ -11,14 +11,14 @@ public class ReleasePacket extends Packet {
     private ReleaseBroadcastType type;
 
     public ReleasePacket(Artifact artifact, ReleaseInfo info, ReleaseBroadcastType type) {
-        this.buffer().writeEnum(artifact);
+        this.buffer().writeString(artifact.name());
         this.buffer().writeObject(info);
         this.buffer().writeEnum(type);
     }
 
     public ReleasePacket(int _id, long _timestamp, byte[] _data) {
         super(_id, _timestamp, _data);
-        this.artifact = this.buffer().readEnum(Artifact.class);
+        this.artifact = new Artifact(this.buffer().readString());
         this.info = this.buffer().readObject(ReleaseInfo.DECODER);
         this.type = this.buffer().readEnum(ReleaseBroadcastType.class);
     }

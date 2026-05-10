@@ -30,12 +30,14 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
         return services;
     }
 
+    @Override
     @NotNull
     public Set<ServiceKey<?>> keySet() {
         ensureOpen();
         return this.services.keySet();
     }
 
+    @Override
     @NotNull
     public Set<Map.Entry<ServiceKey<?>, Provider<?>>> entrySet() {
         ensureOpen();
@@ -43,18 +45,22 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
     }
 
     @Override
-    public @NotNull Collection<Provider<?>> providers() {
+    @NotNull
+    public Collection<Provider<?>> providers() {
         ensureOpen();
         return this.services.values();
     }
 
-    public @NotNull Collection<?> values() {
+    @NotNull
+    public Collection<?> values() {
         return this.providers().stream().map(Provider::get).collect(Collectors.toList());
     }
 
-    @Nullable
+    @Override
+    
     public <T> T getOrNull(@NotNull final ServiceKey<T> key) {
         ensureOpen();
+        java.util.Objects.requireNonNull(key, "key cannot be null");
         // noinspection unchecked
         final Provider<T> provider = (Provider<T>) this.services.get(key);
         return provider == null ? null : provider.get();
@@ -63,54 +69,68 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
     @Override
     public <T> boolean contains(@NotNull ServiceKey<T> key) {
         ensureOpen();
+        java.util.Objects.requireNonNull(key, "key cannot be null");
         return services.containsKey(key);
     }
 
-    @Nullable
+    @Override
+    
     public <T> T put(@NotNull final ServiceKey<T> key, final T service) {
         ensureOpen();
+        java.util.Objects.requireNonNull(key, "key cannot be null");
+        java.util.Objects.requireNonNull(service, "service cannot be null");
         if (service instanceof Service s) s.onEnable();
         return put(key, singleton(service));
     }
 
-    @Nullable
+    @Override
+    
     public <T> T put(@NotNull final ServiceKey<T> key, final Provider<T> service) {
         ensureOpen();
+        java.util.Objects.requireNonNull(key, "key cannot be null");
+        java.util.Objects.requireNonNull(service, "service provider cannot be null");
         // noinspection unchecked
         final Provider<T> provider = (Provider<T>) services.put(key, service);
         T value = provider == null ? null : provider.get();
         if (value instanceof Service s) s.onDisable();
-        
-        // If it's a provider, we might want to enable the new value if it's already instantiated
-        // But providers are usually lazy. Let's stick to direct instances for lifecycle for now.
         return value;
     }
 
-    @Nullable
-    public <T> T putIfAbsent(@NotNull final ServiceKey<T> type, final T service) {
+    @Override
+    
+    public <T> T putIfAbsent(@NotNull final ServiceKey<T> key, final T service) {
         ensureOpen();
-        return putIfAbsent(type, singleton(service));
+        java.util.Objects.requireNonNull(key, "key cannot be null");
+        java.util.Objects.requireNonNull(service, "service cannot be null");
+        return putIfAbsent(key, singleton(service));
     }
 
-    @Nullable
+    @Override
+    
     public <T> T putIfAbsent(@NotNull final ServiceKey<T> key, final Provider<T> service) {
         ensureOpen();
+        java.util.Objects.requireNonNull(key, "key cannot be null");
+        java.util.Objects.requireNonNull(service, "service provider cannot be null");
         // noinspection unchecked
         Provider<T> provider = (Provider<T>) services.putIfAbsent(key, service);
         return provider == null ? null : provider.get();
     }
 
     @Override
-    public <T> T registerByClass(Class<T> type) {
+    @NotNull
+    public <T> T registerByClass(@NotNull Class<T> type) {
         ensureOpen();
+        java.util.Objects.requireNonNull(type, "type cannot be null");
         T instance = injector.instantiate(type);
         put(type, instance);
         return instance;
     }
 
     @Override
+    
     public <T> T remove(@NotNull ServiceKey<T> key) {
         ensureOpen();
+        java.util.Objects.requireNonNull(key, "key cannot be null");
         // noinspection unchecked
         Provider<T> provider = (Provider<T>) services.remove(key);
         T value = provider == null ? null : provider.get();

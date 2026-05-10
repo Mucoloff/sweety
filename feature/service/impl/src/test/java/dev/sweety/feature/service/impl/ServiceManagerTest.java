@@ -34,6 +34,14 @@ class ServiceManagerTest {
         assertFalse(service.enabled);
     }
 
+    @Test
+    void testErrorPaths() {
+        assertThrows(NullPointerException.class, () -> manager.get((Class<?>) null));
+        assertThrows(NullPointerException.class, () -> manager.put((Class<MockService>) null, new MockService()));
+        assertThrows(NullPointerException.class, () -> manager.put(MockService.class, (MockService) null));
+        assertThrows(NullPointerException.class, () -> manager.registerByClass(null));
+    }
+
     public static class MockService implements Service {
         boolean enabled = false;
 

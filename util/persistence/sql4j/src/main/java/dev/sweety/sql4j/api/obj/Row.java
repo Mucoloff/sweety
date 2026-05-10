@@ -89,7 +89,7 @@ public final class Row {
      * @return The populated entity instance, or null if all columns for this entity are null (e.g. from a LEFT JOIN miss).
      */
     public <T> T extractEntity(dev.sweety.sql4j.api.obj.Table<T> table, String prefix) {
-        String pfx = (prefix == null || prefix.isEmpty()) ? "" : prefix.toLowerCase(Locale.ENGLISH) + "_";
+        String pfx = java.util.Objects.requireNonNullElse(prefix, "").isEmpty() ? "" : prefix.toLowerCase(Locale.ENGLISH) + "_";
         
         // Check if the primary keys are null (indicates a LEFT JOIN miss)
         boolean hasData = false;
@@ -172,11 +172,11 @@ public final class Row {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof Row row)) return false;
-        return data.equals(row.data);
+        return java.util.Objects.equals(data, row.data);
     }
 
     @Override
     public int hashCode() {
-        return data.hashCode();
+        return java.util.Objects.hashCode(data);
     }
 }

@@ -66,29 +66,27 @@ public enum VersionComparison implements Predicate<Integer>, Comparator<Version<
 
     @Override
     public boolean test(Integer comparisonResult) {
+        if (comparisonResult == null) throw new NullPointerException("comparisonResult cannot be null");
         return resultPredicate.test(comparisonResult);
     }
 
-    /**
-     * Evaluates if the relationship between two versions satisfies this comparison type
-     * using the default RELEASE strategy.
-     */
     public boolean test(@NotNull Version<?> a, @NotNull Version<?> b) {
+        java.util.Objects.requireNonNull(a, "version a cannot be null");
+        java.util.Objects.requireNonNull(b, "version b cannot be null");
         return test(RELEASE.compare(a, b));
     }
 
-    /**
-     * Evaluates the relationship using a specific strategy.
-     */
     public boolean test(@NotNull Version<?> a, @NotNull Version<?> b, @NotNull Comparator<Version<?>> strategy) {
+        java.util.Objects.requireNonNull(a, "version a cannot be null");
+        java.util.Objects.requireNonNull(b, "version b cannot be null");
+        java.util.Objects.requireNonNull(strategy, "strategy cannot be null");
         return test(strategy.compare(a, b));
     }
 
-    /**
-     * Standard Comparator implementation that respects the direction of the comparison type.
-     */
     @Override
     public int compare(Version<?> a, Version<?> b) {
+        java.util.Objects.requireNonNull(a, "version a cannot be null");
+        java.util.Objects.requireNonNull(b, "version b cannot be null");
         return multiplier * RELEASE.compare(a, b);
     }
 }
