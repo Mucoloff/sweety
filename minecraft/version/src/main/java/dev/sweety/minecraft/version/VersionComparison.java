@@ -19,19 +19,19 @@ public enum VersionComparison {
     NEWER_THAN((a, b) -> a > b),
 
     /*
-     * The version is newer than or equal to the compared version.
-     */
-    NEWER_THAN_OR_EQUALS((a, b) -> a >= b),
-
-    /*
      * The version is older than the compared version.
      */
     OLDER_THAN((a, b) -> a < b),
 
     /*
+     * The version is newer than or equal to the compared version.
+     */
+    NEWER_THAN_OR_EQUALS(OLDER_THAN),
+
+    /*
      * The version is older than or equal to the compared version.
      */
-    OLDER_THAN_OR_EQUALS((a, b) -> a <= b);
+    OLDER_THAN_OR_EQUALS(NEWER_THAN);
 
     public static final VersionComparison[] VALUES = values();
 
@@ -41,12 +41,15 @@ public enum VersionComparison {
         this.comparator = comparator;
     }
 
-    public boolean compareByProtocol(@NotNull MinecraftVersion a, @NotNull MinecraftVersion b) {
+    VersionComparison(VersionComparison opposite) {
+        this.comparator = (a, b) -> !opposite.comparator.test(a, b);
+    }
+
+    public boolean compareByProtocol(@NotNull Version a, @NotNull Version b) {
         return comparator.test(a.protocolVersion(), b.protocolVersion());
     }
 
-    public boolean compareByOrdinal(@NotNull MinecraftVersion a, @NotNull MinecraftVersion b) {
+    public boolean compareByOrdinal(@NotNull Version a, @NotNull Version b) {
         return comparator.test(a.ordinal(), b.ordinal());
     }
 }
-

@@ -1,9 +1,11 @@
 package dev.sweety.minecraft.version;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-public enum MinecraftVersion {
+import java.util.*;
+
+public enum MinecraftVersion implements Version {
     V_1_7_2(4), V_1_7_4(4), V_1_7_5(4),
     V_1_7_6(5), V_1_7_7(5), V_1_7_8(5), V_1_7_9(5), V_1_7_10(5),
     V_1_8(47), V_1_8_3(47), V_1_8_8(47),
@@ -29,58 +31,82 @@ public enum MinecraftVersion {
     ERROR(-1, true);
 
     private static final MinecraftVersion[] VALUES = values();
-    private static final Map<Integer, List<MinecraftVersion>> BY_PROTOCOL =
-            Arrays.stream(VALUES)
-                    .collect(Collectors.groupingBy(MinecraftVersion::protocolVersion));
-
-    private static final Map<String, MinecraftVersion> BY_NAME_OR_RELEASE =
-            Arrays.stream(VALUES)
-                    .flatMap(v -> Arrays.stream(new String[]{
-                            v.name().toUpperCase(Locale.ROOT),
-                            v.releaseName()
-                    }).map(key -> new AbstractMap.SimpleEntry<>(key, v)))
-                    .collect(Collectors.toMap(
-                            Map.Entry::getKey,
-                            Map.Entry::getValue,
-                            (a, b) -> a
-                    ));
-
-    private static final List<MinecraftVersion> EMPTY = Collections.emptyList();
 
     private final int protocolVersion;
     private final String releaseName;
+    private final boolean error;
 
     MinecraftVersion(int protocolVersion) {
+        this(protocolVersion, false);
+    }
+
+    MinecraftVersion(int protocolVersion, boolean error) {
         this.protocolVersion = protocolVersion;
-        this.releaseName = name().substring(2).replace("_", ".");
+        this.releaseName = error ? name() : name().substring(2).replace("_", ".");
+        this.error = error;
     }
 
-    MinecraftVersion(int protocolVersion, boolean isNotRelease) {
-        this.protocolVersion = protocolVersion;
-        this.releaseName = isNotRelease ? name() : name().substring(2).replace("_", ".");
+    public static @NotNull MinecraftVersion get(int protocolVersion) {
+        int index = Arrays.binarySearch(VALUES, null, (v, key) -> {
+            int p = v.protocolVersion();
+            int target = (int) (Integer) protocolVersion;
+            if (p == target) return 0;
+            return p < target ? -1 : 1;
+        });
+        
+        if (index < 0) return ERROR;
+        
+        // binarySearch might return any match, we usually want the latest for that protocol
+        while (index + 1 < VALUES.length && VALUES[index + 1].protocolVersion() == protocolVersion) {
+            index++;
+        }
+        return VALUES[index];
     }
 
-    public static List<MinecraftVersion> get(int protocolVersion) {
-        return BY_PROTOCOL.getOrDefault(protocolVersion, EMPTY);
+    public static @NotNull MinecraftVersion get(@Nullable String name) {
+        if (name == null) return ERROR;
+        String clean = name.toUpperCase(Locale.ROOT).replace(".", "_");
+        if (!clean.startsWith("V_")) clean = "V_" + clean;
+        
+        try {
+            return valueOf(clean);
+        } catch (IllegalArgumentException e) {
+            // Fallback for release names if they don't match exactly
+            for (MinecraftVersion value : VALUES) {
+                if (value.releaseName().equalsIgnoreCase(name)) return value;
+            }
+            return ERROR;
+        }
     }
 
-    public static MinecraftVersion get(String name) {
-        return BY_NAME_OR_RELEASE.getOrDefault(name.toUpperCase(), ERROR);
-    }
-
-    public static MinecraftVersion getLatest() {
+    public static @NotNull MinecraftVersion getLatest() {
         return VALUES[VALUES.length - 2];
     }
 
-    public static MinecraftVersion getOldest() {
-        return VALUES[0];
-    }
-
+    @Override
     public int protocolVersion() {
         return protocolVersion;
     }
 
-    public String releaseName() {
+    @Override
+    public @NotNull String releaseName() {
         return releaseName;
+    }
+
+    public boolean isError() {
+        return error;
+    }
+
+    @Override
+    public String toString() {
+        return releaseName;
+    }
+
+    @Override
+    public int compareTo(@NotNull Version o) {
+        if (o instanceof MinecraftVersion other) {
+            return Integer.compare(this.ordinal(), other.ordinal());
+        }
+        return Integer.compare(this.protocolVersion(), o.protocolVersion());
     }
 }
