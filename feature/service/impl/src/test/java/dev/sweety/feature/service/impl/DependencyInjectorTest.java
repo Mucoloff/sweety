@@ -24,7 +24,7 @@ class DependencyInjectorTest {
         
         AppService app = injector.instantiate(AppService.class);
         assertNotNull(app);
-        assertNotNull(app.getDb());
+        assertNotNull(app.db());
     }
 
     @Test
@@ -41,16 +41,11 @@ class DependencyInjectorTest {
     // Mock Services
     public static class DatabaseService implements Service {}
 
-    public static class AppService implements Service {
-        private final DatabaseService db;
-
+    public record AppService(DatabaseService db) implements Service {
         @Inject
-        public AppService(DatabaseService db) {
-            this.db = db;
+        public AppService {
         }
-
-        public DatabaseService getDb() { return db; }
-    }
+        }
 
     public static class FieldInjectionService implements Service {
         @Inject

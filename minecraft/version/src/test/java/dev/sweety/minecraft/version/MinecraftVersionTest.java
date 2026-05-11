@@ -11,7 +11,7 @@ class MinecraftVersionTest {
     void testProtocolLookup() {
         // 1.8.8 -> 47
         MinecraftVersion v188 = MinecraftVersion.get(47);
-        assertEquals(MinecraftVersion.V_1_8_8, v188);
+        assertEquals(MinecraftVersion.V_1_8_9, v188);
 
         // 1.16.5 -> 754
         MinecraftVersion v1165 = MinecraftVersion.get(754);
@@ -56,5 +56,7 @@ class MinecraftVersionTest {
         assertTrue(v18s.contains(MinecraftVersion.V_1_8));
         assertTrue(v18s.contains(MinecraftVersion.V_1_8_3));
         assertTrue(v18s.contains(MinecraftVersion.V_1_8_8));
+        assertTrue(v18s.contains(MinecraftVersion.V_1_8_9));
+        assertFalse(v18s.contains(MinecraftVersion.V_1_16_5));
     }
 }

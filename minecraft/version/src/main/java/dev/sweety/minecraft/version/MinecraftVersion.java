@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 public enum MinecraftVersion implements Version<MinecraftVersion> {
     V_1_7_2(4), V_1_7_4(4), V_1_7_5(4),
     V_1_7_6(5), V_1_7_7(5), V_1_7_8(5), V_1_7_9(5), V_1_7_10(5),
-    V_1_8(47), V_1_8_3(47), V_1_8_8(47),
+    V_1_8(47), V_1_8_3(47), V_1_8_8(47),  V_1_8_9(47),
     V_1_9(107), V_1_9_1(108), V_1_9_2(109), V_1_9_4(110),
     V_1_10(210), V_1_10_1(210), V_1_10_2(210),
     V_1_11(315), V_1_11_2(316),
@@ -86,7 +86,7 @@ public enum MinecraftVersion implements Version<MinecraftVersion> {
      */
     public static @Nullable MinecraftVersion get(int protocolVersion) {
         List<MinecraftVersion> list = BY_PROTOCOL.get(protocolVersion);
-        return list.isEmpty() ? null : list.getFirst();
+        return list.isEmpty() ? null : list.getLast();
     }
 
     public static @NotNull List<MinecraftVersion> getAll(int protocolVersion) {

@@ -16,6 +16,7 @@
             <option value="$PROJECT_DIR$/feature/asm-patch/generator" />
             <option value="$PROJECT_DIR$/feature/event" />
             <option value="$PROJECT_DIR$/feature/event/api" />
+            <option value="$PROJECT_DIR$/feature/event/event-processor" />
             <option value="$PROJECT_DIR$/feature/event/impl" />
             <option value="$PROJECT_DIR$/feature/module" />
             <option value="$PROJECT_DIR$/feature/module/extension" />
@@ -67,7 +68,6 @@
             <option value="$PROJECT_DIR$/util/persistence/sql4j" />
             <option value="$PROJECT_DIR$/util/persistence/sql4j-processor" />
             <option value="$PROJECT_DIR$/util/processor" />
-            <option value="$PROJECT_DIR$/util/processor/event-processor" />
             <option value="$PROJECT_DIR$/util/processor/intellij-plugin" />
             <option value="$PROJECT_DIR$/util/processor/packet-processor" />
             <option value="$PROJECT_DIR$/util/processor/record-getter-processor" />
