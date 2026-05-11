@@ -12,12 +12,13 @@ public class ProfileThread {
 
     public ProfileThread(final String name, final ThreadType type) {
         this.type = type;
+        String indexedName = name + "-" + THREAD_COUNTER.incrementAndGet();
         this.thread = switch (type) {
-            case SINGLE -> ThreadUtil.singleThreadScheduler(name + "-" + THREAD_COUNTER.incrementAndGet());
-            case FIXED -> ThreadUtil.fixedThreadPool(Runtime.getRuntime().availableProcessors(), name + "-" + THREAD_COUNTER.incrementAndGet());
-            case CACHED -> ThreadUtil.cachedThreadPool(name + "-" + THREAD_COUNTER.incrementAndGet());
-            case VIRTUAL -> ThreadUtil.virtualThreadExecutor(name + "-" + THREAD_COUNTER.incrementAndGet());
-            case POOL -> ThreadUtil.poolThreadScheduler(Runtime.getRuntime().availableProcessors(), name + "-" + THREAD_COUNTER.incrementAndGet());
+            case SINGLE -> ThreadUtil.singleThreadScheduler(indexedName);
+            case FIXED -> ThreadUtil.fixedThreadPool(Runtime.getRuntime().availableProcessors(), indexedName);
+            case CACHED -> ThreadUtil.cachedThreadPool(indexedName);
+            case VIRTUAL -> ThreadUtil.virtualThreadExecutor(indexedName);
+            case POOL -> ThreadUtil.poolThreadScheduler(Runtime.getRuntime().availableProcessors(), indexedName);
         };
     }
 

@@ -21,11 +21,11 @@ import dev.sweety.thread.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class EventSystem implements IEventSystem {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-    private static final Comparator<EventCallback<?>> priorityFilter =
-            Comparator.comparingInt(EventCallback::priority);
+    private static final Comparator<EventCallback<?>> priorityFilter = Comparator.comparingInt(EventCallback::priority);
 
     private final Map<Type, List<EventCallback<?>>> callSiteMap = new ConcurrentHashMap<>();
     private static final Map<Class<?>, Object> CONTAINER_CACHE = new ConcurrentHashMap<>();
@@ -45,9 +45,9 @@ public class EventSystem implements IEventSystem {
     }
 
     private <T extends Event<?>> void subscribe(@NotNull final Class<T> eventType, @NotNull final Listener<T> listener, int priority, @NotNull State state, boolean readOnly) {
-        java.util.Objects.requireNonNull(eventType, "eventType cannot be null");
-        java.util.Objects.requireNonNull(listener, "listener cannot be null");
-        java.util.Objects.requireNonNull(state, "state cannot be null");
+        Objects.requireNonNull(eventType, "eventType cannot be null");
+        Objects.requireNonNull(listener, "listener cannot be null");
+        Objects.requireNonNull(state, "state cannot be null");
         final List<EventCallback<?>> callSites = this.callSiteMap.computeIfAbsent(eventType, _ -> new CopyOnWriteArrayList<>());
         final Object container = CONTAINER_CACHE.computeIfAbsent(eventType, _ -> new Object());
         callSites.add(new EventCallback<>(container, listener, priority, state, readOnly));
@@ -56,7 +56,7 @@ public class EventSystem implements IEventSystem {
 
     @Override
     public <T extends Event<?>> SubscriptionBuilder<T> on(@NotNull Class<T> eventType) {
-        java.util.Objects.requireNonNull(eventType, "eventType cannot be null");
+        Objects.requireNonNull(eventType, "eventType cannot be null");
         return new SubscriptionBuilderImpl<>(this, eventType);
     }
 
@@ -105,7 +105,7 @@ public class EventSystem implements IEventSystem {
 
     @Override
     public void subscribe(@NotNull Object container) {
-        java.util.Objects.requireNonNull(container, "container cannot be null");
+        Objects.requireNonNull(container, "container cannot be null");
         for (final Field field : container.getClass().getDeclaredFields()) {
             final LinkEvent annotation = field.getAnnotation(LinkEvent.class);
             if (annotation == null) continue;
@@ -147,7 +147,7 @@ public class EventSystem implements IEventSystem {
 
     @Override
     public <T extends Event<?>> T dispatch(@NotNull T event) {
-        java.util.Objects.requireNonNull(event, "event cannot be null");
+        Objects.requireNonNull(event, "event cannot be null");
         if (event instanceof CancellableEvent<?> me) me.uncancel();
 
         List<EventCallback<T>> callbacks = findCompatibleCallbacks(event);
@@ -155,21 +155,40 @@ public class EventSystem implements IEventSystem {
 
         final int initialHash = event.hashCode();
 
-        int i = 0;
-        while (i < callbacks.size()) {
-            EventCallback<T> first = callbacks.get(i);
+        // 1. Group by priority using a TreeMap to maintain order
+        Map<Integer, List<EventCallback<T>>> priorityGroups = callbacks.stream().collect(Collectors.groupingBy(EventCallback::priority, TreeMap::new, Collectors.toList()));
 
-            if (first.readOnly()) {
-                List<EventCallback<T>> parallelGroup = new ArrayList<>(callbacks.size());
-                int priority = first.priority();
-                while (i < callbacks.size() && callbacks.get(i).readOnly() && callbacks.get(i).priority() == priority) {
-                    parallelGroup.add(callbacks.get(i));
-                    i++;
+        // 2. Process each priority group with granular batching
+        for (List<EventCallback<T>> group : priorityGroups.values()) {
+            // If the event is immutable, the whole group can run in parallel
+            if (!(event instanceof MutableEvent)) {
+                executeParallel(group, event);
+                if (isCancelled(event)) break;
+                continue;
+            }
+
+            // For mutable events, batch consecutive read-only listeners
+            List<EventCallback<T>> currentBatch = new ArrayList<>();
+            for (EventCallback<T> cb : group) {
+                if (cb.readOnly()) {
+                    currentBatch.add(cb);
+                } else {
+                    // Flush current batch before executing the sequential writer
+                    if (!currentBatch.isEmpty()) {
+                        executeParallel(currentBatch, event);
+                        currentBatch.clear();
+                        if (isCancelled(event)) break;
+                    }
+
+                    // Execute the sequential writer
+                    executeSequential(cb, event);
+                    if (isCancelled(event)) break;
                 }
-                executeParallel(parallelGroup, event);
-            } else {
-                executeSequential(first, event);
-                i++;
+            }
+
+            // Flush remaining batch at the end of the priority group
+            if (!currentBatch.isEmpty() && !isCancelled(event)) {
+                executeParallel(currentBatch, event);
             }
 
             if (isCancelled(event)) break;
@@ -225,21 +244,26 @@ public class EventSystem implements IEventSystem {
 
     private <T extends Event<?>> void executeParallel(List<EventCallback<T>> group, T event) {
         if (group.isEmpty()) return;
+        
+        // Optimization: if there's only one listener, run it synchronously
+        if (group.size() == 1) {
+            executeSequential(group.getFirst(), event);
+            return;
+        }
 
         T immutableEvent = wrapImmutable(event);
 
         List<CompletableFuture<?>> futures = new ArrayList<>();
         for (EventCallback<T> cb : group) {
             if (shouldCall(cb, event)) {
-                futures.add(threadManager.fireAndForget(ThreadType.CACHED, thread -> {
-                    cb.listener().call(immutableEvent);
-                    return CompletableFuture.completedFuture(null);
-                }));
+                futures.add(threadManager.fireAndForget(ThreadType.CACHED, t ->
+                        t.execute(() -> cb.listener().call(immutableEvent))
+                ));
             }
         }
 
         if (!futures.isEmpty()) {
-            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+            CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
             if (isCancelled(immutableEvent)) {
                 cancel(event);
             }
@@ -287,6 +311,7 @@ public class EventSystem implements IEventSystem {
 
         R call = original.call(e.isChanged() ? changedArgsMapper.apply(e) : args);
 
+        //noinspection unchecked
         final T post = (T) dispatch(e.post());
 
         return Pair.of(post, call);
@@ -304,12 +329,13 @@ public class EventSystem implements IEventSystem {
 
         R call = original.call(args);
 
+        //noinspection unchecked
         final T post = (T) dispatch(e.post());
 
         return Pair.of(post, call);
     }
 
     private record EventCallback<T extends Event<?>>(Object container, Listener<T> listener, int priority, State state,
-                                                      boolean readOnly) {
+                                                     boolean readOnly) {
     }
 }

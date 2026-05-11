@@ -2,6 +2,8 @@ package dev.sweety.event.impl;
 
 import dev.sweety.event.api.AbstractCancellableEvent;
 import dev.sweety.event.api.Event;
+import dev.sweety.event.api.MutableEvent;
+import dev.sweety.event.api.info.State;
 import dev.sweety.event.api.listener.LinkEvent;
 import dev.sweety.event.api.listener.Listener;
 import dev.sweety.event.test.MutablePlayerJoinEvent;
@@ -30,8 +32,8 @@ class EventSystemTest {
     void testBasicDispatch() {
         List<String> order = new ArrayList<>();
 
-        system.subscribe(TestEvent.class, e -> order.add("first"), 10, dev.sweety.event.api.info.State.PRE);
-        system.subscribe(TestEvent.class, e -> order.add("second"), 5, dev.sweety.event.api.info.State.PRE);
+        system.subscribe(TestEvent.class, e -> order.add("first"), 10, State.PRE);
+        system.subscribe(TestEvent.class, e -> order.add("second"), 5, State.PRE);
 
         system.dispatch(new TestEvent());
 
@@ -46,16 +48,16 @@ class EventSystemTest {
         system.subscribe(TestEvent.class, e -> {
             order.add("canceller");
             e.cancel();
-        }, 5, dev.sweety.event.api.info.State.PRE);
+        }, 5, State.PRE);
 
-        system.subscribe(TestEvent.class, e -> order.add("after"), 10, dev.sweety.event.api.info.State.PRE);
+        system.subscribe(TestEvent.class, e -> order.add("after"), 10, State.PRE);
 
         TestEvent event = new TestEvent();
         system.dispatch(event);
 
         assertTrue(event.isCancelled());
         assertEquals(1, order.size());
-        assertEquals("canceller", order.get(0));
+        assertEquals("canceller", order.getFirst());
     }
 
     @Test
@@ -71,8 +73,8 @@ class EventSystemTest {
     @Test
     void testErrorPaths() {
         assertThrows(NullPointerException.class, () -> system.subscribe(null, _ -> {
-        }, 0, dev.sweety.event.api.info.State.PRE));
-        assertThrows(NullPointerException.class, () -> system.subscribe(TestEvent.class, null, 0, dev.sweety.event.api.info.State.PRE));
+        }, 0, State.PRE));
+        assertThrows(NullPointerException.class, () -> system.subscribe(TestEvent.class, null, 0, State.PRE));
         assertThrows(NullPointerException.class, () -> system.subscribe(TestEvent.class, _ -> {
         }, 0, null));
         assertThrows(NullPointerException.class, () -> system.dispatch(null));
@@ -84,6 +86,8 @@ class EventSystemTest {
         // Test static factory methods injected by processor
         PlayerJoinEvent ev = Event.ofMutable(PlayerJoinEvent.class, "NomeUtente", 42);
 
+        TestContainer container = new TestContainer();
+        system.subscribe(container);
 
         System.out.println("Original: " + ev);
 
@@ -104,14 +108,15 @@ class EventSystemTest {
         });
 
         system.dispatch(ev);
-        
-        assertEquals("NomeUtente_test", ev.getUsername());
+
+        assertEquals("NomeUtente_test_linked", ev.getUsername());
     }
 
-    public static class TestEvent extends AbstractCancellableEvent<TestEvent> {
+    public static class TestEvent extends AbstractCancellableEvent<TestEvent> implements MutableEvent<TestEvent> {
+
         @Override
         public @NotNull TestEvent toImmutable() {
-            return this;
+            return new TestEvent();
         }
     }
 
@@ -120,5 +125,8 @@ class EventSystemTest {
 
         @LinkEvent(priority = 1)
         public Listener<TestEvent> onTest = e -> called = true;
+
+        @LinkEvent
+        public Listener<MutablePlayerJoinEvent> onPlayerJoin = e -> e.setUsername(e.getUsername() + "_linked");
     }
 }

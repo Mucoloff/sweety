@@ -162,8 +162,7 @@ public class EventProcessor extends AbstractProcessor {
                 // Setter
                 List<JCTree.JCVariableDecl> setterParams = List.of(maker.VarDef(maker.Modifiers(Flags.PARAMETER), names.fromString(field.name), typeToExpression(field.type), null));
                 List<JCTree.JCStatement> setterStats = List.of(
-                    maker.Exec(maker.Assign(maker.Select(maker.Ident(names.fromString("this")), names.fromString(field.name)), maker.Ident(names.fromString(field.name)))),
-                    maker.Exec(maker.Assign(maker.Select(maker.Ident(names.fromString("this")), names.fromString("changed")), maker.Literal(true)))
+                    maker.Exec(maker.Assign(maker.Select(maker.Ident(names.fromString("this")), names.fromString(field.name)), maker.Ident(names.fromString(field.name))))
                 );
                 defs = defs.append(maker.MethodDef(maker.Modifiers(Flags.PUBLIC), names.fromString(field.setterName), maker.TypeIdent(TypeTag.VOID), List.nil(), setterParams, List.nil(), maker.Block(0, setterStats), null));
             }

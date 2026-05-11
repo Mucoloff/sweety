@@ -34,7 +34,7 @@ public class ThreadManager {
     public <T> CompletableFuture<T> fireAndForget(final ThreadType type, final Function<ProfileThread, CompletableFuture<T>> action) {
         final ProfileThread thread = getAvailableProfileThread(type);
         final CompletableFuture<T> future = action.apply(thread);
-        future.whenComplete((r, t) -> thread.decrement());
+        future.whenComplete((_, _) -> thread.decrement());
         return future;
     }
 

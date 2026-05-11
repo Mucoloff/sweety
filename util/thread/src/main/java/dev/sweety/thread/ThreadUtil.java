@@ -34,13 +34,8 @@ public final class ThreadUtil {
     }
 
     public static ExecutorService virtualThreadExecutor(final String name) {
-        try {
-            // Using reflection to support Java 21+ while remaining compatible with older versions if necessary
-            // Although the project seems to be on a high version (SourceVersion.RELEASE_24)
-            return (ExecutorService) Executors.class.getMethod("newVirtualThreadPerTaskExecutor").invoke(null);
-        } catch (Exception e) {
-            return cachedThreadPool(name);
-        }
+        ThreadFactory factory = Thread.ofVirtual().name(name).factory();
+        return Executors.newThreadPerTaskExecutor(factory);
     }
 
 }
