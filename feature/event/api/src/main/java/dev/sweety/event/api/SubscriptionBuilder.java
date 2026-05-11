@@ -4,7 +4,7 @@ import dev.sweety.event.api.info.Priority;
 import dev.sweety.event.api.info.State;
 import dev.sweety.event.api.listener.Listener;
 
-public interface SubscriptionBuilder<T extends IEvent> {
+public interface SubscriptionBuilder<T extends Event> {
     SubscriptionBuilder<T> priority(int priority);
     
     default SubscriptionBuilder<T> priority(Priority level) {
@@ -20,6 +20,8 @@ public interface SubscriptionBuilder<T extends IEvent> {
     default SubscriptionBuilder<T> postOnly() {
         return state(State.POST);
     }
+
+    SubscriptionBuilder<T> readOnly(boolean readOnly);
     
     void handle(Listener<T> listener);
 }
