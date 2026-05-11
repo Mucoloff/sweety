@@ -10,26 +10,25 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Objects;
 
-public class DependencyInjector {
+public final class DependencyInjector {
 
-    private final ServiceRegistry registry;
-
-    public DependencyInjector(@NotNull ServiceRegistry registry) {
-        this.registry = Objects.requireNonNull(registry, "registry cannot be null");
+    private DependencyInjector() {
+        throw new UnsupportedOperationException("Utility class");
     }
 
-    public <T> T instantiate(@NotNull Class<T> type) {
+    public static <T> T instantiate(@NotNull ServiceRegistry registry, @NotNull Class<T> type) {
+        Objects.requireNonNull(registry, "registry cannot be null");
         Objects.requireNonNull(type, "type cannot be null");
         try {
-            T instance = createInstance(type);
-            injectFields(instance);
+            T instance = createInstance(registry, type);
+            injectFields(registry, instance);
             return instance;
         } catch (Exception e) {
             throw new RuntimeException("Failed to instantiate service: " + type.getName(), e);
         }
     }
 
-    private <T> T createInstance(Class<T> type) throws InvocationTargetException, InstantiationException, IllegalAccessException {
+    private static <T> T createInstance(ServiceRegistry registry, Class<T> type) throws InvocationTargetException, InstantiationException, IllegalAccessException {
         Constructor<?>[] constructors = type.getDeclaredConstructors();
         Constructor<?> injectConstructor = Arrays.stream(constructors)
                 .filter(c -> c.isAnnotationPresent(Inject.class))
@@ -44,11 +43,9 @@ public class DependencyInjector {
                 return def.newInstance();
             } catch (NoSuchMethodException e) {
                 // Pick first constructor if only one
-                if (constructors.length == 1) {
-                    injectConstructor = constructors[0];
-                } else {
+                if (constructors.length != 1)
                     throw new RuntimeException("No @Inject constructor or default constructor found for " + type.getName());
-                }
+                injectConstructor = constructors[0];
             }
         }
 
@@ -61,7 +58,9 @@ public class DependencyInjector {
         return (T) injectConstructor.newInstance(params);
     }
 
-    public void injectFields(Object instance) throws IllegalAccessException {
+    public static void injectFields(@NotNull ServiceRegistry registry, @NotNull Object instance) throws IllegalAccessException {
+        Objects.requireNonNull(registry, "registry cannot be null");
+        Objects.requireNonNull(instance, "instance cannot be null");
         Class<?> clazz = instance.getClass();
         while (clazz != null && clazz != Object.class) {
             for (Field field : clazz.getDeclaredFields()) {

@@ -17,7 +17,6 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
     private final Map<ServiceKey<?>, Provider<?>> services = new ConcurrentHashMap<>();
-    private final DependencyInjector injector = new DependencyInjector(this);
 
     private void ensureOpen() {
         if (closed.get()) throw new IllegalStateException("ServiceManager is closed");
@@ -122,7 +121,7 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
     public <T> T registerByClass(@NotNull Class<T> type) {
         ensureOpen();
         Objects.requireNonNull(type, "type cannot be null");
-        T instance = injector.instantiate(type);
+        T instance = DependencyInjector.instantiate(this, type);
         put(type, instance);
         return instance;
     }

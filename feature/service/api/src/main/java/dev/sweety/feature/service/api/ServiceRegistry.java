@@ -69,7 +69,6 @@ public interface ServiceRegistry {
     default <T> T putIfAbsent(@NotNull final Class<T> type, final T service) {
         return putIfAbsent(ServiceKey.key(type), service);
     }
-
     
     <T> T putIfAbsent(@NotNull ServiceKey<T> key, Provider<T> service);
 
@@ -85,10 +84,8 @@ public interface ServiceRegistry {
 
     @NotNull
     <T> T registerByClass(@NotNull Class<T> type);
-
     
     <T> T remove(@NotNull ServiceKey<T> key);
-
     
     default <T> T remove(@NotNull Class<T> type) {
         return remove(ServiceKey.key(type));
