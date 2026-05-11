@@ -2,62 +2,27 @@ package dev.sweety.event.api;
 
 import org.jetbrains.annotations.NotNull;
 
-public class Event implements IEvent {
+/**
+ * Base interface for all events (Read-Only view).
+ */
+public interface Event {
 
-    private boolean cancelled = false;
-    private boolean changed = false;
-    private boolean pre = true;
-
-    @Override
-    public void cancel() {
-        setCancelled(true);
+    default void cancel() {
+        if (this instanceof MutableEvent me) {
+            me.setCancelled(true);
+        } else {
+            throw new UnsupportedOperationException("Cannot cancel a read-only event");
+        }
     }
 
-    @Override
     @NotNull
-    public <T extends IEvent> T post() {
-        this.pre = false;
-        //noinspection unchecked
-        return (T) this;
-    }
+    Event post();
 
-    @Override
-    public boolean isPost() {
-        return !this.pre;
-    }
+    boolean isPost();
 
-    @Override
-    public boolean isPre() {
-        return pre;
-    }
+    boolean isPre();
 
-    @Override
-    public void setCancelled(boolean cancelled) {
-        this.cancelled = cancelled;
-    }
+    boolean isCancelled();
 
-    @Override
-    public boolean isCancelled() {
-        return cancelled;
-    }
-
-    public boolean isChanged() {
-        return changed;
-    }
-
-    public void setChanged(boolean changed) {
-        this.changed = changed;
-    }
-
-    @Override
-    public final boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Event event)) return false;
-        return cancelled == event.cancelled && changed == event.changed && pre == event.pre;
-    }
-
-    @Override
-    public int hashCode() {
-        return java.util.Objects.hash(cancelled, changed, pre);
-    }
+    boolean isChanged();
 }

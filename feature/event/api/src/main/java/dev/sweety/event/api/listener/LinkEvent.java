@@ -17,5 +17,7 @@ public @interface LinkEvent {
     int priority() default -1;
 
     State state() default State.PRE;
+    
+    boolean readOnly() default false;
 }
 
