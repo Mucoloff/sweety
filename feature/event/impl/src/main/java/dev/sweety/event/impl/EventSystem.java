@@ -30,6 +30,21 @@ public class EventSystem implements IEventSystem {
     private final Map<Type, List<EventCallback<?>>> callSiteMap = new ConcurrentHashMap<>();
     private static final Map<Class<?>, Object> CONTAINER_CACHE = new ConcurrentHashMap<>();
     private final ThreadManager threadManager;
+    private final Map<Class<?>, List<ExecutionStep<?>>> executionPlanCache = new ConcurrentHashMap<>();
+
+    private sealed interface ExecutionStep<T extends Event<?>> {
+        void run(T event, EventSystem system);
+    }
+
+    private record ParallelStep<T extends Event<?>>(List<EventCallback<T>> group) implements ExecutionStep<T> {
+        @Override
+        public void run(T event, EventSystem system) { system.executeParallel(group, event); }
+    }
+
+    private record SequentialStep<T extends Event<?>>(EventCallback<T> cb) implements ExecutionStep<T> {
+        @Override
+        public void run(T event, EventSystem system) { system.executeSequential(cb, event); }
+    }
 
     public EventSystem(ThreadManager threadManager) {
         this.threadManager = threadManager;
@@ -42,6 +57,7 @@ public class EventSystem implements IEventSystem {
     @Override
     public <T extends Event<?>> void subscribe(@NotNull final Class<T> eventType, @NotNull final Listener<T> listener, int priority, @NotNull State state) {
         subscribe(eventType, listener, priority, state, !MutableEvent.class.isAssignableFrom(eventType));
+        executionPlanCache.clear();
     }
 
     private <T extends Event<?>> void subscribe(@NotNull final Class<T> eventType, @NotNull final Listener<T> listener, int priority, @NotNull State state, boolean readOnly) {
@@ -52,6 +68,7 @@ public class EventSystem implements IEventSystem {
         final Object container = CONTAINER_CACHE.computeIfAbsent(eventType, _ -> new Object());
         callSites.add(new EventCallback<>(container, listener, priority, state, readOnly));
         callSites.sort(priorityFilter);
+        executionPlanCache.clear();
     }
 
     @Override
@@ -100,7 +117,10 @@ public class EventSystem implements IEventSystem {
     @Override
     public <T extends Event<?>> void unsubscribe(final Class<T> eventType) {
         final List<EventCallback<?>> callSites = this.callSiteMap.get(eventType);
-        if (callSites != null) callSites.clear();
+        if (callSites != null) {
+            callSites.clear();
+            executionPlanCache.clear();
+        }
     }
 
     @Override
@@ -135,14 +155,19 @@ public class EventSystem implements IEventSystem {
             callSites.add(new EventCallback<>(container, listener, annotation.priority() == -1 ? annotation.level().getValue() : annotation.priority(), annotation.state(), readOnly));
             callSites.sort(priorityFilter);
         }
+        executionPlanCache.clear();
     }
 
     @Override
     public void unsubscribe(final Object container) {
+        boolean removed = false;
         for (Map.Entry<Type, List<EventCallback<?>>> entry : callSiteMap.entrySet()) {
             final List<EventCallback<?>> callSites = entry.getValue();
-            callSites.removeIf(cb -> cb.container() == container);
+            if (callSites.removeIf(cb -> cb.container() == container)) {
+                removed = true;
+            }
         }
+        if (removed) executionPlanCache.clear();
     }
 
     @Override
@@ -150,47 +175,16 @@ public class EventSystem implements IEventSystem {
         Objects.requireNonNull(event, "event cannot be null");
         if (event instanceof CancellableEvent<?> me) me.uncancel();
 
-        List<EventCallback<T>> callbacks = findCompatibleCallbacks(event);
-        if (callbacks.isEmpty()) return event;
+        // Get or build the execution plan for this specific event class
+        //noinspection unchecked
+        List<ExecutionStep<T>> plan = (List<ExecutionStep<T>>) (Object) executionPlanCache.computeIfAbsent(event.getClass(), this::buildExecutionPlan);
+
+        if (plan.isEmpty()) return event;
 
         final int initialHash = event.hashCode();
 
-        // 1. Group by priority using a TreeMap to maintain order
-        Map<Integer, List<EventCallback<T>>> priorityGroups = callbacks.stream().collect(Collectors.groupingBy(EventCallback::priority, TreeMap::new, Collectors.toList()));
-
-        // 2. Process each priority group with granular batching
-        for (List<EventCallback<T>> group : priorityGroups.values()) {
-            // If the event is immutable, the whole group can run in parallel
-            if (!(event instanceof MutableEvent)) {
-                executeParallel(group, event);
-                if (isCancelled(event)) break;
-                continue;
-            }
-
-            // For mutable events, batch consecutive read-only listeners
-            List<EventCallback<T>> currentBatch = new ArrayList<>();
-            for (EventCallback<T> cb : group) {
-                if (cb.readOnly()) {
-                    currentBatch.add(cb);
-                } else {
-                    // Flush current batch before executing the sequential writer
-                    if (!currentBatch.isEmpty()) {
-                        executeParallel(currentBatch, event);
-                        currentBatch.clear();
-                        if (isCancelled(event)) break;
-                    }
-
-                    // Execute the sequential writer
-                    executeSequential(cb, event);
-                    if (isCancelled(event)) break;
-                }
-            }
-
-            // Flush remaining batch at the end of the priority group
-            if (!currentBatch.isEmpty() && !isCancelled(event)) {
-                executeParallel(currentBatch, event);
-            }
-
+        for (ExecutionStep<T> step : plan) {
+            step.run(event, this);
             if (isCancelled(event)) break;
         }
 
@@ -203,12 +197,48 @@ public class EventSystem implements IEventSystem {
         return event;
     }
 
-    private <T extends Event<?>> List<EventCallback<T>> findCompatibleCallbacks(T event) {
+    private List<ExecutionStep<?>> buildExecutionPlan(Class<?> eventClass) {
+        List<EventCallback<Event<?>>> callbacks = findCompatibleCallbacks(eventClass);
+        if (callbacks.isEmpty()) return Collections.emptyList();
+
+        List<ExecutionStep<?>> plan = new ArrayList<>();
+        Map<Integer, List<EventCallback<Event<?>>>> priorityGroups = callbacks.stream()
+                .collect(java.util.stream.Collectors.groupingBy(EventCallback::priority, TreeMap::new, java.util.stream.Collectors.toList()));
+
+        boolean isMutableEvent = MutableEvent.class.isAssignableFrom(eventClass);
+
+        for (List<EventCallback<Event<?>>> group : priorityGroups.values()) {
+            if (!isMutableEvent) {
+                plan.add(new ParallelStep<>(new ArrayList<>(group)));
+                continue;
+            }
+
+            List<EventCallback<Event<?>>> currentBatch = new ArrayList<>();
+            for (EventCallback<Event<?>> cb : group) {
+                if (cb.readOnly()) {
+                    currentBatch.add(cb);
+                } else {
+                    if (!currentBatch.isEmpty()) {
+                        plan.add(new ParallelStep<>(new ArrayList<>(currentBatch)));
+                        currentBatch.clear();
+                    }
+                    plan.add(new SequentialStep<>(cb));
+                }
+            }
+            if (!currentBatch.isEmpty()) {
+                plan.add(new ParallelStep<>(new ArrayList<>(currentBatch)));
+            }
+        }
+        return plan;
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T extends Event<?>> List<EventCallback<T>> findCompatibleCallbacks(Class<?> eventClass) {
         List<EventCallback<T>> result = new ArrayList<>();
         Set<Type> seenTypes = new HashSet<>();
 
         Queue<Class<?>> toCheck = new LinkedList<>();
-        toCheck.add(event.getClass());
+        toCheck.add(eventClass);
 
         while (!toCheck.isEmpty()) {
             Class<?> clazz = toCheck.poll();
@@ -217,7 +247,6 @@ public class EventSystem implements IEventSystem {
             List<EventCallback<?>> list = callSiteMap.get(clazz);
             if (list != null) {
                 for (EventCallback<?> cb : list) {
-                    //noinspection unchecked
                     result.add((EventCallback<T>) cb);
                 }
             }

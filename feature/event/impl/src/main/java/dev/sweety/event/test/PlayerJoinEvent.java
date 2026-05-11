@@ -6,6 +6,6 @@ import dev.sweety.event.processor.GenerateEvent;
 @GenerateEvent
 public interface PlayerJoinEvent extends CancellableEvent<PlayerJoinEvent> {
 
-    String getUsername();
-    int getLevel();
+    String username();
+    int getlevel();
 }

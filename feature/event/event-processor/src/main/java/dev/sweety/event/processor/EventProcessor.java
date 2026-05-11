@@ -24,7 +24,6 @@ import javax.tools.Diagnostic;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Set;
-import java.util.Objects;
 
 @SupportedAnnotationTypes("dev.sweety.event.processor.GenerateEvent")
 @SupportedSourceVersion(SourceVersion.RELEASE_24)
@@ -34,7 +33,7 @@ public class EventProcessor extends AbstractProcessor {
     private Messager messager;
     private Elements elementUtils;
     private Types typeUtils;
-    
+
     private TreeMaker maker;
     private Names names;
     private Trees trees;
@@ -45,7 +44,7 @@ public class EventProcessor extends AbstractProcessor {
         messager = processingEnv.getMessager();
         elementUtils = processingEnv.getElementUtils();
         typeUtils = processingEnv.getTypeUtils();
-        
+
         this.trees = Trees.instance(processingEnv);
         Context context = ((JavacProcessingEnvironment) processingEnv).getContext();
         this.maker = TreeMaker.instance(context);
@@ -73,10 +72,10 @@ public class EventProcessor extends AbstractProcessor {
     private void generateEventStructure(TypeElement interfaceElement) throws IOException {
         String packageName = elementUtils.getPackageOf(interfaceElement).getQualifiedName().toString();
         GenerateEvent config = interfaceElement.getAnnotation(GenerateEvent.class);
-        
+
         String templateName = interfaceElement.getSimpleName().toString();
         String baseName = (config != null && !config.value().isEmpty()) ? config.value() : templateName;
-        
+
         String cleanName = baseName;
         if (cleanName.endsWith("Template")) cleanName = cleanName.substring(0, cleanName.length() - 8);
         else if (cleanName.endsWith("Def")) cleanName = cleanName.substring(0, cleanName.length() - 3);
@@ -98,13 +97,15 @@ public class EventProcessor extends AbstractProcessor {
             TypeSpec.Builder readOnlyInterfaceBuilder = TypeSpec.interfaceBuilder(eventInterfaceName)
                     .addModifiers(Modifier.PUBLIC)
                     .addSuperinterface(ParameterizedTypeName.get(ClassName.get(isCancellable ? CancellableEvent.class : Event.class), eventInterface));
-            for (FieldInfo field : fields) readOnlyInterfaceBuilder.addMethod(MethodSpec.methodBuilder(field.getterName).addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT).returns(field.type).build());
+            for (FieldInfo field : fields)
+                readOnlyInterfaceBuilder.addMethod(MethodSpec.methodBuilder(field.getterName).addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT).returns(field.type).build());
             writeJavaFile(packageName, readOnlyInterfaceBuilder.build());
         }
 
         if (config == null || config.mutable()) {
             TypeSpec.Builder mutableInterfaceBuilder = TypeSpec.interfaceBuilder(mutableInterfaceName).addModifiers(Modifier.PUBLIC).addSuperinterface(eventInterface).addSuperinterface(ParameterizedTypeName.get(ClassName.get(MutableEvent.class), eventInterface));
-            for (FieldInfo field : fields) mutableInterfaceBuilder.addMethod(MethodSpec.methodBuilder(field.setterName).addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT).addParameter(field.type, field.name).build());
+            for (FieldInfo field : fields)
+                mutableInterfaceBuilder.addMethod(MethodSpec.methodBuilder(field.setterName).addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT).addParameter(field.type, field.name).build());
             mutableInterfaceBuilder.addMethod(MethodSpec.methodBuilder("post").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT).addAnnotation(Override.class).addAnnotation(NotNull.class).returns(mutableInterface).build());
             writeJavaFile(packageName, mutableInterfaceBuilder.build());
         }
@@ -123,7 +124,7 @@ public class EventProcessor extends AbstractProcessor {
         if (config == null || config.immutable()) {
             JCTree.JCClassDecl implClass = createInnerClass(immutableImplName, fields, eventInterface, null, isCancellable, false);
             classDecl.defs = classDecl.defs.append(implClass);
-            
+
             JCTree.JCMethodDecl ofMethod = createFactoryMethod("of", fields, eventInterface, immutableImplName);
             if (!methodExists(classDecl, ofMethod)) classDecl.defs = classDecl.defs.append(ofMethod);
         }
@@ -140,7 +141,7 @@ public class EventProcessor extends AbstractProcessor {
 
     private JCTree.JCClassDecl createInnerClass(String className, java.util.List<FieldInfo> fields, ClassName eventInterface, ClassName mutableInterface, boolean isCancellable, boolean mutable) {
         List<JCTree> defs = List.nil();
-        
+
         // Fields
         for (FieldInfo field : fields) {
             defs = defs.append(maker.VarDef(maker.Modifiers(mutable ? Flags.PRIVATE : Flags.PRIVATE | Flags.FINAL), names.fromString(field.name), typeToExpression(field.type), null));
@@ -162,7 +163,7 @@ public class EventProcessor extends AbstractProcessor {
                 // Setter
                 List<JCTree.JCVariableDecl> setterParams = List.of(maker.VarDef(maker.Modifiers(Flags.PARAMETER), names.fromString(field.name), typeToExpression(field.type), null));
                 List<JCTree.JCStatement> setterStats = List.of(
-                    maker.Exec(maker.Assign(maker.Select(maker.Ident(names.fromString("this")), names.fromString(field.name)), maker.Ident(names.fromString(field.name))))
+                        maker.Exec(maker.Assign(maker.Select(maker.Ident(names.fromString("this")), names.fromString(field.name)), maker.Ident(names.fromString(field.name))))
                 );
                 defs = defs.append(maker.MethodDef(maker.Modifiers(Flags.PUBLIC), names.fromString(field.setterName), maker.TypeIdent(TypeTag.VOID), List.nil(), setterParams, List.nil(), maker.Block(0, setterStats), null));
             }
@@ -174,7 +175,8 @@ public class EventProcessor extends AbstractProcessor {
             defs = defs.append(maker.MethodDef(maker.Modifiers(Flags.PUBLIC), names.fromString("post"), typeToExpression(mutableInterface), List.nil(), List.nil(), List.nil(), maker.Block(0, List.of(maker.Exec(maker.Assign(maker.Select(maker.Ident(names.fromString("this")), names.fromString("pre")), maker.Literal(false))), maker.Return(maker.Ident(names.fromString("this"))))), null));
             // toImmutable()
             List<JCTree.JCExpression> factoryArgs = List.nil();
-            for (FieldInfo field : fields) factoryArgs = factoryArgs.append(maker.Select(maker.Ident(names.fromString("this")), names.fromString(field.name)));
+            for (FieldInfo field : fields)
+                factoryArgs = factoryArgs.append(maker.Select(maker.Ident(names.fromString("this")), names.fromString(field.name)));
             JCTree.JCMethodInvocation ofCall = maker.Apply(List.nil(), maker.Select(typeToExpression(eventInterface), names.fromString("of")), factoryArgs);
             defs = defs.append(maker.MethodDef(maker.Modifiers(Flags.PUBLIC), names.fromString("toImmutable"), typeToExpression(eventInterface), List.nil(), List.nil(), List.nil(), maker.Block(0, List.of(maker.Return(ofCall))), null));
         }
@@ -263,7 +265,10 @@ public class EventProcessor extends AbstractProcessor {
             if (!method.getParameters().isEmpty() || method.getReturnType().toString().equals("void")) continue;
             String methodName = method.getSimpleName().toString();
             String name = methodName.startsWith("get") ? uncapitalize(methodName.substring(3)) : (methodName.startsWith("is") ? uncapitalize(methodName.substring(2)) : methodName);
-            fields.add(new FieldInfo(name, TypeName.get(method.getReturnType()), methodName, "set" + capitalize(name)));
+
+            fields.add(new FieldInfo(name, TypeName.get(method.getReturnType()), methodName, //"set" + capitalize(name)
+                    methodName.replace("is", "set").replace("get", "set")
+            ));
         }
         return fields;
     }
@@ -281,13 +286,14 @@ public class EventProcessor extends AbstractProcessor {
         JavaFile.builder(packageName, typeSpec).build().writeTo(processingEnv.getFiler());
     }
 
-    private static String capitalize(String name) { return (name == null || name.isEmpty()) ? name : Character.toUpperCase(name.charAt(0)) + name.substring(1); }
-    private static String uncapitalize(String name) { return (name == null || name.isEmpty()) ? name : Character.toLowerCase(name.charAt(0)) + name.substring(1); }
-    private static class FieldInfo {
-        final String name;
-        final TypeName type;
-        final String getterName;
-        final String setterName;
-        FieldInfo(String name, TypeName type, String getterName, String setterName) { this.name = name; this.type = type; this.getterName = getterName; this.setterName = setterName; }
+    private static String capitalize(String name) {
+        return (name == null || name.isEmpty()) ? name : Character.toUpperCase(name.charAt(0)) + name.substring(1);
+    }
+
+    private static String uncapitalize(String name) {
+        return (name == null || name.isEmpty()) ? name : Character.toLowerCase(name.charAt(0)) + name.substring(1);
+    }
+
+    private record FieldInfo(String name, TypeName type, String getterName, String setterName) {
     }
 }

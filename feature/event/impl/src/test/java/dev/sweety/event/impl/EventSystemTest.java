@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -93,23 +92,24 @@ class EventSystemTest {
 
         // Standard listener (Read-Only interface)
         system.on(PlayerJoinEvent.class).handle(e -> {
-            System.out.println("Read-only view: " + e.getUsername() + ": " + e.getLevel());
+            System.out.println("Read-only view: " + e.username() + ": " + e.getlevel());
         });
 
         // Mutable listener (Mutable interface)
         system.on(MutablePlayerJoinEvent.class).handle(e -> {
-            e.setUsername(e.getUsername() + "_test");
-            System.out.println("Mutated name to: " + e.getUsername());
+            e.username(e.username() + "_test");
+            e.setlevel(e.getlevel() + 1);
+            System.out.println("Mutated name to: " + e.username());
         });
 
         // Verifying changes in another listener
         system.on(PlayerJoinEvent.class).priority(10).handle(e -> {
-            System.out.println("Post-mutation view: " + e.getUsername() + ": " + e.getLevel());
+            System.out.println("Post-mutation view: " + e.username() + ": " + e.getlevel());
         });
 
         system.dispatch(ev);
 
-        assertEquals("NomeUtente_test_linked", ev.getUsername());
+        assertEquals("NomeUtente_test_linked", ev.username());
     }
 
     public static class TestEvent extends AbstractCancellableEvent<TestEvent> implements MutableEvent<TestEvent> {
@@ -127,6 +127,6 @@ class EventSystemTest {
         public Listener<TestEvent> onTest = e -> called = true;
 
         @LinkEvent
-        public Listener<MutablePlayerJoinEvent> onPlayerJoin = e -> e.setUsername(e.getUsername() + "_linked");
+        public Listener<MutablePlayerJoinEvent> onPlayerJoin = e -> e.username(e.username() + "_linked");
     }
 }
