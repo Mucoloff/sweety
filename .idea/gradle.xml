@@ -18,6 +18,7 @@
             <option value="$PROJECT_DIR$/feature/event/api" />
             <option value="$PROJECT_DIR$/feature/event/event-processor" />
             <option value="$PROJECT_DIR$/feature/event/impl" />
+            <option value="$PROJECT_DIR$/feature/event/intellij-plugin" />
             <option value="$PROJECT_DIR$/feature/module" />
             <option value="$PROJECT_DIR$/feature/module/extension" />
             <option value="$PROJECT_DIR$/feature/module/extension-versioning" />

@@ -3,8 +3,7 @@ package dev.sweety.launcher;
 import dev.sweety.extension.versioning.UpdateableExtensionManager;
 import dev.sweety.launcher.config.LauncherConfig;
 import dev.sweety.launcher.extension.LauncherExtension;
-import dev.sweety.launcher.update.UpdateManager;
-import dev.sweety.launcher.update.UpdaterClient;
+import dev.sweety.launcher.update.*;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.patch.applier.PatchApplier;
 import dev.sweety.patch.hash.Sha256Hash;
@@ -26,7 +25,6 @@ public class SweetyLauncher {
     private final AtomicReference<LauncherConfig> config;
     private final UpdateManager updateManager;
     private final UpdaterClient updater;
-    private final PatchApplier applier;
     private final UpdateableExtensionManager<LauncherExtension> extensionManager;
 
     private Consumer<State> handshakeListener;
@@ -34,7 +32,7 @@ public class SweetyLauncher {
     public SweetyLauncher(Path configFile, Map<Artifact, Path> initialArtifacts) throws IOException {
         this.configFile = configFile;
         this.config = new AtomicReference<>(LauncherConfig.load(configFile));
-        this.applier = new PatchApplier(PatchTypes.BIN, new Sha256Hash());
+        PatchApplier applier = new PatchApplier(PatchTypes.BIN, new Sha256Hash());
         
         this.updateManager = new UpdateManager(config, initialArtifacts, applier, state -> {
             if (handshakeListener != null) handshakeListener.accept(state);

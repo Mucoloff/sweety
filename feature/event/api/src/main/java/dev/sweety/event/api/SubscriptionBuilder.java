@@ -4,7 +4,7 @@ import dev.sweety.event.api.info.Priority;
 import dev.sweety.event.api.info.State;
 import dev.sweety.event.api.listener.Listener;
 
-public interface SubscriptionBuilder<T extends Event> {
+public interface SubscriptionBuilder<T extends Event<?>> {
     SubscriptionBuilder<T> priority(int priority);
     
     default SubscriptionBuilder<T> priority(Priority level) {

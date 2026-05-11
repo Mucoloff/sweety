@@ -1,0 +1,39 @@
+plugins {
+    id 'java'
+    id 'org.jetbrains.intellij' version '1.17.2'
+}
+
+group = 'dev.sweety.event'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compileOnly(project(':feature:event:event-processor')) {
+        transitive = false
+    }
+}
+
+intellij {
+    version = '2025.3.1'
+    type = 'IU'
+    plugins = ['com.intellij.java']
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(24)
+    }
+    sourceCompatibility = JavaVersion.VERSION_24
+    targetCompatibility = JavaVersion.VERSION_24
+}
+
+tasks.named("buildSearchableOptions") {
+    enabled = false
+}
+
+tasks.withType(JavaCompile) {
+    options.release = 24
+}

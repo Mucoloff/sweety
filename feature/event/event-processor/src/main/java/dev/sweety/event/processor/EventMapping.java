@@ -1,7 +1,8 @@
 package dev.sweety.event.processor;
 
 import dev.sweety.event.api.Event;
-import dev.sweety.event.impl.EventSystem;
+import dev.sweety.event.api.IEventSystem;
+import dev.sweety.event.api.MutableEvent;
 import dev.sweety.event.util.Operation;
 import it.unimi.dsi.fastutil.Pair;
 
@@ -12,15 +13,15 @@ import java.util.function.Function;
 
 public class EventMapping {
 
-    private final Map<Class<?>, Function<Object, ? extends Event>> events = new ConcurrentHashMap<>();
+    private final Map<Class<?>, Function<Object, ? extends Event<?>>> events = new ConcurrentHashMap<>();
 
-    private final EventSystem eventSystem;
+    private final IEventSystem eventSystem;
 
-    public EventMapping(EventSystem eventSystem) {
+    public EventMapping(IEventSystem eventSystem) {
         this.eventSystem = eventSystem;
     }
 
-    public <T extends Event> T dispatch(Object obj) {
+    public <T extends Event<T>> T dispatch(Object obj) {
         //noinspection unchecked
         final Function<Object, T> function = (Function<Object, T>) events.get(obj.getClass());
         if (function == null) return null;
@@ -28,7 +29,19 @@ public class EventMapping {
         return eventSystem.dispatch(event);
     }
 
-    public <T extends Event, R> Pair<T, R> dispatchWrapped(
+    public <T extends Event<T>, R> Pair<T, R> dispatchWrapped(
+            Object obj,
+            Operation<R> original,
+            Object... args
+    ) {
+        //noinspection unchecked
+        final Function<Object, T> function = (Function<Object, T>) events.get(obj.getClass());
+        if (function == null) return null;
+        final T event = function.apply(obj);
+        return eventSystem.dispatchWrapped(event, original, args);
+    }
+
+    public <T extends MutableEvent<T>, R> Pair<T, R> dispatchWrapped(
             Object obj,
             Operation<R> original,
             Function<T, Object[]> changedArgsMapper,
@@ -41,8 +54,8 @@ public class EventMapping {
         return eventSystem.dispatchWrapped(event, original, changedArgsMapper, args);
     }
 
-    public void registerEventMapping(Class<? extends Event> eventClass, Class<?> clazz) {
-        Function<Object, ? extends Event> construct = p -> {
+    public void registerEventMapping(Class<? extends Event<?>> eventClass, Class<?> clazz) {
+        Function<Object, ? extends Event<?>> construct = p -> {
             try {
                 return eventClass.getConstructor(clazz).newInstance(p);
             } catch (InstantiationException | IllegalAccessException | InvocationTargetException |

@@ -6,6 +6,7 @@ include 'feature:event'
 include 'feature:event:api'
 include 'feature:event:impl'
 include 'feature:event:event-processor'
+include 'feature:event:intellij-plugin'
 
 include 'feature:module'
 include 'feature:module:extension'

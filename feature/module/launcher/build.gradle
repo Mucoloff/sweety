@@ -1,0 +1,33 @@
+pluginManager.withPlugin('org.jetbrains.kotlin.jvm') {
+    kotlin.sourceSets.configureEach {
+        kotlin.srcDirs = []
+    }
+    tasks.named('jar') {
+        setDependsOn(dependsOn.toList().findAll { it.toString() != 'compileKotlin' })
+    }
+}
+
+dependencies {
+    implementation project(':feature:module:extension:api')
+    implementation project(':feature:module:extension:manager')
+    implementation project(':feature:module:versioning:protocol')
+    implementation project(':feature:module:versioning:client')
+    implementation project(':feature:module:versioning:client:launcher')
+    implementation project(':feature:module:extension-versioning:api')
+    implementation project(':feature:module:extension-versioning:manager')
+    implementation project(':feature:asm-patch:applier')
+    implementation project(':feature:asm-patch:asm-patch-core')
+
+    implementation project(':util:logger')
+    implementation project(':util:data')
+    implementation project(':util:exception')
+    implementation project(':network:netty')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['--enable-preview']
+}
+
+tasks.withType(Test).configureEach {
+    jvmArgs '--enable-preview'
+}

@@ -2,22 +2,17 @@ package dev.sweety.event.api;
 
 import org.jetbrains.annotations.NotNull;
 
-public abstract class AbstractEvent implements MutableEvent {
+public abstract class AbstractEvent<E extends Event<E>> implements Event<E> {
 
-    private boolean cancelled = false;
-    private boolean changed = false;
-    private boolean pre = true;
-
-    @Override
-    public void cancel() {
-        setCancelled(true);
-    }
+    protected volatile boolean changed = false;
+    protected boolean pre = true;
 
     @Override
     @NotNull
-    public Event post() {
+    public E post() {
         this.pre = false;
-        return this;
+        //noinspection unchecked
+        return (E) this;
     }
 
     @Override
@@ -31,15 +26,6 @@ public abstract class AbstractEvent implements MutableEvent {
     }
 
     @Override
-    public void setCancelled(boolean cancelled) {
-        this.cancelled = cancelled;
-    }
-
-    @Override
-    public boolean isCancelled() {
-        return cancelled;
-    }
-
     public boolean isChanged() {
         return changed;
     }
@@ -48,15 +34,21 @@ public abstract class AbstractEvent implements MutableEvent {
         this.changed = changed;
     }
 
+    @NotNull
+    public E toImmutable() {
+        //noinspection unchecked
+        return (E) this;
+    }
+
     @Override
-    public final boolean equals(Object o) {
+    public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof AbstractEvent event)) return false;
-        return cancelled == event.cancelled && changed == event.changed && pre == event.pre;
+        if (!(o instanceof AbstractEvent<?> that)) return false;
+        return changed == that.changed && pre == that.pre;
     }
 
     @Override
     public int hashCode() {
-        return java.util.Objects.hash(cancelled, changed, pre);
+        return java.util.Objects.hash(changed, pre);
     }
 }

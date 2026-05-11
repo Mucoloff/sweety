@@ -1,0 +1,9 @@
+{
+  "methods": [],
+  "classes": [
+    "net.kyori.adventure.text.minimessage.MiniMessage",
+    "com.marcusslover.plus.lib.text.Text",
+    "com.marcusslover.plus.lib.item.Item",
+    "net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer"
+  ]
+}

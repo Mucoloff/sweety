@@ -2,27 +2,44 @@ package dev.sweety.event.api;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.lang.reflect.Modifier;
+
 /**
  * Base interface for all events (Read-Only view).
+ *
+ * @param <E> The type of the event itself.
  */
-public interface Event {
-
-    default void cancel() {
-        if (this instanceof MutableEvent me) {
-            me.setCancelled(true);
-        } else {
-            throw new UnsupportedOperationException("Cannot cancel a read-only event");
-        }
-    }
+public interface Event<E extends Event<E>> {
 
     @NotNull
-    Event post();
+    E post();
 
     boolean isPost();
 
     boolean isPre();
 
-    boolean isCancelled();
-
     boolean isChanged();
+
+    static <T extends Event<T>> T of(Class<T> clazz, Object... args) {
+        return invokeStaticFactory(clazz, "of", args);
+    }
+
+    static <T extends Event<T>> T ofMutable(Class<T> clazz, Object... args) {
+        return invokeStaticFactory(clazz, "ofMutable", args);
+    }
+
+    private static <T extends Event<T>> T invokeStaticFactory(Class<?> clazz, String methodName, Object... args) {
+        try {
+            for (var m : clazz.getDeclaredMethods()) {
+                if (Modifier.isStatic(m.getModifiers()) && m.getName().equals(methodName) && m.getParameterCount() == args.length) {
+                    //noinspection unchecked
+                    return (T) m.invoke(null, args);
+                }
+            }
+            throw new NoSuchMethodException("No suitable '" + methodName + "' method found in " + clazz.getName());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }

@@ -1,3 +1,4 @@
+/*
 dependencies {
     implementation(project(":util:logger"))
     implementation(project(":feature:module:extension:api"))
@@ -7,3 +8,5 @@ dependencies {
     implementation(project(":feature:module:versioning:client"))
     implementation(project(":feature:module:extension-versioning:api"))
 }
+
+ */
