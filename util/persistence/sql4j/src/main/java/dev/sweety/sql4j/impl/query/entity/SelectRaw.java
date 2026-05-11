@@ -135,7 +135,7 @@ public final class SelectRaw extends AbstractQuery<List<Row>> implements SelectR
         
         Column<?> softDeleteCol = table.softDeleteColumn();
         if (softDeleteCol != null && !includeDeleted) {
-            wheres.add(softDeleteCol.name() + " = 0");
+            wheres.add(softDeleteCol.name() + " = " + dialect.softDeleteFalse());
         }
 
         if (!wheres.isEmpty()) {

@@ -43,7 +43,7 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> implements Del
             String softDeleteSql = null;
             Column<?> sd = table.softDeleteColumn();
             if (sd != null) {
-                softDeleteSql = "UPDATE " + table.toSql(dialect) + " SET " + sd.toSql(dialect) + "=1 WHERE " + whereClause;
+                softDeleteSql = "UPDATE " + table.toSql(dialect) + " SET " + sd.toSql(dialect) + " = " + dialect.softDeleteTrue() + " WHERE " + whereClause;
             }
             
             return new Metadata(primaryKeys, deleteSql, softDeleteSql);

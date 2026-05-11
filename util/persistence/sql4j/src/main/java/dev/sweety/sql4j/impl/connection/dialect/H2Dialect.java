@@ -66,11 +66,24 @@ class H2Dialect implements Dialect {
 
     @Override
     public String upsertSyntax(String table, List<String> insertCols, List<String> updateCols, List<String> pkCols) {
-        String cols = String.join(", ", insertCols);
-        String placeholders = insertCols.stream().map(c -> "?").collect(java.util.stream.Collectors.joining(", "));
+        // H2 MERGE INTO requires KEY columns to be present in the column list.
+        // UpsertEntity excludes auto-increment PKs from insertCols, so we must re-add
+        // them here. When the PK is null at runtime, UpsertEntity falls back to a plain
+        // INSERT (see UpsertEntity.buildSql); when it is set, the full column list works.
+        List<String> allCols = new java.util.ArrayList<>(pkCols);
+        allCols.addAll(insertCols);
+        String cols = String.join(", ", allCols);
+        String placeholders = allCols.stream().map(c -> "?").collect(java.util.stream.Collectors.joining(", "));
         String pks = String.join(", ", pkCols);
-        
+
         return "MERGE INTO " + table + " (" + cols + ") KEY (" + pks + ") VALUES (" + placeholders + ")";
     }
+
+    // H2 uses a proper SQL BOOLEAN type; integer literals 0/1 are not comparable.
+    @Override
+    public String softDeleteFalse() { return "FALSE"; }
+
+    @Override
+    public String softDeleteTrue() { return "TRUE"; }
 }
 

@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @SupportedAnnotationTypes({
     "dev.sweety.sql4j.api.obj.Table.Info",
@@ -210,6 +211,26 @@ public class SQL4JProcessor extends AbstractProcessor {
             }
         }
 
+        // Validate: at least one primary key
+        boolean hasPrimaryKey = fields.stream().anyMatch(f -> f.isPrimaryKey);
+        if (!hasPrimaryKey) {
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+                    "Entity '" + simpleName + "' must have at least one primary key column " +
+                    "(@Column.Info(primaryKey = true))", typeElement);
+            return;
+        }
+
+        // Validate: no duplicate column names
+        Map<String, Long> colNameCounts = fields.stream()
+                .collect(Collectors.groupingBy(f -> f.colName, Collectors.counting()));
+        for (Map.Entry<String, Long> entry : colNameCounts.entrySet()) {
+            if (entry.getValue() > 1) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+                        "Duplicate column name '" + entry.getKey() + "' in entity '" + simpleName + "'", typeElement);
+                return;
+            }
+        }
+
         // Static SQL Generation
         String allCols = fields.stream().map(f -> f.colName).collect(Collectors.joining(", "));
         String insertCols = fields.stream().filter(f -> !f.isAutoInc).map(f -> f.colName).collect(Collectors.joining(", "));
@@ -225,6 +246,12 @@ public class SQL4JProcessor extends AbstractProcessor {
                 .initializer("$S", "INSERT INTO " + tableName + " (" + insertCols + ") VALUES (" + insertPlaceholders + ")")
                 .build());
 
+        // Public alias for API consumers
+        mirrorBuilder.addField(FieldSpec.builder(String.class, "INSERT_SQL")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                .initializer("INSERT")
+                .build());
+
         String updateSet = fields.stream().filter(f -> !f.isPrimaryKey && !f.isAutoInc).map(f -> f.colName + " = ?").collect(Collectors.joining(", "));
         String pkWhere = fields.stream().filter(f -> f.isPrimaryKey).map(f -> f.colName + " = ?").collect(Collectors.joining(" AND "));
 
@@ -236,6 +263,12 @@ public class SQL4JProcessor extends AbstractProcessor {
         mirrorBuilder.addField(FieldSpec.builder(String.class, "DELETE")
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
                 .initializer("$S", "DELETE FROM " + tableName + " WHERE " + pkWhere)
+                .build());
+
+        String selectByPkSql = "SELECT " + allCols + " FROM " + tableName + " WHERE " + pkWhere;
+        mirrorBuilder.addField(FieldSpec.builder(String.class, "SELECT_BY_PK_SQL")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                .initializer("$S", selectByPkSql)
                 .build());
 
         // Private Constructor

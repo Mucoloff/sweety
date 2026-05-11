@@ -71,6 +71,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
         this.cache = other.cache;
         this.dialect = other.dialect;
         this.registry = other.registry;
+        this.entityCache = other.entityCache;
         this.whereParams = other.whereParams;
         this.whereClause = other.whereClause;
         this.criterion = other.criterion;
@@ -254,7 +255,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
         if (criterion != null) wheres.add(criterion.toSql(dialect));
         Column<?> softDeleteCol = table.softDeleteColumn();
         if (softDeleteCol != null && !includeDeleted) {
-            wheres.add(softDeleteCol.toSql(dialect) + " = 0");
+            wheres.add(softDeleteCol.toSql(dialect) + " = " + dialect.softDeleteFalse());
         }
         return wheres.isEmpty() ? "" : " WHERE " + String.join(" AND ", wheres);
     }
@@ -371,7 +372,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
     private T mapRow(ResultSet rs) throws SQLException {
         try {
             T obj = activeMetadata.constructor.newInstance();
-            for (dev.sweety.sql4j.api.obj.Column c : activeMetadata.columns) {
+            for (Column<?> c : activeMetadata.columns) {
                 c.set(obj, rs.getObject(c.name()));
             }
             return obj;

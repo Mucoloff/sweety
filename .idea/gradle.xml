@@ -66,6 +66,7 @@
             <option value="$PROJECT_DIR$/util/persistence/configuration" />
             <option value="$PROJECT_DIR$/util/persistence/ormlite-util" />
             <option value="$PROJECT_DIR$/util/persistence/sql4j" />
+            <option value="$PROJECT_DIR$/util/persistence/sql4j-integration-tests" />
             <option value="$PROJECT_DIR$/util/persistence/sql4j-processor" />
             <option value="$PROJECT_DIR$/util/processor" />
             <option value="$PROJECT_DIR$/util/processor/intellij-plugin" />

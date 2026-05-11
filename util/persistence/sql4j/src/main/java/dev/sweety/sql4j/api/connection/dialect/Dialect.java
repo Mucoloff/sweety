@@ -68,5 +68,26 @@ public interface Dialect {
     default boolean supportsUpsert() {
         return true;
     }
+
+    // ─── Bug fix (Phase B): soft-delete boolean literals ─────────────────────────
+    // SQLite / MySQL / MariaDB store BOOLEAN as INTEGER, so "= 0" / "= 1" is correct.
+    // H2 and PostgreSQL use a proper BOOLEAN type and reject integer comparisons.
+    // Subclasses that use real BOOLEAN columns must override these two methods.
+
+    /**
+     * SQL literal representing {@code false} for the soft-delete filter.
+     * Defaults to {@code "0"} (compatible with SQLite, MySQL, MariaDB).
+     */
+    default String softDeleteFalse() {
+        return "0";
+    }
+
+    /**
+     * SQL literal representing {@code true} for the soft-delete update.
+     * Defaults to {@code "1"} (compatible with SQLite, MySQL, MariaDB).
+     */
+    default String softDeleteTrue() {
+        return "1";
+    }
 }
 

@@ -89,5 +89,12 @@ class PostgreSQLDialect implements Dialect {
     public String escape(String name) {
         return "\"" + name + "\"";
     }
+
+    // PostgreSQL uses a proper SQL BOOLEAN type; integer literals 0/1 are not comparable.
+    @Override
+    public String softDeleteFalse() { return "FALSE"; }
+
+    @Override
+    public String softDeleteTrue() { return "TRUE"; }
 }
 

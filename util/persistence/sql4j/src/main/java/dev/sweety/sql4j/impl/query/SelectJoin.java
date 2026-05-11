@@ -82,7 +82,7 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
             for (Table<?> t : tables) {
                 Column<?> sd = t.softDeleteColumn();
                 if (sd != null) {
-                    wheres.add(dialect.escape(t.name()) + "." + dialect.escape(sd.name()) + " = 0");
+                    wheres.add(dialect.escape(t.name()) + "." + dialect.escape(sd.name()) + " = " + dialect.softDeleteFalse());
                 }
             }
         }

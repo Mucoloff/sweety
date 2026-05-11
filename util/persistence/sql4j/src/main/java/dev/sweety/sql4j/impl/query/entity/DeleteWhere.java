@@ -56,7 +56,7 @@ public final class DeleteWhere<T> extends AbstractQuery<Integer> implements Cond
 
         StringBuilder sql = new StringBuilder();
         if (useSoftDelete) {
-            sql.append("UPDATE ").append(table.toSql(dialect)).append(" SET ").append(softDeleteCol.toSql(dialect)).append(" = 1");
+            sql.append("UPDATE ").append(table.toSql(dialect)).append(" SET ").append(softDeleteCol.toSql(dialect)).append(" = ").append(dialect.softDeleteTrue());
         } else {
             sql.append("DELETE FROM ").append(table.toSql(dialect));
         }
