@@ -16,7 +16,6 @@ include 'feature:module:extension:manager'
 include 'feature:module:extension-versioning'
 include 'feature:module:extension-versioning:api'
 include 'feature:module:extension-versioning:manager'
-include 'feature:module:launcher'
 
 include 'feature:asm-patch'
 include 'feature:asm-patch:asm-patch-core'

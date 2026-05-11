@@ -68,8 +68,8 @@ public final class Row {
         return data.containsKey(column.toLowerCase(Locale.ENGLISH));
     }
 
-    public boolean isNull(String column) {
-        return get(column) == null;
+    public boolean notNull(String column) {
+        return get(column) != null;
     }
 
     public Set<String> columns() {
@@ -89,12 +89,12 @@ public final class Row {
      * @return The populated entity instance, or null if all columns for this entity are null (e.g. from a LEFT JOIN miss).
      */
     public <T> T extractEntity(dev.sweety.sql4j.api.obj.Table<T> table, String prefix) {
-        String pfx = java.util.Objects.requireNonNullElse(prefix, "").isEmpty() ? "" : prefix.toLowerCase(Locale.ENGLISH) + "_";
+        String pfx = Objects.requireNonNullElse(prefix, "").isEmpty() ? "" : prefix.toLowerCase(Locale.ENGLISH) + "_";
         
         // Check if the primary keys are null (indicates a LEFT JOIN miss)
         boolean hasData = false;
-        for (dev.sweety.sql4j.api.obj.Column pk : table.primaryKeys()) {
-            if (!isNull(pfx + pk.name().toLowerCase(Locale.ENGLISH))) {
+        for (Column<?> pk : table.primaryKeys()) {
+            if (notNull(pfx + pk.name().toLowerCase(Locale.ENGLISH))) {
                 hasData = true;
                 break;
             }
@@ -102,8 +102,8 @@ public final class Row {
         
         // Fallback: check if ANY column has data if no PK is defined
         if (!hasData && table.primaryKeys().isEmpty()) {
-            for (dev.sweety.sql4j.api.obj.Column c : table.columns()) {
-                if (!isNull(pfx + c.name().toLowerCase(Locale.ENGLISH))) {
+            for (Column<?> c : table.columns()) {
+                if (notNull(pfx + c.name().toLowerCase(Locale.ENGLISH))) {
                     hasData = true;
                     break;
                 }
@@ -172,11 +172,11 @@ public final class Row {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof Row row)) return false;
-        return java.util.Objects.equals(data, row.data);
+        return Objects.equals(data, row.data);
     }
 
     @Override
     public int hashCode() {
-        return java.util.Objects.hashCode(data);
+        return Objects.hashCode(data);
     }
 }

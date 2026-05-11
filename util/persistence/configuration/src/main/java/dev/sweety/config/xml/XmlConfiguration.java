@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public class XmlConfiguration extends Configuration {
@@ -68,32 +69,26 @@ public class XmlConfiguration extends Configuration {
 
             Element elem = doc.createElement(sanitizeTagName(key));
 
-            if (value == null) {
-                elem.setAttribute("type", "null");
-            } else if (value instanceof Map<?, ?>) {
-                mapToXml(doc, elem, castMap((Map<?, ?>) value));
-            } else if (value instanceof java.util.List<?>) {
-                listToXml(doc, elem, (java.util.List<?>) value);
-            } else {
-                addTypedValue(elem, value);
+            switch (value) {
+                case null -> elem.setAttribute("type", "null");
+                case Map<?,?> mp -> mapToXml(doc, elem, castMap(mp));
+                case List<?> list -> listToXml(doc, elem, list);
+                default -> addTypedValue(elem, value);
             }
 
             parent.appendChild(elem);
         }
     }
 
-    private void listToXml(Document doc, Element parent, java.util.List<?> list) {
+    private void listToXml(Document doc, Element parent, List<?> list) {
         for (Object item : list) {
             Element elem = doc.createElement("item");
 
-            if (item == null) {
-                elem.setAttribute("type", "null");
-            } else if (item instanceof Map<?, ?>) {
-                mapToXml(doc, elem, castMap((Map<?, ?>) item));
-            } else if (item instanceof java.util.List<?>) {
-                listToXml(doc, elem, (java.util.List<?>) item);
-            } else {
-                addTypedValue(elem, item);
+            switch (item) {
+                case null -> elem.setAttribute("type", "null");
+                case Map<?, ?> map -> mapToXml(doc, elem, castMap(map));
+                case List<?> objects -> listToXml(doc, elem, objects);
+                default -> addTypedValue(elem, item);
             }
 
             parent.appendChild(elem);
@@ -147,10 +142,11 @@ public class XmlConfiguration extends Configuration {
             if (map.containsKey(key)) {
                 // Handle duplicate keys by converting to list
                 Object existing = map.get(key);
-                if (existing instanceof java.util.List<?>) {
-                    ((java.util.List<Object>) existing).add(value);
+                if (existing instanceof List<?> ls) {
+                    //noinspection unchecked
+                    ((List<Object>) ls).add(value);
                 } else {
-                    java.util.List<Object> list = new java.util.ArrayList<>();
+                    List<Object> list = new java.util.ArrayList<>();
                     list.add(existing);
                     list.add(value);
                     map.put(key, list);
@@ -218,7 +214,7 @@ public class XmlConfiguration extends Configuration {
         }
 
         if (isList) {
-            java.util.List<Object> list = new java.util.ArrayList<>();
+            List<Object> list = new java.util.ArrayList<>();
             for (int i = 0; i < children.getLength(); i++) {
                 Node node = children.item(i);
                 if (node.getNodeType() == Node.ELEMENT_NODE) {

@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class UpdateableExtensionManager<T extends Extension> extends ExtensionManager<T> {
@@ -16,7 +17,7 @@ public class UpdateableExtensionManager<T extends Extension> extends ExtensionMa
     private final SimpleLogger logger = new SimpleLogger(UpdateableExtensionManager.class);
 
     public UpdateableExtensionManager(File parent, Class<T> extensionClass) {
-        super(java.util.Objects.requireNonNull(parent, "parent cannot be null"), java.util.Objects.requireNonNull(extensionClass, "extensionClass cannot be null"));
+        super(Objects.requireNonNull(parent, "parent cannot be null"), Objects.requireNonNull(extensionClass, "extensionClass cannot be null"));
     }
 
     @SuppressWarnings("unchecked")
@@ -25,16 +26,16 @@ public class UpdateableExtensionManager<T extends Extension> extends ExtensionMa
     }
 
     public File resolveFile(File jarFile) {
-        java.util.Objects.requireNonNull(jarFile, "jarFile cannot be null");
+        Objects.requireNonNull(jarFile, "jarFile cannot be null");
         File updateFile = new File(jarFile.getParent(), jarFile.getName() + ".update");
         return updateFile.exists() ? updateFile : jarFile;
     }
 
     @Override
     public T loadExtension(File jarFile) {
-        java.util.Objects.requireNonNull(jarFile, "jarFile cannot be null");
+        Objects.requireNonNull(jarFile, "jarFile cannot be null");
         File resolved = resolveFile(jarFile);
-        
+
         if (resolved != jarFile && resolved.exists()) {
             try {
                 Files.move(resolved.toPath(), jarFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);

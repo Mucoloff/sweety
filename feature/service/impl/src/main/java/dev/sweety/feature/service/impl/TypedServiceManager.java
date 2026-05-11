@@ -6,6 +6,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -19,7 +20,7 @@ public class TypedServiceManager<Type> implements ServiceRegistry, AutoCloseable
     }
 
     public TypedServiceManager(@NotNull Class<Type> baseType) {
-        this.baseType = java.util.Objects.requireNonNull(baseType, "baseType cannot be null");
+        this.baseType = Objects.requireNonNull(baseType, "baseType cannot be null");
     }
 
     private void checkType(Object value) {
@@ -69,14 +70,14 @@ public class TypedServiceManager<Type> implements ServiceRegistry, AutoCloseable
     @Override
     
     public <T> T getOrNull(@NotNull ServiceKey<T> key) {
-        java.util.Objects.requireNonNull(key, "key cannot be null");
+        Objects.requireNonNull(key, "key cannot be null");
         return internal.getOrNull(key);
     }
 
     @Override
     
     public <T> T put(@NotNull ServiceKey<T> key, T service) {
-        java.util.Objects.requireNonNull(key, "key cannot be null");
+        Objects.requireNonNull(key, "key cannot be null");
         checkType(service);
         return internal.put(key, service);
     }
@@ -84,21 +85,21 @@ public class TypedServiceManager<Type> implements ServiceRegistry, AutoCloseable
     @Override
     
     public <T> T put(@NotNull ServiceKey<T> key, Provider<T> service) {
-        java.util.Objects.requireNonNull(key, "key cannot be null");
-        java.util.Objects.requireNonNull(service, "service provider cannot be null");
+        Objects.requireNonNull(key, "key cannot be null");
+        Objects.requireNonNull(service, "service provider cannot be null");
         return internal.put(key, checked(service));
     }
 
     @Override
     public <T> boolean contains(@NotNull ServiceKey<T> key) {
-        java.util.Objects.requireNonNull(key, "key cannot be null");
+        Objects.requireNonNull(key, "key cannot be null");
         return internal.contains(key);
     }
 
     @Override
     
     public <T> T putIfAbsent(@NotNull ServiceKey<T> key, T service) {
-        java.util.Objects.requireNonNull(key, "key cannot be null");
+        Objects.requireNonNull(key, "key cannot be null");
         checkType(service);
         return internal.putIfAbsent(key, service);
     }
@@ -106,15 +107,15 @@ public class TypedServiceManager<Type> implements ServiceRegistry, AutoCloseable
     @Override
     
     public <T> T putIfAbsent(@NotNull ServiceKey<T> key, Provider<T> service) {
-        java.util.Objects.requireNonNull(key, "key cannot be null");
-        java.util.Objects.requireNonNull(service, "service provider cannot be null");
+        Objects.requireNonNull(key, "key cannot be null");
+        Objects.requireNonNull(service, "service provider cannot be null");
         return internal.putIfAbsent(key, checked(service));
     }
 
     @Override
     @NotNull
     public <T> T registerByClass(@NotNull Class<T> type) {
-        java.util.Objects.requireNonNull(type, "type cannot be null");
+        Objects.requireNonNull(type, "type cannot be null");
         T instance = internal.registerByClass(type);
         checkType(instance);
         return instance;
@@ -123,7 +124,7 @@ public class TypedServiceManager<Type> implements ServiceRegistry, AutoCloseable
     @Override
     
     public <T> T remove(@NotNull ServiceKey<T> key) {
-        java.util.Objects.requireNonNull(key, "key cannot be null");
+        Objects.requireNonNull(key, "key cannot be null");
         return internal.remove(key);
     }
 

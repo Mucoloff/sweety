@@ -8,6 +8,7 @@ import dev.sweety.sql4j.api.query.AbstractQuery;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
@@ -27,8 +28,8 @@ public final class CreateTable extends AbstractQuery<Void> {
         return sql;
     }
 
-    public java.util.List<String> buildAllSql(Table<?> table, Dialect dialect, boolean ifNotExists) {
-        java.util.List<String> list = new java.util.ArrayList<>();
+    public List<String> buildAllSql(Table<?> table, Dialect dialect, boolean ifNotExists) {
+        List<String> list = new java.util.ArrayList<>();
         list.add(sql);
         list.addAll(buildIndices(table, dialect, ifNotExists));
         return list;
@@ -113,8 +114,8 @@ public final class CreateTable extends AbstractQuery<Void> {
         return sb.toString();
     }
 
-    public static java.util.List<String> buildIndices(Table<?> table, Dialect dialect, boolean ifNotExists) {
-        java.util.List<String> indices = new java.util.ArrayList<>();
+    public static List<String> buildIndices(Table<?> table, Dialect dialect, boolean ifNotExists) {
+        List<String> indices = new java.util.ArrayList<>();
         for (Column<?> c : table.columns()) {
             if (c.indexName() != null) {
                 StringBuilder sb = new StringBuilder("CREATE ");

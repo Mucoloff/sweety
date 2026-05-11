@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public interface ServiceRegistry {
@@ -78,7 +79,7 @@ public interface ServiceRegistry {
     }
 
     default <T> RegistrationBuilder<T> register(@NotNull Class<T> type) {
-        java.util.Objects.requireNonNull(type, "type cannot be null");
+        Objects.requireNonNull(type, "type cannot be null");
         return new RegistrationBuilder<>(this, type);
     }
 

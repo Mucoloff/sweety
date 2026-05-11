@@ -1,9 +1,13 @@
 package dev.sweety.sql4j.api.query;
 
+import dev.sweety.sql4j.api.connection.SqlConnection;
 import dev.sweety.sql4j.api.obj.Column;
+import dev.sweety.sql4j.api.obj.Row;
 import dev.sweety.sql4j.api.obj.Table;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 
 public non-sealed interface SelectQuery<T> extends Query<List<T>> {
     SelectQuery<T> where(Criterion criterion);
@@ -17,8 +21,8 @@ public non-sealed interface SelectQuery<T> extends Query<List<T>> {
     SelectQuery<T> groupBy(Column<?>... columns);
     SelectQuery<T> having(Criterion criterion);
 
-    java.util.concurrent.CompletableFuture<Page<T>> executePage(dev.sweety.sql4j.api.connection.SqlConnection con, int page, int size);
-    java.util.concurrent.CompletableFuture<java.util.stream.Stream<T>> executeStream(dev.sweety.sql4j.api.connection.SqlConnection con);
-    java.util.concurrent.CompletableFuture<java.util.List<dev.sweety.sql4j.api.obj.Row>> executeAggregate(dev.sweety.sql4j.api.connection.SqlConnection con);
+    CompletableFuture<Page<T>> executePage(SqlConnection con, int page, int size);
+    CompletableFuture<Stream<T>> executeStream(SqlConnection con);
+    CompletableFuture<List<Row>> executeAggregate(SqlConnection con);
 }
 

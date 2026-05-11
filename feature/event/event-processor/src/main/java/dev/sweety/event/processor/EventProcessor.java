@@ -88,7 +88,7 @@ public class EventProcessor extends AbstractProcessor {
         ClassName eventInterface = ClassName.get(packageName, eventInterfaceName);
         ClassName mutableInterface = ClassName.get(packageName, mutableInterfaceName);
 
-        java.util.List<FieldInfo> fields = extractFieldsFromInterface(interfaceElement);
+        var fields = extractFieldsFromInterface(interfaceElement);
         boolean isCancellable = isCancellable(interfaceElement);
 
         // 1. Generate interfaces if they don't match the template

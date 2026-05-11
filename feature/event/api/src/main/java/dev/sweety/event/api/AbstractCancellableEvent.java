@@ -1,5 +1,7 @@
 package dev.sweety.event.api;
 
+import java.util.Objects;
+
 public abstract class AbstractCancellableEvent<E extends CancellableEvent<E>> extends AbstractEvent<E> implements CancellableEvent<E> {
 
     protected boolean cancelled = false;
@@ -29,6 +31,6 @@ public abstract class AbstractCancellableEvent<E extends CancellableEvent<E>> ex
 
     @Override
     public int hashCode() {
-        return java.util.Objects.hash(super.hashCode(), cancelled);
+        return Objects.hash(super.hashCode(), cancelled);
     }
 }

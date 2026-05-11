@@ -3,6 +3,7 @@ package dev.sweety.minecraft.version;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Comparator;
+import java.util.Objects;
 import java.util.function.Predicate;
 
 /**
@@ -71,22 +72,22 @@ public enum VersionComparison implements Predicate<Integer>, Comparator<Version<
     }
 
     public boolean test(@NotNull Version<?> a, @NotNull Version<?> b) {
-        java.util.Objects.requireNonNull(a, "version a cannot be null");
-        java.util.Objects.requireNonNull(b, "version b cannot be null");
+        Objects.requireNonNull(a, "version a cannot be null");
+        Objects.requireNonNull(b, "version b cannot be null");
         return test(RELEASE.compare(a, b));
     }
 
     public boolean test(@NotNull Version<?> a, @NotNull Version<?> b, @NotNull Comparator<Version<?>> strategy) {
-        java.util.Objects.requireNonNull(a, "version a cannot be null");
-        java.util.Objects.requireNonNull(b, "version b cannot be null");
-        java.util.Objects.requireNonNull(strategy, "strategy cannot be null");
+        Objects.requireNonNull(a, "version a cannot be null");
+        Objects.requireNonNull(b, "version b cannot be null");
+        Objects.requireNonNull(strategy, "strategy cannot be null");
         return test(strategy.compare(a, b));
     }
 
     @Override
     public int compare(Version<?> a, Version<?> b) {
-        java.util.Objects.requireNonNull(a, "version a cannot be null");
-        java.util.Objects.requireNonNull(b, "version b cannot be null");
+        Objects.requireNonNull(a, "version a cannot be null");
+        Objects.requireNonNull(b, "version b cannot be null");
         return multiplier * RELEASE.compare(a, b);
     }
 }

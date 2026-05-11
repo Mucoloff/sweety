@@ -2,6 +2,8 @@ package dev.sweety.event.api;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Objects;
+
 public abstract class AbstractEvent<E extends Event<E>> implements Event<E> {
 
     protected volatile boolean changed = false;
@@ -49,6 +51,6 @@ public abstract class AbstractEvent<E extends Event<E>> implements Event<E> {
 
     @Override
     public int hashCode() {
-        return java.util.Objects.hash(changed, pre);
+        return Objects.hash(changed, pre);
     }
 }

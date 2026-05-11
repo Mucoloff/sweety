@@ -6,6 +6,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -60,7 +61,7 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
     
     public <T> T getOrNull(@NotNull final ServiceKey<T> key) {
         ensureOpen();
-        java.util.Objects.requireNonNull(key, "key cannot be null");
+        Objects.requireNonNull(key, "key cannot be null");
         // noinspection unchecked
         final Provider<T> provider = (Provider<T>) this.services.get(key);
         return provider == null ? null : provider.get();
@@ -69,7 +70,7 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
     @Override
     public <T> boolean contains(@NotNull ServiceKey<T> key) {
         ensureOpen();
-        java.util.Objects.requireNonNull(key, "key cannot be null");
+        Objects.requireNonNull(key, "key cannot be null");
         return services.containsKey(key);
     }
 
@@ -77,8 +78,8 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
     
     public <T> T put(@NotNull final ServiceKey<T> key, final T service) {
         ensureOpen();
-        java.util.Objects.requireNonNull(key, "key cannot be null");
-        java.util.Objects.requireNonNull(service, "service cannot be null");
+        Objects.requireNonNull(key, "key cannot be null");
+        Objects.requireNonNull(service, "service cannot be null");
         if (service instanceof Service s) s.onEnable();
         return put(key, singleton(service));
     }
@@ -87,8 +88,8 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
     
     public <T> T put(@NotNull final ServiceKey<T> key, final Provider<T> service) {
         ensureOpen();
-        java.util.Objects.requireNonNull(key, "key cannot be null");
-        java.util.Objects.requireNonNull(service, "service provider cannot be null");
+        Objects.requireNonNull(key, "key cannot be null");
+        Objects.requireNonNull(service, "service provider cannot be null");
         // noinspection unchecked
         final Provider<T> provider = (Provider<T>) services.put(key, service);
         T value = provider == null ? null : provider.get();
@@ -100,8 +101,8 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
     
     public <T> T putIfAbsent(@NotNull final ServiceKey<T> key, final T service) {
         ensureOpen();
-        java.util.Objects.requireNonNull(key, "key cannot be null");
-        java.util.Objects.requireNonNull(service, "service cannot be null");
+        Objects.requireNonNull(key, "key cannot be null");
+        Objects.requireNonNull(service, "service cannot be null");
         return putIfAbsent(key, singleton(service));
     }
 
@@ -109,8 +110,8 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
     
     public <T> T putIfAbsent(@NotNull final ServiceKey<T> key, final Provider<T> service) {
         ensureOpen();
-        java.util.Objects.requireNonNull(key, "key cannot be null");
-        java.util.Objects.requireNonNull(service, "service provider cannot be null");
+        Objects.requireNonNull(key, "key cannot be null");
+        Objects.requireNonNull(service, "service provider cannot be null");
         // noinspection unchecked
         Provider<T> provider = (Provider<T>) services.putIfAbsent(key, service);
         return provider == null ? null : provider.get();
@@ -120,7 +121,7 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
     @NotNull
     public <T> T registerByClass(@NotNull Class<T> type) {
         ensureOpen();
-        java.util.Objects.requireNonNull(type, "type cannot be null");
+        Objects.requireNonNull(type, "type cannot be null");
         T instance = injector.instantiate(type);
         put(type, instance);
         return instance;
@@ -130,7 +131,7 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
     
     public <T> T remove(@NotNull ServiceKey<T> key) {
         ensureOpen();
-        java.util.Objects.requireNonNull(key, "key cannot be null");
+        Objects.requireNonNull(key, "key cannot be null");
         // noinspection unchecked
         Provider<T> provider = (Provider<T>) services.remove(key);
         T value = provider == null ? null : provider.get();

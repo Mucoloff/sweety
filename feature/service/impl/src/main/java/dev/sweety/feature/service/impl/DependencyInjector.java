@@ -8,17 +8,18 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
+import java.util.Objects;
 
 public class DependencyInjector {
 
     private final ServiceRegistry registry;
 
     public DependencyInjector(@NotNull ServiceRegistry registry) {
-        this.registry = java.util.Objects.requireNonNull(registry, "registry cannot be null");
+        this.registry = Objects.requireNonNull(registry, "registry cannot be null");
     }
 
     public <T> T instantiate(@NotNull Class<T> type) {
-        java.util.Objects.requireNonNull(type, "type cannot be null");
+        Objects.requireNonNull(type, "type cannot be null");
         try {
             T instance = createInstance(type);
             injectFields(instance);
@@ -56,6 +57,7 @@ public class DependencyInjector {
                 .map(registry::get)
                 .toArray();
 
+        //noinspection unchecked
         return (T) injectConstructor.newInstance(params);
     }
 

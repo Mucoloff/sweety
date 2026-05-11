@@ -125,7 +125,7 @@ public class PatchApplier {
         entries.put(path, data);
     }
 
-    private java.util.List<String> toLines(byte[] data) {
+    private List<String> toLines(byte[] data) {
          String content = new String(data, java.nio.charset.StandardCharsets.UTF_8);
          return java.util.Arrays.asList(content.split("\\r?\\n", -1));
     }

@@ -3,6 +3,8 @@ package dev.sweety.sql4j.impl.connection.dialect;
 import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.obj.ForeignKey;
 
+import java.util.List;
+
 public class H2Dialect implements Dialect {
 
     @Override
@@ -63,7 +65,7 @@ public class H2Dialect implements Dialect {
     }
 
     @Override
-    public String upsertSyntax(String table, java.util.List<String> insertCols, java.util.List<String> updateCols, java.util.List<String> pkCols) {
+    public String upsertSyntax(String table, List<String> insertCols, List<String> updateCols, List<String> pkCols) {
         String cols = String.join(", ", insertCols);
         String placeholders = insertCols.stream().map(c -> "?").collect(java.util.stream.Collectors.joining(", "));
         String pks = String.join(", ", pkCols);

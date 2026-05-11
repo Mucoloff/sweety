@@ -3,6 +3,8 @@ package dev.sweety.util.logger.profile;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 public final class LogProfile {
@@ -22,7 +24,7 @@ public final class LogProfile {
     }
 
     private LogProfile(String name, LogProfile parent) {
-        this.name = java.util.Objects.requireNonNull(name, "name cannot be null");
+        this.name = Objects.requireNonNull(name, "name cannot be null");
         this.parent = parent;
         this.fullPath = parent == null ? name : parent.fullPath + "@" + name;
     }
@@ -47,13 +49,13 @@ public final class LogProfile {
         public boolean equals(Object o) {
             if (this == o) return true;
             if (!(o instanceof ProfileKey that)) return false;
-            return java.util.Objects.equals(name, that.name) && parent == that.parent;
+            return Objects.equals(name, that.name) && parent == that.parent;
         }
 
         @Override
         public int hashCode() {
             // Mix string hash with system identity hash of parent
-            return 31 * java.util.Objects.hashCode(name) + (parent == null ? 0 : System.identityHashCode(parent));
+            return 31 * Objects.hashCode(name) + (parent == null ? 0 : System.identityHashCode(parent));
         }
     }
 

@@ -21,15 +21,15 @@ public class PatchDiffEngine {
     private final ClassNormalizer normalizer;
 
     public PatchDiffEngine(@NotNull HashFunction hashFunction, ClassNormalizer classNormalizer) {
-        this.hashFunction = java.util.Objects.requireNonNull(hashFunction, "hashFunction cannot be null");
+        this.hashFunction = Objects.requireNonNull(hashFunction, "hashFunction cannot be null");
         this.normalizer = classNormalizer;
     }
 
     public Patch diff(@NotNull Archive oldArchive, @NotNull Archive newArchive, @NotNull String fromVersion, @NotNull String toVersion) {
-        java.util.Objects.requireNonNull(oldArchive, "oldArchive cannot be null");
-        java.util.Objects.requireNonNull(newArchive, "newArchive cannot be null");
-        java.util.Objects.requireNonNull(fromVersion, "fromVersion cannot be null");
-        java.util.Objects.requireNonNull(toVersion, "toVersion cannot be null");
+        Objects.requireNonNull(oldArchive, "oldArchive cannot be null");
+        Objects.requireNonNull(newArchive, "newArchive cannot be null");
+        Objects.requireNonNull(fromVersion, "fromVersion cannot be null");
+        Objects.requireNonNull(toVersion, "toVersion cannot be null");
         
         Map<String, byte[]> oldEntries = oldArchive.entries();
         Map<String, byte[]> newEntries = newArchive.entries();
