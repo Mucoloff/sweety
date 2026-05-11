@@ -1,5 +1,7 @@
 package dev.sweety.sql4j.api.util;
 
+import dev.sweety.sql4j.api.exception.Sql4jException;
+
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.security.SecureRandom;
@@ -22,7 +24,8 @@ public class UUIDv8Hybrid {
             writeVarLong(out, COUNTER.getAndIncrement() ^ RANDOM.nextLong() ^ uuid.getMostSignificantBits());
             writeVarLong(out, NODE_ID ^ RANDOM.nextLong() ^ uuid.getLeastSignificantBits());
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            // ByteArrayOutputStream never actually throws IOException
+            throw new Sql4jException("Unexpected I/O error during UUID generation", e);
         }
 
         final byte[] data = out.toByteArray();

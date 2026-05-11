@@ -1,7 +1,10 @@
 package dev.sweety.sql4j.api.query;
 
+import dev.sweety.sql4j.api.exception.Sql4jQueryException;
 import dev.sweety.sql4j.api.obj.Row;
 import dev.sweety.sql4j.api.obj.Table;
+import dev.sweety.sql4j.api.query.functions.QueryBinder;
+import dev.sweety.sql4j.api.query.functions.QueryExecutor;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -11,28 +14,142 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * A query that executes raw SQL with parameters and maps the results.
+ * A general-purpose {@link Query} backed by a raw SQL string and a configurable executor.
+ *
+ * <h3>Two construction styles</h3>
+ * <ol>
+ *   <li><b>Entity-mapping constructors</b> — used by generated repository implementations:
+ *       <pre>{@code new ParamQuery<>(sql, params, table)}</pre>
+ *   </li>
+ *   <li><b>Builder</b> — used internally for ad-hoc queries with arbitrary executors:
+ *       <pre>{@code ParamQuery.<List<Row>>builder(sql, ps -> ...).bind(...).build()}</pre>
+ *   </li>
+ * </ol>
  */
 public final class ParamQuery<T> extends AbstractQuery<T> {
 
     private final String sql;
+    // Entity-mapping mode fields
     private final List<Object> params;
     private final Function<Row, ?> mapper;
     private final Table<?> table;
+    // Builder mode fields
+    private final QueryBinder binder;
+    private final QueryExecutor<T> executor;
+    private final boolean returnGeneratedKeys;
+    // Discriminator
+    private final boolean builderMode;
 
+    // ─── Entity-mapping constructors (used by generated code) ──────────────────
+
+    /**
+     * Creates a {@code ParamQuery} that maps each result row to an entity via the table descriptor.
+     *
+     * @param sql    the SQL string (may contain {@code ?} placeholders)
+     * @param params the bound parameter values, in order
+     * @param table  the table descriptor used for entity construction
+     */
     public ParamQuery(String sql, List<Object> params, Table<T> table) {
         this.sql = sql;
         this.params = params;
         this.table = table;
         this.mapper = null;
+        this.binder = null;
+        this.executor = null;
+        this.returnGeneratedKeys = false;
+        this.builderMode = false;
     }
 
+    /**
+     * Creates a {@code ParamQuery} that maps each result row to a custom type via {@code mapper}.
+     *
+     * @param sql    the SQL string
+     * @param params the bound parameter values
+     * @param mapper a per-row mapping function
+     */
     public ParamQuery(String sql, List<Object> params, Function<Row, T> mapper) {
         this.sql = sql;
         this.params = params;
         this.mapper = mapper;
         this.table = null;
+        this.binder = null;
+        this.executor = null;
+        this.returnGeneratedKeys = false;
+        this.builderMode = false;
     }
+
+    // ─── Builder constructor (internal/api use) ─────────────────────────────────
+
+    private ParamQuery(Builder<T> b) {
+        this.sql = b.sql;
+        this.binder = b.binder;
+        this.executor = b.executor;
+        this.returnGeneratedKeys = b.returnGeneratedKeys;
+        this.params = null;
+        this.mapper = null;
+        this.table = null;
+        this.builderMode = true;
+    }
+
+    // ─── Builder factory ─────────────────────────────────────────────────────────
+
+    /**
+     * Returns a builder for an ad-hoc query with a custom executor.
+     *
+     * @param <T>      return type of the query
+     * @param sql      the SQL string
+     * @param executor the result-set executor
+     */
+    public static <T> Builder<T> builder(String sql, QueryExecutor<T> executor) {
+        return new Builder<>(sql, executor);
+    }
+
+    /**
+     * Returns a builder pre-configured for {@code SELECT} queries that return {@code List<Row>}.
+     */
+    public static Builder<List<Row>> rowBuilder(String sql) {
+        return new Builder<>(sql, ps -> {
+            try (ResultSet rs = ps.executeQuery()) {
+                return Row.fromResultSetAll(rs);
+            }
+        });
+    }
+
+    // ─── Builder ─────────────────────────────────────────────────────────────────
+
+    /** Fluent builder for {@link ParamQuery}. */
+    public static final class Builder<T> {
+        private final String sql;
+        private final QueryExecutor<T> executor;
+        private QueryBinder binder = QueryBinder.EMPTY;
+        private boolean returnGeneratedKeys = false;
+
+        Builder(String sql, QueryExecutor<T> executor) {
+            this.sql = sql;
+            this.executor = executor;
+        }
+
+        /** Sets the parameter binder. */
+        public Builder<T> bind(QueryBinder binder) {
+            this.binder = binder;
+            return this;
+        }
+
+        /** Requests that generated keys be returned after execution. */
+        public Builder<T> returnGeneratedKeys() {
+            this.returnGeneratedKeys = true;
+            return this;
+        }
+
+        /** Builds the {@link ParamQuery}. */
+        public ParamQuery<T> build() {
+            if (sql == null || sql.isBlank()) throw new Sql4jQueryException("ParamQuery.Builder: sql is required");
+            if (executor == null) throw new Sql4jQueryException("ParamQuery.Builder: executor is required");
+            return new ParamQuery<>(this);
+        }
+    }
+
+    // ─── Query implementation ─────────────────────────────────────────────────────
 
     @Override
     protected String buildSql() {
@@ -41,9 +158,13 @@ public final class ParamQuery<T> extends AbstractQuery<T> {
 
     @Override
     public void bind(PreparedStatement ps) throws SQLException {
-        if (params != null) {
-            for (int i = 0; i < params.size(); i++) {
-                ps.setObject(i + 1, params.get(i));
+        if (builderMode) {
+            if (binder != null) binder.bind(ps);
+        } else {
+            if (params != null) {
+                for (int i = 0; i < params.size(); i++) {
+                    ps.setObject(i + 1, params.get(i));
+                }
             }
         }
     }
@@ -51,6 +172,9 @@ public final class ParamQuery<T> extends AbstractQuery<T> {
     @Override
     @SuppressWarnings("unchecked")
     public T execute(PreparedStatement ps) throws SQLException {
+        if (builderMode) {
+            return executor.execute(ps);
+        }
         try (ResultSet rs = ps.executeQuery()) {
             List<Row> rows = Row.fromResultSetAll(rs);
             if (table != null) {
@@ -69,5 +193,10 @@ public final class ParamQuery<T> extends AbstractQuery<T> {
                 return (T) rows;
             }
         }
+    }
+
+    @Override
+    public boolean returnGeneratedKeys() {
+        return returnGeneratedKeys;
     }
 }

@@ -1,9 +1,7 @@
 package dev.sweety.sql4j.entity;
 
 import dev.sweety.sql4j.api.connection.dialect.Dialect;
-import dev.sweety.sql4j.impl.connection.dialect.MySqlDialect;
-import dev.sweety.sql4j.impl.connection.dialect.PostgreSQLDialect;
-import dev.sweety.sql4j.impl.connection.dialect.SqliteDialect;
+import dev.sweety.sql4j.impl.connection.dialect.DialectType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +15,7 @@ public class SQL4JDialectTest {
     @Test
     @DisplayName("Dialect: SQLite Escaping & UPSERT")
     void testSqlite() {
-        Dialect dialect = new SqliteDialect();
+        Dialect dialect = DialectType.SQLITE.dialect();
         assertEquals("\"user\"", dialect.escape("user"));
         
         String upsert = dialect.upsertSyntax("user", List.of("id", "name"), List.of("name"), List.of("id"));
@@ -27,7 +25,7 @@ public class SQL4JDialectTest {
     @Test
     @DisplayName("Dialect: Postgres Escaping & UPSERT")
     void testPostgres() {
-        Dialect dialect = new PostgreSQLDialect();
+        Dialect dialect = DialectType.POSTGRESQL.dialect();
         assertEquals("\"user\"", dialect.escape("user"));
         
         String upsert = dialect.upsertSyntax("user", List.of("id", "name"), List.of("name"), List.of("id"));
@@ -37,7 +35,7 @@ public class SQL4JDialectTest {
     @Test
     @DisplayName("Dialect: MySQL Escaping & UPSERT")
     void testMySql() {
-        Dialect dialect = new MySqlDialect();
+        Dialect dialect = DialectType.MYSQL.dialect();
         assertEquals("`user`", dialect.escape("user"));
         
         String upsert = dialect.upsertSyntax("user", List.of("id", "name"), List.of("name"), List.of("id"));
@@ -47,10 +45,10 @@ public class SQL4JDialectTest {
     @Test
     @DisplayName("Dialect: Limit/Offset Syntax")
     void testLimitOffset() {
-        Dialect sqlite = new SqliteDialect();
+        Dialect sqlite = DialectType.SQLITE.dialect();
         assertEquals(" LIMIT 10 OFFSET 20", sqlite.limitOffsetSyntax(10, 20));
         
-        Dialect postgres = new PostgreSQLDialect();
+        Dialect postgres = DialectType.POSTGRESQL.dialect();
         assertEquals(" LIMIT 10 OFFSET 20", postgres.limitOffsetSyntax(10, 20));
     }
 
@@ -64,7 +62,7 @@ public class SQL4JDialectTest {
         
         // SQLite
         dev.sweety.sql4j.impl.query.entity.SelectEntity<User> selectSqlite = 
-            new dev.sweety.sql4j.impl.query.entity.SelectEntity<>(table, cache, new SqliteDialect(), registry);
+            new dev.sweety.sql4j.impl.query.entity.SelectEntity<>(table, cache, DialectType.SQLITE.dialect(), registry);
         String sqlSqlite = selectSqlite.limit(10).sql();
         System.out.println("SQLITE: " + sqlSqlite);
         assertTrue(sqlSqlite.contains("SELECT"), "Should be a SELECT");
@@ -74,7 +72,7 @@ public class SQL4JDialectTest {
 
         // MySQL
         dev.sweety.sql4j.impl.query.entity.SelectEntity<User> selectMysql = 
-            new dev.sweety.sql4j.impl.query.entity.SelectEntity<>(table, cache, new MySqlDialect(), registry);
+            new dev.sweety.sql4j.impl.query.entity.SelectEntity<>(table, cache, DialectType.MYSQL.dialect(), registry);
         String sqlMysql = selectMysql.limit(10).sql();
         System.out.println("MYSQL: " + sqlMysql);
         assertTrue(sqlMysql.contains("SELECT"), "Should be a SELECT");

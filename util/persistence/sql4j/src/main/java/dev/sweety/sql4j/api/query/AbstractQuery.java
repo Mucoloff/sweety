@@ -1,5 +1,7 @@
 package dev.sweety.sql4j.api.query;
 
+import dev.sweety.sql4j.api.exception.Sql4jQueryException;
+
 public abstract non-sealed class AbstractQuery<T>
         implements Query<T> {
 
@@ -18,6 +20,6 @@ public abstract non-sealed class AbstractQuery<T>
      */
     protected void validateSql(final String sql) {
         if (sql == null || sql.isBlank())
-            throw new IllegalStateException("SQL query cannot be null or blank");
+            throw new Sql4jQueryException("SQL query cannot be null or blank");
     }
 }

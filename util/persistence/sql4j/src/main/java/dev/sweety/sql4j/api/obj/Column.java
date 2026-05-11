@@ -1,16 +1,25 @@
 package dev.sweety.sql4j.api.obj;
 
+import dev.sweety.sql4j.api.exception.Sql4jMappingException;
 import dev.sweety.sql4j.api.obj.table.TableRegistry;
 import dev.sweety.sql4j.api.query.Criterion;
+import dev.sweety.sql4j.api.util.UUIDv8Hybrid;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
+import java.nio.ByteBuffer;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.UUID;
 
 public class Column<T> {
     private final String name;
@@ -32,6 +41,7 @@ public class Column<T> {
         this.table = Objects.requireNonNull(table, "table cannot be null");
         this.name = Objects.requireNonNull(name, "name cannot be null");
         this.field = field;
+        //noinspection unchecked
         this.type = (Class<T>) (field != null ? field.getType() : null);
         this.info = info;
         if (field != null) field.setAccessible(true);
@@ -162,8 +172,13 @@ public class Column<T> {
         return relationIdField != null ? relationIdField.getType() : (field != null ? field.getType() : Object.class);
     }
 
-    public boolean isRelation() { return relation; }
-    public void setRelation(boolean relation) { this.relation = relation; }
+    public boolean isRelation() {
+        return relation;
+    }
+
+    public void setRelation(boolean relation) {
+        this.relation = relation;
+    }
 
     public T get(Object instance) {
         TableAccessor<?> accessor = table.accessor();
@@ -176,7 +191,7 @@ public class Column<T> {
             //noinspection unchecked
             return (T) field.get(instance);
         } catch (IllegalAccessException e) {
-            throw new IllegalStateException(e);
+            throw new Sql4jMappingException("Failed to read field '" + name + "' on " + instance.getClass().getName(), e);
         }
     }
 
@@ -189,7 +204,7 @@ public class Column<T> {
             // Find the PK of the entity
             Table<?> refTable = TableRegistry.getDefault().get(value.getClass());
             if (refTable != null && !refTable.primaryKeys().isEmpty()) {
-                Column<?> refPk = refTable.primaryKeys().get(0);
+                Column<?> refPk = refTable.primaryKeys().getFirst();
                 value = refPk.get(value);
                 ps.setObject(index, value);
             } else {
@@ -225,7 +240,7 @@ public class Column<T> {
                 field.set(instance, value);
             }
         } catch (IllegalAccessException e) {
-            throw new IllegalStateException(e);
+            throw new Sql4jMappingException("Failed to set field '" + name + "' on " + instance.getClass().getName(), e);
         }
     }
 
@@ -234,48 +249,44 @@ public class Column<T> {
         if (type.isInstance(value)) return value;
 
         if (type == boolean.class || type == Boolean.class) {
-            if (value instanceof Boolean b) return b;
-            if (value instanceof Number n) return n.intValue() != 0;
-            if (value instanceof String s) return s.equalsIgnoreCase("true") || s.equals("1");
-        }
-
-        if (value instanceof Number n) {
+            switch (value) {
+                case Boolean b -> {
+                    return b;
+                }
+                case Number n -> {
+                    return n.intValue() != 0;
+                }
+                case String s -> {
+                    return s.equalsIgnoreCase("true") || s.equals("1");
+                }
+                default -> {
+                }
+            }
+        } else if (value instanceof Number n) {
             if (type == byte.class || type == Byte.class) return n.byteValue();
             if (type == short.class || type == Short.class) return n.shortValue();
             if (type == int.class || type == Integer.class) return n.intValue();
             if (type == long.class || type == Long.class) return n.longValue();
             if (type == float.class || type == Float.class) return n.floatValue();
             if (type == double.class || type == Double.class) return n.doubleValue();
-            if (type == java.math.BigDecimal.class) return java.math.BigDecimal.valueOf(n.doubleValue());
-        }
-
-        if (type.isEnum() && value instanceof String s) {
+            if (type == BigDecimal.class) return BigDecimal.valueOf(n.doubleValue());
+        } else if (type.isEnum() && value instanceof String s) {
             //noinspection unchecked,rawtypes
             return Enum.valueOf((Class<Enum>) type, s.toUpperCase());
-        }
-
-        if (type == java.util.UUID.class) {
-            if (value instanceof String s) return java.util.UUID.fromString(s);
+        } else if (type == UUID.class) {
+            if (value instanceof String s) return UUID.fromString(s);
             if (value instanceof byte[] b && b.length == 16) {
-                java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(b);
-                return new java.util.UUID(bb.getLong(), bb.getLong());
+                return UUIDv8Hybrid.fromBytes(b);
             }
+        } else if (type == LocalDate.class) {
+            if (value instanceof Date d) return d.toLocalDate();
+            if (value instanceof String s) return LocalDate.parse(s);
+        } else if (type == LocalDateTime.class) {
+            if (value instanceof Timestamp t) return t.toLocalDateTime();
+            if (value instanceof String s) return LocalDateTime.parse(s.replace(" ", "T"));
+        } else if (type == BigDecimal.class && value instanceof String s) {
+            return new BigDecimal(s);
         }
-
-        if (type == java.time.LocalDate.class) {
-            if (value instanceof java.sql.Date d) return d.toLocalDate();
-            if (value instanceof String s) return java.time.LocalDate.parse(s);
-        }
-
-        if (type == java.time.LocalDateTime.class) {
-            if (value instanceof java.sql.Timestamp t) return t.toLocalDateTime();
-            if (value instanceof String s) return java.time.LocalDateTime.parse(s.replace(" ", "T"));
-        }
-
-        if (type == java.math.BigDecimal.class && value instanceof String s) {
-            return new java.math.BigDecimal(s);
-        }
-
         return value;
     }
 

@@ -5,7 +5,7 @@ import dev.sweety.sql4j.api.obj.ForeignKey;
 
 import java.util.List;
 
-public final class SqliteDialect implements Dialect {
+final class SqliteDialect implements Dialect {
 
     @Override
     public String name() {

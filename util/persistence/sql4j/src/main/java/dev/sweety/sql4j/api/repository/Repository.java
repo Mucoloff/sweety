@@ -1,115 +1,88 @@
 package dev.sweety.sql4j.api.repository;
 
+import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.*;
-import dev.sweety.sql4j.impl.query.entity.DeleteWhere;
-import dev.sweety.sql4j.impl.query.entity.UpdateWhere;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;
 
 /**
- * Base interface for all repositories.
- * @param <Entity> The entity type managed by this repository.
+ * Full read-write repository interface for SQL4J-managed entities.
+ *
+ * <p>Extends {@link ReadOnlyRepository} with all mutating operations (INSERT, UPDATE, DELETE,
+ * UPSERT, batch operations, and DDL). Pass a {@link ReadOnlyRepository} when you want the
+ * compiler to prevent accidental mutation.
+ *
+ * @param <Entity> the entity type managed by this repository
  */
-public interface Repository<Entity> {
+public interface Repository<Entity> extends ReadOnlyRepository<Entity> {
 
-    /**
-     * @return The table descriptor for this repository.
-     */
-    Table<Entity> table();
-
-    /**
-     * Starts a SELECT query.
-     */
-    SelectQuery<Entity> select();
+    // ReadOnlyRepository methods are inherited; see that interface for Javadoc.
 
     /**
      * Creates an INSERT query for a single entity.
      */
-    InsertQuery<Entity> insert(Entity entity);
+    @NotNull InsertQuery<Entity> insert(@NotNull Entity entity);
 
     /**
      * Creates a BATCH INSERT query for a collection of entities.
      */
-    BatchQuery<Entity> insertBatch(Collection<Entity> entities);
+    @NotNull BatchQuery<Entity> insertBatch(@NotNull Collection<Entity> entities);
 
     /**
-     * Creates an UPSERT query (INSERT OR UPDATE) for a single entity.
+     * Creates an UPSERT (INSERT OR UPDATE) query for a single entity.
      */
-    UpsertQuery<Entity> upsert(Entity entity);
+    @NotNull UpsertQuery<Entity> upsert(@NotNull Entity entity);
 
     /**
-     * Creates an UPDATE query for a single entity.
+     * Creates an UPDATE query for a single entity matched by its primary key.
      */
-    UpdateQuery<Entity> update(Entity entity);
+    @NotNull UpdateQuery<Entity> update(@NotNull Entity entity);
 
     /**
-     * Creates a DELETE query for a single entity.
+     * Creates a BATCH UPDATE query for a collection of entities.
      */
-    DeleteQuery<Entity> delete(Entity entity);
+    @NotNull BatchQuery<Entity> updateBatch(@NotNull Collection<Entity> entities);
 
     /**
-     * Starts a DELETE WHERE query.
+     * Creates a DELETE query for a single entity matched by its primary key.
      */
-    ConditionalDeleteQuery<Entity> deleteWhere();
+    @NotNull DeleteQuery<Entity> delete(@NotNull Entity entity);
 
     /**
-     * Creates a DELETE WHERE query with a starting criterion.
+     * Starts a conditional DELETE WHERE query.
      */
-    ConditionalDeleteQuery<Entity> deleteWhere(Criterion criterion);
+    @NotNull ConditionalDeleteQuery<Entity> deleteWhere();
 
     /**
-     * Creates a PK context for fluent operations by primary key.
+     * Creates a conditional DELETE WHERE query with an initial criterion.
      */
-    dev.sweety.sql4j.api.query.PkContext<Entity> pk(Object... values);
+    @NotNull ConditionalDeleteQuery<Entity> deleteWhere(@NotNull Criterion criterion);
 
     /**
-     * Creates an UPDATE query for a collection of entities.
+     * Starts a conditional UPDATE WHERE query.
      */
-    BatchQuery<Entity> updateBatch(Collection<Entity> entities);
+    @NotNull ConditionalUpdateQuery<Entity> updateWhere();
 
     /**
-     * Starts a conditional UPDATE query.
+     * Starts a conditional UPDATE WHERE query with an initial criterion.
      */
-    dev.sweety.sql4j.api.query.ConditionalUpdateQuery<Entity> updateWhere();
+    @NotNull ConditionalUpdateQuery<Entity> updateWhere(@NotNull Criterion criterion);
 
     /**
-     * Starts a conditional UPDATE query with a starting criterion.
+     * Creates a CREATE TABLE query (with IF NOT EXISTS).
+     *
+     * <p>The returned {@link Query Query&lt;Void&gt;} also implements
+     * {@link dev.sweety.sql4j.api.query.schema.CreateTableQuery} and can be cast if needed.
      */
-    dev.sweety.sql4j.api.query.ConditionalUpdateQuery<Entity> updateWhere(Criterion criterion);
-
-    /**
-     * Starts a join query builder.
-     */
-    dev.sweety.sql4j.impl.query.SelectJoin.Builder joinBuilder();
-
-    /**
-     * Selects specific columns and returns entity instances.
-     */
-    SelectQuery<Entity> select(dev.sweety.sql4j.api.obj.Column<?>... columns);
-
-    /**
-     * Selects all columns and returns raw rows.
-     */
-    SelectRawQuery selectRawAll();
-
-    /**
-     * Selects specific columns and returns raw rows.
-     */
-    SelectRawQuery selectRaw(dev.sweety.sql4j.api.obj.Column<?>... columns);
-
-    /**
-     * Creates a CREATE TABLE query.
-     */
-    dev.sweety.sql4j.impl.query.table.CreateTable createTable();
+    @NotNull Query<Void> createTable();
 
     /**
      * Creates a DROP TABLE query.
+     *
+     * <p>The returned {@link Query Query&lt;Void&gt;} also implements
+     * {@link dev.sweety.sql4j.api.query.schema.DropTableQuery} and can be cast if needed.
      */
-    dev.sweety.sql4j.impl.query.table.DropTable dropTable();
-
-    /**
-     * Wraps a query with cache lookup/storage.
-     */
-    <T> Query<T> wrapWithCache(Object pkValue, java.util.function.Supplier<Query<T>> querySupplier);
+    @NotNull Query<Void> dropTable();
 }

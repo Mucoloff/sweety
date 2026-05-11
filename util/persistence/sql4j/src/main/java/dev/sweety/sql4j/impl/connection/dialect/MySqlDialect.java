@@ -5,7 +5,7 @@ import dev.sweety.sql4j.api.obj.ForeignKey;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class MySqlDialect implements Dialect {
+class MySqlDialect implements Dialect {
 
     @Override
     public String name() {

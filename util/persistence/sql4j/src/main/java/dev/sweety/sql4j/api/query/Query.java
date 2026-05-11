@@ -5,8 +5,6 @@ import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.functions.QueryBinder;
 import dev.sweety.sql4j.api.query.functions.QueryExecutor;
 import dev.sweety.sql4j.impl.query.SelectJoin;
-import dev.sweety.sql4j.impl.query.param.ParamQuery;
-import dev.sweety.sql4j.impl.query.param.QueryResult;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;

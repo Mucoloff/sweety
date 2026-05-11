@@ -1,6 +1,7 @@
 package dev.sweety.sql4j.impl.query.entity;
 
 import dev.sweety.sql4j.api.connection.dialect.Dialect;
+import dev.sweety.sql4j.api.exception.Sql4jMappingException;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
@@ -47,7 +48,7 @@ public final class UpsertEntity<T> extends AbstractQuery<MutationResult<T>> impl
                     .collect(Collectors.toList());
 
             if (pkColNames.isEmpty()) {
-                throw new IllegalStateException("Table " + table.name() + " has no primary keys, cannot UPSERT.");
+                throw new Sql4jMappingException("Table '" + table.name() + "' has no primary keys — cannot UPSERT.");
             }
 
             // We pass raw names to upsertSyntax, and let the dialect handle escaping inside it

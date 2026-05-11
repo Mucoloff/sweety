@@ -1,12 +1,16 @@
 package dev.sweety.sql4j.impl;
 
 import dev.sweety.sql4j.api.configuration.DatabaseConfig;
+import dev.sweety.sql4j.api.configuration.SQL4JConfig;
 import dev.sweety.sql4j.api.connection.SqlConnection;
 import dev.sweety.sql4j.api.connection.dialect.Dialect;
+import dev.sweety.sql4j.api.exception.Sql4jMappingException;
 import dev.sweety.sql4j.api.interceptor.QueryInterceptor;
 import dev.sweety.sql4j.api.obj.table.TableRegistry;
 import dev.sweety.sql4j.api.query.chain.QueryChain;
 import dev.sweety.sql4j.impl.connection.ConnectionType;
+import dev.sweety.sql4j.impl.connection.provider.HikariConnectionProvider;
+import dev.sweety.sql4j.impl.connection.provider.DriverManagerConnectionProvider;
 import dev.sweety.sql4j.impl.query.QueryCache;
 import dev.sweety.sql4j.impl.cache.EntityCache;
 import dev.sweety.sql4j.impl.transaction.TransactionManager;
@@ -40,6 +44,24 @@ public class Database implements AutoCloseable {
 
     public Database(final DatabaseConfig config, final Executor executor) {
         this(ConnectionType.valueOf(config.dialectType().name()).create(config, executor));
+    }
+
+    /**
+     * Creates a {@code Database} from the canonical, fully-resolved {@link SQL4JConfig}.
+     * This is the preferred constructor when using the step builder.
+     */
+    public Database(final SQL4JConfig config) {
+        this(buildConnection(config));
+        entityCache.setEnabled(config.cacheEnabled());
+    }
+
+    private static SqlConnection buildConnection(SQL4JConfig config) {
+        Executor executor = config.executor() != null ? config.executor() : Executors.newCachedThreadPool();
+        boolean ownsExecutor = config.executor() == null;
+        dev.sweety.sql4j.api.connection.provider.ConnectionProvider provider = config.useHikari()
+                ? new HikariConnectionProvider(config)
+                : new DriverManagerConnectionProvider(config);
+        return new SqlConnection(config.dialect(), provider, executor, ownsExecutor);
     }
 
     /**
@@ -77,7 +99,7 @@ public class Database implements AutoCloseable {
             
             // Get the entity type from the Sql4jRepository annotation
             dev.sweety.sql4j.api.annotation.Sql4jRepository ann = repositoryInterface.getAnnotation(dev.sweety.sql4j.api.annotation.Sql4jRepository.class);
-            if (ann == null) throw new IllegalArgumentException("Interface " + repositoryInterface.getName() + " is not annotated with @Sql4jRepository");
+            if (ann == null) throw new Sql4jMappingException("Interface " + repositoryInterface.getName() + " is not annotated with @Sql4jRepository");
             
             Class<?> entityClass = ann.entity();
             
@@ -100,8 +122,10 @@ public class Database implements AutoCloseable {
             );
             repositories.put(repositoryInterface, repo);
             return repo;
+        } catch (Sql4jMappingException e) {
+            throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to load repository implementation for " + repositoryInterface.getName(), e);
+            throw new Sql4jMappingException("Failed to load repository implementation for " + repositoryInterface.getName(), e);
         }
     }
 

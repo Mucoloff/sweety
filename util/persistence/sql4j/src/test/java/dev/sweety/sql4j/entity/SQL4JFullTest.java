@@ -223,8 +223,7 @@ public class SQL4JFullTest {
                 .join(UserTable.PROJECTS_REL)
                 .join(ProjectTable.TASKS_REL)
                 .where(UserTable.NAME.eq("Charlie"))
-                .build()
-                .mapToHierarchy(User.class)
+                .buildTyped(User.class)
                 .execute(con).join();
 
         assertEquals(1, hierarchy.size());

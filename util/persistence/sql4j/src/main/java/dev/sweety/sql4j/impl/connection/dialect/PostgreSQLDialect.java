@@ -5,7 +5,7 @@ import dev.sweety.sql4j.api.obj.ForeignKey;
 
 import java.util.List;
 
-public class PostgreSQLDialect implements Dialect {
+class PostgreSQLDialect implements Dialect {
 
     @Override
     public String name() {

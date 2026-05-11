@@ -1,12 +1,15 @@
 package dev.sweety.sql4j.impl.query;
 
 import dev.sweety.sql4j.api.connection.dialect.Dialect;
+import dev.sweety.sql4j.api.exception.Sql4jMappingException;
+import dev.sweety.sql4j.api.exception.Sql4jQueryException;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Row;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.obj.table.TableRegistry;
 import dev.sweety.sql4j.api.query.AbstractQuery;
 import dev.sweety.sql4j.api.query.Criterion;
+import dev.sweety.sql4j.api.query.JoinBuilder;
 import dev.sweety.sql4j.api.query.Query;
 
 import java.sql.PreparedStatement;
@@ -193,7 +196,7 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
                         break;
                     }
                 }
-                if (rootTableFound == null) throw new IllegalArgumentException("Root type " + type.getName() + " not found");
+                if (rootTableFound == null) throw new Sql4jMappingException("Root type " + type.getName() + " not found in join builder");
                 final Table<R> rootTable = rootTableFound;
                 
                 Map<Object, R> identityMap = new LinkedHashMap<>();
@@ -245,12 +248,13 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
                     } else {
                         if (rel.field().get(source) == null) rel.field().set(source, targetEntity);
                     }
-                } catch (Exception e) { throw new RuntimeException(e); }
+                } catch (Sql4jMappingException e) { throw e;
+                } catch (Exception e) { throw new Sql4jMappingException("Failed to populate relation field '" + rel.field().getName() + "'", e); }
             }
         };
     }
 
-    public static class Builder {
+    public static class Builder implements JoinBuilder {
         private final List<Table<?>> tablesList = new ArrayList<>();
         private final List<JoinInfo> joinsList = new ArrayList<>();
         private final List<String> onClausesList = new ArrayList<>();
@@ -297,7 +301,7 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
             }
 
             if (sourceTable == null) {
-                throw new IllegalStateException("Source table for relation " + rel.field().getName() + " not found in join builder");
+                throw new Sql4jMappingException("Source table for relation '" + rel.field().getName() + "' not found in join builder");
             }
 
             if (!tablesList.contains(targetTable)) tablesList.add(targetTable);
@@ -351,6 +355,17 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
 
         public SelectJoin build() {
             return new SelectJoin(tablesList, joinsList, onClausesList, whereClause, criterion, dialect, includeDeleted, groupByColumns, havingCriterion, -1, -1, null, true, params.toArray());
+        }
+
+        // ─── JoinBuilder interface bridge methods ──────────────────────────────
+        // join(Table<?>...), join(Table.Relation), where(Criterion), on(String...)
+        // are satisfied by the existing methods above.
+
+        /** {@inheritDoc} */
+        @Override
+        @SuppressWarnings("unchecked")
+        public <R> Query<List<R>> buildTyped(Class<R> rootType) {
+            return build().mapToHierarchy(rootType);
         }
     }
 }

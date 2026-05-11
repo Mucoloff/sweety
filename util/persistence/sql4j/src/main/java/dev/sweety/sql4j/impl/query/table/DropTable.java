@@ -2,12 +2,13 @@ package dev.sweety.sql4j.impl.query.table;
 
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
+import dev.sweety.sql4j.api.query.schema.DropTableQuery;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Objects;
 
-public final class DropTable extends AbstractQuery<Void> {
+public final class DropTable extends AbstractQuery<Void> implements DropTableQuery {
 
     private final String sql;
 

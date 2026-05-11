@@ -1,5 +1,6 @@
 package dev.sweety.sql4j.impl.query.entity;
 
+import dev.sweety.sql4j.api.exception.Sql4jQueryException;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
@@ -27,7 +28,7 @@ public final class UpdateBatch<T> extends AbstractQuery<int[]> implements BatchQ
         Objects.requireNonNull(cache, "cache is null");
 
         if (instances.isEmpty()) {
-            throw new IllegalArgumentException("Cannot update an empty batch");
+            throw new Sql4jQueryException("Cannot update an empty batch");
         }
 
         String cacheKey = "updateBatch:meta:" + table.name() + ":" + table.clazz().getName() + ":" + dialect.name();

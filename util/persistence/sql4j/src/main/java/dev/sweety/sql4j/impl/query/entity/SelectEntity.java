@@ -1,6 +1,7 @@
 package dev.sweety.sql4j.impl.query.entity;
 
 import dev.sweety.sql4j.api.connection.dialect.Dialect;
+import dev.sweety.sql4j.api.exception.Sql4jMappingException;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.obj.table.TableRegistry;
@@ -218,7 +219,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
                 ctor.setAccessible(true);
                 return new Metadata<>(sqlBase, ctor, selected);
             } catch (NoSuchMethodException e) {
-                throw new IllegalArgumentException("Entity " + table.clazz().getName() + " must have a no-arg constructor", e);
+                throw new Sql4jMappingException("Entity " + table.clazz().getName() + " must have a public no-arg constructor", e);
             }
         });
 

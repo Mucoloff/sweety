@@ -1,5 +1,7 @@
 package dev.sweety.sql4j.impl.query.util;
 
+import dev.sweety.sql4j.api.exception.Sql4jQueryException;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -27,7 +29,7 @@ public class ResultSetStream<T> {
                     }
                     return false;
                 } catch (SQLException e) {
-                    throw new RuntimeException(e);
+                    throw new Sql4jQueryException("Error advancing ResultSet stream", e);
                 }
             }
         };

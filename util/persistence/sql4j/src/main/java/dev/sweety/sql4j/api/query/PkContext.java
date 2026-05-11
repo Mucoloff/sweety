@@ -1,5 +1,6 @@
 package dev.sweety.sql4j.api.query;
 
+import dev.sweety.sql4j.api.exception.Sql4jQueryException;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.repository.Repository;
@@ -23,9 +24,9 @@ public final class PkContext<T> {
         
         List<Column<?>> pks = repository.table().primaryKeys();
         if (values.length != pks.size()) {
-            throw new IllegalArgumentException(
-                    "Table " + repository.table().name() + " expects " + pks.size() + 
-                    " primary key values, but " + values.length + " were provided.");
+            throw new Sql4jQueryException(
+                    "Table '" + repository.table().name() + "' expects " + pks.size() + 
+                    " primary key value(s), but " + values.length + " were provided.");
         }
     }
 
@@ -73,7 +74,7 @@ public final class PkContext<T> {
         for (int i = 0; i < pks.size(); i++) {
             Object entityVal = pks.get(i).get(entity);
             if (!Objects.equals(entityVal, values[i])) {
-                throw new IllegalArgumentException("Entity primary key does not match PK context value at index " + i);
+                throw new Sql4jQueryException("Entity primary key does not match PK context value at index " + i);
             }
         }
         return repository.update(entity);

@@ -3,6 +3,7 @@ package dev.sweety.sql4j.impl.connection;
 import dev.sweety.sql4j.api.configuration.DatabaseConfig;
 import dev.sweety.sql4j.api.connection.provider.ConnectionProvider;
 import dev.sweety.sql4j.api.connection.SqlConnection;
+import dev.sweety.sql4j.api.exception.Sql4jConnectionException;
 import dev.sweety.sql4j.impl.connection.dialect.DialectType;
 import dev.sweety.sql4j.impl.connection.provider.DriverManagerConnectionProvider;
 import dev.sweety.sql4j.impl.connection.provider.HikariConnectionProvider;
@@ -49,7 +50,7 @@ public enum ConnectionType {
                     : new DriverManagerConnectionProvider(requiredConfig);
             return new SqlConnection(this.dialectType, provider, requiredExecutor, ownsExecutor);
         }
-        throw new IllegalArgumentException("Config dialect " + requiredConfig.dialectType() + " does not match " + this);
+        throw new Sql4jConnectionException("Config dialect " + requiredConfig.dialectType() + " does not match ConnectionType." + this);
     }
 
     public SqlConnection create(final DatabaseConfig config, final Executor executor, final boolean useHikari) {

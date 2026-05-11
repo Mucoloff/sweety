@@ -1,10 +1,12 @@
 package dev.sweety.sql4j.impl.query.table;
 
 import dev.sweety.sql4j.api.connection.dialect.Dialect;
+import dev.sweety.sql4j.api.exception.Sql4jMappingException;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.ForeignKey;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
+import dev.sweety.sql4j.api.query.schema.CreateTableQuery;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -13,7 +15,7 @@ import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
-public final class CreateTable extends AbstractQuery<Void> {
+public final class CreateTable extends AbstractQuery<Void> implements CreateTableQuery {
 
     private final String sql;
 
@@ -64,7 +66,7 @@ public final class CreateTable extends AbstractQuery<Void> {
 
             if (c.isAutoIncrement()) {
                 // autoIncrement on a non-single-PK column is unsupported
-                throw new IllegalStateException(
+                throw new Sql4jMappingException(
                         "AUTOINCREMENT can only be used on a single INTEGER PRIMARY KEY column. " +
                         "Offending column: '" + c.name() + "' in table '" + table.name() + "'");
             }

@@ -1,5 +1,6 @@
 package dev.sweety.sql4j.impl.query.entity;
 
+import dev.sweety.sql4j.api.exception.Sql4jQueryException;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
@@ -49,7 +50,7 @@ public final class UpdateWhere<T> extends AbstractQuery<Integer> implements Cond
     @Override
     protected String buildSql() {
         if (values.isEmpty()) {
-            throw new IllegalStateException("No values to update. Call set() at least once.");
+            throw new Sql4jQueryException("No values to update. Call set() at least once before executing an UPDATE WHERE query.");
         }
 
         StringBuilder sql = new StringBuilder();

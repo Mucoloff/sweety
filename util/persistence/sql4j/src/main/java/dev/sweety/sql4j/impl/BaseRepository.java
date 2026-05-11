@@ -1,13 +1,15 @@
 package dev.sweety.sql4j.impl;
 
 import dev.sweety.sql4j.api.connection.dialect.Dialect;
+import dev.sweety.sql4j.api.exception.Sql4jMappingException;
+import dev.sweety.sql4j.api.exception.Sql4jQueryException;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Row;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.obj.table.TableRegistry;
+import dev.sweety.sql4j.api.query.*;
 import dev.sweety.sql4j.api.repository.Repository;
 import dev.sweety.sql4j.impl.query.QueryCache;
-import dev.sweety.sql4j.api.query.*;
 import dev.sweety.sql4j.impl.query.entity.*;
 import dev.sweety.sql4j.impl.query.table.CreateTable;
 import dev.sweety.sql4j.impl.query.table.DropTable;
@@ -46,7 +48,7 @@ public class BaseRepository<Entity> implements Repository<Entity> {
      */
     @Deprecated
     public BaseRepository(final Class<Entity> entityClass) {
-        this(new TableRegistry().get(entityClass), new dev.sweety.sql4j.impl.connection.dialect.SqliteDialect(), new QueryCache(), new TableRegistry(), null);
+        this(new TableRegistry().get(entityClass), dev.sweety.sql4j.impl.connection.dialect.DialectType.SQLITE.dialect(), new QueryCache(), new TableRegistry(), null);
     }
 
     public Table<Entity> table() {
@@ -174,7 +176,7 @@ public class BaseRepository<Entity> implements Repository<Entity> {
                 Table<?> junctionTable = registry.allTables().stream()
                         .filter(t -> t.name().equalsIgnoreCase(rel.joinTable()))
                         .findFirst()
-                        .orElseThrow(() -> new IllegalStateException("Junction table " + rel.joinTable() + " not found"));
+                        .orElseThrow(() -> new Sql4jMappingException("Junction table " + rel.joinTable() + " not found"));
 
                 Object id1 = table.primaryKeys().get(0).get(entity);
                 Object id2 = registry.get(rel.targetClass()).primaryKeys().get(0).get(related);
@@ -183,10 +185,10 @@ public class BaseRepository<Entity> implements Repository<Entity> {
                              junctionTable.columns().get(0).name() + ", " +
                              junctionTable.columns().get(1).name() + ") VALUES (?, ?)";
 
-                return Query.generic(sql, id1, id2).extractObjects(dev.sweety.sql4j.impl.query.param.QueryResult::affectedRows);
+                return Query.generic(sql, id1, id2).extractObjects(dev.sweety.sql4j.api.query.QueryResult::affectedRows);
             }
         }
-        throw new IllegalArgumentException("No ManyToMany relation found between " + table.clazz().getSimpleName() + " and " + related.getClass().getSimpleName());
+        throw new Sql4jMappingException("No ManyToMany relation found between " + table.clazz().getSimpleName() + " and " + related.getClass().getSimpleName());
     }
 
     public Query<Integer> removeRelation(Entity entity, Object related) {
@@ -195,7 +197,7 @@ public class BaseRepository<Entity> implements Repository<Entity> {
                 Table<?> junctionTable = registry.allTables().stream()
                         .filter(t -> t.name().equalsIgnoreCase(rel.joinTable()))
                         .findFirst()
-                        .orElseThrow(() -> new IllegalStateException("Junction table " + rel.joinTable() + " not found"));
+                        .orElseThrow(() -> new Sql4jMappingException("Junction table " + rel.joinTable() + " not found"));
 
                 Object id1 = table.primaryKeys().get(0).get(entity);
                 Object id2 = registry.get(rel.targetClass()).primaryKeys().get(0).get(related);
@@ -204,10 +206,10 @@ public class BaseRepository<Entity> implements Repository<Entity> {
                              junctionTable.columns().get(0).name() + " = ? AND " +
                              junctionTable.columns().get(1).name() + " = ?";
 
-                return Query.generic(sql, id1, id2).extractObjects(dev.sweety.sql4j.impl.query.param.QueryResult::affectedRows);
+                return Query.generic(sql, id1, id2).extractObjects(dev.sweety.sql4j.api.query.QueryResult::affectedRows);
             }
         }
-        throw new IllegalArgumentException("No ManyToMany relation found between " + table.clazz().getSimpleName() + " and " + related.getClass().getSimpleName());
+        throw new Sql4jMappingException("No ManyToMany relation found between " + table.clazz().getSimpleName() + " and " + related.getClass().getSimpleName());
     }
 
     // ─── Entity-based reads ────────────────────────────────────────────────────
@@ -291,7 +293,7 @@ public class BaseRepository<Entity> implements Repository<Entity> {
         return new SelectRaw(table, where, null, cache, dialect, params);
     }
 
-    public dev.sweety.sql4j.impl.query.SelectJoin.Builder joinBuilder() {
+    public JoinBuilder joinBuilder() {
         return new dev.sweety.sql4j.impl.query.SelectJoin.Builder(registry).dialect(dialect).join(table);
     }
 
@@ -308,7 +310,7 @@ public class BaseRepository<Entity> implements Repository<Entity> {
         return new CreateTable(this.table, dialect, ifNotExists);
     }
 
-    public CreateTable createTable() {
+    public Query<Void> createTable() {
         return create(true);
     }
 
@@ -344,11 +346,11 @@ public class BaseRepository<Entity> implements Repository<Entity> {
                 }
             }
         } catch (java.sql.SQLException e) {
-            throw new RuntimeException("Failed to migrate schema for table " + table.name(), e);
+            throw new Sql4jQueryException("Failed to migrate schema for table " + table.name(), e);
         }
     }
 
-    public DropTable dropTable() {
+    public Query<Void> dropTable() {
         return new DropTable(this.table);
     }
 }

@@ -1,5 +1,7 @@
 package dev.sweety.sql4j.api.obj;
 
+import dev.sweety.sql4j.api.exception.Sql4jMappingException;
+
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -130,8 +132,10 @@ public final class Row {
                 }
             }
             return instance;
+        } catch (Sql4jMappingException e) {
+            throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to extract entity " + table.clazz().getName(), e);
+            throw new Sql4jMappingException("Failed to extract entity " + table.clazz().getName(), e);
         }
     }
 

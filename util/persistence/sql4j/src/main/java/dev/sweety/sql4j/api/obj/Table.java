@@ -1,5 +1,6 @@
 package dev.sweety.sql4j.api.obj;
 
+import dev.sweety.sql4j.api.exception.Sql4jMappingException;
 import dev.sweety.sql4j.api.obj.annotation.Default;
 import dev.sweety.sql4j.api.obj.annotation.Index;
 import dev.sweety.sql4j.api.obj.annotation.ManyToMany;
@@ -130,7 +131,7 @@ public class Table<T> {
         if (initialized) return;
         synchronized (this) {
             if (initialized) return;
-            if (initializing) throw new IllegalStateException(
+            if (initializing) throw new Sql4jMappingException(
                     "Circular initialization detected for table '" + name +
                     "'. Check for circular @ForeignKey references.");
             initializing = true;
@@ -144,7 +145,7 @@ public class Table<T> {
                     Column.Info colInfo = field.getAnnotation(Column.Info.class);
                     if (colInfo != null) {
                         if (colInfo.nullable() && field.getType().isPrimitive()) {
-                            throw new IllegalStateException(
+                            throw new Sql4jMappingException(
                                     "Column '" + (colInfo.name().isEmpty() ? field.getName() : colInfo.name()) +
                                     "' in table '" + name + "' is marked nullable but its field type '" +
                                     field.getType().getName() + "' is a primitive.");
@@ -183,7 +184,7 @@ public class Table<T> {
                     if (manyToOne != null) {
                         Table<?> refTable = registry.get(field.getType());
                         if (refTable.primaryKeys().isEmpty()) {
-                            throw new IllegalStateException("Table " + refTable.name() + " has no primary keys");
+                            throw new Sql4jMappingException("Table " + refTable.name() + " has no primary keys");
                         }
                         Column<?> refPk = refTable.primaryKeys().get(0);
                         
@@ -326,7 +327,7 @@ public class Table<T> {
                     return rel.column();
                 }
             }
-            throw new IllegalArgumentException("Column " + name + " not found in " + this.name);
+            throw new Sql4jMappingException("Column '" + name + "' not found in table '" + this.name + "'");
         }
         return col;
     }

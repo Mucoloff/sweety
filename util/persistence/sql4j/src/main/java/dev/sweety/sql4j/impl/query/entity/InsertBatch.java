@@ -1,5 +1,6 @@
 package dev.sweety.sql4j.impl.query.entity;
 
+import dev.sweety.sql4j.api.exception.Sql4jQueryException;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
@@ -29,7 +30,7 @@ public final class InsertBatch<T> extends AbstractQuery<int[]> implements BatchQ
         Objects.requireNonNull(table.insertableColumns(), "table.insertableColumns() is null for " + table.name());
 
         if (instances.isEmpty()) {
-            throw new IllegalArgumentException("Cannot insert an empty batch");
+            throw new Sql4jQueryException("Cannot insert an empty batch");
         }
 
         // Determine active columns based on the first instance.
