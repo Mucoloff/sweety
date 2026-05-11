@@ -16,16 +16,28 @@ public class UpdateableExtensionManager<T extends Extension> extends ExtensionMa
     private final SimpleLogger logger = new SimpleLogger(UpdateableExtensionManager.class);
 
     public UpdateableExtensionManager(File parent, Class<T> extensionClass) {
-        super(parent, extensionClass);
+        super(java.util.Objects.requireNonNull(parent, "parent cannot be null"), java.util.Objects.requireNonNull(extensionClass, "extensionClass cannot be null"));
+    }
+
+    @SuppressWarnings("unchecked")
+    public UpdateableExtensionManager(File parent) {
+        this(parent, (Class<T>) Extension.class);
+    }
+
+    public File resolveFile(File jarFile) {
+        java.util.Objects.requireNonNull(jarFile, "jarFile cannot be null");
+        File updateFile = new File(jarFile.getParent(), jarFile.getName() + ".update");
+        return updateFile.exists() ? updateFile : jarFile;
     }
 
     @Override
     public T loadExtension(File jarFile) {
-        // Handle .update files before loading
-        File updateFile = new File(jarFile.getParent(), jarFile.getName() + ".update");
-        if (updateFile.exists()) {
+        java.util.Objects.requireNonNull(jarFile, "jarFile cannot be null");
+        File resolved = resolveFile(jarFile);
+        
+        if (resolved != jarFile && resolved.exists()) {
             try {
-                Files.move(updateFile.toPath(), jarFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+                Files.move(resolved.toPath(), jarFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
                 logger.info("Applied update for " + jarFile.getName());
             } catch (IOException e) {
                 logger.error("Failed to apply update for " + jarFile.getName(), e);
