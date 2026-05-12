@@ -135,14 +135,15 @@ public class DownloadHandler implements HttpHandler {
 
                     Path file = this.patchManager.generatePatch(key, from);
 
-                    PatchEditor editor = new PatchEditor(PatchTypes.BIN);
+                    PatchEditor editor = new PatchEditor(PatchTypes.PATCH_JAR);
 
                     Patch jarPatch = editor.read(cached.get());
 
                     editor.edit(file, patch -> patch.getOperations().addAll(jarPatch.getOperations()));
 
-                    exchange.getResponseHeaders().set("Content-Type", "application/octet-stream");
-                    exchange.getResponseHeaders().set("Content-Disposition", "attachment; filename=\"" + artifact + "-" + version + "-" + channel + "-" + clientId + ".patch\"");
+                    String patchSuffix = PatchTypes.PATCH_JAR.extension();
+                    exchange.getResponseHeaders().set("Content-Type", "application/java-archive");
+                    exchange.getResponseHeaders().set("Content-Disposition", "attachment; filename=\"" + artifact + "-" + version + "-" + channel + "-" + clientId + patchSuffix + "\"");
                     yield Files.readAllBytes(file);
                 }
             };

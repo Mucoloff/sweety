@@ -13,6 +13,7 @@ import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.channel.Channel;
 
 import java.io.IOException;
+import java.util.Locale;
 
 import static dev.sweety.versioning.server.util.http.HttpUtils.constantTimeEquals;
 import static dev.sweety.versioning.server.util.http.HttpUtils.sendText;
@@ -64,8 +65,8 @@ public class RollbackHandler implements HttpHandler {
             Artifact artifact;
             Channel channel;
             try {
-                artifact = Artifact.valueOf(_artifact.toUpperCase());
-                channel = Channel.valueOf(_channel.toUpperCase());
+                artifact = new Artifact(_artifact.trim().toUpperCase(Locale.ROOT));
+                channel = Channel.valueOf(_channel.toUpperCase(Locale.ROOT));
             } catch (NullPointerException | IllegalArgumentException e) {
                 LOGGER.warn("Invalid rollback request: artifact=" + _artifact + ", channel=" + _channel);
                 HttpUtils.sendText(exchange, 404, "Invalid artifact or channel");

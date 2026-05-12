@@ -31,7 +31,7 @@ public record Token(UUID clientId, Artifact artifact, Channel channel, Version v
 
             buffer.putLong(clientId.getMostSignificantBits());
             buffer.putLong(clientId.getLeastSignificantBits());
-            buffer.putInt(artifact.ordinal());
+            buffer.putInt(artifactKey(artifact));
             buffer.putLong(version.hashCode());
             buffer.putInt(channel.ordinal());
             buffer.putInt(downloadType.ordinal());
@@ -55,6 +55,14 @@ public record Token(UUID clientId, Artifact artifact, Channel channel, Version v
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static int artifactKey(Artifact artifact) {
+        return switch (artifact.name()) {
+            case "APP" -> 0;
+            case "LAUNCHER" -> 1;
+            default -> artifact.name().hashCode();
+        };
     }
 
     /*@Override

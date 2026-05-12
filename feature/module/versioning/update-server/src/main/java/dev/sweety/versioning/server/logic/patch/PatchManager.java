@@ -41,7 +41,7 @@ public class PatchManager {
         return ONLY_JAVA.or(info.not()).exclude(path);
     };
 
-    private final PatchGenerator generator = new PatchGenerator(new Sha256Hash(), new AsmClassNormalizer(), PatchTypes.BIN);
+    private final PatchGenerator generator = new PatchGenerator(new Sha256Hash(), new AsmClassNormalizer(), PatchTypes.PATCH_JAR);
 
     private final Storage storage;
     private final IReleaseService releaseManager;

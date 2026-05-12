@@ -27,7 +27,7 @@ public class MainLauncher {
         final AtomicReference<LauncherConfig> config = new AtomicReference<>(LauncherConfig.load(configFile));
         final Runnable save = () -> config.get().save(configFile);
 
-        final PatchApplier applier = new PatchApplier(PatchTypes.BIN, new Sha256Hash());
+        final PatchApplier applier = new PatchApplier(PatchTypes.PATCH_JAR, new Sha256Hash());
 
         Map<Artifact, Path> artifacts = new HashMap<>();
         artifacts.put(Artifact.APP, appJar);

@@ -1,10 +1,8 @@
 package dev.sweety.patch.applier;
 
-import dev.sweety.patch.archive.JavaArchive;
 import dev.sweety.patch.exception.PatchException;
 import dev.sweety.patch.exception.PatchFormatException;
 import dev.sweety.patch.exception.PatchValidationException;
-import dev.sweety.patch.format.PatchReader;
 import dev.sweety.patch.format.archive.PatchArchiveConstants;
 import dev.sweety.patch.format.archive.PatchArchiveEntryNames;
 import dev.sweety.patch.format.archive.PatchArchiveIndex;
@@ -35,19 +33,13 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 public class PatchApplier {
 
     private final String extension;
-    private final PatchReader reader;
     private final PatchValidator validator;
     private final HashFunction hashFunction;
 
-    public PatchApplier(PatchReader reader, String extension, HashFunction hashFunction) {
-        this.reader = reader;
-        this.extension = extension;
+    public PatchApplier(PatchType patchType, HashFunction hashFunction) {
+        this.extension = patchType.extension();
         this.hashFunction = hashFunction;
         this.validator = new PatchValidator(hashFunction);
-    }
-
-    public PatchApplier(PatchType patchType, HashFunction hashFunction) {
-        this(patchType.reader(), patchType.extension(), hashFunction);
     }
 
     public String extension() {
@@ -56,44 +48,28 @@ public class PatchApplier {
 
     public void patch(Path input, Path output, Path patchDir, String patch) throws IOException {
         Path patchFile = patchDir.resolve(patch + this.extension);
-        if (reader instanceof PatchArchiveReader) {
-            applyPatchArchive(input, patchFile, output);
-            try (ZipFile zf = new ZipFile(patchFile.toFile())) {
-                validator.validatePatchArchive(zf, output);
-            }
-            return;
-        }
-        try (InputStream patchStream = Files.newInputStream(patchFile)) {
-            apply(input, patchStream, output);
-        }
-
-        try (InputStream verifyStream = Files.newInputStream(patchFile);
-             JavaArchive outJar = new JavaArchive(output)) {
-            this.validator.validate(this.reader.read(verifyStream), outJar);
+        applyPatchArchive(input, patchFile, output);
+        try (ZipFile zf = new ZipFile(patchFile.toFile())) {
+            validator.validatePatchArchive(zf, output);
         }
     }
 
     public void apply(Path original, InputStream patchStream, Path output) {
-        if (reader instanceof PatchArchiveReader) {
-            Path tmp = null;
-            try {
-                tmp = Files.createTempFile("asm-patch-archive", ".zip");
-                Files.copy(patchStream, tmp, REPLACE_EXISTING);
-                applyPatchArchive(original, tmp, output);
-            } catch (IOException e) {
-                throw new PatchException("Failed to apply patch archive from stream", e);
-            } finally {
-                if (tmp != null) {
-                    try {
-                        Files.deleteIfExists(tmp);
-                    } catch (IOException ignored) {
-                    }
+        Path tmp = null;
+        try {
+            tmp = Files.createTempFile("asm-patch-archive", ".zip");
+            Files.copy(patchStream, tmp, REPLACE_EXISTING);
+            applyPatchArchive(original, tmp, output);
+        } catch (IOException e) {
+            throw new PatchException("Failed to apply patch archive from stream", e);
+        } finally {
+            if (tmp != null) {
+                try {
+                    Files.deleteIfExists(tmp);
+                } catch (IOException ignored) {
                 }
             }
-            return;
         }
-        Patch patch = reader.read(patchStream);
-        apply(original, patch, output);
     }
 
     /**
