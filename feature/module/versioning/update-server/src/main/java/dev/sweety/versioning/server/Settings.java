@@ -1,5 +1,20 @@
 package dev.sweety.versioning.server;
 
+/**
+ * Runtime configuration loaded from {@code settings.json} (under storage) by {@link MainServer}, with selective env overrides.
+ *
+ * <table border="1" summary="Environment variables">
+ *   <tr><th>Variable</th><th>Applies to</th><th>Notes</th></tr>
+ *   <tr><td>{@code UPDATE_SERVER_ROOT}</td><td>{@link dev.sweety.versioning.server.logic.storage.Storage}</td><td>Server filesystem root; default {@code storage}</td></tr>
+ *   <tr><td>{@code NETTY_HANDSHAKE_SECRET}</td><td>this class, if absent from JSON</td><td>Must match launcher {@code SWEETY_HANDSHAKE_SECRET} for Netty HMAC</td></tr>
+ *   <tr><td>{@code RELEASE_API_KEY}</td><td>this class, if absent from JSON</td><td>Protects {@code /release/base-jar} and {@code POST /release/download-token}; client: {@link dev.sweety.extension.versioning.RemoteReleaseSupport#ENV_RELEASE_API_KEY}</td></tr>
+ *   <tr><td>{@code UPDATE_HTTP_BASE}</td><td>clients only</td><td>HTTP base URL for {@link dev.sweety.extension.versioning.RemoteReleaseSupport#fromEnvironment}; not read by server</td></tr>
+ *   <tr><td>{@code SWEETY_HANDSHAKE_SECRET}</td><td>launcher client</td><td>Same value as {@code NETTY_HANDSHAKE_SECRET} on server when HMAC is enabled</td></tr>
+ * </table>
+ *
+ * <p><b>Release HTTP</b>: {@code GET /release/latest} is public metadata. {@code GET /release/base-jar} streams the raw base JAR when {@link #RELEASE_API_KEY} is set.
+ * {@code POST /release/download-token} mints a single-use token for {@code GET /download} (same path as the launcher); prefer this for parity with patched/tokenized downloads.
+ */
 public class Settings {
 
     private Settings() {
@@ -16,8 +31,8 @@ public class Settings {
     public static String NETTY_HANDSHAKE_SECRET = "";
 
     /**
-     * When non-blank, {@code GET /release/base-jar} requires matching header {@code X-Sweety-Release-Key}.
-     * Clients pass the same value into {@link dev.sweety.versioning.client.http.HttpCachingReleaseService}.
+     * When non-blank, {@code GET /release/base-jar} and {@code POST /release/download-token} require header {@code X-Sweety-Release-Key}.
+     * Clients pass the same value via env {@link dev.sweety.extension.versioning.RemoteReleaseSupport#ENV_RELEASE_API_KEY} / JSON field {@code RELEASE_API_KEY}.
      */
     public static String RELEASE_API_KEY = "";
 

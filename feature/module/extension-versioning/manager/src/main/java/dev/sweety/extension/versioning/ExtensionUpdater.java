@@ -15,6 +15,11 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Checks extensions against a remote or local {@link IReleaseService} and stages {@code .update} files
+ * next to loaded JARs. For HTTP, use {@link RemoteReleaseSupport#http}, {@link RemoteReleaseSupport#httpWithTokenDownload},
+ * or {@link RemoteReleaseSupport#fromEnvironment}.
+ */
 public class ExtensionUpdater<T extends VersionableExtension> {
 
     private static final SimpleLogger LOGGER = new SimpleLogger(ExtensionUpdater.class);

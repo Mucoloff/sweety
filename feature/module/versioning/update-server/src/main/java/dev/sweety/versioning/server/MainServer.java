@@ -21,6 +21,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
+/**
+ * Embeds {@link HttpUpdateServer} (port argument {@code 8080} by default in {@link #main}) and {@link NettyUpdateServer}.
+ * Loads {@link Settings} from {@link Storage#settings()}, creating the defaults file on first run. See {@link Settings} for env keys and HTTP/Netty security.
+ */
 public class MainServer {
 
     public static void main(String[] args) throws IOException {

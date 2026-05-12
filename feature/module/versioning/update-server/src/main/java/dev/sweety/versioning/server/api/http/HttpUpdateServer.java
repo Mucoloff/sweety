@@ -4,6 +4,7 @@ import com.sun.net.httpserver.HttpServer;
 import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.server.api.http.handler.BaseJarReleaseHttpHandler;
 import dev.sweety.versioning.server.api.http.handler.LatestReleaseHttpHandler;
+import dev.sweety.versioning.server.api.http.handler.ReleaseDownloadTokenHandler;
 import dev.sweety.versioning.server.api.http.handler.RollbackHandler;
 import dev.sweety.versioning.server.api.http.handler.WebhookHandler;
 import dev.sweety.versioning.server.logic.actions.ReleaseBroadcastConsumer;
@@ -44,6 +45,7 @@ public class HttpUpdateServer {
         this.server.createContext("/download", new DownloadHandler(downloadManager, cacheManager, clientRegistry, releaseManager, patchManager));
         this.server.createContext("/release/latest", new LatestReleaseHttpHandler(releaseManager));
         this.server.createContext("/release/base-jar", new BaseJarReleaseHttpHandler(releaseManager));
+        this.server.createContext("/release/download-token", new ReleaseDownloadTokenHandler(downloadManager, releaseManager));
         this.server.createContext("/rollback", this.rollbackHandler);
         this.server.createContext("/webhook", this.webhookHandler);
     }
