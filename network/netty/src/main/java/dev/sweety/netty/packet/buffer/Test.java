@@ -45,11 +45,13 @@ public class Test {
         PacketBuffer buffer = new PacketBuffer();
 
         // writeOptional / writeObject(null|value) and readObject / readOptional share one packed-boolean marker + payload.
+        //buffer.writeObject(new Example("text", 10));
         buffer.writeOptional(Optional.of(new Example("text", 10)));
 
         buffer.markReaderIndex();
 
         Example example = buffer.readObject(Example::new);
+        System.out.println(example);
 
         buffer.resetReaderIndex();
 
@@ -57,7 +59,6 @@ public class Test {
 
         opt.ifPresentOrElse(value -> System.out.println("Optional is present: " + value), () -> System.out.println("Optional is empty"));
 
-        System.out.println(example);
 
     }
 

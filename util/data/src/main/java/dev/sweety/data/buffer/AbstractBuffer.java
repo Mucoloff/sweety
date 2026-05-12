@@ -378,9 +378,10 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
      */
     private <T> Self writeMarkedPayload(boolean present, @Nullable T valueIfPresent, AbstractCallableEncoder<? super T, Self> encoder) {
         writePresence(present);
-        if (!present) return self();
-        encoder.write(self(), valueIfPresent);
-        return self();
+        Self self = self();
+        if (!present) return self;
+        encoder.write(self, valueIfPresent);
+        return self;
     }
 
     /**
@@ -404,7 +405,11 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
     }
 
     public <T extends AbstractDecoder<Self>> Optional<T> readOptional(Supplier<T> factory) {
-        return Optional.ofNullable(readObject(factory));
+        return Optional.ofNullable(readMarkedPayload(buffer -> {
+            T obj = factory.get();
+            obj.read(buffer);
+            return obj;
+        }));
     }
 
     public <T> Self writeOptional(final Optional<T> optional, AbstractCallableEncoder<? super T, Self> encoder) {
