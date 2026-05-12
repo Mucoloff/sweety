@@ -2,6 +2,7 @@ package dev.sweety.launcher.update;
 
 import dev.sweety.launcher.config.LauncherConfig;
 import dev.sweety.patch.applier.PatchApplier;
+import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.versioning.protocol.handshake.DownloadType;
 import dev.sweety.versioning.protocol.handshake.State;
 import dev.sweety.versioning.version.Version;
@@ -27,6 +28,8 @@ import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class UpdateManager {
+
+    private static final SimpleLogger LOG = new SimpleLogger(UpdateManager.class);
 
     private final Map<Artifact, Path> artifactPathMap;
 
@@ -73,7 +76,7 @@ public class UpdateManager {
     public void downloadUpdate(Artifact artifact, String token, Version version, DownloadType type) {
         Path original = artifactPathMap.get(artifact);
         if (original == null) {
-            LOGGER_ERROR("No path registered for artifact: " + artifact);
+            LOG.error("No path registered for artifact: ", artifact, " clientId=", config.get().clientId());
             return;
         }
         Path newFile = original.resolveSibling(original.getFileName() + ".new");
@@ -92,29 +95,25 @@ public class UpdateManager {
         complete(State.UPDATED);
     }
 
-    private void LOGGER_ERROR(String msg) {
-        System.err.println("[UpdateManager] " + msg);
-    }
-
     private boolean downloadArtifactSafe(String token, Path downloaded) {
         try {
             downloadArtifact(token, downloaded);
             return true;
         } catch (Exception e) {
             complete(State.UNAVAILABLE);
-            e.printStackTrace(System.err);
+            LOG.error("Download failed clientId=", config.get().clientId(), e);
             return false;
         }
     }
 
     private boolean applyPatchSafe(Path original, Path downloaded, Path newFile, Version version) {
-        System.out.println("Applying patch to " + original.getFileName());
+        LOG.info("Applying patch to ", original.getFileName(), " clientId=", config.get().clientId());
         Path backup = original.resolveSibling(original.getFileName() + ".bak");
         try {
             Files.copy(original, backup, REPLACE_EXISTING);
         } catch (IOException e) {
             complete(State.UNAVAILABLE);
-            e.printStackTrace(System.err);
+            LOG.error("Could not create backup for patch clientId=", config.get().clientId(), e);
             return false;
         }
 
@@ -127,11 +126,10 @@ public class UpdateManager {
             try {
                 Files.move(backup, original, REPLACE_EXISTING, ATOMIC_MOVE);
             } catch (IOException ex) {
-                System.err.println("Failed to restore original JAR after patch failure: " + original);
-                ex.printStackTrace(System.err);
+                LOG.error("Failed to restore original JAR after patch failure: ", original, ex);
             }
             complete(State.UNAVAILABLE);
-            e.printStackTrace(System.err);
+            LOG.error("Patch apply failed clientId=", config.get().clientId(), e);
             return false;
         }
     }
@@ -142,7 +140,7 @@ public class UpdateManager {
             Files.move(source, target, REPLACE_EXISTING, ATOMIC_MOVE);
         } catch (IOException e) {
             complete(State.UNAVAILABLE);
-            e.printStackTrace(System.err);
+            LOG.error("replaceJarSafe failed clientId=", config.get().clientId(), " target=", target, e);
         }
     }
 

@@ -1,5 +1,6 @@
 package dev.sweety.patch.bytecode;
 
+import dev.sweety.patch.exception.PatchException;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 
@@ -16,7 +17,7 @@ public class AsmClassNormalizer implements ClassNormalizer {
 
             return writer.toByteArray();
         } catch (Exception e) {
-            throw new RuntimeException("Failed to normalize class bytes using ASM", e);
+            throw new PatchException("Failed to normalize class bytes using ASM", e);
         }
     }
 }

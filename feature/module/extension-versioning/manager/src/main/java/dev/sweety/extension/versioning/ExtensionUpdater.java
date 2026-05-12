@@ -11,11 +11,15 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 public class ExtensionUpdater<T extends VersionableExtension> {
 
     private static final SimpleLogger LOGGER = new SimpleLogger(ExtensionUpdater.class);
+    /** Upper bound for waiting on all parallel extension update checks (per {@link #updateAll(Channel)}). */
+    private static final long UPDATE_ALL_TIMEOUT_MINUTES = 30L;
 
     private final UpdateableExtensionManager<T> manager;
     private final IReleaseService releaseService;
@@ -66,7 +70,26 @@ public class ExtensionUpdater<T extends VersionableExtension> {
         return true;
     }
 
-    public void updateAll(@NotNull Channel channel) {
-        manager.extensions().values().forEach(ext -> updateIfAvailable(ext, channel));
+    /**
+     * Checks all loaded extensions for updates in parallel, waits for completion or timeout, and logs per-extension failures.
+     *
+     * @return completes when all update tasks finish, or completes exceptionally on timeout
+     */
+    public CompletableFuture<Void> updateAll(@NotNull Channel channel) {
+        Objects.requireNonNull(channel, "channel cannot be null");
+        @SuppressWarnings("unchecked")
+        CompletableFuture<Boolean>[] futures = manager.extensions().values().stream()
+                .map(ext -> updateIfAvailable(ext, channel).handle((result, ex) -> {
+                    if (ex != null) {
+                        LOGGER.error("Update task failed for " + ext.name(), ex);
+                        return false;
+                    }
+                    return Boolean.TRUE.equals(result);
+                }))
+                .toArray(CompletableFuture[]::new);
+        if (futures.length == 0) {
+            return CompletableFuture.completedFuture(null);
+        }
+        return CompletableFuture.allOf(futures).orTimeout(UPDATE_ALL_TIMEOUT_MINUTES, TimeUnit.MINUTES);
     }
 }

@@ -1,5 +1,6 @@
 package dev.sweety.patch.format.bin;
 
+import dev.sweety.patch.exception.PatchFormatException;
 import dev.sweety.patch.format.Header;
 import dev.sweety.patch.format.PatchReader;
 import dev.sweety.patch.model.Patch;
@@ -25,7 +26,7 @@ public class BinaryPatchReader implements PatchReader {
             byte[] header = new byte[readVarInt(dataIn)];
             dataIn.readFully(header);
             if (!Arrays.equals(Header.V1.headerBytes(), header)) {
-                throw new RuntimeException("Invalid patch file format");
+                throw new PatchFormatException("Invalid patch file format");
             }
 
             // Read Versions
@@ -43,7 +44,7 @@ public class BinaryPatchReader implements PatchReader {
             return new Patch(fromVersion, toVersion, ops);
 
         } catch (IOException e) {
-            throw new RuntimeException("Failed to read patch", e);
+            throw new PatchFormatException("Failed to read patch", e);
         }
     }
 
@@ -99,7 +100,7 @@ public class BinaryPatchReader implements PatchReader {
 
             numRead++;
             if (numRead > 5) {
-                throw new RuntimeException("VarInt is too big");
+                throw new PatchFormatException("VarInt is too big");
             }
         } while ((read & 0x80) != 0);
 

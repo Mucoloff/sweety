@@ -21,6 +21,8 @@ public class ExtensionManager<T extends Extension> {
     protected final Path rootDir;
     private final Map<String, T> extensions = new ConcurrentHashMap<>();
     private final Map<T, ExtensionInfo> infos = new ConcurrentHashMap<>();
+    /** Kept open until {@link #unloadExtension(String)} so lazy class/resource loading keeps working. */
+    private final Map<T, ExtensionClassLoader<T>> classLoaders = new ConcurrentHashMap<>();
     private final SimpleLogger logger = new SimpleLogger(ExtensionManager.class);
     private final Class<T> extensionClass;
     private final String extensionName;
@@ -59,10 +61,19 @@ public class ExtensionManager<T extends Extension> {
                 return null;
             }
 
+            ExtensionClassLoader<T> classLoader = null;
             final T extension;
-            try (ExtensionClassLoader<T> classLoader = new ExtensionClassLoader<>(jarFile, info, this.extensionClass, this.rootDir)) {
+            try {
+                classLoader = new ExtensionClassLoader<>(jarFile, info, this.extensionClass, this.rootDir);
                 extension = classLoader.extension();
             } catch (Exception e) {
+                if (classLoader != null) {
+                    try {
+                        classLoader.close();
+                    } catch (Exception closeEx) {
+                        e.addSuppressed(closeEx);
+                    }
+                }
                 logger.error("Impossibile caricare " + this.extensionName + " " + jarFile.getFileName() + ": Fallita l'inizializzazione della classe principale.", e);
                 return null;
             }
@@ -72,6 +83,7 @@ public class ExtensionManager<T extends Extension> {
 
             this.extensions.put(extension.name(), extension);
             this.infos.put(extension, info);
+            this.classLoaders.put(extension, classLoader);
             return extension;
         } catch (Throwable thrown) {
             logger.error("Impossibile abilitare " + this.extensionName + " " + jarFile.getFileName() + "!", thrown);
@@ -104,15 +116,19 @@ public class ExtensionManager<T extends Extension> {
 
         try {
             extension.setEnabled(false);
-            final ClassLoader classLoader = extension.getClass().getClassLoader();
-
-            if (classLoader instanceof ExtensionClassLoader<?> extensionLoader) extensionLoader.close();
+            ExtensionClassLoader<T> owned = this.classLoaders.remove(extension);
+            if (owned != null) {
+                owned.close();
+            } else {
+                ClassLoader cl = extension.getClass().getClassLoader();
+                if (cl instanceof ExtensionClassLoader<?> extensionLoader) extensionLoader.close();
+            }
 
             this.logger.info(extension.name() + " v" + this.infos.get(extension).version() + " is now disabled.");
         } catch (Exception ex) {
             this.logger.error("Could not disable " + this.extensionName + " " + extension.name() + "!", ex);
         } finally {
-            this. infos.remove(extension);
+            this.infos.remove(extension);
         }
         return extension;
     }
@@ -121,6 +137,12 @@ public class ExtensionManager<T extends Extension> {
         new ArrayList<>(this.extensions.keySet()).forEach(this::unloadExtension);
         this.extensions.clear();
         this.infos.clear();
+        for (ExtensionClassLoader<T> cl : new ArrayList<>(this.classLoaders.values())) {
+            try {
+                cl.close();
+            } catch (Exception ignored) {}
+        }
+        this.classLoaders.clear();
     }
 
     public T get(final String name) {

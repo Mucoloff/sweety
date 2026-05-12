@@ -2,6 +2,7 @@ package dev.sweety.patch.format.json;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import dev.sweety.patch.exception.PatchException;
 import dev.sweety.patch.format.Header;
 import dev.sweety.patch.format.PatchWriter;
 import dev.sweety.patch.model.Patch;
@@ -33,7 +34,7 @@ public class JsonPatchWriter implements PatchWriter {
         try {
             out.write(Header.GSON.toJson(root).getBytes());
         } catch (IOException e) {
-            throw new RuntimeException("Failed to write patch", e);
+            throw new PatchException("Failed to write patch", e);
         }
     }
 

@@ -1,5 +1,6 @@
 package dev.sweety.patch.format.bin;
 
+import dev.sweety.patch.exception.PatchException;
 import dev.sweety.patch.format.Header;
 import dev.sweety.patch.format.PatchWriter;
 import dev.sweety.patch.model.Patch;
@@ -32,7 +33,7 @@ public class BinaryPatchWriter implements PatchWriter {
             }
 
         } catch (IOException e) {
-            throw new RuntimeException("Failed to write patch", e);
+            throw new PatchException("Failed to write patch", e);
         }
     }
 

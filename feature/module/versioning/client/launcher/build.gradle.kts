@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     implementation(project(":network:netty"))
+    implementation(project(":util:logger"))
     implementation(project(":util:data"))
     implementation(project(":util:thread"))
     implementation(project(":feature:module:versioning:protocol"))

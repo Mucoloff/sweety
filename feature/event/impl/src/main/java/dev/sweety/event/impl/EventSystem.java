@@ -5,6 +5,8 @@ import dev.sweety.event.api.info.State;
 import dev.sweety.event.api.listener.LinkEvent;
 import dev.sweety.event.api.listener.Listener;
 import dev.sweety.event.util.Operation;
+import dev.sweety.thread.ThreadManager;
+import dev.sweety.thread.ThreadType;
 import it.unimi.dsi.fastutil.Pair;
 import org.jetbrains.annotations.NotNull;
 
@@ -13,13 +15,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-
-import dev.sweety.thread.*;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -28,7 +26,8 @@ public class EventSystem implements IEventSystem {
     private static final Comparator<EventCallback<?>> priorityFilter = Comparator.comparingInt(EventCallback::priority);
 
     private final Map<Type, List<EventCallback<?>>> callSiteMap = new ConcurrentHashMap<>();
-    private static final Map<Class<?>, Object> CONTAINER_CACHE = new ConcurrentHashMap<>();
+    /** Per-event-type token for listener-only subscriptions (not tied to a user container). */
+    private final Map<Type, Object> syntheticContainerByEventType = new ConcurrentHashMap<>();
     private final ThreadManager threadManager;
     private final Map<Class<?>, List<ExecutionStep<?>>> executionPlanCache = new ConcurrentHashMap<>();
 
@@ -57,7 +56,6 @@ public class EventSystem implements IEventSystem {
     @Override
     public <T extends Event<?>> void subscribe(@NotNull final Class<T> eventType, @NotNull final Listener<T> listener, int priority, @NotNull State state) {
         subscribe(eventType, listener, priority, state, !MutableEvent.class.isAssignableFrom(eventType));
-        executionPlanCache.clear();
     }
 
     private <T extends Event<?>> void subscribe(@NotNull final Class<T> eventType, @NotNull final Listener<T> listener, int priority, @NotNull State state, boolean readOnly) {
@@ -65,10 +63,10 @@ public class EventSystem implements IEventSystem {
         Objects.requireNonNull(listener, "listener cannot be null");
         Objects.requireNonNull(state, "state cannot be null");
         final List<EventCallback<?>> callSites = this.callSiteMap.computeIfAbsent(eventType, _ -> new CopyOnWriteArrayList<>());
-        final Object container = CONTAINER_CACHE.computeIfAbsent(eventType, _ -> new Object());
+        final Object container = syntheticContainerByEventType.computeIfAbsent(eventType, _ -> new Object());
         callSites.add(new EventCallback<>(container, listener, priority, state, readOnly));
         callSites.sort(priorityFilter);
-        executionPlanCache.clear();
+        invalidateExecutionPlansFor(eventType);
     }
 
     @Override
@@ -119,7 +117,7 @@ public class EventSystem implements IEventSystem {
         final List<EventCallback<?>> callSites = this.callSiteMap.get(eventType);
         if (callSites != null) {
             callSites.clear();
-            executionPlanCache.clear();
+            invalidateExecutionPlansFor(eventType);
         }
     }
 
@@ -154,20 +152,18 @@ public class EventSystem implements IEventSystem {
             final List<EventCallback<?>> callSites = this.callSiteMap.computeIfAbsent(eventType, _ -> new CopyOnWriteArrayList<>());
             callSites.add(new EventCallback<>(container, listener, annotation.priority() == -1 ? annotation.level().getValue() : annotation.priority(), annotation.state(), readOnly));
             callSites.sort(priorityFilter);
+            invalidateExecutionPlansFor(eventType);
         }
-        executionPlanCache.clear();
     }
 
     @Override
     public void unsubscribe(final Object container) {
-        boolean removed = false;
         for (Map.Entry<Type, List<EventCallback<?>>> entry : callSiteMap.entrySet()) {
             final List<EventCallback<?>> callSites = entry.getValue();
             if (callSites.removeIf(cb -> cb.container() == container)) {
-                removed = true;
+                invalidateExecutionPlansFor(entry.getKey());
             }
         }
-        if (removed) executionPlanCache.clear();
     }
 
     @Override
@@ -324,6 +320,18 @@ public class EventSystem implements IEventSystem {
         return cb.state() == State.BOTH ||
                 (cb.state() == State.PRE && event.isPre()) ||
                 (cb.state() == State.POST && event.isPost());
+    }
+
+    /**
+     * Drops cached execution plans for concrete event classes that would observe this registration key
+     * when resolving listeners (subtype relationship).
+     */
+    private void invalidateExecutionPlansFor(Type registrationType) {
+        if (registrationType instanceof Class<?> rc) {
+            executionPlanCache.keySet().removeIf(rc::isAssignableFrom);
+        } else {
+            executionPlanCache.clear();
+        }
     }
 
 

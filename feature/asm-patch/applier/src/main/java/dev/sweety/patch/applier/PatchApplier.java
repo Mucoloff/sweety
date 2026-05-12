@@ -1,25 +1,33 @@
 package dev.sweety.patch.applier;
 
-import dev.sweety.patch.archive.Archive;
-import dev.sweety.patch.archive.JarArchive;
+import dev.sweety.patch.archive.JavaArchive;
+import dev.sweety.patch.exception.PatchException;
+import dev.sweety.patch.exception.PatchFormatException;
+import dev.sweety.patch.exception.PatchValidationException;
 import dev.sweety.patch.format.PatchReader;
+import dev.sweety.patch.format.archive.PatchArchiveConstants;
+import dev.sweety.patch.format.archive.PatchArchiveEntryNames;
+import dev.sweety.patch.format.archive.PatchArchiveIndex;
+import dev.sweety.patch.format.archive.PatchArchiveOpEntry;
+import dev.sweety.patch.format.archive.PatchArchiveReader;
 import dev.sweety.patch.hash.HashFunction;
 import dev.sweety.patch.model.*;
 import dev.sweety.patch.model.type.PatchType;
 import dev.sweety.patch.verify.PatchValidator;
 import com.github.difflib.UnifiedDiffUtils;
-import java.nio.charset.StandardCharsets;
 
-import java.io.*;
+import java.io.BufferedOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
@@ -48,49 +56,357 @@ public class PatchApplier {
 
     public void patch(Path input, Path output, Path patchDir, String patch) throws IOException {
         Path patchFile = patchDir.resolve(patch + this.extension);
+        if (reader instanceof PatchArchiveReader) {
+            applyPatchArchive(input, patchFile, output);
+            try (ZipFile zf = new ZipFile(patchFile.toFile())) {
+                validator.validatePatchArchive(zf, output);
+            }
+            return;
+        }
         try (InputStream patchStream = Files.newInputStream(patchFile)) {
             apply(input, patchStream, output);
         }
 
-        try (InputStream verifyStream = Files.newInputStream(patchFile)) {
-            this.validator.validate(this.reader.read(verifyStream), new JarArchive(output));
+        try (InputStream verifyStream = Files.newInputStream(patchFile);
+             JavaArchive outJar = new JavaArchive(output)) {
+            this.validator.validate(this.reader.read(verifyStream), outJar);
         }
     }
 
     public void apply(Path original, InputStream patchStream, Path output) {
-        Patch patch = reader.read(patchStream);
-
-        Archive archive = new JarArchive(original);
-        Map<String, byte[]> entries = new TreeMap<>(archive.entries());
-
-        for (PatchOperation op : patch.getOperations()) {
-            switch (op) {
-                case AddOperation(String path, String hash, byte[] data) -> {
-                    verifyAndPut(entries, path, data, hash);
-                }
-                case ModifyOperation(String path, String hash, byte[] data, PatchOperation.Method method) -> {
-                    byte[] originalData = entries.get(path);
-                    if (originalData == null)
-                        throw new RuntimeException("Original file not found for modification: " + path);
-
-                    byte[] finalData;
-                    if (method == PatchOperation.Method.TEXT_DIFF) {
-                        finalData = applyTextDiff(path, originalData, data);
-                    } else {
-                        finalData = data;
+        if (reader instanceof PatchArchiveReader) {
+            Path tmp = null;
+            try {
+                tmp = Files.createTempFile("asm-patch-archive", ".zip");
+                Files.copy(patchStream, tmp, REPLACE_EXISTING);
+                applyPatchArchive(original, tmp, output);
+            } catch (IOException e) {
+                throw new PatchException("Failed to apply patch archive from stream", e);
+            } finally {
+                if (tmp != null) {
+                    try {
+                        Files.deleteIfExists(tmp);
+                    } catch (IOException ignored) {
                     }
-
-                    verifyAndPut(entries, path, finalData, hash);
                 }
-                case DeleteOperation(String path, String hash) -> {
-                    if (!entries.containsKey(path))
-                        throw new RuntimeException("Trying to delete non-existing file: " + path);
-                    entries.remove(path);
+            }
+            return;
+        }
+        Patch patch = reader.read(patchStream);
+        apply(original, patch, output);
+    }
+
+    /**
+     * Apply a {@link Patch} by streaming passthrough entries from the base JAR; only touched paths + TEXT_DIFF originals are loaded fully.
+     */
+    public void apply(Path original, Patch patch, Path output) {
+        try (JarFile base = new JarFile(original.toFile())) {
+            verifyDeletePreconditions(base, patch.getOperations());
+
+            Map<String, PatchOperation> patchByPath = new HashMap<>();
+            for (PatchOperation op : patch.getOperations()) {
+                if (op.type() == PatchOperation.Type.ADD || op.type() == PatchOperation.Type.MODIFY) {
+                    patchByPath.put(op.path(), op);
+                }
+            }
+
+            Set<String> needOriginal = new HashSet<>();
+            for (PatchOperation op : patch.getOperations()) {
+                if (op.type() == PatchOperation.Type.MODIFY && op.method() == PatchOperation.Method.TEXT_DIFF) {
+                    needOriginal.add(op.path());
+                }
+            }
+
+            Map<String, byte[]> originals = readOriginalsForPaths(base, needOriginal);
+            TreeSet<String> outputPaths = buildOutputPaths(base, patch);
+            writeMergedOutput(base, outputPaths, output, path -> {
+                PatchOperation op = patchByPath.get(path);
+                if (op == null) {
+                    return null;
+                }
+                return resolvePatchedBytes(op, originals);
+            });
+        } catch (IOException e) {
+            throw new PatchException("Failed to apply patch: " + original.toAbsolutePath(), e);
+        }
+    }
+
+    /**
+     * Apply a patch archive (JSON index + payload entries) without materializing a full in-memory {@link Patch}.
+     */
+    public void applyPatchArchive(Path original, Path patchArchive, Path output) {
+        try (JarFile base = new JarFile(original.toFile());
+             ZipFile pz = new ZipFile(patchArchive.toFile())) {
+            PatchArchiveIndex idx = PatchArchiveReader.readIndex(pz);
+            if (!PatchArchiveConstants.HEADER.equals(idx.header)) {
+                throw new PatchFormatException("Invalid patch archive header");
+            }
+            verifyDeletePreconditionsArchive(base, idx);
+
+            Map<String, PatchArchiveOpEntry> patchByPath = new HashMap<>();
+            Set<String> needOriginal = new HashSet<>();
+            for (PatchArchiveOpEntry e : idx.operations) {
+                if ("delete".equalsIgnoreCase(e.type)) {
+                    continue;
+                }
+                patchByPath.put(e.path, e);
+                if ("modify".equalsIgnoreCase(e.type) && "text_diff".equalsIgnoreCase(e.method)) {
+                    needOriginal.add(e.path);
+                }
+            }
+
+            Map<String, byte[]> originals = readOriginalsForPaths(base, needOriginal);
+            TreeSet<String> outputPaths = buildOutputPathsArchive(base, idx);
+
+            Path temp = output.resolveSibling(output.getFileName().toString() + ".tmp");
+            try {
+                try (JarOutputStream jos = new JarOutputStream(new BufferedOutputStream(Files.newOutputStream(temp)))) {
+                    jos.setLevel(9);
+                    for (String path : outputPaths) {
+                        PatchArchiveOpEntry e = patchByPath.get(path);
+                        if (e != null && ("add".equalsIgnoreCase(e.type) || "modify".equalsIgnoreCase(e.type))) {
+                            byte[] payload = readZipPayload(pz, e.payloadEntry);
+                            byte[] finalData = resolveArchiveEntryBytes(e, payload, originals);
+                            assertHash(finalData, e.hash);
+                            writeJarEntry(jos, path, finalData);
+                        } else {
+                            streamCopyEntry(base, path, jos);
+                        }
+                    }
+                }
+                Files.move(temp, output, REPLACE_EXISTING, ATOMIC_MOVE);
+            } finally {
+                try {
+                    Files.deleteIfExists(temp);
+                } catch (IOException ignored) {
+                }
+            }
+        } catch (IOException e) {
+            throw new PatchException("Failed to apply patch archive", e);
+        }
+    }
+
+    private void verifyDeletePreconditions(JarFile base, List<PatchOperation> operations) throws IOException {
+        for (PatchOperation op : operations) {
+            if (op.type() != PatchOperation.Type.DELETE) {
+                continue;
+            }
+            String path = op.path();
+            String hash = op.hash();
+            JarEntry je = base.getJarEntry(path);
+            if (je == null) {
+                throw new PatchException("Trying to delete non-existing file: " + path);
+            }
+            if (hash != null) {
+                try (InputStream in = base.getInputStream(je)) {
+                    byte[] existing = in.readAllBytes();
+                    String actualHash = hashFunction.calculateHash(existing);
+                    if (!hash.equalsIgnoreCase(actualHash)) {
+                        throw new PatchValidationException(
+                                "Delete precondition hash mismatch for " + path
+                                        + ". Expected: " + hash + ", Actual: " + actualHash);
+                    }
                 }
             }
         }
+    }
 
-        writeJar(entries, output);
+    private void verifyDeletePreconditionsArchive(JarFile base, PatchArchiveIndex idx) throws IOException {
+        for (PatchArchiveOpEntry e : idx.operations) {
+            if (!"delete".equalsIgnoreCase(e.type)) {
+                continue;
+            }
+            JarEntry je = base.getJarEntry(e.path);
+            if (je == null) {
+                throw new PatchException("Trying to delete non-existing file: " + e.path);
+            }
+            if (e.hash != null) {
+                try (InputStream in = base.getInputStream(je)) {
+                    byte[] existing = in.readAllBytes();
+                    String actualHash = hashFunction.calculateHash(existing);
+                    if (!e.hash.equalsIgnoreCase(actualHash)) {
+                        throw new PatchValidationException(
+                                "Delete precondition hash mismatch for " + e.path
+                                        + ". Expected: " + e.hash + ", Actual: " + actualHash);
+                    }
+                }
+            }
+        }
+    }
+
+    private Map<String, byte[]> readOriginalsForPaths(JarFile base, Set<String> paths) throws IOException {
+        Map<String, byte[]> map = new HashMap<>();
+        for (String path : paths) {
+            JarEntry je = base.getJarEntry(path);
+            if (je == null) {
+                throw new PatchException("Original file not found for modification: " + path);
+            }
+            try (InputStream in = base.getInputStream(je)) {
+                map.put(path, in.readAllBytes());
+            }
+        }
+        return map;
+    }
+
+    private TreeSet<String> buildOutputPaths(JarFile base, Patch patch) {
+        Set<String> deleted = new HashSet<>();
+        for (PatchOperation op : patch.getOperations()) {
+            if (op.type() == PatchOperation.Type.DELETE) {
+                deleted.add(op.path());
+            }
+        }
+        TreeSet<String> out = new TreeSet<>();
+        Enumeration<JarEntry> en = base.entries();
+        while (en.hasMoreElements()) {
+            JarEntry je = en.nextElement();
+            if (je.isDirectory()) {
+                continue;
+            }
+            String name = je.getName();
+            if (deleted.contains(name)) {
+                continue;
+            }
+            out.add(name);
+        }
+        for (PatchOperation op : patch.getOperations()) {
+            if (op.type() == PatchOperation.Type.ADD) {
+                out.add(op.path());
+            }
+        }
+        return out;
+    }
+
+    private TreeSet<String> buildOutputPathsArchive(JarFile base, PatchArchiveIndex idx) {
+        Set<String> deleted = new HashSet<>();
+        for (PatchArchiveOpEntry e : idx.operations) {
+            if ("delete".equalsIgnoreCase(e.type)) {
+                deleted.add(e.path);
+            }
+        }
+        TreeSet<String> out = new TreeSet<>();
+        Enumeration<JarEntry> en = base.entries();
+        while (en.hasMoreElements()) {
+            JarEntry je = en.nextElement();
+            if (je.isDirectory()) {
+                continue;
+            }
+            String name = je.getName();
+            if (deleted.contains(name)) {
+                continue;
+            }
+            out.add(name);
+        }
+        for (PatchArchiveOpEntry e : idx.operations) {
+            if ("add".equalsIgnoreCase(e.type)) {
+                out.add(e.path);
+            }
+        }
+        return out;
+    }
+
+    @FunctionalInterface
+    private interface PatchedBytesResolver {
+        byte[] resolve(String path);
+    }
+
+    private void writeMergedOutput(JarFile base, TreeSet<String> outputPaths, Path output, PatchedBytesResolver resolver)
+            throws IOException {
+        Path temp = output.resolveSibling(output.getFileName().toString() + ".tmp");
+        try {
+            try (JarOutputStream jos = new JarOutputStream(new BufferedOutputStream(Files.newOutputStream(temp)))) {
+                jos.setLevel(9);
+                for (String path : outputPaths) {
+                    byte[] patched = resolver.resolve(path);
+                    if (patched != null) {
+                        writeJarEntry(jos, path, patched);
+                    } else {
+                        streamCopyEntry(base, path, jos);
+                    }
+                }
+            }
+            Files.move(temp, output, REPLACE_EXISTING, ATOMIC_MOVE);
+        } finally {
+            try {
+                Files.deleteIfExists(temp);
+            } catch (IOException ignored) {
+            }
+        }
+    }
+
+    private byte[] resolvePatchedBytes(PatchOperation op, Map<String, byte[]> originals) {
+        return switch (op) {
+            case AddOperation(String path, String hash, byte[] data) -> {
+                assertHash(data, hash);
+                yield data;
+            }
+            case ModifyOperation(String path, String hash, byte[] data, PatchOperation.Method method) -> {
+                byte[] originalData = originals.get(path);
+                if (originalData == null && method == PatchOperation.Method.TEXT_DIFF) {
+                    throw new PatchException("Original file not found for modification: " + path);
+                }
+                byte[] finalData = method == PatchOperation.Method.TEXT_DIFF
+                        ? applyTextDiff(path, Objects.requireNonNull(originalData), data)
+                        : data;
+                assertHash(finalData, hash);
+                yield finalData;
+            }
+            default -> throw new IllegalStateException("Unexpected op: " + op);
+        };
+    }
+
+    private byte[] resolveArchiveEntryBytes(PatchArchiveOpEntry e, byte[] payload, Map<String, byte[]> originals) {
+        if ("modify".equalsIgnoreCase(e.type)) {
+            if ("text_diff".equalsIgnoreCase(e.method)) {
+                byte[] originalData = originals.get(e.path);
+                if (originalData == null) {
+                    throw new PatchException("Original file not found for modification: " + e.path);
+                }
+                return applyTextDiff(e.path, originalData, payload);
+            }
+            return payload;
+        }
+        return payload;
+    }
+
+    private byte[] readZipPayload(ZipFile zf, String payloadEntry) throws IOException {
+        ZipEntry ze = PatchArchiveEntryNames.requirePayloadZipEntry(zf, payloadEntry);
+        try (InputStream in = zf.getInputStream(ze)) {
+            return in.readAllBytes();
+        }
+    }
+
+    private void assertHash(byte[] data, String expectedHash) {
+        if (expectedHash != null) {
+            String calculatedHash = hashFunction.calculateHash(data);
+            if (!calculatedHash.equalsIgnoreCase(expectedHash)) {
+                throw new PatchValidationException("Patch integrity check failed"
+                        + ". Expected hash: " + expectedHash + ", Actual: " + calculatedHash);
+            }
+        }
+    }
+
+    private void writeJarEntry(JarOutputStream jos, String path, byte[] data) throws IOException {
+        JarEntry jarEntry = new JarEntry(path);
+        jarEntry.setMethod(ZipEntry.DEFLATED);
+        jarEntry.setTime(0);
+        jos.putNextEntry(jarEntry);
+        jos.write(data);
+        jos.closeEntry();
+    }
+
+    private void streamCopyEntry(JarFile base, String path, JarOutputStream jos) throws IOException {
+        JarEntry src = base.getJarEntry(path);
+        if (src == null) {
+            throw new PatchException("Missing entry in base JAR: " + path);
+        }
+        JarEntry dest = new JarEntry(path);
+        dest.setMethod(ZipEntry.DEFLATED);
+        dest.setTime(0);
+        jos.putNextEntry(dest);
+        try (InputStream in = base.getInputStream(src)) {
+            in.transferTo(jos);
+        }
+        jos.closeEntry();
     }
 
     private byte[] applyTextDiff(String path, byte[] originalData, byte[] diffData) {
@@ -110,49 +426,12 @@ public class PatchApplier {
             sb.append("\n");
             return sb.toString().getBytes(StandardCharsets.UTF_8);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to apply text diff for " + path, e);
+            throw new PatchException("Failed to apply text diff for " + path, e);
         }
-    }
-
-    private void verifyAndPut(Map<String, byte[]> entries, String path, byte[] data, String expectedHash) {
-        if (expectedHash != null) {
-            String calculatedHash = hashFunction.calculateHash(data);
-            if (!calculatedHash.equalsIgnoreCase(expectedHash)) {
-                throw new RuntimeException("Patch integrity check failed for " + path
-                        + ". Expected hash: " + expectedHash + ", Actual: " + calculatedHash);
-            }
-        }
-        entries.put(path, data);
     }
 
     private List<String> toLines(byte[] data) {
          String content = new String(data, StandardCharsets.UTF_8);
          return Arrays.asList(content.split("\\r?\\n", -1));
-    }
-
-    private void writeJar(Map<String, byte[]> entries, Path file) {
-        Path temp = file.resolveSibling(file.getFileName().toString() + ".tmp");
-
-        try (JarOutputStream jos = new JarOutputStream(new BufferedOutputStream(Files.newOutputStream(temp)))) {
-            jos.setLevel(9);
-            for (Map.Entry<String, byte[]> entry : entries.entrySet()) {
-                JarEntry jarEntry = new JarEntry(entry.getKey());
-                jarEntry.setMethod(ZipEntry.DEFLATED);
-                jarEntry.setTime(0);
-
-                jos.putNextEntry(jarEntry);
-                jos.write(entry.getValue());
-                jos.closeEntry();
-            }
-
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to write output JAR: " + file.toAbsolutePath(), e);
-        }
-
-        try {
-            Files.move(temp, file, REPLACE_EXISTING, ATOMIC_MOVE);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to write output JAR: " + file.toAbsolutePath(), e);
-        }
     }
 }

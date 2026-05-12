@@ -3,6 +3,7 @@ package dev.sweety.patch.format.json;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import dev.sweety.patch.exception.PatchFormatException;
 import dev.sweety.patch.format.Header;
 import dev.sweety.patch.format.PatchReader;
 import dev.sweety.patch.model.Patch;
@@ -30,7 +31,7 @@ public class JsonPatchReader implements PatchReader {
             final JsonObject root = Header.GSON.fromJson(plain, JsonObject.class);
 
             final String header = root.get("header").getAsString();
-            if (!Header.V1.header().equals(header)) throw new RuntimeException("Invalid patch file format");
+            if (!Header.V1.header().equals(header)) throw new PatchFormatException("Invalid patch file format");
 
 
             // Read Versions
@@ -39,7 +40,7 @@ public class JsonPatchReader implements PatchReader {
 
             JsonArray operations = root.get("operations").getAsJsonArray();
 
-            if (operations == null) throw new RuntimeException("Invalid patch file format: missing operations");
+            if (operations == null) throw new PatchFormatException("Invalid patch file format: missing operations");
 
             // Read Operations
             final int opCount = operations.size();
@@ -52,7 +53,7 @@ public class JsonPatchReader implements PatchReader {
             return new Patch(fromVersion, toVersion, ops);
 
         } catch (IOException e) {
-            throw new RuntimeException("Failed to read patch", e);
+            throw new PatchFormatException("Failed to read patch", e);
         }
     }
 
@@ -83,7 +84,7 @@ public class JsonPatchReader implements PatchReader {
             try {
                 data = Header.unzipFirstFileFromZip(data);
             } catch (IOException e) {
-                throw new RuntimeException("Failed to unzip operation data", e);
+                throw new PatchFormatException("Failed to unzip operation data", e);
             }
         }
         return data;
