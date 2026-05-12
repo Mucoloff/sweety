@@ -79,6 +79,16 @@ public class MainServer {
         Settings.GLOBAL_RATE_LIMIT = root.get("GLOBAL_RATE_LIMIT").getAsInt();
         Settings.PER_IP_RATE_LIMIT = root.get("PER_IP_RATE_LIMIT").getAsInt();
         Settings.RATE_LIMIT_WINDOW = root.get("RATE_LIMIT_WINDOW").getAsLong();
+        if (root.has("NETTY_HANDSHAKE_SECRET") && !root.get("NETTY_HANDSHAKE_SECRET").isJsonNull()) {
+            Settings.NETTY_HANDSHAKE_SECRET = root.get("NETTY_HANDSHAKE_SECRET").getAsString();
+        } else {
+            Settings.NETTY_HANDSHAKE_SECRET = System.getenv().getOrDefault("NETTY_HANDSHAKE_SECRET", "");
+        }
+        if (root.has("RELEASE_API_KEY") && !root.get("RELEASE_API_KEY").isJsonNull()) {
+            Settings.RELEASE_API_KEY = root.get("RELEASE_API_KEY").getAsString();
+        } else {
+            Settings.RELEASE_API_KEY = System.getenv().getOrDefault("RELEASE_API_KEY", "");
+        }
     }
 
     private static @NotNull String root() {
@@ -101,6 +111,8 @@ public class MainServer {
         root.addProperty("GLOBAL_RATE_LIMIT", Settings.GLOBAL_RATE_LIMIT);
         root.addProperty("PER_IP_RATE_LIMIT", Settings.PER_IP_RATE_LIMIT);
         root.addProperty("RATE_LIMIT_WINDOW", Settings.RATE_LIMIT_WINDOW);
+        root.addProperty("NETTY_HANDSHAKE_SECRET", Settings.NETTY_HANDSHAKE_SECRET);
+        root.addProperty("RELEASE_API_KEY", Settings.RELEASE_API_KEY);
 
         return Utils.gson().toJson(root);
     }

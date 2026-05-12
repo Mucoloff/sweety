@@ -9,6 +9,18 @@ public class Settings {
     public static String WEBHOOK_SECRET = "secret";
     public static String TOKEN_GEN_SALT = "very-secret-key";
 
+    /**
+     * Shared secret for Netty handshake HMAC. When non-blank, {@link dev.sweety.versioning.server.api.netty.NettyHandshakeTrust}
+     * requires a matching proof from the client. The launcher uses the same value via env {@code SWEETY_HANDSHAKE_SECRET}.
+     */
+    public static String NETTY_HANDSHAKE_SECRET = "";
+
+    /**
+     * When non-blank, {@code GET /release/base-jar} requires matching header {@code X-Sweety-Release-Key}.
+     * Clients pass the same value into {@link dev.sweety.versioning.client.http.HttpCachingReleaseService}.
+     */
+    public static String RELEASE_API_KEY = "";
+
     public static float PERCENT_SIZE = 0.7f;
     public static int MAX_PATCH_VER_DISTANCE = 5;
     public static float DOWNLOAD_SPEED = 50 * 1024;

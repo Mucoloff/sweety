@@ -65,9 +65,13 @@ public class NettyUpdateServer extends SimpleServer {
             final HandshakeRequest request = transaction.getRequest();
             final LauncherInfo info = request.getInfo();
 
+            if (!NettyHandshakeTrust.isAcceptable(info)) {
+                this.sendPacket(ctx, new HandshakeTransaction(transaction.getRequestId(), HandshakeResponse.unavailable()));
+                return;
+            }
+
             final Map<Artifact, Version> versions = info.versions();
 
-            //todo client trust based !!!
             final UUID clientId = info.clientId();
             final Channel channel = info.channel();
 

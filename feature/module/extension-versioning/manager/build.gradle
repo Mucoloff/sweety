@@ -19,6 +19,7 @@ dependencies {
     implementation project(':util:exception')
     implementation project(':feature:module:versioning:protocol')
     implementation project(':network:netty')
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -26,5 +27,6 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 tasks.withType(Test).configureEach {
+    useJUnitPlatform()
     jvmArgs '--enable-preview'
 }

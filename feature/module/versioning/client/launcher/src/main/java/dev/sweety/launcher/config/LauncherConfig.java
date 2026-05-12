@@ -3,6 +3,7 @@ package dev.sweety.launcher.config;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev.sweety.build.BuildInfo;
+import dev.sweety.versioning.security.HandshakeProof;
 import dev.sweety.versioning.util.Utils;
 import dev.sweety.versioning.version.LauncherInfo;
 import dev.sweety.versioning.version.Version;
@@ -147,7 +148,9 @@ public record LauncherConfig(String url,
     }
 
     public LauncherInfo info() {
-        return new LauncherInfo(buildId, clientId, versions, channel);
+        String secret = System.getenv().getOrDefault("SWEETY_HANDSHAKE_SECRET", "");
+        byte[] proof = HandshakeProof.compute(secret, buildId, clientId, versions, channel);
+        return new LauncherInfo(buildId, clientId, versions, channel, proof);
     }
 
     private static LauncherConfig normalize(LauncherConfig loaded) {

@@ -20,10 +20,15 @@ dependencies {
 
     testImplementation("org.junit.platform:junit-platform-suite:1.9.3")
     testImplementation("org.junit.platform:junit-platform-suite-api:1.9.3")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
 }
 
 application {
     mainClass = 'dev.sweety.versioning.server.MainServer'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
 }
 
 jar {

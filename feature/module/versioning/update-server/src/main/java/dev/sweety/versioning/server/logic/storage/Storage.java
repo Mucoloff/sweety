@@ -14,10 +14,14 @@ public class Storage {
     private final Path root, settings;
     private final Map<Artifact, Path> pathCache = new ConcurrentHashMap<>();
 
-    public Storage() throws IOException {
-        this.root = Path.of(System.getenv().getOrDefault("UPDATE_SERVER_ROOT", "storage"));
+    public Storage(Path root) throws IOException {
+        this.root = root;
         Files.createDirectories(this.root);
         this.settings = this.root.resolve("settings.json");
+    }
+
+    public Storage() throws IOException {
+        this(Path.of(System.getenv().getOrDefault("UPDATE_SERVER_ROOT", "storage")));
     }
 
     public Path root() {

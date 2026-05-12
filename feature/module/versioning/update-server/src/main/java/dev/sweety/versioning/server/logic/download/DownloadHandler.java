@@ -3,8 +3,7 @@ package dev.sweety.versioning.server.logic.download;
 import com.google.common.util.concurrent.RateLimiter;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import dev.sweety.patch.format.PatchEditor;
-import dev.sweety.patch.model.Patch;
+import dev.sweety.patch.format.archive.PatchArchiveMerger;
 import dev.sweety.patch.model.type.PatchTypes;
 import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.versioning.exception.InvalidTokenException;
@@ -135,11 +134,7 @@ public class DownloadHandler implements HttpHandler {
 
                     Path file = this.patchManager.generatePatch(key, from);
 
-                    PatchEditor editor = new PatchEditor(PatchTypes.PATCH_JAR);
-
-                    Patch jarPatch = editor.read(cached.get());
-
-                    editor.edit(file, patch -> patch.getOperations().addAll(jarPatch.getOperations()));
+                    PatchArchiveMerger.merge(file, cached.get(), file);
 
                     String patchSuffix = PatchTypes.PATCH_JAR.extension();
                     exchange.getResponseHeaders().set("Content-Type", "application/java-archive");
