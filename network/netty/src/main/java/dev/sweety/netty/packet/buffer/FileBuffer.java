@@ -1,8 +1,8 @@
 package dev.sweety.netty.packet.buffer;
 
 import dev.sweety.file.ArchiveUtils;
-import dev.sweety.netty.packet.buffer.io.callable.CallableDecoder;
-import dev.sweety.netty.packet.buffer.io.Encoder;
+import dev.sweety.data.buffer.AbstractBuffer;
+import dev.sweety.data.buffer.io.AbstractEncoder;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -10,42 +10,38 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 
-public record FileBuffer(String fileName, boolean isDir, byte[] bytes) implements Encoder {
+public record FileBuffer<T extends AbstractBuffer<T>>(String fileName, boolean isDir, byte[] bytes) implements AbstractEncoder<T> {
 
     private static final int ZIP_THRESHOLD = 64 * 1024; // 64 KB
     private static final String EXTENSION = ".buff.zip";
 
     // --- CREA UN FILEBUFFER DA FILE O DIRECTORY ---
-    public static FileBuffer fromFile(File file) throws IOException {
+    public static FileBuffer<?> fromFile(File file) throws IOException {
         if (file.isDirectory()) return zipDirectory(file);
         if (Files.size(file.toPath()) > ZIP_THRESHOLD) return zipFile(file);
-        return new FileBuffer(file.getName(), false, Files.readAllBytes(file.toPath()));
+        return new FileBuffer<>(file.getName(), false, Files.readAllBytes(file.toPath()));
     }
 
     // --- ZIP SOLO UN FILE SINGOLO ---
-    private static FileBuffer zipFile(File file) throws IOException {
-        return new FileBuffer(file.getName() + EXTENSION, false, ArchiveUtils.zipFile(file));
+    private static FileBuffer<?> zipFile(File file) throws IOException {
+        return new FileBuffer<>(file.getName() + EXTENSION, false, ArchiveUtils.zipFile(file));
     }
 
     // --- ZIP RICORSIVO PER DIRECTORY ---
-    private static FileBuffer zipDirectory(File dir) throws IOException {
-        return new FileBuffer(dir.getName() + EXTENSION, true, ArchiveUtils.zipDirectory(dir));
+    private static FileBuffer<?> zipDirectory(File dir) throws IOException {
+        return new FileBuffer<>(dir.getName() + EXTENSION, true, ArchiveUtils.zipDirectory(dir));
     }
 
     // --- LETTURA DA PACKETBUFFER ---
-    public static CallableDecoder<FileBuffer> DECODER = (buffer -> {
+    public static <K extends AbstractBuffer<K>> FileBuffer<K> read(final K buffer) {
         String name = buffer.readString();
         boolean dir = buffer.readBoolean();
         byte[] data = buffer.readByteArray();
-        return new FileBuffer(name, dir, data);
-    });
-
-    public static FileBuffer read(final PacketBuffer buffer) {
-        return DECODER.read(buffer);
+        return new FileBuffer<>(name, dir, data);
     }
 
     @Override
-    public void write(final PacketBuffer buffer) {
+    public void write(final T buffer) {
         buffer.writeString(fileName);
         buffer.writeBoolean(isDir);
         buffer.writeByteArray(bytes);

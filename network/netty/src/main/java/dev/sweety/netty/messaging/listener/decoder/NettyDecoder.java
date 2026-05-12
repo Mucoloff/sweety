@@ -2,7 +2,7 @@ package dev.sweety.netty.messaging.listener.decoder;
 
 import dev.sweety.util.logger.level.LogLevel;
 import dev.sweety.util.logger.SimpleLogger;
-import dev.sweety.netty.messaging.exception.PacketDecodeException;
+import dev.sweety.exception.PacketDecodeException;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.Packet;

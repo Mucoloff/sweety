@@ -1,6 +1,6 @@
-package dev.sweety.netty.packet.buffer.io;
+package dev.sweety.data.buffer.io;
 
-import dev.sweety.netty.packet.buffer.AbstractBuffer;
+import dev.sweety.data.buffer.AbstractBuffer;
 
 public interface AbstractDecoder<T extends AbstractBuffer<T>> {
 

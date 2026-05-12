@@ -1,31 +1,13 @@
 package dev.sweety.netty.packet.buffer;
 
-import dev.sweety.math.MathUtils;
-import dev.sweety.data.HasId;
-import dev.sweety.netty.messaging.exception.PacketDecodeException;
-import dev.sweety.netty.packet.buffer.io.*;
-import dev.sweety.netty.packet.buffer.io.callable.CallableDecoder;
-import dev.sweety.netty.packet.buffer.io.callable.CallableEncoder;
+import dev.sweety.data.buffer.AbstractBuffer;
+import dev.sweety.netty.packet.buffer.io.Encoder;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
-import it.unimi.dsi.fastutil.Pair;
-import lombok.experimental.Delegate;
-import org.jetbrains.annotations.Nullable;
 
-import java.io.EOFException;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
-import java.util.function.Function;
-import java.util.function.IntFunction;
-import java.util.function.Supplier;
+public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
 
-public class PacketBuffer {
-    private static final int MAX_ARRAY_SIZE = 1 << 20;
-    private static final int MAX_STRING_BYTES = 1 << 20;
-
-    @Delegate
     private final ByteBuf nettyBuffer;
 
     public PacketBuffer(ByteBuf nettyBuffer) {
@@ -57,49 +39,6 @@ public class PacketBuffer {
         return this.nettyBuffer.readInt();
     }
 
-    private void writeVarUnsigned(long value) {
-        while ((value & ~0x7FL) != 0) {
-            writeByte((byte) ((value & 0x7F) | 0x80));
-            value >>>= 7;
-        }
-        writeByte((byte) value);
-    }
-
-    private long readVarUnsigned(int maxBytes) {
-        int numRead = 0;
-        long result = 0;
-        byte read;
-
-        do {
-            read = readByte();
-            long value = read & 0x7FL;
-            result |= value << (7 * numRead);
-
-            numRead++;
-            if (numRead > maxBytes) throw new PacketDecodeException("VarInt/VarLong too big").runtime();
-        } while ((read & 0x80) != 0);
-
-        return result;
-    }
-
-    public PacketBuffer writeVarInt(int value) {
-        writeVarUnsigned(value & 0xFFFFFFFFL);
-        return this;
-    }
-
-    public int readVarInt() {
-        return (int) readVarUnsigned(5);
-    }
-
-    public PacketBuffer writeVarLong(long value) {
-        writeVarUnsigned(value);
-        return this;
-    }
-
-    public long readVarLong() {
-        return readVarUnsigned(10);
-    }
-
     public PacketBuffer writeDouble(double value) {
         this.nettyBuffer.writeDouble(value);
         return this;
@@ -125,33 +64,6 @@ public class PacketBuffer {
 
     public byte readByte() {
         return this.nettyBuffer.readByte();
-    }
-
-    private byte writeMask = 0, writeMaskIndex = 0;
-    private int writePosIndex = 0;
-    private byte readMask = 0, readMaskIndex = 0;
-
-    public PacketBuffer writeBoolean(boolean value) {
-        if (writeMaskIndex % 8 == 0) {
-            writePosIndex = nettyBuffer.writerIndex();
-            nettyBuffer.writeByte(writeMask = 0);
-        }
-
-        if (value) writeMask |= (byte) (1 << (writeMaskIndex % 8));
-
-        nettyBuffer.setByte(writePosIndex, writeMask);
-        writeMaskIndex++;
-        return this;
-    }
-
-    public boolean readBoolean() {
-        if (readMaskIndex % 8 == 0) {
-            if (!nettyBuffer.isReadable())
-                throw new PacketDecodeException("Unable to read boolean", new EOFException()).runtime();
-            readMask = nettyBuffer.readByte();
-        }
-
-        return ((readMask >> (readMaskIndex++ % 8)) & 1) != 0;
     }
 
     public PacketBuffer writeChar(char value) {
@@ -189,356 +101,6 @@ public class PacketBuffer {
         return this.nettyBuffer.readUnsignedByte();
     }
 
-    public PacketBuffer writeString(String data, Charset charset) {
-        if (data == null) return writeVarInt(0);
-        byte[] bytes = data.getBytes(charset);
-        writeVarInt(bytes.length);
-        return writeBytes(bytes);
-    }
-
-    public String readString(Charset charset) {
-        int length = readBoundedLength("string", MAX_STRING_BYTES);
-        requireReadable(length, "string");
-
-        byte[] bytes = new byte[length];
-        nettyBuffer.readBytes(bytes);
-        return new String(bytes, charset);
-    }
-
-    public PacketBuffer writeString(String data) {
-        return writeString(data, StandardCharsets.UTF_8);
-    }
-
-    public String readString() {
-        return readString(StandardCharsets.UTF_8);
-    }
-
-    public PacketBuffer writeEnum(Enum<?> enumVal) {
-        final int val = enumVal instanceof HasId hasId ? hasId.id() : enumVal.ordinal();
-        return writeVarInt(val);
-    }
-
-    public <T extends Enum<T>> T readEnum(Class<T> clazz) {
-        T[] constants = clazz.getEnumConstants();
-        int val = this.readVarInt();
-
-        if (HasId.class.isAssignableFrom(clazz)) {
-            for (T c : constants) {
-                if (((HasId) c).id() != val) continue;
-                return c;
-            }
-            throw new PacketDecodeException("Invalid enum id: " + val).runtime();
-        }
-
-        if (val >= 0 && val < constants.length) return constants[val];
-        else throw new PacketDecodeException("Invalid enum ordinal: " + val).runtime();
-    }
-
-    public <T extends Enum<T>, S> PacketBuffer writeEnum(T value, Function<T, S> stateMapper, CallableEncoder<? super S> stateEncoder) {
-        stateEncoder.write(this, stateMapper.apply(value));
-        return this;
-    }
-
-    public <T extends Enum<T>, S> T readEnumMapped(CallableDecoder<? extends S> stateDecoder, Function<S, T> mapper) {
-        return mapper.apply(stateDecoder.read(this));
-    }
-
-    public PacketBuffer writeUuid(UUID uuid) {
-        return writeVarLong(uuid.getMostSignificantBits()).writeVarLong(uuid.getLeastSignificantBits());
-    }
-
-    public UUID readUuid() {
-        if (this.nettyBuffer.readableBytes() < 16)
-            throw new PacketDecodeException("Not enough readableBytes to read UUID: " + readableBytes() + " / 16").runtime();
-        return new UUID(readVarLong(), readVarLong());
-    }
-
-    public PacketBuffer writeByteArray(byte... bytes) {
-        return writeVarInt(bytes.length).writeBytes(bytes);
-    }
-
-    public byte[] readByteArray() {
-        int len = readBoundedLength("byte[]", MAX_ARRAY_SIZE);
-        requireReadable(len, "byte[]");
-        byte[] bytes = new byte[len];
-        this.nettyBuffer.readBytes(bytes);
-        return bytes;
-    }
-
-    public PacketBuffer writeBooleanArray(boolean... array) {
-        writeVarInt(array.length);
-        for (boolean i : array) writeBoolean(i);
-        return this;
-    }
-
-    public boolean[] readBooleanArray() {
-        int len = readBoundedLength("boolean[]", MAX_ARRAY_SIZE);
-        requireReadable((len + 7) / 8, "boolean[]");
-        boolean[] arr = new boolean[len];
-        for (int i = 0; i < len; i++) arr[i] = readBoolean();
-        return arr;
-    }
-
-    public PacketBuffer writeCharArray(char... array) {
-        writeVarInt(array.length);
-        for (char i : array) writeChar(i);
-        return this;
-    }
-
-    public char[] readCharArray() {
-        int len = readBoundedLength("char[]", MAX_ARRAY_SIZE);
-        requireReadable((long) len * Character.BYTES, "char[]");
-        char[] arr = new char[len];
-        for (int i = 0; i < len; i++) arr[i] = readChar();
-        return arr;
-    }
-
-    public PacketBuffer writeIntArray(int... array) {
-        writeVarInt(array.length);
-        for (int i : array) writeInt(i);
-        return this;
-    }
-
-    public int[] readIntArray() {
-        int len = readBoundedLength("int[]", MAX_ARRAY_SIZE);
-        requireReadable((long) len * Integer.BYTES, "int[]");
-        int[] arr = new int[len];
-        for (int i = 0; i < len; i++) arr[i] = readInt();
-        return arr;
-    }
-
-    public PacketBuffer writeVarIntArray(int... array) {
-        writeVarInt(array.length);
-        for (int i : array) writeVarInt(i);
-        return this;
-    }
-
-    public int[] readVarIntArray() {
-        int len = readBoundedLength("varInt[]", MAX_ARRAY_SIZE);
-        int[] arr = new int[len];
-        for (int i = 0; i < len; i++) arr[i] = readVarInt();
-        return arr;
-    }
-
-    public PacketBuffer writeShortArray(short... array) {
-        writeVarInt(array.length);
-        for (short i : array) writeShort(i);
-        return this;
-    }
-
-    public short[] readShortArray() {
-        int len = readBoundedLength("short[]", MAX_ARRAY_SIZE);
-        requireReadable((long) len * Short.BYTES, "short[]");
-        short[] arr = new short[len];
-        for (int i = 0; i < len; i++) arr[i] = readShort();
-        return arr;
-    }
-
-    public PacketBuffer writeFloatArray(float... array) {
-        writeVarInt(array.length);
-        for (float i : array) writeFloat(i);
-        return this;
-    }
-
-    public float[] readFloatArray() {
-        int len = readBoundedLength("float[]", MAX_ARRAY_SIZE);
-        requireReadable((long) len * Float.BYTES, "float[]");
-        float[] arr = new float[len];
-        for (int i = 0; i < len; i++) arr[i] = readFloat();
-        return arr;
-    }
-
-    public PacketBuffer writeDoubleArray(double... array) {
-        writeVarInt(array.length);
-        for (double i : array) writeDouble(i);
-        return this;
-    }
-
-    public double[] readDoubleArray() {
-        int len = readBoundedLength("double[]", MAX_ARRAY_SIZE);
-        requireReadable((long) len * Double.BYTES, "double[]");
-        double[] arr = new double[len];
-        for (int i = 0; i < len; i++) arr[i] = readDouble();
-        return arr;
-    }
-
-    public PacketBuffer writeVarLongArray(long... array) {
-        writeVarInt(array.length);
-        for (long i : array) writeVarLong(i);
-        return this;
-    }
-
-    public long[] readVarLongArray() {
-        int len = readBoundedLength("varLong[]", MAX_ARRAY_SIZE);
-        long[] arr = new long[len];
-        for (int i = 0; i < len; i++) arr[i] = readVarLong();
-        return arr;
-    }
-
-    public PacketBuffer writeStringArray(String... array) {
-        writeVarInt(array.length);
-        for (String i : array) writeString(i);
-        return this;
-    }
-
-    public String[] readStringArray() {
-        int len = readBoundedLength("String[]", MAX_ARRAY_SIZE);
-        String[] arr = new String[len];
-        for (int i = 0; i < len; i++) arr[i] = readString();
-        return arr;
-    }
-
-    private PacketBuffer writePresence(boolean present) {
-        return this.writeBoolean(present);
-    }
-
-    private boolean readPresence() {
-        try {
-            return this.readBoolean();
-        } catch (Exception e) {
-            PacketDecodeException ex = new PacketDecodeException("Unable to read presence marker", new EOFException());
-            ex.addStackTrace(e.getStackTrace());
-            throw ex.runtime();
-        }
-    }
-
-    private <T> boolean writeNullCheck(T object) {
-        boolean notNull = object != null;
-        writePresence(notNull);
-        return !notNull;
-    }
-
-    public <T> PacketBuffer writeObject(@Nullable T object, CallableEncoder<? super T> encoder) {
-        if (writeNullCheck(object)) return this;
-        encoder.write(this, object);
-        return this;
-    }
-
-    public <T> T readObject(CallableDecoder<? extends T> decoder) {
-        if (!readPresence()) return null;
-        return decoder.read(this);
-    }
-
-    public <T> Optional<T> readOptional(CallableDecoder<? extends T> decoder) {
-        if (!readPresence()) return Optional.empty();
-        return Optional.of(decoder.read(this));
-    }
-
-    public <T> PacketBuffer writeOptional(final Optional<T> optional, CallableEncoder<? super T> encoder) {
-        optional.ifPresentOrElse(value -> {
-            writePresence(true);
-            encoder.write(this, value);
-        }, () -> writePresence(false));
-
-        return this;
-    }
-
-    public <T extends Encoder> PacketBuffer writeObject(T object) {
-        return writeObject(object, (buffer, t) -> t.write(buffer));
-    }
-
-    public <T extends Decoder> T readObject(Supplier<T> factory) {
-        return readObject(buffer -> {
-            T obj = factory.get();
-            obj.read(buffer);
-            return obj;
-        });
-    }
-
-    public <T> PacketBuffer writeIterable(Iterable<T> iterable, int size, CallableEncoder<? super T> encoder) {
-        if (writeNullCheck(iterable)) return this;
-        writeVarInt(size);
-        for (T entry : iterable) {
-            writeObject(entry, encoder);
-        }
-        return this;
-    }
-
-    @SafeVarargs
-    public final <T> PacketBuffer writeArray(CallableEncoder<? super T> encoder, T... array) {
-        if (writeNullCheck(array)) return this;
-        writeVarInt(array.length);
-        for (T entry : array) writeObject(entry, encoder);
-        return this;
-    }
-
-    public <T> PacketBuffer writeCollection(Collection<T> collection, CallableEncoder<? super T> encoder) {
-        return writeIterable(collection, collection.size(), encoder);
-    }
-
-    public <T extends Encoder> PacketBuffer writeCollection(Collection<T> collection) {
-        return writeCollection(collection, (buffer, t) -> t.write(buffer));
-    }
-
-    public <T, C extends Collection<T>> C readCollection(CallableDecoder<? extends T> decoder, IntFunction<C> collectionFactory) {
-        if (!readPresence()) return null;
-        final int size = readBoundedLength("collection", MAX_ARRAY_SIZE);
-        final C collection = collectionFactory.apply(size);
-        for (int i = 0; i < size; i++) collection.add(readObject(decoder));
-        return collection;
-    }
-
-    public <T> List<T> readList(CallableDecoder<? extends T> decoder) {
-        return readCollection(decoder, ArrayList::new);
-    }
-
-    public <T> T[] readArray(CallableDecoder<? extends T> decoder, IntFunction<T[]> arrayFactory) {
-        if (!readPresence()) return null;
-        int size = readBoundedLength("array", MAX_ARRAY_SIZE);
-        T[] array = arrayFactory.apply(size);
-        for (int i = 0; i < size; i++) {
-            array[i] = readObject(decoder);
-        }
-        return array;
-    }
-
-    public <T extends Decoder> List<T> readCollection(Supplier<T> factory) {
-        return readList(buffer -> buffer.readObject(factory));
-    }
-
-    public <K, V> PacketBuffer writeMap(Map<K, V> map, CallableEncoder<Pair<K, V>> encoder) {
-        if (writeNullCheck(map)) return this;
-        writeVarInt(map.size());
-        for (Map.Entry<K, V> entry : map.entrySet()) {
-            writeObject(Pair.of(entry.getKey(), entry.getValue()), encoder);
-        }
-        return this;
-    }
-
-    public <K, V> Map<K, V> readMap(CallableDecoder<Pair<K, V>> decoder, IntFunction<Map<K, V>> mapFactory) {
-        if (!readPresence()) return null;
-
-        int size = readBoundedLength("map", MAX_ARRAY_SIZE);
-        Map<K, V> map = mapFactory.apply(size);
-        for (int i = 0; i < size; i++) {
-            Pair<K, V> pair = readObject(decoder);
-            map.put(pair.key(), pair.value());
-        }
-        return map;
-    }
-
-    public <K, V> PacketBuffer writeMap(Map<K, V> map, CallableEncoder<? super K> kEncoder, CallableEncoder<? super V> vEncoder) {
-        return writeMap(map, (buffer, data) -> {
-            kEncoder.write(buffer, data.key());
-            vEncoder.write(buffer, data.value());
-        });
-    }
-
-    public <K, V> Map<K, V> readMap(CallableDecoder<K> kDecoder, CallableDecoder<V> vDecoder, IntFunction<Map<K, V>> mapFactory) {
-        return readMap(buffer -> Pair.of(kDecoder.read(buffer), vDecoder.read(buffer)), mapFactory);
-    }
-
-    public <K extends Enum<K>, V> PacketBuffer writeEnumMap(EnumMap<K, V> map, CallableEncoder<? super V> vEncoder) {
-        return writeMap(map, PacketBuffer::writeEnum, vEncoder);
-    }
-
-    public <K extends Enum<K>, V> EnumMap<K, V> readEnumMap(Class<K> keyClass, CallableDecoder<V> vDecoder) {
-        final Map<K, V> tmp = readMap(buffer -> buffer.readEnum(keyClass), vDecoder, HashMap::new);
-        final EnumMap<K, V> map = new EnumMap<>(keyClass);
-        if (!tmp.isEmpty()) map.putAll(tmp);
-        return map;
-    }
-
     public boolean release() {
         return this.nettyBuffer.release();
     }
@@ -555,18 +117,6 @@ public class PacketBuffer {
 
     public int refCnt() {
         return this.nettyBuffer.refCnt();
-    }
-
-    public byte[] getBytes() {
-        byte[] bytes = new byte[readableBytes()];
-        this.nettyBuffer.getBytes(this.nettyBuffer.readerIndex(), bytes);
-        return bytes;
-    }
-
-    public byte[] readAllBytes() {
-        byte[] bytes = new byte[readableBytes()];
-        readBytes(bytes);
-        return bytes;
     }
 
     public int readableBytes() {
@@ -676,103 +226,98 @@ public class PacketBuffer {
         return this.nettyBuffer;
     }
 
-    public PacketBuffer writePercentual(double percent, double scale) {
-        return this.writeVarInt((int) (MathUtils.clamp(percent) * scale));
+    @Override
+    public PacketBuffer setByte(int index, byte value) {
+        this.nettyBuffer.setByte(index, value);
+        return this;
     }
 
-    public double readPercentual(double scale) {
-        return this.readVarInt() / scale;
+    @Override
+    public byte getByte(int index) {
+        return this.nettyBuffer.getByte(index);
     }
 
-    private long packPosition(int x, int y, int z) {
-        return ((long) (x & 0x3FFFFFF) << 38) |
-                ((long) (z & 0x3FFFFFF) << 12) |
-                ((long) (y & 0xFFF));
+    @Override
+    public PacketBuffer setShort(int index, short value) {
+        this.nettyBuffer.setShort(index, value);
+        return this;
     }
 
-    private int[] unpackPosition(long packed) {
-        final int x = (int) (packed >> 38);
-        final int y = (int) (packed << 52 >> 52);
-        final int z = (int) (packed << 26 >> 38);
-
-        return new int[]{x, y, z};
+    @Override
+    public short getShort(int index) {
+        return this.nettyBuffer.getShort(index);
     }
 
-    public PacketBuffer writePosition(int x, int y, int z) {
-        return writeLong(packPosition(x, y, z));
+    @Override
+    public PacketBuffer setInt(int index, int value) {
+        this.nettyBuffer.setInt(index, value);
+        return this;
     }
 
-    public int[] readPosition() {
-        final long val = readLong();
-        return unpackPosition(val);
+
+    @Override
+    public int getInt(int index) {
+        return this.nettyBuffer.getInt(index);
     }
 
-    public PacketBuffer writeVarPosition(int x, int y, int z) {
-        return writeVarLong(packPosition(x, y, z));
+
+    @Override
+    public PacketBuffer setLong(int index, long value) {
+        this.nettyBuffer.setLong(index, value);
+        return this;
     }
 
-    public int[] readVarPosition() {
-        final long val = readVarLong();
-        return unpackPosition(val);
+
+    @Override
+    public long getLong(int index) {
+        return this.nettyBuffer.getLong(index);
     }
 
-    public PacketBuffer writeFixedInt(double value, int fractionBits) {
-        int fixed = (int) Math.round(value * (1 << fractionBits));
-        return writeInt(fixed);
+
+    @Override
+    public PacketBuffer setFloat(int index, float value) {
+        this.nettyBuffer.setFloat(index, value);
+        return this;
     }
 
-    public double readFixedInt(int fractionBits) {
-        return readInt() / (double) (1 << fractionBits);
+
+    @Override
+    public float getFloat(int index) {
+        return this.nettyBuffer.getFloat(index);
     }
 
-    public PacketBuffer writeFixedVarInt(double value, int fractionBits) {
-        int fixed = (int) Math.round(value * (1 << fractionBits));
-        return writeVarInt(fixed);
+    public PacketBuffer setDouble(int index, double value) {
+        this.nettyBuffer.setDouble(index, value);
+        return this;
     }
 
-    public double readFixedVarInt(int fractionBits) {
-        return readVarInt() / (double) (1 << fractionBits);
+
+    @Override
+    public double getDouble(int index) {
+        return this.nettyBuffer.getDouble(index);
     }
 
-    public PacketBuffer writeFixedVarLong(double value, int fractionBits) {
-        long fixed = Math.round(value * (1L << fractionBits));
-        return writeVarLong(fixed);
+
+    @Override
+    public PacketBuffer setChar(int index, char value) {
+        this.nettyBuffer.setChar(index, value);
+        return this;
     }
 
-    public double readFixedVarLong(int fractionBits) {
-        return readVarLong() / (double) (1L << fractionBits);
+
+    @Override
+    public char getChar(int index) {
+        return this.nettyBuffer.getChar(index);
     }
 
-    public PacketBuffer writeFixedPosition(double x, double y, double z, int fractionBits) {
-        return writeFixedVarLong(x, fractionBits)
-                .writeFixedVarLong(y, fractionBits)
-                .writeFixedVarLong(z, fractionBits);
+    @Override
+    public boolean isReadable() {
+        return this.nettyBuffer.isReadable();
     }
 
-    public double[] readFixedPosition(int fractionBits) {
-        return new double[]{
-                readFixedVarLong(fractionBits),
-                readFixedVarLong(fractionBits),
-                readFixedVarLong(fractionBits)
-        };
-    }
 
-    private int readBoundedLength(String label, int max) {
-        final int len = readVarInt();
-        if (len < 0 || len > max) {
-            throw new PacketDecodeException(label + " length out of bounds: " + len).runtime();
-        }
-        return len;
+    @Override
+    protected void getBytes(int index, byte[] dst) {
+        this.nettyBuffer.getBytes(index, dst);
     }
-
-    private void requireReadable(long bytes, String label) {
-        if (bytes < 0 || bytes > Integer.MAX_VALUE) {
-            throw new PacketDecodeException("Invalid byte length for " + label + ": " + bytes).runtime();
-        }
-        if (this.nettyBuffer.readableBytes() < (int) bytes) {
-            throw new PacketDecodeException("Not enough bytes for " + label + ": requested=" + bytes
-                    + ", available=" + this.nettyBuffer.readableBytes()).runtime();
-        }
-    }
-
 }

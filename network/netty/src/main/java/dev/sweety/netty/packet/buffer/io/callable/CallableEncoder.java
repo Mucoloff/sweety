@@ -1,16 +1,8 @@
 package dev.sweety.netty.packet.buffer.io.callable;
 
 import dev.sweety.netty.packet.buffer.PacketBuffer;
-
-import java.util.function.BiConsumer;
+import dev.sweety.data.buffer.io.callable.AbstractCallableEncoder;
 
 @FunctionalInterface
-public interface CallableEncoder<T> extends BiConsumer<T, PacketBuffer> {
-
-    void write(final PacketBuffer buffer, final T data);
-
-    @Override
-    default void accept(final T data, final PacketBuffer buffer) {
-        write(buffer, data);
-    }
+public interface CallableEncoder<T> extends AbstractCallableEncoder<T, PacketBuffer> {
 }

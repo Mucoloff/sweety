@@ -1,6 +1,4 @@
-package dev.sweety.netty.messaging.exception;
-
-import dev.sweety.exception.Except;
+package dev.sweety.exception;
 
 public class PacketDecodeException extends Except {
 

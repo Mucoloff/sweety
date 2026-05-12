@@ -1,9 +1,9 @@
-package dev.sweety.netty.packet.buffer.io;
+package dev.sweety.data.buffer.io;
 
-import dev.sweety.netty.packet.buffer.PacketBuffer;
+import dev.sweety.data.buffer.AbstractBuffer;
 
-public interface AbstractEncoder {
+public interface AbstractEncoder<T extends AbstractBuffer<T>> {
 
-    void write(final PacketBuffer buffer);
+    void write(final T buffer);
 
 }

@@ -1,217 +1,388 @@
 package dev.sweety.data.buffer;
 
-import java.lang.foreign.*;
-import java.nio.ByteOrder;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 
-public class TestBuffer extends AbstractBuffer<TestBuffer> {
+public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
 
+    private final Arena arena;
     private final MemorySegment segment;
 
-    private int writerIndex;
+    private final boolean owner;
 
+    private int refCnt = 1;
+
+    private int writerIndex;
     private int readerIndex;
 
-    @Override
-    public void clear() {
+    private int markReader;
+    private int markWriter;
+
+    // ===================== CONSTRUCTORS =====================
+
+    public SegmentBuffer(int capacity) {
+        this.arena = Arena.ofConfined();
+        this.segment = arena.allocate(capacity);
+        this.owner = true;
     }
 
-    @Override
-    public TestBuffer writeInt(int value) {
-        return this;
+    private SegmentBuffer(Arena arena, MemorySegment segment, boolean owner) {
+        this.arena = arena;
+        this.segment = segment;
+        this.owner = owner;
     }
 
-    @Override
-    public int readInt() {
-        return 0;
-    }
-
-    @Override
-    public TestBuffer writeDouble(double value) {
-        return this;
-    }
-
-    @Override
-    public double readDouble() {
-        return 0;
-    }
-
-    @Override
-    public TestBuffer writeShort(short value) {
-        return this;
-    }
-
-    @Override
-    public short readShort() {
-        return 0;
-    }
-
-    @Override
-    public TestBuffer writeByte(byte value) {
-        return this;
-    }
-
-    @Override
-    public byte readByte() {
-        return 0;
-    }
-
-    @Override
-    public TestBuffer setByte(int index, byte value) {
-        return this;
-    }
-
-    @Override
-    public boolean isReadable() {
-        return false;
-    }
-
-    @Override
-    public TestBuffer writeChar(char value) {
-        return this;
-    }
-
-    @Override
-    public char readChar() {
-        return 0;
-    }
-
-    @Override
-    public TestBuffer writeFloat(float value) {
-        return this;
-    }
-
-    @Override
-    public float readFloat() {
-        return 0;
-    }
-
-    @Override
-    public TestBuffer writeLong(long value) {
-        return this;
-    }
-
-    @Override
-    public long readLong() {
-        return 0;
-    }
-
-    @Override
-    public short readUnsignedByte() {
-        return 0;
-    }
+    // ===================== MEMORY CONTROL =====================
 
     @Override
     public boolean release() {
+        if (!owner) {
+            return false;
+        }
+
+        if (--refCnt == 0) {
+            arena.close();
+            return true;
+        }
+
         return false;
     }
 
     @Override
-    public TestBuffer retain(int increment) {
+    public SegmentBuffer retain() {
+        refCnt++;
         return this;
     }
 
     @Override
-    public TestBuffer retain() {
+    public SegmentBuffer retain(int increment) {
+        refCnt += increment;
         return this;
     }
 
     @Override
     public int refCnt() {
-        return 0;
+        return refCnt;
+    }
+
+    // ===================== CLEAR =====================
+
+    @Override
+    public void clear() {
+        writerIndex = 0;
+        readerIndex = 0;
+        markReader = 0;
+        markWriter = 0;
+    }
+
+    // ===================== PRIMITIVES WRITE =====================
+
+    @Override
+    public SegmentBuffer writeByte(byte value) {
+        segment.set(ValueLayout.JAVA_BYTE, writerIndex, value);
+        writerIndex += Byte.BYTES;
+        return this;
     }
 
     @Override
-    protected void getBytes(int index, byte[] dst) {
+    public SegmentBuffer writeShort(short value) {
+        segment.set(ValueLayout.JAVA_SHORT, writerIndex, value);
+        writerIndex += Short.BYTES;
+        return this;
+    }
 
+    @Override
+    public SegmentBuffer writeInt(int value) {
+        segment.set(ValueLayout.JAVA_INT, writerIndex, value);
+        writerIndex += Integer.BYTES;
+        return this;
+    }
+
+    @Override
+    public SegmentBuffer writeLong(long value) {
+        segment.set(ValueLayout.JAVA_LONG, writerIndex, value);
+        writerIndex += Long.BYTES;
+        return this;
+    }
+
+    @Override
+    public SegmentBuffer writeFloat(float value) {
+        segment.set(ValueLayout.JAVA_FLOAT, writerIndex, value);
+        writerIndex += Float.BYTES;
+        return this;
+    }
+
+    @Override
+    public SegmentBuffer writeDouble(double value) {
+        segment.set(ValueLayout.JAVA_DOUBLE, writerIndex, value);
+        writerIndex += Double.BYTES;
+        return this;
+    }
+
+    @Override
+    public SegmentBuffer writeChar(char value) {
+        segment.set(ValueLayout.JAVA_CHAR, writerIndex, value);
+        writerIndex += Character.BYTES;
+        return this;
+    }
+
+    // ===================== PRIMITIVES READ =====================
+
+    @Override
+    public byte readByte() {
+        byte v = segment.get(ValueLayout.JAVA_BYTE, readerIndex);
+        readerIndex += Byte.BYTES;
+        return v;
+    }
+
+    @Override
+    public short readShort() {
+        short v = segment.get(ValueLayout.JAVA_SHORT, readerIndex);
+        readerIndex += Short.BYTES;
+        return v;
+    }
+
+    @Override
+    public int readInt() {
+        int v = segment.get(ValueLayout.JAVA_INT, readerIndex);
+        readerIndex += Integer.BYTES;
+        return v;
+    }
+
+    @Override
+    public long readLong() {
+        long v = segment.get(ValueLayout.JAVA_LONG, readerIndex);
+        readerIndex += Long.BYTES;
+        return v;
+    }
+
+    @Override
+    public float readFloat() {
+        float v = segment.get(ValueLayout.JAVA_FLOAT, readerIndex);
+        readerIndex += Float.BYTES;
+        return v;
+    }
+
+    @Override
+    public double readDouble() {
+        double v = segment.get(ValueLayout.JAVA_DOUBLE, readerIndex);
+        readerIndex += Double.BYTES;
+        return v;
+    }
+
+    @Override
+    public char readChar() {
+        char v = segment.get(ValueLayout.JAVA_CHAR, readerIndex);
+        readerIndex += Character.BYTES;
+        return v;
+    }
+
+    @Override
+    public short readUnsignedByte() {
+        return (short) (readByte() & 0xFF);
+    }
+
+    // ===================== RANDOM ACCESS =====================
+
+    @Override
+    public SegmentBuffer setByte(int index, byte value) {
+        segment.set(ValueLayout.JAVA_BYTE, index, value);
+        return this;
+    }
+
+    @Override
+    public byte getByte(int index) {
+        return segment.get(ValueLayout.JAVA_BYTE, index);
+    }
+
+    @Override
+    public SegmentBuffer setShort(int index, short value) {
+        segment.set(ValueLayout.JAVA_SHORT, index, value);
+        return this;
+    }
+
+    @Override
+    public short getShort(int index) {
+        return segment.get(ValueLayout.JAVA_SHORT, index);
+    }
+
+    @Override
+    public SegmentBuffer setInt(int index, int value) {
+        segment.set(ValueLayout.JAVA_INT, index, value);
+        return this;
+    }
+
+    @Override
+    public int getInt(int index) {
+        return segment.get(ValueLayout.JAVA_INT, index);
+    }
+
+    @Override
+    public SegmentBuffer setLong(int index, long value) {
+        segment.set(ValueLayout.JAVA_LONG, index, value);
+        return this;
+    }
+
+    @Override
+    public long getLong(int index) {
+        return segment.get(ValueLayout.JAVA_LONG, index);
+    }
+
+    @Override
+    public SegmentBuffer setFloat(int index, float value) {
+        segment.set(ValueLayout.JAVA_FLOAT, index, value);
+        return this;
+    }
+
+    @Override
+    public float getFloat(int index) {
+        return segment.get(ValueLayout.JAVA_FLOAT, index);
+    }
+
+    @Override
+    public SegmentBuffer setDouble(int index, double value) {
+        segment.set(ValueLayout.JAVA_DOUBLE, index, value);
+        return this;
+    }
+
+    @Override
+    public double getDouble(int index) {
+        return segment.get(ValueLayout.JAVA_DOUBLE, index);
+    }
+
+    @Override
+    public SegmentBuffer setChar(int index, char value) {
+        segment.set(ValueLayout.JAVA_CHAR, index, value);
+        return this;
+    }
+
+    @Override
+    public char getChar(int index) {
+        return segment.get(ValueLayout.JAVA_CHAR, index);
+    }
+
+    // ===================== STATE =====================
+
+    @Override
+    public boolean isReadable() {
+        return readerIndex < writerIndex;
     }
 
     @Override
     public int readableBytes() {
-        return 0;
-    }
-
-    @Override
-    public TestBuffer resetReaderIndex() {
-        return this;
-    }
-
-    @Override
-    public TestBuffer markReaderIndex() {
-        return this;
+        return writerIndex - readerIndex;
     }
 
     @Override
     public int readerIndex() {
-        return 0;
+        return readerIndex;
     }
 
     @Override
-    public TestBuffer readerIndex(int readerIndex) {
-        return this;
-    }
-
-    @Override
-    public TestBuffer resetWriterIndex() {
-        return this;
-    }
-
-    @Override
-    public TestBuffer markWriterIndex() {
+    public SegmentBuffer readerIndex(int readerIndex) {
+        this.readerIndex = readerIndex;
         return this;
     }
 
     @Override
     public int writerIndex() {
-        return 0;
+        return writerIndex;
     }
 
     @Override
-    public TestBuffer writerIndex(int writerIndex) {
+    public SegmentBuffer writerIndex(int writerIndex) {
+        this.writerIndex = writerIndex;
         return this;
     }
 
     @Override
-    public TestBuffer readBytes(byte[] data) {
+    public SegmentBuffer markReaderIndex() {
+        markReader = readerIndex;
         return this;
     }
 
     @Override
-    public TestBuffer writeBytes(byte[] data) {
+    public SegmentBuffer resetReaderIndex() {
+        readerIndex = markReader;
         return this;
     }
 
     @Override
-    public TestBuffer writeBytes(byte[] data, int offset, int length) {
+    public SegmentBuffer markWriterIndex() {
+        markWriter = writerIndex;
         return this;
     }
 
     @Override
-    public TestBuffer writeBuffer(TestBuffer other) {
+    public SegmentBuffer resetWriterIndex() {
+        writerIndex = markWriter;
+        return this;
+    }
+
+    // ===================== BYTES =====================
+
+    @Override
+    protected void getBytes(int index, byte[] dst) {
+        MemorySegment.copy(segment, ValueLayout.JAVA_BYTE, index, dst, 0, dst.length);
+    }
+
+    @Override
+    public SegmentBuffer readBytes(byte[] data) {
+        getBytes(readerIndex, data);
+        readerIndex += data.length;
         return this;
     }
 
     @Override
-    public TestBuffer readSlice(int length) {
+    public SegmentBuffer writeBytes(byte[] data) {
+        MemorySegment.copy(data, 0, segment, ValueLayout.JAVA_BYTE, writerIndex, data.length);
+        writerIndex += data.length;
         return this;
     }
 
     @Override
-    public TestBuffer readRetainedSlice(int length) {
+    public SegmentBuffer writeBytes(byte[] data, int offset, int length) {
+        MemorySegment.copy(data, offset, segment, ValueLayout.JAVA_BYTE, writerIndex, length);
+        writerIndex += length;
         return this;
     }
 
     @Override
-    public TestBuffer slice() {
+    public SegmentBuffer writeBuffer(SegmentBuffer other) {
+        byte[] tmp = new byte[other.readableBytes()];
+        other.readBytes(tmp);
+        writeBytes(tmp);
         return this;
     }
 
+    // ===================== SLICES (ZERO COPY) =====================
+
     @Override
-    public TestBuffer slice(int index, int length) {
-        return this;
+    public SegmentBuffer slice() {
+        return slice(readerIndex, readableBytes());
     }
 
     @Override
-    public TestBuffer retainedSlice(int index, int length) {
-        return this;
+    public SegmentBuffer slice(int index, int length) {
+        MemorySegment view = segment.asSlice(index, length);
+        return new SegmentBuffer(arena, view, false);
+    }
+
+    @Override
+    public SegmentBuffer readSlice(int length) {
+        SegmentBuffer s = slice(readerIndex, length);
+        readerIndex += length;
+        return s;
+    }
+
+    @Override
+    public SegmentBuffer readRetainedSlice(int length) {
+        return readSlice(length);
+    }
+
+    @Override
+    public SegmentBuffer retainedSlice(int index, int length) {
+        return slice(index, length);
     }
 }

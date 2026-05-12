@@ -1,4 +1,6 @@
-package dev.sweety.netty.packet.buffer.io;
+package dev.sweety.data.buffer.io;
 
-public interface Codec extends Encoder, Decoder {
+import dev.sweety.data.buffer.AbstractBuffer;
+
+public interface AbstractCodec<T extends AbstractBuffer<T>> extends AbstractEncoder<T>, AbstractDecoder<T> {
 }

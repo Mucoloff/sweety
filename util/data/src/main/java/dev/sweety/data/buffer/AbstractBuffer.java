@@ -1,11 +1,12 @@
-package dev.sweety.netty.packet.buffer;
+package dev.sweety.data.buffer;
 
 import dev.sweety.data.HasId;
+import dev.sweety.data.buffer.io.AbstractDecoder;
+import dev.sweety.data.buffer.io.AbstractEncoder;
+import dev.sweety.data.buffer.io.callable.AbstractCallableDecoder;
+import dev.sweety.data.buffer.io.callable.AbstractCallableEncoder;
+import dev.sweety.exception.PacketDecodeException;
 import dev.sweety.math.MathUtils;
-import dev.sweety.netty.messaging.exception.PacketDecodeException;
-import dev.sweety.netty.packet.buffer.io.*;
-import dev.sweety.netty.packet.buffer.io.callable.*;
-import dev.sweety.netty.packet.buffer.io.callable.abs.AbstractCallableEncoder;
 import it.unimi.dsi.fastutil.Pair;
 import org.jetbrains.annotations.Nullable;
 
@@ -115,6 +116,32 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
 
     public abstract Self setByte(int index, byte value);
 
+    public abstract byte getByte(int index);
+
+    public abstract Self setShort(int index, short value);
+
+    public abstract short getShort(int index);
+
+    public abstract Self setInt(int index, int value);
+
+    public abstract int getInt(int index);
+
+    public abstract Self setLong(int index, long value);
+
+    public abstract long getLong(int index);
+
+    public abstract Self setFloat(int index, float value);
+
+    public abstract float getFloat(int index);
+
+    public abstract Self setDouble(int index, double value);
+
+    public abstract double getDouble(int index);
+
+    public abstract Self setChar(int index, char value);
+
+    public abstract char getChar(int index);
+
     public abstract boolean isReadable();
 
     public abstract Self writeChar(char value);
@@ -186,8 +213,8 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
         return self;
     }
 
-    public <T extends Enum<T>, S> T readEnum(CallableDecoder<? extends S> stateDecoder, Function<S, T> mapper) {
-        return mapper.apply(stateDecoder.read(this));
+    public <T extends Enum<T>, S> T readEnum(AbstractCallableDecoder<? extends S, Self> stateDecoder, Function<S, T> mapper) {
+        return mapper.apply(stateDecoder.read(self()));
     }
 
     public Self writeUuid(UUID uuid) {
@@ -218,7 +245,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
     public Self writeBooleanArray(boolean... array) {
         writeVarInt(array.length);
         for (boolean i : array) writeBoolean(i);
-        return self()
+        return self();
     }
 
     public boolean[] readBooleanArray() {
@@ -232,7 +259,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
     public Self writeCharArray(char... array) {
         writeVarInt(array.length);
         for (char i : array) writeChar(i);
-        return self()
+        return self();
     }
 
     public char[] readCharArray() {
@@ -246,7 +273,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
     public Self writeIntArray(int... array) {
         writeVarInt(array.length);
         for (int i : array) writeInt(i);
-        return self()
+        return self();
     }
 
     public int[] readIntArray() {
@@ -260,7 +287,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
     public Self writeVarIntArray(int... array) {
         writeVarInt(array.length);
         for (int i : array) writeVarInt(i);
-        return self()
+        return self();
     }
 
     public int[] readVarIntArray() {
@@ -273,7 +300,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
     public Self writeShortArray(short... array) {
         writeVarInt(array.length);
         for (short i : array) writeShort(i);
-        return self()
+        return self();
     }
 
     public short[] readShortArray() {
@@ -287,7 +314,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
     public Self writeFloatArray(float... array) {
         writeVarInt(array.length);
         for (float i : array) writeFloat(i);
-        return self()
+        return self();
     }
 
     public float[] readFloatArray() {
@@ -301,7 +328,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
     public Self writeDoubleArray(double... array) {
         writeVarInt(array.length);
         for (double i : array) writeDouble(i);
-        return self()
+        return self();
     }
 
     public double[] readDoubleArray() {
@@ -315,7 +342,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
     public Self writeVarLongArray(long... array) {
         writeVarInt(array.length);
         for (long i : array) writeVarLong(i);
-        return self()
+        return self();
     }
 
     public long[] readVarLongArray() {
@@ -345,36 +372,54 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
         return !notNull;
     }
 
-    public <T> Self writeObject(@Nullable T object, CallableEncoder<? super T> encoder) {
-        if (writeNullCheck(object)) return self()
-        encoder.write(this, object);
+    /**
+     * Writes a single presence marker then, if present, the payload. Used by {@link #writeObject}
+     * and {@link #writeOptional} so both share the same wire layout without chaining public overloads.
+     */
+    private <T> Self writeMarkedPayload(boolean present, @Nullable T valueIfPresent, AbstractCallableEncoder<? super T, Self> encoder) {
+        writePresence(present);
+        if (!present) return self();
+        encoder.write(self(), valueIfPresent);
         return self();
     }
 
-    public <T> T readObject(CallableDecoder<? extends T> decoder) {
+    /**
+     * Reads a presence marker; if absent returns {@code null}, otherwise decodes the payload.
+     */
+    private <T> @Nullable T readMarkedPayload(AbstractCallableDecoder<? extends T, Self> decoder) {
         if (!readPresence()) return null;
-        return decoder.read(this);
+        return decoder.read(self());
     }
 
-    public <T> Optional<T> readOptional(CallableDecoder<? extends T> decoder) {
-        if (!readPresence()) return Optional.empty();
-        return Optional.of(decoder.read(this));
+    public <T> Self writeObject(@Nullable T object, AbstractCallableEncoder<? super T, Self> encoder) {
+        return writeMarkedPayload(object != null, object, encoder);
     }
 
-    public <T> Self writeOptional(final Optional<T> optional, CallableEncoder<? super T> encoder) {
-        optional.ifPresentOrElse(value -> {
-            writePresence(true);
-            encoder.write(this, value);
-        }, () -> writePresence(false));
-
-        return self();
+    public <T> T readObject(AbstractCallableDecoder<? extends T, Self> decoder) {
+        return readMarkedPayload(decoder);
     }
 
-    public <T extends Encoder> Self writeObject(T object) {
+    public <T> Optional<T> readOptional(AbstractCallableDecoder<? extends T, Self> decoder) {
+        return Optional.ofNullable(readMarkedPayload(decoder));
+    }
+
+    public <T extends AbstractDecoder<Self>> Optional<T> readOptional(Supplier<T> factory) {
+        return Optional.ofNullable(readObject(factory));
+    }
+
+    public <T> Self writeOptional(final Optional<T> optional, AbstractCallableEncoder<? super T, Self> encoder) {
+        return writeMarkedPayload(optional.isPresent(), optional.orElse(null), encoder);
+    }
+
+    public <T extends AbstractEncoder<Self>> Self writeOptional(final Optional<T> optional) {
+        return writeOptional(optional, (buffer, t) -> t.write(buffer));
+    }
+
+    public <T extends AbstractEncoder<Self>> Self writeObject(T object) {
         return writeObject(object, (buffer, t) -> t.write(buffer));
     }
 
-    public <T extends Decoder> T readObject(Supplier<T> factory) {
+    public <T extends AbstractDecoder<Self>> T readObject(Supplier<T> factory) {
         return readObject(buffer -> {
             T obj = factory.get();
             obj.read(buffer);
@@ -382,7 +427,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
         });
     }
 
-    public <T> Self writeIterable(Iterable<T> iterable, int size, CallableEncoder<? super T> encoder) {
+    public <T> Self writeIterable(Iterable<T> iterable, int size, AbstractCallableEncoder<? super T, Self> encoder) {
         if (writeNullCheck(iterable)) return self();
         writeVarInt(size);
         for (T entry : iterable) {
@@ -392,22 +437,22 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
     }
 
     @SafeVarargs
-    public final <T> Self writeArray(CallableEncoder<? super T> encoder, T... array) {
+    public final <T> Self writeArray(AbstractCallableEncoder<? super T, Self> encoder, T... array) {
         if (writeNullCheck(array)) return self();
         writeVarInt(array.length);
         for (T entry : array) writeObject(entry, encoder);
         return self();
     }
 
-    public <T> Self writeCollection(Collection<T> collection, CallableEncoder<? super T> encoder) {
+    public <T> Self writeCollection(Collection<T> collection, AbstractCallableEncoder<? super T, Self> encoder) {
         return writeIterable(collection, collection.size(), encoder);
     }
 
-    public <T extends Encoder> Self writeCollection(Collection<T> collection) {
+    public <T extends AbstractEncoder<Self>> Self writeCollection(Collection<T> collection) {
         return writeCollection(collection, (buffer, t) -> t.write(buffer));
     }
 
-    public <T, C extends Collection<T>> C readCollection(CallableDecoder<? extends T> decoder, IntFunction<C> collectionFactory) {
+    public <T, C extends Collection<T>> C readCollection(AbstractCallableDecoder<? extends T, Self> decoder, IntFunction<C> collectionFactory) {
         if (!readPresence()) return null;
         final int size = readBoundedLength("collection", MAX_ARRAY_SIZE);
         final C collection = collectionFactory.apply(size);
@@ -415,11 +460,11 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
         return collection;
     }
 
-    public <T> List<T> readList(CallableDecoder<? extends T> decoder) {
+    public <T> List<T> readList(AbstractCallableDecoder<? extends T, Self> decoder) {
         return readCollection(decoder, ArrayList::new);
     }
 
-    public <T> T[] readArray(CallableDecoder<? extends T> decoder, IntFunction<T[]> arrayFactory) {
+    public <T> T[] readArray(AbstractCallableDecoder<? extends T, Self> decoder, IntFunction<T[]> arrayFactory) {
         if (!readPresence()) return null;
         int size = readBoundedLength("array", MAX_ARRAY_SIZE);
         T[] array = arrayFactory.apply(size);
@@ -429,11 +474,11 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
         return array;
     }
 
-    public <T extends Decoder> List<T> readCollection(Supplier<T> factory) {
+    public <T extends AbstractDecoder<Self>> List<T> readCollection(Supplier<T> factory) {
         return readList(buffer -> buffer.readObject(factory));
     }
 
-    public <K, V> Self writeMap(Map<K, V> map, CallableEncoder<Pair<K, V>> encoder) {
+    public <K, V> Self writeMap(Map<K, V> map, AbstractCallableEncoder<Pair<K, V>, Self> encoder) {
         if (writeNullCheck(map)) return self();
         writeVarInt(map.size());
         for (Map.Entry<K, V> entry : map.entrySet()) {
@@ -442,7 +487,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
         return self();
     }
 
-    public <K, V> Map<K, V> readMap(CallableDecoder<Pair<K, V>> decoder, IntFunction<Map<K, V>> mapFactory) {
+    public <K, V> Map<K, V> readMap(AbstractCallableDecoder<Pair<K, V>, Self> decoder, IntFunction<Map<K, V>> mapFactory) {
         if (!readPresence()) return null;
 
         int size = readBoundedLength("map", MAX_ARRAY_SIZE);
@@ -454,22 +499,22 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
         return map;
     }
 
-    public <K, V> Self writeMap(Map<K, V> map, CallableEncoder<? super K> kEncoder, CallableEncoder<? super V> vEncoder) {
+    public <K, V> Self writeMap(Map<K, V> map, AbstractCallableEncoder<? super K, Self> kEncoder, AbstractCallableEncoder<? super V, Self> vEncoder) {
         return writeMap(map, (buffer, data) -> {
             kEncoder.write(buffer, data.key());
             vEncoder.write(buffer, data.value());
         });
     }
 
-    public <K, V> Map<K, V> readMap(CallableDecoder<K> kDecoder, CallableDecoder<V> vDecoder, IntFunction<Map<K, V>> mapFactory) {
+    public <K, V> Map<K, V> readMap(AbstractCallableDecoder<K, Self> kDecoder, AbstractCallableDecoder<V, Self> vDecoder, IntFunction<Map<K, V>> mapFactory) {
         return readMap(buffer -> Pair.of(kDecoder.read(buffer), vDecoder.read(buffer)), mapFactory);
     }
 
-    public <K extends Enum<K>, V> Self writeEnumMap(EnumMap<K, V> map, CallableEncoder<? super V> vEncoder) {
+    public <K extends Enum<K>, V> Self writeEnumMap(EnumMap<K, V> map, AbstractCallableEncoder<? super V, Self> vEncoder) {
         return writeMap(map, AbstractBuffer::writeEnum, vEncoder);
     }
 
-    public <K extends Enum<K>, V> EnumMap<K, V> readEnumMap(Class<K> keyClass, CallableDecoder<V> vDecoder) {
+    public <K extends Enum<K>, V> EnumMap<K, V> readEnumMap(Class<K> keyClass, AbstractCallableDecoder<V, Self> vDecoder) {
         final Map<K, V> tmp = readMap(buffer -> buffer.readEnum(keyClass), vDecoder, HashMap::new);
         final EnumMap<K, V> map = new EnumMap<>(keyClass);
         if (!tmp.isEmpty()) map.putAll(tmp);
@@ -490,7 +535,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
         return bytes;
     }
 
-    protected abstract void getBytes(int index, byte[] bytes);
+    protected abstract void getBytes(int index, byte[] dst);
 
     public byte[] readAllBytes() {
         byte[] bytes = new byte[readableBytes()];
@@ -522,9 +567,9 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
 
     public abstract Self writeBytes(byte[] data, int offset, int length);
 
-    public Self wrapData(Encoder encoder) {
+    public Self wrapData(AbstractEncoder<Self> encoder) {
         byte[] bytes = readAllBytes();
-        encoder.write(this);
+        encoder.write(self());
         return writeBytes(bytes);
     }
 
@@ -539,10 +584,10 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
     public abstract Self slice();
 
     // Create a slice view from current readerIndex with specified length
-    public  abstract Self slice(int index, int length);
+    public abstract Self slice(int index, int length);
 
     // Retained slice for longer-lived sharing
-    public  abstract Self retainedSlice(int index, int length);
+    public abstract Self retainedSlice(int index, int length);
 
     public Self writePercentual(double percent, double scale) {
         return this.writeVarInt((int) (MathUtils.clamp(percent) * scale));
