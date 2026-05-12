@@ -1,5 +1,6 @@
 package dev.sweety.sql4j.impl.query.entity;
 
+import dev.sweety.sql4j.api.connection.SqlConnection;
 import dev.sweety.sql4j.api.exception.Sql4jQueryException;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
@@ -8,11 +9,15 @@ import dev.sweety.sql4j.api.query.BatchQuery;
 import dev.sweety.sql4j.impl.query.QueryCache;
 import org.jetbrains.annotations.Nullable;
 
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
 
 public final class InsertBatch<T> extends AbstractQuery<int[]> implements BatchQuery<T> {
@@ -20,12 +25,21 @@ public final class InsertBatch<T> extends AbstractQuery<int[]> implements BatchQ
     private final Table<T> table;
     private final Collection<T> instances;
     private final Metadata metadata;
+    /** 0 = no chunking; positive = split into chunks of this size. */
+    private final int chunkSize;
 
     private record Metadata(List<Column<?>> insertColumns, @Nullable Column<?> generatedColumn, String sql) {}
 
-    public InsertBatch(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, Collection<T> instances, QueryCache cache) {
+    public InsertBatch(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect,
+                       Collection<T> instances, QueryCache cache) {
+        this(table, dialect, instances, cache, 0);
+    }
+
+    public InsertBatch(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect,
+                       Collection<T> instances, QueryCache cache, int chunkSize) {
         this.table = Objects.requireNonNull(table, "table is null");
         this.instances = Objects.requireNonNull(instances, "instances is null");
+        this.chunkSize = chunkSize;
         Objects.requireNonNull(cache, "cache is null");
         Objects.requireNonNull(table.insertableColumns(), "table.insertableColumns() is null for " + table.name());
 
@@ -33,15 +47,13 @@ public final class InsertBatch<T> extends AbstractQuery<int[]> implements BatchQ
             throw new Sql4jQueryException("Cannot insert an empty batch");
         }
 
-        // Determine active columns based on the first instance.
-        // For batch operations, it is assumed that all instances share the same schema structure.
         T firstInstance = instances.iterator().next();
         List<Column<?>> allInsertable = table.insertableColumns().columns();
         List<Column<?>> activeColumns = new java.util.ArrayList<>();
         for (Column<?> c : allInsertable) {
             Object val = c.get(firstInstance);
             if (val == null && c.defaultValue() != null && !c.defaultValue().isEmpty()) {
-                continue; // Skip to let DB use default
+                continue;
             }
             activeColumns.add(c);
         }
@@ -61,19 +73,16 @@ public final class InsertBatch<T> extends AbstractQuery<int[]> implements BatchQ
         });
     }
 
-    @Override
-    protected String buildSql() {
-        return metadata.sql;
-    }
+    // ─── Standard (non-chunked) path ────────────────────────────────────────────
 
     @Override
-    public boolean returnGeneratedKeys() {
-        return false;
-    }
+    protected String buildSql() { return metadata.sql; }
+
+    @Override
+    public boolean returnGeneratedKeys() { return false; }
 
     @Override
     public void bind(PreparedStatement ps) throws SQLException {
-        // In Batch execution, binding is done per row and added to batch
         for (T instance : instances) {
             int i = 1;
             for (Column c : metadata.insertColumns) {
@@ -86,5 +95,55 @@ public final class InsertBatch<T> extends AbstractQuery<int[]> implements BatchQ
     @Override
     public int[] execute(PreparedStatement ps) throws SQLException {
         return ps.executeBatch();
+    }
+
+    // ─── Chunked execution path (overrides Query default) ───────────────────────
+
+    /**
+     * When {@code chunkSize > 0} and the batch is larger than one chunk, splits the
+     * collection into sub-lists and executes each sub-list as a separate batch on the
+     * same JDBC connection, avoiding oversized single batches.
+     */
+    @Override
+    public CompletableFuture<int[]> execute(final SqlConnection connection) {
+        if (chunkSize <= 0 || instances.size() <= chunkSize) {
+            return connection.executeAsync(this);
+        }
+        return CompletableFuture.supplyAsync(() -> {
+            List<int[]> parts = new ArrayList<>();
+            List<List<T>> chunks = partition(new ArrayList<>(instances), chunkSize);
+            try (Connection rawCon = connection.connection()) {
+                for (List<T> chunk : chunks) {
+                    InsertBatch<T> sub = new InsertBatch<>(table,
+                            connection.dialect(), chunk, new QueryCache(), 0);
+                    try (PreparedStatement ps = rawCon.prepareStatement(sub.buildSql())) {
+                        sub.bind(ps);
+                        parts.add(ps.executeBatch());
+                    }
+                }
+            } catch (SQLException e) {
+                throw new CompletionException(e);
+            }
+            return merge(parts);
+        }, connection.executor());
+    }
+
+    private static <E> List<List<E>> partition(List<E> list, int size) {
+        List<List<E>> result = new ArrayList<>();
+        for (int i = 0; i < list.size(); i += size) {
+            result.add(list.subList(i, Math.min(i + size, list.size())));
+        }
+        return result;
+    }
+
+    private static int[] merge(List<int[]> parts) {
+        int total = parts.stream().mapToInt(a -> a.length).sum();
+        int[] merged = new int[total];
+        int idx = 0;
+        for (int[] part : parts) {
+            System.arraycopy(part, 0, merged, idx, part.length);
+            idx += part.length;
+        }
+        return merged;
     }
 }

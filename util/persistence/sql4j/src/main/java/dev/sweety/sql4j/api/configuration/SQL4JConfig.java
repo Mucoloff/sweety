@@ -23,7 +23,14 @@ public record SQL4JConfig(
         boolean useHikari,
         HikariTuning hikariTuning,
         boolean cacheEnabled,
-        Executor executor
+        Executor executor,
+        /**
+         * Maximum number of rows per {@code executeBatch()} call.
+         * {@code 0} (default) means all rows are batched in a single call.
+         * Use a positive value (e.g. {@code 500}) to avoid oversized batches
+         * that can exhaust driver memory or exceed server packet limits.
+         */
+        int batchChunkSize
 ) {
 
     /**
@@ -62,7 +69,7 @@ public record SQL4JConfig(
      */
     @Override
     public String toString() {
-        return "SQL4JConfig[dialect=%s, jdbcUrl=%s, user=%s, password=%s, useHikari=%s, cache=%s, maxPoolSize=%d]"
+        return "SQL4JConfig[dialect=%s, jdbcUrl=%s, user=%s, password=%s, useHikari=%s, cache=%s, maxPoolSize=%d, batchChunkSize=%d]"
                 .formatted(
                         dialect,
                         jdbcUrl,
@@ -70,7 +77,8 @@ public record SQL4JConfig(
                         maskPassword(password),
                         useHikari,
                         cacheEnabled,
-                        hikariTuning != null ? hikariTuning.maxPoolSize() : -1
+                        hikariTuning != null ? hikariTuning.maxPoolSize() : -1,
+                        batchChunkSize
                 );
     }
 

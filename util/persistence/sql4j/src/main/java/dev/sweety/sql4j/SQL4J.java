@@ -80,6 +80,12 @@ public final class SQL4J {
          * When set, the individual pool/driver parameters are ignored in favour of this config.
          */
         OpenStep withHikariConfig(HikariConfig hikariConfig);
+        /**
+         * Split batch operations ({@code insertBatch}, {@code updateBatch}) into chunks of
+         * this size. {@code 0} (default) means all rows in a single {@code executeBatch()}
+         * call. A value of e.g. {@code 500} prevents oversized batches on MySQL/MariaDB.
+         */
+        OpenStep batchChunkSize(int size);
         /** Build and return the resolved {@link SQL4JConfig} without opening a connection. */
         SQL4JConfig build();
         /** Build the config and open a {@link Database} connection. */
@@ -128,6 +134,7 @@ public final class SQL4J {
         private Executor executor;
         private boolean useCache = true;
         private SQL4JConfig.HikariTuning hikariTuning = SQL4JConfig.HikariTuning.defaults();
+        private int batchChunkSize = 0;
 
         // --- DriverStep ---
 
@@ -196,6 +203,12 @@ public final class SQL4J {
         }
 
         @Override
+        public OpenStep batchChunkSize(int size) {
+            this.batchChunkSize = size;
+            return this;
+        }
+
+        @Override
         public SQL4JConfig build() {
             if (partialConfig == null) {
                 throw new Sql4jConnectionException(
@@ -209,7 +222,8 @@ public final class SQL4J {
                     rawHikariConfig == null,
                     hikariTuning,
                     useCache,
-                    executor
+                    executor,
+                    batchChunkSize
             );
         }
 
@@ -242,7 +256,8 @@ public final class SQL4J {
                     true,
                     SQL4JConfig.HikariTuning.defaults(),
                     true,
-                    null
+                    null,
+                    0
             );
         }
     }

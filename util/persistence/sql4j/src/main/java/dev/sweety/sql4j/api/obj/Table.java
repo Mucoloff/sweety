@@ -2,6 +2,7 @@ package dev.sweety.sql4j.api.obj;
 
 import dev.sweety.sql4j.api.exception.Sql4jMappingException;
 import dev.sweety.sql4j.api.obj.annotation.Default;
+import dev.sweety.sql4j.api.obj.annotation.FetchType;
 import dev.sweety.sql4j.api.obj.annotation.Index;
 import dev.sweety.sql4j.api.obj.annotation.ManyToMany;
 import dev.sweety.sql4j.api.obj.annotation.ManyToOne;
@@ -197,7 +198,8 @@ public class Table<T> {
                         this.foreignKeys.add(new ForeignKey(col, refTable, refPk, true, manyToOne.onDelete(), manyToOne.onUpdate()));
                         relations.add(new Relation(Relation.Type.MANY_TO_ONE, field, field.getType(), null, null, col));
                     } else if (oneToMany != null) {
-                        relations.add(new Relation(Relation.Type.ONE_TO_MANY, field, getGenericType(field), oneToMany.mappedBy(), null, null));
+                        relations.add(new Relation(Relation.Type.ONE_TO_MANY, field, getGenericType(field),
+                                oneToMany.mappedBy(), null, null, oneToMany.fetchType()));
                     } else if (manyToMany != null) {
                         Class<?> targetClass = getGenericType(field);
                         Table<?> targetTable = registry.get(targetClass);
@@ -206,7 +208,8 @@ public class Table<T> {
                                 : manyToMany.joinTable();
 
                         registry.registerJunctionTable(junctionTableName, this, targetTable);
-                        relations.add(new Relation(Relation.Type.MANY_TO_MANY, field, targetClass, null, junctionTableName, null));
+                        relations.add(new Relation(Relation.Type.MANY_TO_MANY, field, targetClass, null,
+                                junctionTableName, null, manyToMany.fetchType()));
                     } else {
                         // Check for explicit ForeignKey info on normal columns
                         Column.Info colInfo = field.getAnnotation(Column.Info.class);
@@ -338,8 +341,15 @@ public class Table<T> {
             Class<?> targetClass,
             String mappedBy,
             String joinTable,
-            Column<?> column // Only for MANY_TO_ONE
+            Column<?> column, // Only for MANY_TO_ONE
+            FetchType fetchType
     ) {
+        /** Backwards-compatible constructor defaulting to {@link FetchType#LAZY}. */
+        public Relation(Type type, Field field, Class<?> targetClass,
+                        String mappedBy, String joinTable, Column<?> column) {
+            this(type, field, targetClass, mappedBy, joinTable, column, FetchType.LAZY);
+        }
+
         public enum Type {
             MANY_TO_ONE, ONE_TO_MANY, MANY_TO_MANY
         }

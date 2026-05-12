@@ -21,7 +21,8 @@ class SQL4JConfigTest {
                 true,
                 SQL4JConfig.HikariTuning.defaults(),
                 true,
-                null
+                null,
+                0
         );
     }
 

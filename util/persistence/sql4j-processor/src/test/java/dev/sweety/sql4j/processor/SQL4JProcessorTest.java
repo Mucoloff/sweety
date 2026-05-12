@@ -224,4 +224,56 @@ public class SQL4JProcessorTest {
                 .contentsAsUtf8String()
                 .containsMatch("List\\.of\\(id\\)|List\\.of\\(.*id.*\\)");
     }
+
+    // ── B2-T6: @CacheEvict generates eviction logic ───────────────────────────
+
+    /**
+     * B2-T6 — A {@code @Query} method annotated with {@code @CacheEvict(scope=ALL_ENTITIES)}
+     * must generate a {@code withPostAction} call that invokes
+     * {@code entityCache.evictAll(table().clazz())}.
+     */
+    @Test
+    void cacheEvict_allEntities_generatesEvictAllCall() {
+        String entitySource =
+                "package com.example;\n" + IMPORTS +
+                "@Table.Info(name = \"orders\")\n" +
+                "public class OrderEntity {\n" +
+                "    @Column.Info(name = \"id\", primaryKey = true, autoIncrement = true)\n" +
+                "    private Integer id;\n" +
+                "    @Column.Info(name = \"status\")\n" +
+                "    private String status;\n" +
+                "}\n";
+
+        String repoSource =
+                "package com.example;\n" +
+                "import dev.sweety.sql4j.api.obj.Table;\n" +
+                "import dev.sweety.sql4j.api.obj.Column;\n" +
+                "import dev.sweety.sql4j.api.annotation.Sql4jRepository;\n" +
+                "import dev.sweety.sql4j.api.annotation.Query;\n" +
+                "import dev.sweety.sql4j.api.annotation.CacheEvict;\n" +
+                "import dev.sweety.sql4j.api.repository.Repository;\n" +
+                "import java.util.List;\n" +
+                "import java.util.concurrent.CompletableFuture;\n" +
+                "@Sql4jRepository(entity = OrderEntity.class)\n" +
+                "public interface OrderRepository extends Repository<OrderEntity> {\n" +
+                "    @Query(\"UPDATE orders SET status = 'cancelled' WHERE status = 'pending'\")\n" +
+                "    @CacheEvict\n" +
+                "    dev.sweety.sql4j.api.query.Query<List<OrderEntity>> cancelAllPending();\n" +
+                "}\n";
+
+        Compilation compilation = javac()
+                .withProcessors(new SQL4JProcessor())
+                .compile(
+                        JavaFileObjects.forSourceString("com.example.OrderEntity", entitySource),
+                        JavaFileObjects.forSourceString("com.example.OrderRepository", repoSource)
+                );
+
+        assertThat(compilation).succeeded();
+
+        // The generated impl must call withPostAction + evictAll
+        assertThat(compilation)
+                .generatedSourceFile("com.example.OrderRepositoryImpl")
+                .contentsAsUtf8String()
+                .containsMatch("withPostAction|evictAll");
+    }
 }

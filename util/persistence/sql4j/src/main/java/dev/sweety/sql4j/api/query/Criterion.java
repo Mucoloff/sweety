@@ -6,51 +6,123 @@ import java.util.List;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
+/**
+ * A composable SQL predicate used in {@code WHERE}, {@code HAVING}, and {@code DELETE WHERE}
+ * clauses.
+ *
+ * <p>Criteria are obtained from static factory methods on this interface
+ * (e.g. {@link #eq}, {@link #isNull}, {@link #like}) or from the per-column DSL
+ * generated on mirror classes ({@code UserTable.NAME.eq("Alice")}):
+ *
+ * <pre>{@code
+ * Criterion filter = UserTable.ROLE.eq("admin").and(UserTable.ACTIVE.eq(true));
+ * users.select().where(filter).execute(con).join();
+ * }</pre>
+ *
+ * <p>Every {@code Criterion} produces parameterised SQL via {@link #toSql} and
+ * binds its values via {@link #bind}. Compound criteria ({@link #and}, {@link #or},
+ * {@link #not}) delegate to their children recursively.
+ */
 public interface Criterion {
+
+    /**
+     * Renders this criterion's SQL fragment using the default (no-dialect) quoting.
+     * Prefer {@link #toSql(dev.sweety.sql4j.api.connection.dialect.Dialect)} when a dialect is available.
+     *
+     * @return the SQL predicate string with {@code ?} placeholders
+     */
     default String toSql() {
         return toSql(null);
     }
+
+    /**
+     * Renders this criterion's SQL fragment using dialect-specific identifier quoting.
+     *
+     * @param dialect the active SQL dialect (may be {@code null} to skip quoting)
+     * @return the SQL predicate string with {@code ?} placeholders
+     */
     String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect);
+
+    /**
+     * Binds this criterion's parameter values to the given {@link java.sql.PreparedStatement},
+     * starting at {@code startIdx} (1-based JDBC index).
+     *
+     * @param ps       the statement to bind to
+     * @param startIdx the 1-based index of the first {@code ?} placeholder for this criterion
+     * @throws java.sql.SQLException if binding fails
+     */
     void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException;
+
+    /**
+     * Returns the number of {@code ?} placeholders produced by {@link #toSql}.
+     *
+     * @return the parameter count (≥ 0)
+     */
     int countParameters();
 
+    /**
+     * Combines this criterion with {@code other} using {@code AND}.
+     *
+     * @param other the right-hand side criterion
+     * @return a new {@code Criterion} representing {@code (this AND other)}
+     */
     default Criterion and(Criterion other) {
         return and(this, other);
     }
 
+    /**
+     * Combines this criterion with {@code other} using {@code OR}.
+     *
+     * @param other the right-hand side criterion
+     * @return a new {@code Criterion} representing {@code (this OR other)}
+     */
     default Criterion or(Criterion other) {
         return or(this, other);
     }
 
+    /**
+     * Negates this criterion with {@code NOT}.
+     *
+     * @return a new {@code Criterion} representing {@code NOT (this)}
+     */
     default Criterion not() {
         return not(this);
     }
 
 
+    // ─── Comparison factories ────────────────────────────────────────────────────
+
+    /** Creates a {@code col = ?} criterion. */
     static Criterion eq(Column<?> col, Object value) {
         return new ComparisonCriterion(col, "=", value);
     }
 
+    /** Creates a {@code col <> ?} criterion. */
     static Criterion ne(Column<?> col, Object value) {
         return new ComparisonCriterion(col, "<>", value);
     }
 
+    /** Creates a {@code col > ?} criterion. */
     static Criterion gt(Column<?> col, Object value) {
         return new ComparisonCriterion(col, ">", value);
     }
 
+    /** Creates a {@code col >= ?} criterion. */
     static Criterion ge(Column<?> col, Object value) {
         return new ComparisonCriterion(col, ">=", value);
     }
 
+    /** Creates a {@code col < ?} criterion. */
     static Criterion lt(Column<?> col, Object value) {
         return new ComparisonCriterion(col, "<", value);
     }
 
+    /** Creates a {@code col <= ?} criterion. */
     static Criterion le(Column<?> col, Object value) {
         return new ComparisonCriterion(col, "<=", value);
     }
 
+    /** Creates a {@code col IS NULL} criterion (no parameters). */
     static Criterion isNull(Column<?> col) {
         return new Criterion() {
             @Override public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) { 
@@ -61,6 +133,7 @@ public interface Criterion {
         };
     }
 
+    /** Creates a {@code col IS NOT NULL} criterion (no parameters). */
     static Criterion isNotNull(Column<?> col) {
         return new Criterion() {
             @Override public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) { 
@@ -71,6 +144,7 @@ public interface Criterion {
         };
     }
 
+    /** Creates a {@code col BETWEEN ? AND ?} criterion. */
     static Criterion between(Column<?> col, Object min, Object max) {
         return new Criterion() {
             @Override public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) { 
@@ -84,10 +158,15 @@ public interface Criterion {
         };
     }
 
+    /** Creates a {@code col LIKE ?} criterion. Use {@code %} wildcards in {@code pattern}. */
     static Criterion like(Column<?> col, String pattern) {
         return new ComparisonCriterion(col, "LIKE", pattern);
     }
 
+    /**
+     * Creates a {@code col IN (?, ?, …)} criterion.
+     * The number of placeholders matches {@code values.size()}.
+     */
     static Criterion in(Column<?> col, java.util.Collection<?> values) {
         return new Criterion() {
             @Override public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) {
@@ -102,6 +181,14 @@ public interface Criterion {
         };
     }
 
+    /**
+     * Creates a raw SQL criterion with positional {@code ?} parameters.
+     * Use sparingly — prefer the typed factories above for type safety.
+     *
+     * @param sql    the SQL predicate string containing {@code ?} placeholders
+     * @param params values to bind, in order
+     * @return a raw {@code Criterion}
+     */
     static Criterion raw(String sql, Object... params) {
         return new Criterion() {
             @Override public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) { return sql; }
@@ -115,14 +202,34 @@ public interface Criterion {
         };
     }
 
+    // ─── Logical combinators ─────────────────────────────────────────────────────
+
+    /**
+     * Combines multiple criteria with {@code AND}.
+     *
+     * @param criteria two or more criteria to combine
+     * @return {@code (c1 AND c2 AND …)}
+     */
     static Criterion and(Criterion... criteria) {
         return new LogicalCriterion("AND", criteria);
     }
 
+    /**
+     * Combines multiple criteria with {@code OR}.
+     *
+     * @param criteria two or more criteria to combine
+     * @return {@code (c1 OR c2 OR …)}
+     */
     static Criterion or(Criterion... criteria) {
         return new LogicalCriterion("OR", criteria);
     }
 
+    /**
+     * Negates a criterion with {@code NOT}.
+     *
+     * @param criterion the criterion to negate
+     * @return {@code NOT (criterion)}
+     */
     static Criterion not(Criterion criterion) {
         return new Criterion() {
             @Override public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) { 

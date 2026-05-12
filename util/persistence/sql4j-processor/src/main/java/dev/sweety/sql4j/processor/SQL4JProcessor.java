@@ -35,6 +35,7 @@ public class SQL4JProcessor extends AbstractProcessor {
     private static final String MANY_TO_MANY = "dev.sweety.sql4j.api.obj.annotation.ManyToMany";
     private static final String SQL4J_REPOSITORY = "dev.sweety.sql4j.api.annotation.Sql4jRepository";
     private static final String QUERY_ANNOTATION = "dev.sweety.sql4j.api.annotation.Query";
+    private static final String CACHE_EVICT_ANNOTATION = "dev.sweety.sql4j.api.annotation.CacheEvict";
     
     private static final String TABLE_REGISTRY = "dev.sweety.sql4j.api.obj.table.TableRegistry";
     private static final String COLUMN = "dev.sweety.sql4j.api.obj.Column";
@@ -520,8 +521,6 @@ public class SQL4JProcessor extends AbstractProcessor {
                     String sql = getAnnotationValue(queryAnn, "value");
                     if (sql.startsWith("\"") && sql.endsWith("\"")) sql = sql.substring(1, sql.length() - 1);
 
-                    MethodSpec.Builder mb = MethodSpec.overriding(method);
-                    
                     // Build params list
                     StringBuilder paramsList = new StringBuilder("java.util.List.of(");
                     for (int i = 0; i < method.getParameters().size(); i++) {
@@ -531,10 +530,46 @@ public class SQL4JProcessor extends AbstractProcessor {
                     paramsList.append(")");
 
                     ClassName paramQuery = ClassName.get("dev.sweety.sql4j.api.query", "ParamQuery");
-                    
-                    mb.addStatement("return new $T<>($S, $L, (dev.sweety.sql4j.api.obj.Table) table())", 
-                            paramQuery, sql, paramsList.toString());
-                    
+
+                    // Check for @CacheEvict
+                    AnnotationMirror evictAnn = getAnnotation(method, CACHE_EVICT_ANNOTATION);
+                    MethodSpec.Builder mb = MethodSpec.overriding(method);
+
+                    if (evictAnn != null) {
+                        String scopeStr = getAnnotationValue(evictAnn, "scope");
+                        boolean byId = scopeStr != null && scopeStr.contains("BY_ID");
+
+                        if (byId) {
+                            // Find the id/pk parameter
+                            String idParam = method.getParameters().stream()
+                                    .map(p -> p.getSimpleName().toString())
+                                    .filter(n -> n.equals("id") || n.equals("pk") || n.endsWith("Id") || n.endsWith("PK"))
+                                    .findFirst()
+                                    .orElse(method.getParameters().isEmpty() ? null
+                                            : method.getParameters().get(0).getSimpleName().toString());
+
+                            if (idParam == null) {
+                                processingEnv.getMessager().printMessage(
+                                        javax.tools.Diagnostic.Kind.ERROR,
+                                        "@CacheEvict(scope=BY_ID) requires a parameter named 'id' or 'pk'",
+                                        method);
+                                continue;
+                            }
+                            mb.addStatement(
+                                    "return new $T<>($S, $L, (dev.sweety.sql4j.api.obj.Table) table())"
+                                    + ".withPostAction(__ -> entityCache.evict(table().clazz(), $L))",
+                                    paramQuery, sql, paramsList, idParam);
+                        } else {
+                            mb.addStatement(
+                                    "return new $T<>($S, $L, (dev.sweety.sql4j.api.obj.Table) table())"
+                                    + ".withPostAction(__ -> entityCache.evictAll(table().clazz()))",
+                                    paramQuery, sql, paramsList);
+                        }
+                    } else {
+                        mb.addStatement("return new $T<>($S, $L, (dev.sweety.sql4j.api.obj.Table) table())",
+                                paramQuery, sql, paramsList.toString());
+                    }
+
                     classBuilder.addMethod(mb.build());
                 }
             }

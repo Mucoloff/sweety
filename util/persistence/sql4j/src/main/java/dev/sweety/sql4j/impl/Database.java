@@ -35,6 +35,7 @@ public class Database implements AutoCloseable {
     private final TransactionManager transactionManager;
     private final EntityCache entityCache = new EntityCache();
     private final List<QueryInterceptor> interceptors = new ArrayList<>();
+    private int batchChunkSize = 0;
 
     public Database(final SqlConnection connection) {
         this.connection = Objects.requireNonNull(connection, "connection cannot be null");
@@ -53,6 +54,7 @@ public class Database implements AutoCloseable {
     public Database(final SQL4JConfig config) {
         this(buildConnection(config));
         entityCache.setEnabled(config.cacheEnabled());
+        this.batchChunkSize = config.batchChunkSize();
     }
 
     private static SqlConnection buildConnection(SQL4JConfig config) {
@@ -78,13 +80,13 @@ public class Database implements AutoCloseable {
 
     public <R extends Repository<E>, E> R createRepository(final Class<E> entityClass) {
         return getOrCreateRepository(entityClass,
-                clazz -> new BaseRepository<>(tableRegistry.get(clazz), dialect, queryCache, tableRegistry, entityCache));
+                clazz -> new BaseRepository<>(tableRegistry.get(clazz), dialect, queryCache, tableRegistry, entityCache, batchChunkSize));
     }
 
     public <R extends Repository<E>, E> R createRepository(final Class<E> entityClass, String customTableName) {
         //noinspection unchecked
         return (R) new BaseRepository<>(tableRegistry.getOrCreate(entityClass, customTableName),
-                dialect, queryCache, tableRegistry, entityCache);
+                dialect, queryCache, tableRegistry, entityCache, batchChunkSize);
     }
 
     public <R extends Repository<E>, E> R getCustomRepository(Class<R> repositoryInterface) {

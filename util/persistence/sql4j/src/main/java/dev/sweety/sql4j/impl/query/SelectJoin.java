@@ -231,25 +231,32 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
             private void populateRelation(Object source, Table.Relation rel, Table<?> targetTable, Object targetEntity, Object targetPk) {
                 try {
                     rel.field().setAccessible(true);
-                    if (rel.type() == Table.Relation.Type.ONE_TO_MANY || rel.type() == Table.Relation.Type.MANY_TO_MANY) {
-                        //noinspection unchecked
-                        Collection<Object> collection = (Collection<Object>) rel.field().get(source);
-                        if (collection == null) {
-                            collection = (rel.field().getType() == Set.class) ? new HashSet<>() : new ArrayList<>();
-                            rel.field().set(source, collection);
-                        }
-                        boolean exists = false;
-                        for (Object existing : collection) {
-                            if (Objects.equals(targetTable.primaryKeys().get(0).get(existing), targetPk)) {
-                                exists = true; break;
+                    switch (rel.type()) {
+                        case ONE_TO_MANY, MANY_TO_MANY -> {
+                            //noinspection unchecked
+                            Collection<Object> collection = (Collection<Object>) rel.field().get(source);
+                            if (collection == null) {
+                                collection = (rel.field().getType() == Set.class) ? new HashSet<>() : new ArrayList<>();
+                                rel.field().set(source, collection);
                             }
+                            boolean exists = false;
+                            for (Object existing : collection) {
+                                if (Objects.equals(targetTable.primaryKeys().get(0).get(existing), targetPk)) {
+                                    exists = true;
+                                    break;
+                                }
+                            }
+                            if (!exists) collection.add(targetEntity);
                         }
-                        if (!exists) collection.add(targetEntity);
-                    } else {
-                        if (rel.field().get(source) == null) rel.field().set(source, targetEntity);
+                        case MANY_TO_ONE -> {
+                            if (rel.field().get(source) == null) rel.field().set(source, targetEntity);
+                        }
                     }
-                } catch (Sql4jMappingException e) { throw e;
-                } catch (Exception e) { throw new Sql4jMappingException("Failed to populate relation field '" + rel.field().getName() + "'", e); }
+                } catch (Sql4jMappingException e) {
+                    throw e;
+                } catch (Exception e) {
+                    throw new Sql4jMappingException("Failed to populate relation field '" + rel.field().getName() + "'", e);
+                }
             }
         };
     }
@@ -307,12 +314,14 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
             if (!tablesList.contains(targetTable)) tablesList.add(targetTable);
             joinsList.add(new JoinInfo(sourceTable, targetTable, rel));
 
-            // ManyToOne -> source.fk == target.pk
-            if (rel.type() == Table.Relation.Type.MANY_TO_ONE) {
-                on(sourceTable.column(rel.column().name()), targetTable.primaryKeys().get(0));
-            } else if (rel.type() == Table.Relation.Type.ONE_TO_MANY) {
-                // OneToMany -> source.pk == target.column(rel.mappedBy())
-                on(sourceTable.primaryKeys().get(0), targetTable.column(rel.mappedBy()));
+            switch (rel.type()) {
+                case MANY_TO_ONE ->
+                    // source.fk == target.pk
+                    on(sourceTable.column(rel.column().name()), targetTable.primaryKeys().get(0));
+                case ONE_TO_MANY ->
+                    // source.pk == target.fk(mappedBy)
+                    on(sourceTable.primaryKeys().get(0), targetTable.column(rel.mappedBy()));
+                case MANY_TO_MANY -> { /* junction table ON clause handled separately */ }
             }
             return this;
         }

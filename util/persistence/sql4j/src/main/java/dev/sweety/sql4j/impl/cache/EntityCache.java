@@ -71,11 +71,15 @@ public final class EntityCache {
     private Cache<Object, Object> getCache(Class<?> clazz) {
         return caches.computeIfAbsent(clazz, k -> {
             Cacheable ann = k.getAnnotation(Cacheable.class);
-            int maxSize = (ann != null) ? ann.maxSize() : DEFAULT_MAX_SIZE;
-            
-            return Caffeine.newBuilder()
-                    .maximumSize(maxSize)
-                    .build();
+            int maxSize = (ann != null && ann.maxSize() > 0) ? ann.maxSize() : DEFAULT_MAX_SIZE;
+
+            Caffeine<Object, Object> builder = Caffeine.newBuilder().maximumSize(maxSize);
+
+            if (ann != null && ann.ttlSeconds() > 0) {
+                builder.expireAfterWrite(ann.ttlSeconds(), ann.ttlUnit());
+            }
+
+            return builder.build();
         });
     }
 

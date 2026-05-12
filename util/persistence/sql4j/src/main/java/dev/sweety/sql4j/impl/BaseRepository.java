@@ -13,6 +13,7 @@ import dev.sweety.sql4j.impl.query.QueryCache;
 import dev.sweety.sql4j.impl.query.entity.*;
 import dev.sweety.sql4j.impl.query.table.CreateTable;
 import dev.sweety.sql4j.impl.query.table.DropTable;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -28,15 +29,23 @@ public class BaseRepository<Entity> implements Repository<Entity> {
     private final Dialect dialect;
     private final QueryCache cache;
     private final TableRegistry registry;
-    private final dev.sweety.sql4j.impl.cache.EntityCache entityCache;
+    /** Accessible by generated {@code *RepositoryImpl} subclasses for {@code @CacheEvict}. */
+    protected final dev.sweety.sql4j.impl.cache.EntityCache entityCache;
+    private final int batchChunkSize;
 
-    public BaseRepository(Table<Entity> table, Dialect dialect, QueryCache cache, TableRegistry registry, 
-                      dev.sweety.sql4j.impl.cache.EntityCache entityCache) {
+    public BaseRepository(Table<Entity> table, Dialect dialect, QueryCache cache, TableRegistry registry,
+                          dev.sweety.sql4j.impl.cache.EntityCache entityCache) {
+        this(table, dialect, cache, registry, entityCache, 0);
+    }
+
+    public BaseRepository(Table<Entity> table, Dialect dialect, QueryCache cache, TableRegistry registry,
+                          dev.sweety.sql4j.impl.cache.EntityCache entityCache, int batchChunkSize) {
         this.table = Objects.requireNonNull(table, "table cannot be null");
         this.dialect = Objects.requireNonNull(dialect, "dialect cannot be null");
         this.cache = Objects.requireNonNull(cache, "cache cannot be null");
         this.registry = Objects.requireNonNull(registry, "registry cannot be null");
         this.entityCache = entityCache;
+        this.batchChunkSize = batchChunkSize;
     }
 
     public BaseRepository(Table<Entity> table, Dialect dialect, QueryCache cache, TableRegistry registry) {
@@ -51,13 +60,13 @@ public class BaseRepository<Entity> implements Repository<Entity> {
         this(new TableRegistry().get(entityClass), dev.sweety.sql4j.impl.connection.dialect.DialectType.SQLITE.dialect(), new QueryCache(), new TableRegistry(), null);
     }
 
-    public Table<Entity> table() {
+    public @NotNull Table<Entity> table() {
         return table;
     }
 
     // ─── Writes ────────────────────────────────────────────────────────────────
 
-    public InsertQuery<Entity> insert(Entity entity) {
+    public @NotNull InsertQuery<Entity> insert(@NotNull Entity entity) {
         InsertQuery<Entity> query = cache.getQuery("insertPrototype:" + table.name(),
                 _ -> new InsertEntity<>(table, dialect, entity, cache)).copy(entity);
         if (entityCache == null || !entityCache.isCacheable(table.clazz())) return query;
@@ -68,17 +77,17 @@ public class BaseRepository<Entity> implements Repository<Entity> {
         });
     }
 
-    public BatchQuery<Entity> insertBatch(Collection<Entity> entities) {
-        return new InsertBatch<>(table, dialect, entities, cache);
+    public @NotNull BatchQuery<Entity> insertBatch(@NotNull Collection<Entity> entities) {
+        return new InsertBatch<>(table, dialect, entities, cache, batchChunkSize);
     }
 
-    public UpsertQuery<Entity> upsert(Entity entity) {
+    public @NotNull UpsertQuery<Entity> upsert(@NotNull Entity entity) {
         return cache.getQuery("upsertPrototype:" + table.name(),
                 _ -> new
                         UpsertEntity<>(table, dialect, entity, cache)).copy(entity);
     }
 
-    public UpdateQuery<Entity> update(Entity entity) {
+    public @NotNull UpdateQuery<Entity> update(@NotNull Entity entity) {
         UpdateQuery<Entity> query = cache.getQuery("updatePrototype:" + table.name(),
                 _ -> new UpdateEntity<>(table, dialect, entity, cache)).copy(entity);
         if (entityCache == null || !entityCache.isCacheable(table.clazz())) return query;
@@ -89,12 +98,12 @@ public class BaseRepository<Entity> implements Repository<Entity> {
         });
     }
 
-    public BatchQuery<Entity> updateBatch(Collection<Entity> entities) {
-        return new UpdateBatch<>(table, dialect, entities, cache);
+    public @NotNull BatchQuery<Entity> updateBatch(@NotNull Collection<Entity> entities) {
+        return new UpdateBatch<>(table, dialect, entities, cache, batchChunkSize);
     }
 
     @SuppressWarnings("unchecked")
-    public DeleteQuery<Entity> delete(Entity entity) {
+    public @NotNull DeleteQuery<Entity> delete(@NotNull Entity entity) {
         Entity[] array = (Entity[]) java.lang.reflect.Array.newInstance(table.clazz(), 1);
         array[0] = entity;
         return delete(array);
@@ -118,7 +127,7 @@ public class BaseRepository<Entity> implements Repository<Entity> {
         });
     }
 
-    public ConditionalDeleteQuery<Entity> deleteWhere() {
+    public @NotNull ConditionalDeleteQuery<Entity> deleteWhere() {
         return new DeleteWhere<>(table, dialect, entityCache);
     }
 
@@ -156,15 +165,15 @@ public class BaseRepository<Entity> implements Repository<Entity> {
         return query;
     }
 
-    public ConditionalDeleteQuery<Entity> deleteWhere(Criterion criterion) {
+    public @NotNull ConditionalDeleteQuery<Entity> deleteWhere(@NotNull Criterion criterion) {
         return deleteWhere().where(criterion);
     }
 
-    public ConditionalUpdateQuery<Entity> updateWhere() {
+    public @NotNull ConditionalUpdateQuery<Entity> updateWhere() {
         return new UpdateWhere<>(table, dialect, entityCache);
     }
 
-    public ConditionalUpdateQuery<Entity> updateWhere(Criterion criterion) {
+    public @NotNull ConditionalUpdateQuery<Entity> updateWhere(@NotNull Criterion criterion) {
         return updateWhere().where(criterion);
     }
 
@@ -310,7 +319,7 @@ public class BaseRepository<Entity> implements Repository<Entity> {
         return new CreateTable(this.table, dialect, ifNotExists);
     }
 
-    public Query<Void> createTable() {
+    public @NotNull Query<Void> createTable() {
         return create(true);
     }
 
@@ -350,7 +359,7 @@ public class BaseRepository<Entity> implements Repository<Entity> {
         }
     }
 
-    public Query<Void> dropTable() {
+    public @NotNull Query<Void> dropTable() {
         return new DropTable(this.table);
     }
 }

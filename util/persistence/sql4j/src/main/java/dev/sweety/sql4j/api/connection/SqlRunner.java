@@ -30,18 +30,54 @@ public final class SqlRunner {
         logger = newLogger;
     }
 
+    /**
+     * Sets the slow-query warning threshold.
+     * Any query that takes longer than {@code threshold} milliseconds emits a
+     * {@code [WARNING] SLOW QUERY DETECTED} log message via the current {@link SqlLogger}.
+     * Default is {@code 500 ms}.
+     *
+     * @param threshold threshold in milliseconds; {@code 0} disables slow-query warnings
+     */
     public static void setSlowQueryThresholdMs(long threshold) {
         slowQueryThresholdMs = threshold;
     }
 
+    /**
+     * Returns the currently active global {@link SqlLogger}.
+     *
+     * @return the non-null logger (may be {@link SqlLogger#nop()} if logging is disabled)
+     */
     public static SqlLogger getLogger() {
         return logger;
     }
 
+    /**
+     * Executes a {@link Query} synchronously on the given JDBC connection without interceptors.
+     *
+     * @param <T>   the result type
+     * @param con   an open JDBC connection (not closed by this method)
+     * @param query the query to execute
+     * @return the typed result
+     * @throws SQLException if SQL execution or parameter binding fails
+     */
     public static <T> T execute(Connection con, Query<T> query) throws SQLException {
         return execute(con, query, java.util.Collections.emptyList());
     }
 
+    /**
+     * Executes a {@link Query} synchronously on the given JDBC connection,
+     * notifying all registered {@link QueryInterceptor interceptors} before and after execution.
+     *
+     * <p>The JDBC {@link java.sql.PreparedStatement} is closed in a {@code try-with-resources}
+     * block. The {@code con} connection is <strong>not</strong> closed by this method.
+     *
+     * @param <T>          the result type
+     * @param con          an open JDBC connection
+     * @param query        the query to execute
+     * @param interceptors interceptors to notify (may be empty)
+     * @return the typed result
+     * @throws SQLException if SQL preparation, binding, or execution fails
+     */
     public static <T> T execute(Connection con, Query<T> query, List<QueryInterceptor> interceptors) throws SQLException {
         final String sql = query.sql();
 
