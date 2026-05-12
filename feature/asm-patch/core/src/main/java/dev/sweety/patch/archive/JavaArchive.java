@@ -1,5 +1,6 @@
 package dev.sweety.patch.archive;
 
+import dev.sweety.patch.exception.PatchException;
 import dev.sweety.patch.bytecode.ClassNormalizer;
 import dev.sweety.patch.diff.PatchFilter;
 
@@ -34,7 +35,7 @@ public class JarArchive implements Archive {
     public Map<String, byte[]> entries() {
         Map<String, byte[]> entries = new TreeMap<>();
 
-        if (!Files.exists(path)) throw new RuntimeException("Archive file does not exist: " + path.toAbsolutePath());
+        if (!Files.exists(path)) throw new PatchException("Archive file does not exist: " + path.toAbsolutePath());
 
         try (JarFile jar = new JarFile(path.toFile())) {
             Enumeration<JarEntry> jarEntries = jar.entries();
@@ -57,7 +58,7 @@ public class JarArchive implements Archive {
                 }
             }
         } catch (IOException e) {
-            throw new RuntimeException("Failed to read JAR archive: " + path.toAbsolutePath(), e);
+            throw new PatchException("Failed to read JAR archive: " + path.toAbsolutePath(), e);
         }
 
         return entries;
