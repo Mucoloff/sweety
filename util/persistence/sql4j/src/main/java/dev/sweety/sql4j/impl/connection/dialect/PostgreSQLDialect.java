@@ -3,7 +3,12 @@ package dev.sweety.sql4j.impl.connection.dialect;
 import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.obj.ForeignKey;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 class PostgreSQLDialect implements Dialect {
 
@@ -32,16 +37,16 @@ class PostgreSQLDialect implements Dialect {
         if (type == byte[].class)
             return "BYTEA";
 
-        if (type == java.util.UUID.class)
+        if (type == UUID.class)
             return "UUID";
 
-        if (type == java.time.LocalDate.class)
+        if (type == LocalDate.class)
             return "DATE";
 
-        if (type == java.time.LocalDateTime.class)
+        if (type == LocalDateTime.class)
             return "TIMESTAMP";
 
-        if (type == java.math.BigDecimal.class)
+        if (type == BigDecimal.class)
             return "DECIMAL";
 
         if (type.isEnum())
@@ -70,9 +75,9 @@ class PostgreSQLDialect implements Dialect {
 
     @Override
     public String upsertSyntax(String table, List<String> insertCols, List<String> updateCols, List<String> pkCols) {
-        String cols = insertCols.stream().map(this::escape).collect(java.util.stream.Collectors.joining(", "));
-        String placeholders = insertCols.stream().map(c -> "?").collect(java.util.stream.Collectors.joining(", "));
-        String pks = pkCols.stream().map(this::escape).collect(java.util.stream.Collectors.joining(", "));
+        String cols = insertCols.stream().map(this::escape).collect(Collectors.joining(", "));
+        String placeholders = insertCols.stream().map(c -> "?").collect(Collectors.joining(", "));
+        String pks = pkCols.stream().map(this::escape).collect(Collectors.joining(", "));
         
         if (updateCols.isEmpty()) {
             return "INSERT INTO " + escape(table) + " (" + cols + ") VALUES (" + placeholders + ") ON CONFLICT (" + pks + ") DO NOTHING";
@@ -80,7 +85,7 @@ class PostgreSQLDialect implements Dialect {
 
         String updates = updateCols.stream()
                 .map(c -> escape(c) + " = EXCLUDED." + escape(c))
-                .collect(java.util.stream.Collectors.joining(", "));
+                .collect(Collectors.joining(", "));
         
         return "INSERT INTO " + escape(table) + " (" + cols + ") VALUES (" + placeholders + ") ON CONFLICT (" + pks + ") DO UPDATE SET " + updates;
     }

@@ -12,11 +12,15 @@ import dev.sweety.sql4j.api.query.Criterion;
 import dev.sweety.sql4j.api.query.JoinBuilder;
 import dev.sweety.sql4j.api.query.Query;
 
+import dev.sweety.sql4j.api.connection.SqlConnection;
+
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public final class SelectJoin extends AbstractQuery<List<Row>> {
 
@@ -104,7 +108,7 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
         if (groupByColumns != null && !groupByColumns.isEmpty()) {
             sb.append(" GROUP BY ").append(groupByColumns.stream()
                 .map(c -> dialect.escape(c.table().name()) + "." + dialect.escape(c.name()))
-                .collect(java.util.stream.Collectors.joining(", ")));
+                .collect(Collectors.joining(", ")));
         }
 
         if (havingCriterion != null) {
@@ -155,7 +159,7 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
         return new SelectJoin(this, this.limit, this.offset, column, ascending);
     }
 
-    public java.util.concurrent.CompletableFuture<List<Row>> executeAggregate(dev.sweety.sql4j.api.connection.SqlConnection con) {
+    public CompletableFuture<List<Row>> executeAggregate(SqlConnection con) {
         return con.executeAsync(this);
     }
 

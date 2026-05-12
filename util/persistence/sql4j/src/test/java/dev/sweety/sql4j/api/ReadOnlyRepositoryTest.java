@@ -5,6 +5,8 @@ import dev.sweety.sql4j.api.repository.Repository;
 import dev.sweety.sql4j.impl.BaseRepository;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Method;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -37,8 +39,8 @@ class ReadOnlyRepositoryTest {
      */
     @Test
     void readOnlyRepository_hasNoMutatingMethods() {
-        java.lang.reflect.Method[] methods = ReadOnlyRepository.class.getDeclaredMethods();
-        for (java.lang.reflect.Method m : methods) {
+        Method[] methods = ReadOnlyRepository.class.getDeclaredMethods();
+        for (Method m : methods) {
             String name = m.getName();
             assertFalse(name.startsWith("insert"), "ReadOnlyRepository must not expose " + name);
             assertFalse(name.startsWith("update"), "ReadOnlyRepository must not expose " + name);

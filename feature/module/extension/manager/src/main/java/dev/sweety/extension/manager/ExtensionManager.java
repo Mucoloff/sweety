@@ -13,12 +13,14 @@ import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.StructuredTaskScope;
 
 public class ExtensionManager<T extends Extension> {
 
     protected final Path rootDir;
-    private final Map<String, T> extensions = new java.util.concurrent.ConcurrentHashMap<>();
-    private final Map<T, ExtensionInfo> infos = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, T> extensions = new ConcurrentHashMap<>();
+    private final Map<T, ExtensionInfo> infos = new ConcurrentHashMap<>();
     private final SimpleLogger logger = new SimpleLogger(ExtensionManager.class);
     private final Class<T> extensionClass;
     private final String extensionName;
@@ -81,7 +83,7 @@ public class ExtensionManager<T extends Extension> {
         if (!Files.isDirectory(rootDir)) return;
 
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(rootDir, "*.jar")) {
-            try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
+            try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
                 for (Path jarFile : stream) {
                     scope.fork(() -> loadExtension(jarFile));
                 }

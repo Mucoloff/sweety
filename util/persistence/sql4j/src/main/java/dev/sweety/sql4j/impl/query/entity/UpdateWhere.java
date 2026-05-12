@@ -1,11 +1,14 @@
 package dev.sweety.sql4j.impl.query.entity;
 
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.exception.Sql4jQueryException;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
 import dev.sweety.sql4j.api.query.Criterion;
 import dev.sweety.sql4j.api.query.ConditionalUpdateQuery;
+
+import dev.sweety.sql4j.impl.cache.EntityCache;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -20,14 +23,14 @@ public final class UpdateWhere<T> extends AbstractQuery<Integer> implements Cond
     private final Table<T> table;
     private final Map<Column<?>, Object> values;
     private final Criterion criterion;
-    private final dev.sweety.sql4j.api.connection.dialect.Dialect dialect;
-    private final dev.sweety.sql4j.impl.cache.EntityCache entityCache;
+    private final Dialect dialect;
+    private final EntityCache entityCache;
 
-    public UpdateWhere(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, dev.sweety.sql4j.impl.cache.EntityCache entityCache) {
+    public UpdateWhere(Table<T> table, Dialect dialect, EntityCache entityCache) {
         this(table, dialect, Collections.emptyMap(), null, entityCache);
     }
 
-    private UpdateWhere(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, Map<Column<?>, Object> values, Criterion criterion, dev.sweety.sql4j.impl.cache.EntityCache entityCache) {
+    private UpdateWhere(Table<T> table, Dialect dialect, Map<Column<?>, Object> values, Criterion criterion, EntityCache entityCache) {
         this.table = Objects.requireNonNull(table, "table cannot be null");
         this.dialect = Objects.requireNonNull(dialect, "dialect is null");
         this.values = new LinkedHashMap<>(values);

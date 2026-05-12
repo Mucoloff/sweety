@@ -2,7 +2,9 @@ package dev.sweety.sql4j.impl.connection.dialect;
 
 import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.obj.ForeignKey;
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 class MySqlDialect implements Dialect {
@@ -20,8 +22,8 @@ class MySqlDialect implements Dialect {
         if (type == float.class || type == Float.class) return "FLOAT";
         if (type == double.class || type == Double.class) return "DOUBLE";
         if (type == byte[].class) return "BLOB";
-        if (type == java.util.UUID.class) return "VARCHAR(36)";
-        if (type == java.math.BigDecimal.class) return "DECIMAL(19,4)";
+        if (type == UUID.class) return "VARCHAR(36)";
+        if (type == BigDecimal.class) return "DECIMAL(19,4)";
         return "VARCHAR(255)";
     }
 

@@ -14,6 +14,7 @@ import org.jetbrains.annotations.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Locale;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -95,7 +96,7 @@ public final class UpsertEntity<T> extends AbstractQuery<MutationResult<T>> impl
     private static boolean isUpsertSqlIncludesPk(String upsertSql, List<String> pkColNames) {
         if (pkColNames.isEmpty()) return false;
         // H2 MERGE prepends PK columns; check for their presence before the VALUES clause
-        String upper = upsertSql.toUpperCase(java.util.Locale.ROOT);
+        String upper = upsertSql.toUpperCase(Locale.ROOT);
         return upper.startsWith("MERGE");
     }
 

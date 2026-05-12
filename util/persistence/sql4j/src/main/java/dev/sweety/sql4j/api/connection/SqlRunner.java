@@ -7,6 +7,7 @@ import dev.sweety.sql4j.api.interceptor.QueryInterceptor;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -61,7 +62,7 @@ public final class SqlRunner {
      * @throws SQLException if SQL execution or parameter binding fails
      */
     public static <T> T execute(Connection con, Query<T> query) throws SQLException {
-        return execute(con, query, java.util.Collections.emptyList());
+        return execute(con, query, Collections.emptyList());
     }
 
     /**

@@ -11,6 +11,7 @@ import dev.sweety.sql4j.impl.query.QueryCache;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -79,7 +80,7 @@ public final class SelectRaw extends AbstractQuery<List<Row>> implements SelectR
 
     public SelectRaw select(Column<?>... columns) {
         SelectRaw copy = copy();
-        copy.selectedColumnNames = java.util.Arrays.stream(columns).map(Column::name).collect(Collectors.toSet());
+        copy.selectedColumnNames = Arrays.stream(columns).map(Column::name).collect(Collectors.toSet());
         return copy;
     }
 

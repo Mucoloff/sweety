@@ -11,6 +11,7 @@ import org.yaml.snakeyaml.representer.Representer;
 
 import java.io.Reader;
 import java.io.Writer;
+import java.io.IOException;
 import java.lang.reflect.Type;
 
 public final class YamlUtils {
@@ -73,7 +74,7 @@ public final class YamlUtils {
         } else {
             try {
                 appendable.append(write(config));
-            } catch (java.io.IOException e) {
+            } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }

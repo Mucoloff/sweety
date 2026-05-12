@@ -17,45 +17,46 @@ public interface LazyHolder<T> {
     }
 
     T get();
-}
 
-final class ThreadSafeLazyHolder<T> implements LazyHolder<T> {
-    private final Supplier<T> supplier;
-    private volatile T value;
 
-    ThreadSafeLazyHolder(Supplier<T> supplier) {
-        this.supplier = supplier;
-    }
+    final class ThreadSafeLazyHolder<T> implements LazyHolder<T> {
+        private final Supplier<T> supplier;
+        private volatile T value;
 
-    @Override
-    public T get() {
-        T result = value;
-        if (result == null) {
-            synchronized (this) {
-                result = value;
-                if (result == null) {
-                    value = result = supplier.get();
+        ThreadSafeLazyHolder(Supplier<T> supplier) {
+            this.supplier = supplier;
+        }
+
+        @Override
+        public T get() {
+            T result = value;
+            if (result == null) {
+                synchronized (this) {
+                    result = value;
+                    if (result == null) {
+                        value = result = supplier.get();
+                    }
                 }
             }
+            return result;
         }
-        return result;
-    }
-}
-
-final class SimpleLazyHolder<T> implements LazyHolder<T> {
-    private T value;
-    private Supplier<T> supplier;
-
-    SimpleLazyHolder(Supplier<T> supplier) {
-        this.supplier = supplier;
     }
 
-    @Override
-    public T get() {
-        if (supplier != null) {
-            value = supplier.get();
-            supplier = null;
+    final class SimpleLazyHolder<T> implements LazyHolder<T> {
+        private T value;
+        private Supplier<T> supplier;
+
+        SimpleLazyHolder(Supplier<T> supplier) {
+            this.supplier = supplier;
         }
-        return value;
+
+        @Override
+        public T get() {
+            if (supplier != null) {
+                value = supplier.get();
+                supplier = null;
+            }
+            return value;
+        }
     }
 }

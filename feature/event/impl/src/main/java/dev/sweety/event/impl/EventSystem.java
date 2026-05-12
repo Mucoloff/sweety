@@ -203,7 +203,7 @@ public class EventSystem implements IEventSystem {
 
         List<ExecutionStep<?>> plan = new ArrayList<>();
         Map<Integer, List<EventCallback<Event<?>>>> priorityGroups = callbacks.stream()
-                .collect(java.util.stream.Collectors.groupingBy(EventCallback::priority, TreeMap::new, java.util.stream.Collectors.toList()));
+                .collect(Collectors.groupingBy(EventCallback::priority, TreeMap::new, Collectors.toList()));
 
         boolean isMutableEvent = MutableEvent.class.isAssignableFrom(eventClass);
 

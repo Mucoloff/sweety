@@ -20,19 +20,15 @@ public class PingUtils {
 
         do {
             int currentByte = is.read();
-            if (currentByte == -1) {
-                throw new EOFException();
-            }
+            if (currentByte == -1) throw new EOFException();
 
             value |= (currentByte & SEGMENT_BITS) << position;
-            if ((currentByte & CONTINUE_BIT) == 0) {
-                return value;
-            }
+            if ((currentByte & CONTINUE_BIT) == 0) return value;
 
             position += 7;
         } while (position < 32);
 
-        throw new InvalidPacketDataException("VarInt is too big", (int[]) null);
+        throw new InvalidPacketDataException("VarInt is too big", null);
     }
 
     public static long gobbleVarLong(InputStream is) throws IOException {
@@ -41,19 +37,15 @@ public class PingUtils {
 
         do {
             int currentByte = is.read();
-            if (currentByte == -1) {
-                throw new EOFException();
-            }
+            if (currentByte == -1) throw new EOFException();
 
             value |= (long) (currentByte & SEGMENT_BITS) << position;
-            if ((currentByte & CONTINUE_BIT) == 0) {
-                return value;
-            }
+            if ((currentByte & CONTINUE_BIT) == 0) return value;
 
             position += 7;
         } while (position < 64);
 
-        throw new InvalidPacketDataException("VarLong is too big", (int[]) null);
+        throw new InvalidPacketDataException("VarLong is too big", null);
     }
 
     public static void writeVarIntDirectly(OutputStream os, int value) throws IOException {

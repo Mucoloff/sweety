@@ -1,6 +1,15 @@
 package dev.sweety.sql4j.impl.query.entity;
 
 import dev.sweety.math.pool.ObjectPool;
+import dev.sweety.sql4j.impl.cache.EntityCache;
+import dev.sweety.sql4j.impl.query.SelectJoin;
+
+import dev.sweety.sql4j.api.interceptor.QueryInterceptor;
+import dev.sweety.sql4j.api.connection.SqlConnection;
+import dev.sweety.sql4j.api.obj.Row;
+import dev.sweety.sql4j.api.query.Aggregate;
+import dev.sweety.sql4j.api.query.Page;
+import dev.sweety.sql4j.api.query.Query;
 import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.exception.Sql4jMappingException;
 import dev.sweety.sql4j.api.obj.Column;
@@ -11,20 +20,28 @@ import dev.sweety.sql4j.api.query.Criterion;
 import dev.sweety.sql4j.api.query.SelectQuery;
 import dev.sweety.sql4j.impl.query.QueryCache;
 
+import dev.sweety.sql4j.impl.query.util.ResultSetStream;
+
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public final class SelectEntity<T> extends AbstractQuery<List<T>> implements SelectQuery<T> {
-    private dev.sweety.sql4j.impl.cache.EntityCache entityCache;
+    private EntityCache entityCache;
 
     private final Table<T> table;
     private final QueryCache cache;
@@ -130,8 +147,8 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
 
     public SelectEntity<T> select(Column<?>... columns) {
         SelectEntity<T> copy = copy();
-        copy.projection = java.util.Arrays.asList(columns);
-        copy.selectedColumnNames = java.util.Arrays.stream(columns).map(Column::name).collect(Collectors.toSet());
+        copy.projection = Arrays.asList(columns);
+        copy.selectedColumnNames = Arrays.stream(columns).map(Column::name).collect(Collectors.toSet());
         return copy;
     }
 
@@ -172,7 +189,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
         return copy;
     }
 
-    public SelectEntity<T> withCache(dev.sweety.sql4j.impl.cache.EntityCache cache) {
+    public SelectEntity<T> withCache(EntityCache cache) {
         this.entityCache = cache;
         return this;
     }
@@ -180,7 +197,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
     @Override
     public SelectQuery<T> groupBy(Column<?>... columns) {
         SelectEntity<T> copy = copy();
-        copy.groupByColumns = java.util.Arrays.asList(columns);
+        copy.groupByColumns = Arrays.asList(columns);
         return copy;
     }
 
@@ -191,13 +208,13 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
         return copy;
     }
 
-    private transient dev.sweety.sql4j.impl.query.SelectJoin delegatedJoin;
-    private transient dev.sweety.sql4j.api.query.Query<List<T>> delegatedJoinQuery;
+    private transient SelectJoin delegatedJoin;
+    private transient Query<List<T>> delegatedJoinQuery;
 
-    private dev.sweety.sql4j.api.query.Query<List<T>> getDelegate() {
+    private Query<List<T>> getDelegate() {
         if (delegatedJoinQuery == null && fetchRelations != null && fetchRelations.length > 0) {
-            dev.sweety.sql4j.impl.query.SelectJoin.Builder builder =
-                    new dev.sweety.sql4j.impl.query.SelectJoin.Builder(this.registry)
+            SelectJoin.Builder builder =
+                    new SelectJoin.Builder(this.registry)
                             .dialect(dialect)
                             .includeDeleted(includeDeleted)
                             .join(table);
@@ -223,7 +240,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
         // O1: return memoized SQL when already built for this instance
         if (cachedSql != null) return cachedSql;
 
-        dev.sweety.sql4j.api.query.Query<List<T>> delegate = getDelegate();
+        Query<List<T>> delegate = getDelegate();
         if (delegate != null) return (cachedSql = delegate.sql());
 
         String colKey = selectedColumnNames == null || selectedColumnNames.isEmpty()
@@ -244,7 +261,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
             }
 
             String cols = selected.stream().map(c -> {
-                if (c instanceof dev.sweety.sql4j.api.query.Aggregate.AggregateColumn ac) {
+                if (c instanceof Aggregate.AggregateColumn ac) {
                     return ac.toSql(dialect) + " AS " + dialect.escape(ac.alias());
                 }
                 return c.toSql(dialect);
@@ -319,8 +336,8 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
     }
 
     @Override
-    public java.util.concurrent.CompletableFuture<dev.sweety.sql4j.api.query.Page<T>> executePage(
-            dev.sweety.sql4j.api.connection.SqlConnection con, int page, int size) {
+    public CompletableFuture<Page<T>> executePage(
+            SqlConnection con, int page, int size) {
         String countSql;
         getDelegate();
         if (delegatedJoin != null) {
@@ -329,31 +346,31 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
             countSql = "SELECT COUNT(*) FROM " + table.toSql(dialect) + buildWhereClause();
         }
 
-        return con.executeAsync(dev.sweety.sql4j.api.query.Query.generate(countSql, this::bind, ps -> {
-            try (java.sql.ResultSet rs = ps.executeQuery()) {
+        return con.executeAsync(Query.generate(countSql, this::bind, ps -> {
+            try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) return rs.getLong(1);
                 return 0L;
             }
         })).thenCompose(total -> this.limit(size).offset(page * size).execute(con)
                 .thenApply(content -> {
                     int totalPages = (int) Math.ceil((double) total / size);
-                    return new dev.sweety.sql4j.api.query.Page<>(content, total, totalPages, page, size);
+                    return new Page<>(content, total, totalPages, page, size);
                 }));
     }
 
     @Override
-    public java.util.concurrent.CompletableFuture<List<dev.sweety.sql4j.api.obj.Row>> executeAggregate(
-            dev.sweety.sql4j.api.connection.SqlConnection con) {
-        return con.executeAsync(dev.sweety.sql4j.api.query.Query.generate(this.sql(), this::bind, ps -> {
-            try (java.sql.ResultSet rs = ps.executeQuery()) {
-                return dev.sweety.sql4j.api.obj.Row.fromResultSetAll(rs);
+    public CompletableFuture<List<Row>> executeAggregate(
+            SqlConnection con) {
+        return con.executeAsync(Query.generate(this.sql(), this::bind, ps -> {
+            try (ResultSet rs = ps.executeQuery()) {
+                return Row.fromResultSetAll(rs);
             }
         }));
     }
 
     @Override
     public void bind(PreparedStatement ps) throws SQLException {
-        dev.sweety.sql4j.api.query.Query<List<T>> delegate = getDelegate();
+        Query<List<T>> delegate = getDelegate();
         if (delegate != null) {
             delegate.bind(ps);
             return;
@@ -373,8 +390,8 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
     }
 
     @Override
-    public java.util.concurrent.CompletableFuture<List<T>> execute(
-            dev.sweety.sql4j.api.connection.SqlConnection con) {
+    public CompletableFuture<List<T>> execute(
+            SqlConnection con) {
         if (entityCache != null && entityCache.isEnabled() && entityCache.isCacheable(table.clazz())) {
             boolean selectAll = selectedColumnNames == null || selectedColumnNames.isEmpty();
             boolean noJoin = fetchRelations == null || fetchRelations.length == 0;
@@ -385,8 +402,8 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
                 if (pkValue != null) {
                     T cached = entityCache.get(table.clazz(), pkValue);
                     if (cached != null) {
-                        return java.util.concurrent.CompletableFuture.completedFuture(
-                                java.util.Collections.singletonList(cached));
+                        return CompletableFuture.completedFuture(
+                                Collections.singletonList(cached));
                     }
                 }
             }
@@ -408,7 +425,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
 
     @Override
     public List<T> execute(PreparedStatement ps) throws SQLException {
-        dev.sweety.sql4j.api.query.Query<List<T>> delegate = getDelegate();
+        Query<List<T>> delegate = getDelegate();
         if (delegate != null) {
             return delegate.execute(ps);
         }
@@ -444,24 +461,24 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
     }
 
     @Override
-    public java.util.concurrent.CompletableFuture<java.util.stream.Stream<T>> executeStream(
-            dev.sweety.sql4j.api.connection.SqlConnection con) {
-        return java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+    public CompletableFuture<Stream<T>> executeStream(
+            SqlConnection con) {
+        return CompletableFuture.supplyAsync(() -> {
             try {
-                java.sql.Connection jdbcCon = con.connection();
+                Connection jdbcCon = con.connection();
                 String sql = this.sql();
 
-                for (dev.sweety.sql4j.api.interceptor.QueryInterceptor interceptor : con.interceptors()) {
+                for (QueryInterceptor interceptor : con.interceptors()) {
                     interceptor.preExecute(this, jdbcCon);
                 }
 
-                java.sql.PreparedStatement stmt = jdbcCon.prepareStatement(sql);
+                PreparedStatement stmt = jdbcCon.prepareStatement(sql);
                 this.bind(stmt);
-                java.sql.ResultSet rsStream = stmt.executeQuery();
+                ResultSet rsStream = stmt.executeQuery();
 
-                return dev.sweety.sql4j.impl.query.util.ResultSetStream.create(jdbcCon, stmt, rsStream, this::mapRow);
-            } catch (java.sql.SQLException e) {
-                throw new java.util.concurrent.CompletionException(e);
+                return ResultSetStream.create(jdbcCon, stmt, rsStream, this::mapRow);
+            } catch (SQLException e) {
+                throw new CompletionException(e);
             }
         }, con.executor());
     }

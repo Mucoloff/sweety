@@ -36,6 +36,9 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -58,7 +61,7 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
     protected final TransactionManager transactionManager = new TransactionManager(this);
     protected final PacketReorder reorder = new PacketReorder();
 
-    private final java.util.concurrent.ScheduledExecutorService healthCheckExecutor = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(ThreadUtil.factory("health-check"));
+    private final ScheduledExecutorService healthCheckExecutor = Executors.newSingleThreadScheduledExecutor(ThreadUtil.factory("health-check"));
 
     private final TriFunction<Packet, Integer, Long, byte[]> constructor;
 
@@ -68,7 +71,7 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
         this.backendPool = backendPool;
         this.constructor = (id, ts, data) -> packetRegistry.construct(id, ts, data, this.logger);
 
-        this.healthCheckExecutor.scheduleAtFixedRate(this::checkHealth, 30, 30, java.util.concurrent.TimeUnit.SECONDS);
+        this.healthCheckExecutor.scheduleAtFixedRate(this::checkHealth, 30, 30, TimeUnit.SECONDS);
 
         this.logger.push("<init>", AnsiColor.fromColor(new Color(148, 186, 76)))
                 .info("LoadBalancerServer started on " + host + ":" + port)

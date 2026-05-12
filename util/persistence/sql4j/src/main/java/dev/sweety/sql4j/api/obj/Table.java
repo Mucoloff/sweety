@@ -1,6 +1,7 @@
 package dev.sweety.sql4j.api.obj;
 
 import dev.sweety.sql4j.api.exception.Sql4jMappingException;
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.obj.annotation.Default;
 import dev.sweety.sql4j.api.obj.annotation.FetchType;
 import dev.sweety.sql4j.api.obj.annotation.Index;
@@ -18,9 +19,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -78,7 +81,7 @@ public class Table<T> {
     private TableAccessor<T> tryLoadAccessor(String className) {
         try {
             Class<?> accessorClass = Class.forName(className);
-            java.lang.reflect.Field instanceField = accessorClass.getField("INSTANCE");
+            Field instanceField = accessorClass.getField("INSTANCE");
             //noinspection unchecked
             return (TableAccessor<T>) instanceField.get(null);
         } catch (Exception e) {
@@ -93,7 +96,7 @@ public class Table<T> {
     public void addColumn(Column<?> col) {
         synchronized (this) {
             this.columnsList.add(col);
-            this.columnsMap.put(col.name().toLowerCase(java.util.Locale.ENGLISH), col);
+            this.columnsMap.put(col.name().toLowerCase(Locale.ENGLISH), col);
             if (col.isPrimaryKey()) this.primaryKeys.add(col);
             if (col.isSoftDelete()) this.softDeleteColumn = col;
         }
@@ -171,7 +174,7 @@ public class Table<T> {
                         }
 
                         this.columnsList.add(col);
-                        this.columnsMap.put(col.name().toLowerCase(java.util.Locale.ENGLISH), col);
+                        this.columnsMap.put(col.name().toLowerCase(Locale.ENGLISH), col);
                         if (col.isPrimaryKey()) this.primaryKeys.add(col);
                     }
                 }
@@ -193,7 +196,7 @@ public class Table<T> {
                         Column<?> col = new Column<>(this, colName, field, null, refPk.field());
                         
                         this.columnsList.add(col);
-                        this.columnsMap.put(col.name().toLowerCase(java.util.Locale.ENGLISH), col);
+                        this.columnsMap.put(col.name().toLowerCase(Locale.ENGLISH), col);
                         
                         this.foreignKeys.add(new ForeignKey(col, refTable, refPk, true, manyToOne.onDelete(), manyToOne.onUpdate()));
                         relations.add(new Relation(Relation.Type.MANY_TO_ONE, field, field.getType(), null, null, col));
@@ -214,7 +217,7 @@ public class Table<T> {
                         // Check for explicit ForeignKey info on normal columns
                         Column.Info colInfo = field.getAnnotation(Column.Info.class);
                         if (colInfo != null) {
-                            dev.sweety.sql4j.api.obj.ForeignKey.Info fkInfo = field.getAnnotation(dev.sweety.sql4j.api.obj.ForeignKey.Info.class);
+                            ForeignKey.Info fkInfo = field.getAnnotation(ForeignKey.Info.class);
                             if (fkInfo != null) {
                                 Table<?> refTable = registry.get(fkInfo.table());
                                 Column<?> refCol = refTable.column(fkInfo.column());
@@ -249,8 +252,8 @@ public class Table<T> {
     }
 
     private Class<?> getGenericType(Field field) {
-        if (java.util.Collection.class.isAssignableFrom(field.getType())) {
-            java.lang.reflect.ParameterizedType pt = (java.lang.reflect.ParameterizedType) field.getGenericType();
+        if (Collection.class.isAssignableFrom(field.getType())) {
+            ParameterizedType pt = (ParameterizedType) field.getGenericType();
             return (Class<?>) pt.getActualTypeArguments()[0];
         }
         return field.getType();
@@ -266,7 +269,7 @@ public class Table<T> {
         return name;
     }
 
-    public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) {
+    public String toSql(Dialect dialect) {
         return dialect.escape(name);
     }
 
@@ -278,7 +281,7 @@ public class Table<T> {
         Table<Object> table = new Table<>(Object.class, name);
         List<Column<?>> columns = columnFactories.stream().map(f -> f.apply(table)).collect(Collectors.toList());
         table.columnsList.addAll(columns);
-        for (Column<?> c : columns) table.columnsMap.put(c.name().toLowerCase(java.util.Locale.ENGLISH), c);
+        for (Column<?> c : columns) table.columnsMap.put(c.name().toLowerCase(Locale.ENGLISH), c);
         table.foreignKeys.addAll(foreignKeys);
         
         List<Column<?>> insertColumns = new ArrayList<>();

@@ -4,6 +4,7 @@ import dev.sweety.sql4j.api.configuration.DatabaseConfig;
 import dev.sweety.sql4j.api.configuration.SQL4JConfig;
 import dev.sweety.sql4j.api.connection.SqlConnection;
 import dev.sweety.sql4j.api.connection.dialect.Dialect;
+import dev.sweety.sql4j.api.annotation.Sql4jRepository;
 import dev.sweety.sql4j.api.exception.Sql4jMappingException;
 import dev.sweety.sql4j.api.interceptor.QueryInterceptor;
 import dev.sweety.sql4j.api.obj.table.TableRegistry;
@@ -11,12 +12,22 @@ import dev.sweety.sql4j.api.query.chain.QueryChain;
 import dev.sweety.sql4j.impl.connection.ConnectionType;
 import dev.sweety.sql4j.impl.connection.provider.HikariConnectionProvider;
 import dev.sweety.sql4j.impl.connection.provider.DriverManagerConnectionProvider;
+import dev.sweety.sql4j.api.obj.Table;
+
 import dev.sweety.sql4j.impl.query.QueryCache;
 import dev.sweety.sql4j.impl.cache.EntityCache;
+
+import dev.sweety.sql4j.api.connection.provider.ConnectionProvider;
+import dev.sweety.sql4j.impl.query.table.CreateTable;
 import dev.sweety.sql4j.impl.transaction.TransactionManager;
 
-import dev.sweety.sql4j.api.obj.Table;
+import dev.sweety.sql4j.api.query.AbstractQuery;
+
+import java.lang.reflect.Constructor;
 import java.util.*;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
@@ -27,7 +38,7 @@ import dev.sweety.sql4j.api.repository.Repository;
 
 public class Database implements AutoCloseable {
 
-    private final Map<Class<?>, dev.sweety.sql4j.api.repository.Repository<?>> repositories = new ConcurrentHashMap<>();
+    private final Map<Class<?>, Repository<?>> repositories = new ConcurrentHashMap<>();
     private final TableRegistry tableRegistry = TableRegistry.getDefault();
     private final QueryCache queryCache = new QueryCache();
     private final SqlConnection connection;
@@ -60,7 +71,7 @@ public class Database implements AutoCloseable {
     private static SqlConnection buildConnection(SQL4JConfig config) {
         Executor executor = config.executor() != null ? config.executor() : Executors.newCachedThreadPool();
         boolean ownsExecutor = config.executor() == null;
-        dev.sweety.sql4j.api.connection.provider.ConnectionProvider provider = config.useHikari()
+        ConnectionProvider provider = config.useHikari()
                 ? new HikariConnectionProvider(config)
                 : new DriverManagerConnectionProvider(config);
         return new SqlConnection(config.dialect(), provider, executor, ownsExecutor);
@@ -100,18 +111,18 @@ public class Database implements AutoCloseable {
             Class<?> implClass = Class.forName(implName);
             
             // Get the entity type from the Sql4jRepository annotation
-            dev.sweety.sql4j.api.annotation.Sql4jRepository ann = repositoryInterface.getAnnotation(dev.sweety.sql4j.api.annotation.Sql4jRepository.class);
+            Sql4jRepository ann = repositoryInterface.getAnnotation(Sql4jRepository.class);
             if (ann == null) throw new Sql4jMappingException("Interface " + repositoryInterface.getName() + " is not annotated with @Sql4jRepository");
             
             Class<?> entityClass = ann.entity();
             
             // Instantiate with standard dependencies
-            java.lang.reflect.Constructor<?> ctor = implClass.getConstructor(
-                dev.sweety.sql4j.api.obj.Table.class,
-                dev.sweety.sql4j.api.connection.dialect.Dialect.class,
-                dev.sweety.sql4j.impl.query.QueryCache.class,
-                dev.sweety.sql4j.api.obj.table.TableRegistry.class,
-                dev.sweety.sql4j.impl.cache.EntityCache.class
+            Constructor<?> ctor = implClass.getConstructor(
+                Table.class,
+                Dialect.class,
+                QueryCache.class,
+                TableRegistry.class,
+                EntityCache.class
             );
 
             //noinspection unchecked
@@ -143,13 +154,13 @@ public class Database implements AutoCloseable {
     }
 
     public void migrateAll() {
-        for (dev.sweety.sql4j.api.obj.Table<?> t : tableRegistry.allTables()) {
-            new dev.sweety.sql4j.impl.query.table.CreateTable(t, dialect, true).execute(connection).join();
-            for (String indexSql : dev.sweety.sql4j.impl.query.table.CreateTable.buildIndices(t, dialect, true)) {
-                connection.executeAsync(new dev.sweety.sql4j.api.query.AbstractQuery<Void>() {
+        for (Table<?> t : tableRegistry.allTables()) {
+            new CreateTable(t, dialect, true).execute(connection).join();
+            for (String indexSql : CreateTable.buildIndices(t, dialect, true)) {
+                connection.executeAsync(new AbstractQuery<Void>() {
                     @Override protected String buildSql() { return indexSql; }
-                    @Override public void bind(java.sql.PreparedStatement ps) {}
-                    @Override public Void execute(java.sql.PreparedStatement ps) throws java.sql.SQLException {
+                    @Override public void bind(PreparedStatement ps) {}
+                    @Override public Void execute(PreparedStatement ps) throws SQLException {
                         ps.execute();
                         return null;
                     }
@@ -206,7 +217,7 @@ public class Database implements AutoCloseable {
     }
 
     public List<QueryInterceptor> interceptors() {
-        return java.util.Collections.unmodifiableList(interceptors);
+        return Collections.unmodifiableList(interceptors);
     }
 
     public EntityCache entityCache() {

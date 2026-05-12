@@ -1,5 +1,6 @@
 package dev.sweety.sql4j.impl.query.entity;
 
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.connection.SqlConnection;
 import dev.sweety.sql4j.api.exception.Sql4jQueryException;
 import dev.sweety.sql4j.api.obj.Column;
@@ -30,12 +31,12 @@ public final class InsertBatch<T> extends AbstractQuery<int[]> implements BatchQ
 
     private record Metadata(List<Column<?>> insertColumns, @Nullable Column<?> generatedColumn, String sql) {}
 
-    public InsertBatch(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect,
+    public InsertBatch(Table<T> table, Dialect dialect,
                        Collection<T> instances, QueryCache cache) {
         this(table, dialect, instances, cache, 0);
     }
 
-    public InsertBatch(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect,
+    public InsertBatch(Table<T> table, Dialect dialect,
                        Collection<T> instances, QueryCache cache, int chunkSize) {
         this.table = Objects.requireNonNull(table, "table is null");
         this.instances = Objects.requireNonNull(instances, "instances is null");

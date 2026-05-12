@@ -1,5 +1,7 @@
 package dev.sweety.netty.messaging.impl;
 
+import dev.sweety.math.function.TriConsumer;
+import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
@@ -10,8 +12,8 @@ public class GenericClient extends SimpleClient {
     private BiConsumer<ChannelHandlerContext, ChannelPromise> joinHandler;
     private BiConsumer<ChannelHandlerContext, ChannelPromise> quitHandler;
     private BiConsumer<ChannelHandlerContext, Throwable> exceptionHandler;
-    private BiConsumer<ChannelHandlerContext, dev.sweety.netty.packet.model.Packet> packetReceiveHandler;
-    private dev.sweety.math.function.TriConsumer<ChannelHandlerContext, dev.sweety.netty.packet.model.Packet, Boolean> packetSendHandler;
+    private BiConsumer<ChannelHandlerContext, Packet> packetReceiveHandler;
+    private TriConsumer<ChannelHandlerContext, Packet, Boolean> packetSendHandler;
 
     public GenericClient(String host, int port, IPacketRegistry packetRegistry) {
         this(host, port, packetRegistry, -1);
@@ -21,11 +23,11 @@ public class GenericClient extends SimpleClient {
         super(host, port, packetRegistry, localPort);
     }
 
-    public void setPacketReceiveHandler(BiConsumer<ChannelHandlerContext, dev.sweety.netty.packet.model.Packet> packetReceiveHandler) {
+    public void setPacketReceiveHandler(BiConsumer<ChannelHandlerContext, Packet> packetReceiveHandler) {
         this.packetReceiveHandler = packetReceiveHandler;
     }
 
-    public void setPacketSendHandler(dev.sweety.math.function.TriConsumer<ChannelHandlerContext, dev.sweety.netty.packet.model.Packet, Boolean> packetSendHandler) {
+    public void setPacketSendHandler(TriConsumer<ChannelHandlerContext, Packet, Boolean> packetSendHandler) {
         this.packetSendHandler = packetSendHandler;
     }
 
@@ -54,12 +56,12 @@ public class GenericClient extends SimpleClient {
     }
 
     @Override
-    public void onPacketReceive(ChannelHandlerContext ctx, dev.sweety.netty.packet.model.Packet packet) {
+    public void onPacketReceive(ChannelHandlerContext ctx, Packet packet) {
         if (packetReceiveHandler != null) packetReceiveHandler.accept(ctx, packet);
     }
 
     @Override
-    public void onPacketSend(ChannelHandlerContext ctx, dev.sweety.netty.packet.model.Packet packet, boolean pre) {
+    public void onPacketSend(ChannelHandlerContext ctx, Packet packet, boolean pre) {
         if (packetSendHandler != null) packetSendHandler.accept(ctx, packet, pre);
         else super.onPacketSend(ctx, packet, pre);
     }

@@ -5,6 +5,7 @@ import dev.sweety.sql4j.api.connection.SqlRunner;
 import dev.sweety.sql4j.api.query.Page;
 import dev.sweety.sql4j.api.util.SqlLogger;
 import dev.sweety.sql4j.impl.Database;
+import dev.sweety.sql4j.impl.connection.ConnectionType;
 import dev.sweety.sql4j.api.repository.Repository;
 import org.junit.jupiter.api.*;
 
@@ -12,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -27,7 +29,7 @@ public class SQL4JPhase3Test {
         SqlRunner.setLogger(SqlLogger.stdout());
         Files.deleteIfExists(Path.of("test_phase3.db"));
         String dbName = "test_phase3.db";
-        con = dev.sweety.sql4j.impl.connection.ConnectionType.SQLITE.create(java.util.concurrent.Executors.newSingleThreadExecutor(), dbName);
+        con = ConnectionType.SQLITE.create(Executors.newSingleThreadExecutor(), dbName);
         db = new Database(con);
         users = db.createRepository(User.class);
         db.migrateAll();

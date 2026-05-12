@@ -1,7 +1,9 @@
 package dev.sweety.netty;
 
+import dev.sweety.math.function.TriConsumer;
 import dev.sweety.netty.messaging.impl.GenericClient;
 import dev.sweety.netty.messaging.impl.GenericServer;
+import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
 import dev.sweety.netty.packet.registry.SimplePacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
@@ -26,8 +28,8 @@ public class Netty {
         private BiConsumer<ChannelHandlerContext, ChannelPromise> joinHandler;
         private BiConsumer<ChannelHandlerContext, ChannelPromise> quitHandler;
         private BiConsumer<ChannelHandlerContext, Throwable> exceptionHandler;
-        private BiConsumer<ChannelHandlerContext, dev.sweety.netty.packet.model.Packet> packetReceiveHandler;
-        private dev.sweety.math.function.TriConsumer<ChannelHandlerContext, dev.sweety.netty.packet.model.Packet, Boolean> packetSendHandler;
+        private BiConsumer<ChannelHandlerContext, Packet> packetReceiveHandler;
+        private TriConsumer<ChannelHandlerContext, Packet, Boolean> packetSendHandler;
 
         public ServerBuilder host(String host) {
             this.host = host;
@@ -59,12 +61,12 @@ public class Netty {
             return this;
         }
 
-        public ServerBuilder onPacketReceive(BiConsumer<ChannelHandlerContext, dev.sweety.netty.packet.model.Packet> packetReceiveHandler) {
+        public ServerBuilder onPacketReceive(BiConsumer<ChannelHandlerContext, Packet> packetReceiveHandler) {
             this.packetReceiveHandler = packetReceiveHandler;
             return this;
         }
 
-        public ServerBuilder onPacketSend(dev.sweety.math.function.TriConsumer<ChannelHandlerContext, dev.sweety.netty.packet.model.Packet, Boolean> packetSendHandler) {
+        public ServerBuilder onPacketSend(TriConsumer<ChannelHandlerContext, Packet, Boolean> packetSendHandler) {
             this.packetSendHandler = packetSendHandler;
             return this;
         }
@@ -88,8 +90,8 @@ public class Netty {
         private BiConsumer<ChannelHandlerContext, ChannelPromise> joinHandler;
         private BiConsumer<ChannelHandlerContext, ChannelPromise> quitHandler;
         private BiConsumer<ChannelHandlerContext, Throwable> exceptionHandler;
-        private BiConsumer<ChannelHandlerContext, dev.sweety.netty.packet.model.Packet> packetReceiveHandler;
-        private dev.sweety.math.function.TriConsumer<ChannelHandlerContext, dev.sweety.netty.packet.model.Packet, Boolean> packetSendHandler;
+        private BiConsumer<ChannelHandlerContext, Packet> packetReceiveHandler;
+        private TriConsumer<ChannelHandlerContext, Packet, Boolean> packetSendHandler;
 
         public ClientBuilder host(String host) {
             this.host = host;
@@ -126,12 +128,12 @@ public class Netty {
             return this;
         }
 
-        public ClientBuilder onPacketReceive(BiConsumer<ChannelHandlerContext, dev.sweety.netty.packet.model.Packet> packetReceiveHandler) {
+        public ClientBuilder onPacketReceive(BiConsumer<ChannelHandlerContext, Packet> packetReceiveHandler) {
             this.packetReceiveHandler = packetReceiveHandler;
             return this;
         }
 
-        public ClientBuilder onPacketSend(dev.sweety.math.function.TriConsumer<ChannelHandlerContext, dev.sweety.netty.packet.model.Packet, Boolean> packetSendHandler) {
+        public ClientBuilder onPacketSend(TriConsumer<ChannelHandlerContext, Packet, Boolean> packetSendHandler) {
             this.packetSendHandler = packetSendHandler;
             return this;
         }

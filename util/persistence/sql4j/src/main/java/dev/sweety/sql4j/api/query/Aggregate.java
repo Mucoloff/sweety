@@ -1,5 +1,6 @@
 package dev.sweety.sql4j.api.query;
 
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.obj.Column;
 
 public final class Aggregate {
@@ -42,7 +43,7 @@ public final class Aggregate {
         public Column<?> wrapped() { return wrapped; }
 
         @Override
-        public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) {
+        public String toSql(Dialect dialect) {
             return aggregateType.name() + "(" + wrapped.toSql(dialect) + ")";
         }
 

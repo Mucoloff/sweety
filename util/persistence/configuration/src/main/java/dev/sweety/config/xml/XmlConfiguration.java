@@ -16,6 +16,7 @@ import javax.xml.transform.stream.StreamResult;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -146,7 +147,7 @@ public class XmlConfiguration extends Configuration {
                     //noinspection unchecked
                     ((List<Object>) ls).add(value);
                 } else {
-                    List<Object> list = new java.util.ArrayList<>();
+                    List<Object> list = new ArrayList<>();
                     list.add(existing);
                     list.add(value);
                     map.put(key, list);
@@ -214,7 +215,7 @@ public class XmlConfiguration extends Configuration {
         }
 
         if (isList) {
-            List<Object> list = new java.util.ArrayList<>();
+            List<Object> list = new ArrayList<>();
             for (int i = 0; i < children.getLength(); i++) {
                 Node node = children.item(i);
                 if (node.getNodeType() == Node.ELEMENT_NODE) {

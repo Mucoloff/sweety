@@ -1,9 +1,14 @@
 package dev.sweety.sql4j.api.query;
 
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
-import java.util.List;
+
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -27,7 +32,7 @@ public interface Criterion {
 
     /**
      * Renders this criterion's SQL fragment using the default (no-dialect) quoting.
-     * Prefer {@link #toSql(dev.sweety.sql4j.api.connection.dialect.Dialect)} when a dialect is available.
+     * Prefer {@link #toSql(Dialect)} when a dialect is available.
      *
      * @return the SQL predicate string with {@code ?} placeholders
      */
@@ -41,17 +46,17 @@ public interface Criterion {
      * @param dialect the active SQL dialect (may be {@code null} to skip quoting)
      * @return the SQL predicate string with {@code ?} placeholders
      */
-    String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect);
+    String toSql(Dialect dialect);
 
     /**
-     * Binds this criterion's parameter values to the given {@link java.sql.PreparedStatement},
+     * Binds this criterion's parameter values to the given {@link PreparedStatement},
      * starting at {@code startIdx} (1-based JDBC index).
      *
      * @param ps       the statement to bind to
      * @param startIdx the 1-based index of the first {@code ?} placeholder for this criterion
-     * @throws java.sql.SQLException if binding fails
+     * @throws SQLException if binding fails
      */
-    void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException;
+    void bind(PreparedStatement ps, int startIdx) throws SQLException;
 
     /**
      * Returns the number of {@code ?} placeholders produced by {@link #toSql}.
@@ -125,10 +130,10 @@ public interface Criterion {
     /** Creates a {@code col IS NULL} criterion (no parameters). */
     static Criterion isNull(Column<?> col) {
         return new Criterion() {
-            @Override public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) { 
+            @Override public String toSql(Dialect dialect) { 
                 return (dialect != null ? col.toSql(dialect) : col.name()) + " IS NULL"; 
             }
-            @Override public void bind(java.sql.PreparedStatement ps, int startIdx) {}
+            @Override public void bind(PreparedStatement ps, int startIdx) {}
             @Override public int countParameters() { return 0; }
         };
     }
@@ -136,10 +141,10 @@ public interface Criterion {
     /** Creates a {@code col IS NOT NULL} criterion (no parameters). */
     static Criterion isNotNull(Column<?> col) {
         return new Criterion() {
-            @Override public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) { 
+            @Override public String toSql(Dialect dialect) { 
                 return (dialect != null ? col.toSql(dialect) : col.name()) + " IS NOT NULL"; 
             }
-            @Override public void bind(java.sql.PreparedStatement ps, int startIdx) {}
+            @Override public void bind(PreparedStatement ps, int startIdx) {}
             @Override public int countParameters() { return 0; }
         };
     }
@@ -147,10 +152,10 @@ public interface Criterion {
     /** Creates a {@code col BETWEEN ? AND ?} criterion. */
     static Criterion between(Column<?> col, Object min, Object max) {
         return new Criterion() {
-            @Override public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) { 
+            @Override public String toSql(Dialect dialect) { 
                 return (dialect != null ? col.toSql(dialect) : col.name()) + " BETWEEN ? AND ?"; 
             }
-            @Override public void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException {
+            @Override public void bind(PreparedStatement ps, int startIdx) throws SQLException {
                 ps.setObject(startIdx, min instanceof Enum<?> e ? e.name() : min);
                 ps.setObject(startIdx + 1, max instanceof Enum<?> e ? e.name() : max);
             }
@@ -167,13 +172,13 @@ public interface Criterion {
      * Creates a {@code col IN (?, ?, …)} criterion.
      * The number of placeholders matches {@code values.size()}.
      */
-    static Criterion in(Column<?> col, java.util.Collection<?> values) {
+    static Criterion in(Column<?> col, Collection<?> values) {
         return new Criterion() {
-            @Override public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) {
+            @Override public String toSql(Dialect dialect) {
                 String placeholders = values.stream().map(_ -> "?").collect(Collectors.joining(", "));
                 return (dialect != null ? col.toSql(dialect) : col.name()) + " IN (" + placeholders + ")";
             }
-            @Override public void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException {
+            @Override public void bind(PreparedStatement ps, int startIdx) throws SQLException {
                 int idx = startIdx;
                 for (Object v : values) ps.setObject(idx++, v instanceof Enum<?> e ? e.name() : v);
             }
@@ -191,8 +196,8 @@ public interface Criterion {
      */
     static Criterion raw(String sql, Object... params) {
         return new Criterion() {
-            @Override public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) { return sql; }
-            @Override public void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException {
+            @Override public String toSql(Dialect dialect) { return sql; }
+            @Override public void bind(PreparedStatement ps, int startIdx) throws SQLException {
                 int idx = startIdx;
                 if (params != null) {
                     for (Object p : params) ps.setObject(idx++, p instanceof Enum<?> e ? e.name() : p);
@@ -232,10 +237,10 @@ public interface Criterion {
      */
     static Criterion not(Criterion criterion) {
         return new Criterion() {
-            @Override public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) { 
+            @Override public String toSql(Dialect dialect) { 
                 return "NOT (" + criterion.toSql(dialect) + ")"; 
             }
-            @Override public void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException { criterion.bind(ps, startIdx); }
+            @Override public void bind(PreparedStatement ps, int startIdx) throws SQLException { criterion.bind(ps, startIdx); }
             @Override public int countParameters() { return criterion.countParameters(); }
         };
     }
@@ -260,12 +265,12 @@ public interface Criterion {
         public Object value() { return value; }
 
         @Override
-        public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) {
+        public String toSql(Dialect dialect) {
             return (dialect != null ? column.toSql(dialect) : column.name()) + " " + operator + " ?";
         }
 
         @Override
-        public void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException {
+        public void bind(PreparedStatement ps, int startIdx) throws SQLException {
             ps.setObject(startIdx, value instanceof Enum<?> e ? e.name() : value);
         }
 
@@ -293,12 +298,12 @@ public interface Criterion {
         }
 
         @Override
-        public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) {
+        public String toSql(Dialect dialect) {
             return "(" + criteria.stream().map(c -> c.toSql(dialect)).collect(Collectors.joining(" " + operator + " ")) + ")";
         }
 
         @Override
-        public void bind(java.sql.PreparedStatement ps, int startIdx) throws java.sql.SQLException {
+        public void bind(PreparedStatement ps, int startIdx) throws SQLException {
             int idx = startIdx;
             for (Criterion c : criteria) {
                 c.bind(ps, idx);

@@ -4,6 +4,7 @@ import dev.sweety.sql4j.api.exception.Sql4jMappingException;
 import dev.sweety.sql4j.api.obj.table.TableRegistry;
 import dev.sweety.sql4j.api.query.Criterion;
 import dev.sweety.sql4j.api.util.UUIDv8Hybrid;
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -19,6 +20,7 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.Arrays;
 import java.util.UUID;
 
 public class Column<T> {
@@ -84,7 +86,7 @@ public class Column<T> {
         return name;
     }
 
-    public String toSql(dev.sweety.sql4j.api.connection.dialect.Dialect dialect) {
+    public String toSql(Dialect dialect) {
         return dialect.escape(name);
     }
 
@@ -164,7 +166,7 @@ public class Column<T> {
 
     @SafeVarargs
     public final Criterion in(T... values) {
-        return Criterion.in(this, java.util.Arrays.asList(values));
+        return Criterion.in(this, Arrays.asList(values));
     }
 
     public Class<?> type() {

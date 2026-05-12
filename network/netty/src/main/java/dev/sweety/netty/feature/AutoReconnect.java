@@ -46,11 +46,9 @@ public class AutoReconnect {
     }
 
     public boolean onException(Throwable t) {
-        if (exception(t)) {
-            start();
-            return true;
-        }
-        return false;
+        if (!exception(t)) return false;
+        start();
+        return true;
     }
 
     public static boolean checkInstance(Throwable t) {

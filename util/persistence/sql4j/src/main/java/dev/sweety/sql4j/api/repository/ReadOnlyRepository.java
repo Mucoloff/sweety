@@ -5,6 +5,8 @@ import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.*;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.function.Supplier;
+
 /**
  * Read-only projection of a SQL4J {@link Repository}.
  *
@@ -58,5 +60,5 @@ public interface ReadOnlyRepository<Entity> {
      * otherwise delegates to the supplier and caches the result.
      */
     @NotNull <T> Query<T> wrapWithCache(@NotNull Object pkValue,
-                                        @NotNull java.util.function.Supplier<Query<T>> querySupplier);
+                                        @NotNull Supplier<Query<T>> querySupplier);
 }

@@ -1,5 +1,6 @@
 package dev.sweety.sql4j.impl.query.entity;
 
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
@@ -22,7 +23,7 @@ public final class UpdateEntity<T> extends AbstractQuery<Integer> implements Upd
 
     private record Metadata(List<Column<?>> updateColumns, List<Column<?>> primaryKeys, String sql) {}
 
-    public UpdateEntity(final Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, @NotNull final T instance, QueryCache cache) {
+    public UpdateEntity(final Table<T> table, Dialect dialect, @NotNull final T instance, QueryCache cache) {
         this.table = Objects.requireNonNull(table, "table cannot be null");
         this.instance = Objects.requireNonNull(instance, "instance cannot be null");
         Objects.requireNonNull(cache, "cache cannot be null");

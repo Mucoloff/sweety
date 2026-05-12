@@ -12,13 +12,13 @@ public final class ChecksumUtils {
     // ThreadLocal per avere un'istanza CRC32C per thread, evitando race condition
     private static final ThreadLocal<CRC32C> crc32ThreadLocal = ThreadLocal.withInitial(CRC32C::new);
 
-    public static  CRC32C crc32(boolean reset) {
+    public static CRC32C crc32(boolean reset) {
         CRC32C crc32 = crc32ThreadLocal.get();
         if (reset) crc32.reset();
         return crc32;
     }
 
-    public  static int crc32Int(byte[] data, long seed) {
+    public static int crc32Int(byte[] data, long seed) {
         CRC32C crc32 = crc32ThreadLocal.get();
         crc32.reset();
         crc32.update(ByteBuffer.allocate(8).putLong(seed).array());
@@ -26,7 +26,7 @@ public final class ChecksumUtils {
         return (int) crc32.getValue();
     }
 
-    public  static int sha256Int(byte[] data, int seed) {
+    public static int sha256Int(byte[] data, int seed) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             digest.update(data);
@@ -38,7 +38,7 @@ public final class ChecksumUtils {
         }
     }
 
-    public static  String getFileChecksum(Path path) {
+    public static String getFileChecksum(Path path) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             try (InputStream fis = Files.newInputStream(path)) {
@@ -56,13 +56,13 @@ public final class ChecksumUtils {
 
     }
 
-    public static  String toHex(byte[] bytes) {
+    public static String toHex(byte[] bytes) {
         long result = 0;
         for (byte aByte : bytes) result = (result << 8) | (aByte & 0xFF);
         return Long.toHexString(result);
     }
 
-    public static  String bytesToHex(byte[] bytes) {
+    public static String bytesToHex(byte[] bytes) {
         StringBuilder sb = new StringBuilder();
         for (byte b : bytes) sb.append(String.format("%02x", b));
         return sb.toString();

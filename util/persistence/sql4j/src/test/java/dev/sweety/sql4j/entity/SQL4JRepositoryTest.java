@@ -1,8 +1,8 @@
 package dev.sweety.sql4j.entity;
 
-import dev.sweety.sql4j.api.annotation.Query;
 import dev.sweety.sql4j.api.annotation.Sql4jRepository;
 import dev.sweety.sql4j.api.connection.SqlConnection;
+import dev.sweety.sql4j.api.query.Query;
 import dev.sweety.sql4j.api.query.chain.QueryChain;
 import dev.sweety.sql4j.api.repository.Repository;
 import dev.sweety.sql4j.impl.Database;
@@ -27,12 +27,12 @@ public class SQL4JRepositoryTest {
     private String dbPath;
 
     @Sql4jRepository(entity = User.class)
-    public interface UserRepository extends dev.sweety.sql4j.api.repository.Repository<User> {
-        @Query("SELECT * FROM full_users WHERE age > ?")
-        dev.sweety.sql4j.api.query.Query<List<User>> findOlderThan(int age);
+    public interface UserRepository extends Repository<User> {
+        @dev.sweety.sql4j.api.annotation.Query("SELECT * FROM full_users WHERE age > ?")
+        Query<List<User>> findOlderThan(int age);
         
-        @Query("SELECT * FROM full_users WHERE name = ?")
-        dev.sweety.sql4j.api.query.Query<List<User>> findByName(String name);
+        @dev.sweety.sql4j.api.annotation.Query("SELECT * FROM full_users WHERE name = ?")
+        Query<List<User>> findByName(String name);
     }
 
     @BeforeEach

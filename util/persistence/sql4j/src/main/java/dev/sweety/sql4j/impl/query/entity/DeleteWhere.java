@@ -1,10 +1,13 @@
 package dev.sweety.sql4j.impl.query.entity;
 
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
 import dev.sweety.sql4j.api.query.Criterion;
 import dev.sweety.sql4j.api.query.ConditionalDeleteQuery;
+
+import dev.sweety.sql4j.impl.cache.EntityCache;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -13,20 +16,20 @@ import java.util.Objects;
 public final class DeleteWhere<T> extends AbstractQuery<Integer> implements ConditionalDeleteQuery<T> {
 
     private final Table<T> table;
-    private final dev.sweety.sql4j.api.connection.dialect.Dialect dialect;
+    private final Dialect dialect;
     private final Criterion criterion;
     private final boolean hardDelete;
-    private final dev.sweety.sql4j.impl.cache.EntityCache entityCache;
+    private final EntityCache entityCache;
 
-    public DeleteWhere(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect) {
+    public DeleteWhere(Table<T> table, Dialect dialect) {
         this(table, dialect, null, false, null);
     }
 
-    public DeleteWhere(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, dev.sweety.sql4j.impl.cache.EntityCache entityCache) {
+    public DeleteWhere(Table<T> table, Dialect dialect, EntityCache entityCache) {
         this(table, dialect, null, false, entityCache);
     }
 
-    private DeleteWhere(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, Criterion criterion, boolean hardDelete, dev.sweety.sql4j.impl.cache.EntityCache entityCache) {
+    private DeleteWhere(Table<T> table, Dialect dialect, Criterion criterion, boolean hardDelete, EntityCache entityCache) {
         this.table = Objects.requireNonNull(table, "table cannot be null");
         this.dialect = Objects.requireNonNull(dialect, "dialect is null");
         this.criterion = criterion;

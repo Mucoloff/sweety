@@ -5,6 +5,10 @@ import dev.sweety.sql4j.api.obj.ForeignKey;
 import dev.sweety.sql4j.api.obj.ForeignKey.Action;
 import dev.sweety.sql4j.api.obj.Table;
 
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -21,7 +25,7 @@ public final class TableRegistry {
         return DEFAULT;
     }
 
-    private final Map<String, Table<?>> allTables = new java.util.HashMap<>();
+    private final Map<String, Table<?>> allTables = new HashMap<>();
 
     public void register(Table<?> table) {
         Objects.requireNonNull(table, "table cannot be null");
@@ -42,7 +46,7 @@ public final class TableRegistry {
                     String mirrorName = clazz.getName() + "Table";
                     Class<?> mirrorClass = Class.forName(mirrorName);
                     // Accessing mirrorClass should trigger its static block and register the instance
-                    java.lang.reflect.Field instanceField = mirrorClass.getField("INSTANCE");
+                    Field instanceField = mirrorClass.getField("INSTANCE");
                     table = (Table<T>) instanceField.get(null);
                     if (table != null) {
                         return table;
@@ -75,9 +79,9 @@ public final class TableRegistry {
         }
     }
 
-    public java.util.Collection<Table<?>> allTables() {
+    public Collection<Table<?>> allTables() {
         synchronized (tableMap) {
-            return new java.util.ArrayList<>(allTables.values());
+            return new ArrayList<>(allTables.values());
         }
     }
 
@@ -89,12 +93,12 @@ public final class TableRegistry {
             Column<?> pk1 = t1.primaryKeys().getFirst();
             Column<?> pk2 = t2.primaryKeys().getFirst();
 
-            List<Function<Table<Object>, Column<?>>> colFactories = java.util.List.of(
+            List<Function<Table<Object>, Column<?>>> colFactories = List.of(
                 t -> new Column<>(t, t1.name().toLowerCase() + "_id", pk1.field(), null),
                 t -> new Column<>(t, t2.name().toLowerCase() + "_id", pk2.field(), null)
             );
 
-            List<ForeignKey> fks = new java.util.ArrayList<>();
+            List<ForeignKey> fks = new ArrayList<>();
             Table<Object> junctionTable = Table.virtual(name, colFactories, fks);
             
             fks.add(new ForeignKey(junctionTable.columns().get(0), t1, pk1, false, Action.CASCADE, ForeignKey.Action.CASCADE));

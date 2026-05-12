@@ -1,5 +1,6 @@
 package dev.sweety.sql4j.impl.query.entity;
 
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
@@ -11,6 +12,7 @@ import org.jetbrains.annotations.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -26,7 +28,7 @@ public final class InsertEntity<T> extends AbstractQuery<MutationResult<T>> impl
     private record Metadata(List<Column<?>> insertColumns, @Nullable Column<?> generatedColumn, String sql) {
     }
 
-    public InsertEntity(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, T instance, QueryCache cache) {
+    public InsertEntity(Table<T> table, Dialect dialect, T instance, QueryCache cache) {
         this.table = Objects.requireNonNull(table, "table is null");
         this.instance = Objects.requireNonNull(instance, "instance is null");
         Objects.requireNonNull(cache, "cache is null");
@@ -34,7 +36,7 @@ public final class InsertEntity<T> extends AbstractQuery<MutationResult<T>> impl
 
         // Calculate which columns are present (non-null or no default)
         List<Column<?>> allInsertable = table.insertableColumns().columns();
-        List<Column<?>> activeColumns = new java.util.ArrayList<>();
+        List<Column<?>> activeColumns = new ArrayList<>();
         for (Column<?> c : allInsertable) {
             Object val = c.get(instance);
             if (val == null && c.defaultValue() != null && !c.defaultValue().isEmpty()) {

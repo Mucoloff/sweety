@@ -8,6 +8,7 @@ import dev.sweety.sql4j.impl.Database;
 import dev.sweety.sql4j.impl.connection.dialect.DialectType;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Duration;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
@@ -118,9 +119,9 @@ public final class SQL4J {
         SQL4JConfig.HikariTuning build() {
             return new SQL4JConfig.HikariTuning(
                     maxPoolSize, minIdle,
-                    java.time.Duration.ofMillis(connectionTimeoutMs),
-                    java.time.Duration.ofMillis(idleTimeoutMs),
-                    java.time.Duration.ofMillis(maxLifetimeMs)
+                    Duration.ofMillis(connectionTimeoutMs),
+                    Duration.ofMillis(idleTimeoutMs),
+                    Duration.ofMillis(maxLifetimeMs)
             );
         }
     }

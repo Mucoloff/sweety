@@ -29,9 +29,7 @@ public class ColorUtils {
     public static List<String> color(List<String> list) {
         if (list == null || list.isEmpty()) return new ArrayList<>();
         List<String> colorList = new ArrayList<>();
-        for (String string : list) {
-            colorList.add(color(string));
-        }
+        for (String string : list) colorList.add(color(string));
         return colorList;
     }
 }

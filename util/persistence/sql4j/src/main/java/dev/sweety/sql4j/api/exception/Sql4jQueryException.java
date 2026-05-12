@@ -1,5 +1,7 @@
 package dev.sweety.sql4j.api.exception;
 
+import java.sql.SQLException;
+
 /**
  * Thrown when SQL4J fails to execute a SQL statement — e.g. a constraint violation, syntax
  * error, or timeout. The original {@link java.sql.SQLException} SQLState and vendor error code
@@ -10,7 +12,7 @@ public class Sql4jQueryException extends Sql4jException {
     private final String sqlState;
     private final int errorCode;
 
-    public Sql4jQueryException(String message, java.sql.SQLException cause) {
+    public Sql4jQueryException(String message, SQLException cause) {
         super(message, cause);
         this.sqlState = cause != null ? cause.getSQLState() : null;
         this.errorCode = cause != null ? cause.getErrorCode() : 0;
@@ -18,7 +20,7 @@ public class Sql4jQueryException extends Sql4jException {
 
     public Sql4jQueryException(String message, Throwable cause) {
         super(message, cause);
-        if (cause instanceof java.sql.SQLException sqlEx) {
+        if (cause instanceof SQLException sqlEx) {
             this.sqlState = sqlEx.getSQLState();
             this.errorCode = sqlEx.getErrorCode();
         } else {

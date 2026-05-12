@@ -3,7 +3,13 @@ package dev.sweety.sql4j.impl.connection.dialect;
 import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.obj.ForeignKey;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 class H2Dialect implements Dialect {
 
@@ -32,16 +38,16 @@ class H2Dialect implements Dialect {
         if (type == byte[].class)
             return "BLOB";
 
-        if (type == java.util.UUID.class)
+        if (type == UUID.class)
             return "UUID";
 
-        if (type == java.time.LocalDate.class)
+        if (type == LocalDate.class)
             return "DATE";
 
-        if (type == java.time.LocalDateTime.class)
+        if (type == LocalDateTime.class)
             return "TIMESTAMP";
 
-        if (type == java.math.BigDecimal.class)
+        if (type == BigDecimal.class)
             return "DECIMAL";
 
         if (type.isEnum())
@@ -70,10 +76,10 @@ class H2Dialect implements Dialect {
         // UpsertEntity excludes auto-increment PKs from insertCols, so we must re-add
         // them here. When the PK is null at runtime, UpsertEntity falls back to a plain
         // INSERT (see UpsertEntity.buildSql); when it is set, the full column list works.
-        List<String> allCols = new java.util.ArrayList<>(pkCols);
+        List<String> allCols = new ArrayList<>(pkCols);
         allCols.addAll(insertCols);
         String cols = String.join(", ", allCols);
-        String placeholders = allCols.stream().map(c -> "?").collect(java.util.stream.Collectors.joining(", "));
+        String placeholders = allCols.stream().map(c -> "?").collect(Collectors.joining(", "));
         String pks = String.join(", ", pkCols);
 
         return "MERGE INTO " + table + " (" + cols + ") KEY (" + pks + ") VALUES (" + placeholders + ")";

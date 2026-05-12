@@ -1,5 +1,6 @@
 package dev.sweety.sql4j.impl.query.entity;
 
+import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.query.AbstractQuery;
@@ -21,11 +22,11 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> implements Del
 
     private record Metadata(List<Column<?>> primaryKeys, String deleteSql, String softDeleteSql) {}
 
-    public DeleteEntity(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, QueryCache cache, T... instances) {
+    public DeleteEntity(Table<T> table, Dialect dialect, QueryCache cache, T... instances) {
         this(table, dialect, cache, false, instances);
     }
 
-    private DeleteEntity(Table<T> table, dev.sweety.sql4j.api.connection.dialect.Dialect dialect, QueryCache cache, boolean hardDelete, T... instances) {
+    private DeleteEntity(Table<T> table, Dialect dialect, QueryCache cache, boolean hardDelete, T... instances) {
         this.table = Objects.requireNonNull(table, "table is null");
         this.instances = instances;
         this.hardDelete = hardDelete;

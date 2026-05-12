@@ -2,6 +2,9 @@ package dev.sweety.math.list;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.AbstractSet;
@@ -198,10 +201,10 @@ public class ConcurrentHashSet<K>
      * Saves the state of the {@code ConcurrentHashSet} instance to a stream (i.e., serializes it).
      *
      * @param s the stream
-     * @throws java.io.IOException if an I/O error occurs
+     * @throws IOException if an I/O error occurs
      */
     @Serial
-    private void writeObject(java.io.ObjectOutputStream s) throws java.io.IOException {
+    private void writeObject(ObjectOutputStream s) throws IOException {
         s.defaultWriteObject();
 
         // Write out size and elements (using a snapshot for consistency)
@@ -216,11 +219,11 @@ public class ConcurrentHashSet<K>
      * Reconstitutes the {@code ConcurrentHashSet} instance from a stream (i.e., deserializes it).
      *
      * @param s the stream
-     * @throws java.io.IOException    if an I/O error occurs
+     * @throws IOException    if an I/O error occurs
      * @throws ClassNotFoundException if the class of a serialized object could not be found
      */
     @Serial
-    private void readObject(java.io.ObjectInputStream s) throws java.io.IOException, ClassNotFoundException {
+    private void readObject(ObjectInputStream s) throws IOException, ClassNotFoundException {
         s.defaultReadObject();
 
         // Read in size

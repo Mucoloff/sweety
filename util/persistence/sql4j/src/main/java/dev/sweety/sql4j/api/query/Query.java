@@ -9,6 +9,7 @@ import dev.sweety.sql4j.impl.query.SelectJoin;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 
 /**
  * Root of the SQL4J query hierarchy.
@@ -95,7 +96,7 @@ public sealed interface Query<T> permits AbstractQuery, UnsafeQuery, SelectQuery
      * @param mapper the mapping function applied to {@code T} after execution
      * @return a wrapped query whose execution returns {@code R}
      */
-    default <R> Query<R> extractObjects(java.util.function.Function<T, R> mapper) {
+    default <R> Query<R> extractObjects(Function<T, R> mapper) {
         return new AbstractQuery<R>() {
             @Override protected String buildSql() { return Query.this.sql(); }
             @Override public void bind(PreparedStatement ps) throws SQLException { Query.this.bind(ps); }

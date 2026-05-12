@@ -22,29 +22,27 @@ public class Animation {
         this.start = System.nanoTime();
     }
 
-    public float getProgress() {
-        if (isCompleted()) return 1;
+    public float progress() {
+        if (completed()) return 1;
 
-        float passedSeconds = getPassedSeconds();
-        float input = passedSeconds / this.duration;
+        float input = passedSeconds() / this.duration;
 
         return this.easing.apply(input);
     }
 
-    public float getPassedSeconds() {
+    public float passedSeconds() {
         return (System.nanoTime() - start) / 1e9f;
     }
 
-    public boolean isCompleted() {
-        float passedSeconds = getPassedSeconds();
-        return passedSeconds >= this.duration;
+    public boolean completed() {
+        return passedSeconds() >= this.duration;
     }
 
     public Easing easing() {
         return easing;
     }
 
-    public Animation setEasing(Easing easing) {
+    public Animation easing(Easing easing) {
         this.easing = easing;
         return this;
     }
@@ -53,7 +51,7 @@ public class Animation {
         return duration;
     }
 
-    public Animation setDuration(float duration) {
+    public Animation duration(float duration) {
         this.duration = duration;
         return this;
     }

@@ -10,18 +10,34 @@ import dev.sweety.sql4j.api.obj.annotation.FetchType;
 import dev.sweety.sql4j.api.obj.table.TableRegistry;
 import dev.sweety.sql4j.api.query.*;
 import dev.sweety.sql4j.api.repository.Repository;
+import dev.sweety.sql4j.impl.query.SelectJoin;
 import dev.sweety.sql4j.impl.query.QueryCache;
 import dev.sweety.sql4j.impl.query.entity.*;
+import dev.sweety.sql4j.impl.cache.EntityCache;
+import dev.sweety.sql4j.impl.connection.dialect.DialectType;
 import dev.sweety.sql4j.impl.query.table.CreateTable;
 import dev.sweety.sql4j.impl.query.table.DropTable;
+
+import dev.sweety.sql4j.api.connection.SqlConnection;
+
+import java.lang.reflect.Array;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 
 public class BaseRepository<Entity> implements Repository<Entity> {
@@ -31,16 +47,16 @@ public class BaseRepository<Entity> implements Repository<Entity> {
     private final QueryCache cache;
     private final TableRegistry registry;
     /** Accessible by generated {@code *RepositoryImpl} subclasses for {@code @CacheEvict}. */
-    protected final dev.sweety.sql4j.impl.cache.EntityCache entityCache;
+    protected final EntityCache entityCache;
     private final int batchChunkSize;
 
     public BaseRepository(Table<Entity> table, Dialect dialect, QueryCache cache, TableRegistry registry,
-                          dev.sweety.sql4j.impl.cache.EntityCache entityCache) {
+                          EntityCache entityCache) {
         this(table, dialect, cache, registry, entityCache, 0);
     }
 
     public BaseRepository(Table<Entity> table, Dialect dialect, QueryCache cache, TableRegistry registry,
-                          dev.sweety.sql4j.impl.cache.EntityCache entityCache, int batchChunkSize) {
+                          EntityCache entityCache, int batchChunkSize) {
         this.table = Objects.requireNonNull(table, "table cannot be null");
         this.dialect = Objects.requireNonNull(dialect, "dialect cannot be null");
         this.cache = Objects.requireNonNull(cache, "cache cannot be null");
@@ -58,7 +74,7 @@ public class BaseRepository<Entity> implements Repository<Entity> {
      */
     @Deprecated
     public BaseRepository(final Class<Entity> entityClass) {
-        this(new TableRegistry().get(entityClass), dev.sweety.sql4j.impl.connection.dialect.DialectType.SQLITE.dialect(), new QueryCache(), new TableRegistry(), null);
+        this(new TableRegistry().get(entityClass), DialectType.SQLITE.dialect(), new QueryCache(), new TableRegistry(), null);
     }
 
     public @NotNull Table<Entity> table() {
@@ -105,7 +121,7 @@ public class BaseRepository<Entity> implements Repository<Entity> {
 
     @SuppressWarnings("unchecked")
     public @NotNull DeleteQuery<Entity> delete(@NotNull Entity entity) {
-        Entity[] array = (Entity[]) java.lang.reflect.Array.newInstance(table.clazz(), 1);
+        Entity[] array = (Entity[]) Array.newInstance(table.clazz(), 1);
         array[0] = entity;
         return delete(array);
     }
@@ -132,21 +148,21 @@ public class BaseRepository<Entity> implements Repository<Entity> {
         return new DeleteWhere<>(table, dialect, entityCache);
     }
 
-    public dev.sweety.sql4j.api.query.PkContext<Entity> pk(Object... values) {
-        return new dev.sweety.sql4j.api.query.PkContext<>(this, values);
+    public PkContext<Entity> pk(Object... values) {
+        return new PkContext<>(this, values);
     }
 
-    public <T> Query<T> wrapWithCache(Object pkValue, java.util.function.Supplier<Query<T>> querySupplier) {
+    public <T> Query<T> wrapWithCache(Object pkValue, Supplier<Query<T>> querySupplier) {
         if (entityCache != null && entityCache.isEnabled() && entityCache.isCacheable(table.clazz())) {
             Object pk = (pkValue instanceof Object[] arr && arr.length == 1) ? arr[0] : pkValue;
             T cached = (T) entityCache.get(table.clazz(), pk);
             if (cached != null) {
                 return new AbstractQuery<T>() {
                     @Override protected String buildSql() { return "-- Cached lookup"; }
-                    @Override public void bind(java.sql.PreparedStatement ps) {}
-                    @Override public T execute(java.sql.PreparedStatement ps) { return cached; }
-                    @Override public java.util.concurrent.CompletableFuture<T> execute(dev.sweety.sql4j.api.connection.SqlConnection con) {
-                        return java.util.concurrent.CompletableFuture.completedFuture(cached);
+                    @Override public void bind(PreparedStatement ps) {}
+                    @Override public T execute(PreparedStatement ps) { return cached; }
+                    @Override public CompletableFuture<T> execute(SqlConnection con) {
+                        return CompletableFuture.completedFuture(cached);
                     }
                 };
             }
@@ -195,7 +211,7 @@ public class BaseRepository<Entity> implements Repository<Entity> {
                              junctionTable.columns().get(0).name() + ", " +
                              junctionTable.columns().get(1).name() + ") VALUES (?, ?)";
 
-                return Query.generic(sql, id1, id2).extractObjects(dev.sweety.sql4j.api.query.QueryResult::affectedRows);
+                return Query.generic(sql, id1, id2).extractObjects(QueryResult::affectedRows);
             }
         }
         throw new Sql4jMappingException("No ManyToMany relation found between " + table.clazz().getSimpleName() + " and " + related.getClass().getSimpleName());
@@ -216,7 +232,7 @@ public class BaseRepository<Entity> implements Repository<Entity> {
                              junctionTable.columns().get(0).name() + " = ? AND " +
                              junctionTable.columns().get(1).name() + " = ?";
 
-                return Query.generic(sql, id1, id2).extractObjects(dev.sweety.sql4j.api.query.QueryResult::affectedRows);
+                return Query.generic(sql, id1, id2).extractObjects(QueryResult::affectedRows);
             }
         }
         throw new Sql4jMappingException("No ManyToMany relation found between " + table.clazz().getSimpleName() + " and " + related.getClass().getSimpleName());
@@ -323,7 +339,7 @@ public class BaseRepository<Entity> implements Repository<Entity> {
     }
 
     public JoinBuilder joinBuilder() {
-        return new dev.sweety.sql4j.impl.query.SelectJoin.Builder(registry).dialect(dialect).join(table);
+        return new SelectJoin.Builder(registry).dialect(dialect).join(table);
     }
 
     /**
@@ -343,38 +359,38 @@ public class BaseRepository<Entity> implements Repository<Entity> {
         return create(true);
     }
 
-    public void migrateSchema(dev.sweety.sql4j.api.connection.SqlConnection connection) {
-        try (java.sql.Connection raw = connection.connection()) {
-            java.sql.DatabaseMetaData metaData = raw.getMetaData();
+    public void migrateSchema(SqlConnection connection) {
+        try (Connection raw = connection.connection()) {
+            DatabaseMetaData metaData = raw.getMetaData();
             
             // In many databases, table names in metadata are stored in uppercase or lowercase.
             // We search case-insensitively by retrieving all and filtering, or by passing null.
-            java.util.Set<String> existingColumns = new java.util.HashSet<>();
-            try (java.sql.ResultSet rs = metaData.getColumns(null, null, "%", "%")) {
+            Set<String> existingColumns = new HashSet<>();
+            try (ResultSet rs = metaData.getColumns(null, null, "%", "%")) {
                 while (rs.next()) {
                     String tableName = rs.getString("TABLE_NAME");
                     if (tableName.equalsIgnoreCase(table.name())) {
-                        existingColumns.add(rs.getString("COLUMN_NAME").toLowerCase(java.util.Locale.ENGLISH));
+                        existingColumns.add(rs.getString("COLUMN_NAME").toLowerCase(Locale.ENGLISH));
                     }
                 }
             }
 
-            for (Column c : table.columns()) {
-                if (!existingColumns.contains(c.name().toLowerCase(java.util.Locale.ENGLISH))) {
+            for (Column<?> c : table.columns()) {
+                if (!existingColumns.contains(c.name().toLowerCase(Locale.ENGLISH))) {
                     String colDef = c.name() + " " + dialect.sqlType(c.type());
                     // Skip NOT NULL for ADD COLUMN to avoid constraint errors on existing rows, 
                     // unless it's an advanced dialect/setup. For safety, we just add the column.
                     String sql = dialect.addColumnSyntax(table.name(), colDef);
                     
-                    try (java.sql.Statement stmt = raw.createStatement()) {
+                    try (Statement stmt = raw.createStatement()) {
                         stmt.execute(sql);
-                    } catch (java.sql.SQLException e) {
+                    } catch (SQLException e) {
                         // Log or ignore if the column couldn't be added (e.g. SQLite strictness)
                         System.err.println("[SQL4J] Failed to add column " + c.name() + " to " + table.name() + ": " + e.getMessage());
                     }
                 }
             }
-        } catch (java.sql.SQLException e) {
+        } catch (SQLException e) {
             throw new Sql4jQueryException("Failed to migrate schema for table " + table.name(), e);
         }
     }

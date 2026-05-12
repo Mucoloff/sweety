@@ -7,6 +7,7 @@ import dev.sweety.util.logger.SimpleLogger;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,7 +39,7 @@ public class UpdateableExtensionManager<T extends Extension> extends ExtensionMa
 
         if (!resolved.equals(jarFile) && Files.exists(resolved)) {
             try {
-                Files.move(resolved, jarFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+                Files.move(resolved, jarFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
                 logger.info("Applied update for " + jarFile.getFileName());
             } catch (IOException e) {
                 logger.error("Failed to apply update for " + jarFile.getFileName(), e);

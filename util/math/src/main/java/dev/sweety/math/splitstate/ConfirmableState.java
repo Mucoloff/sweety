@@ -1,6 +1,5 @@
 package dev.sweety.math.splitstate;
 
-
 import java.util.function.IntSupplier;
 
 public class ConfirmableState<T> {

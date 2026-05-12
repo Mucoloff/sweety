@@ -5,7 +5,6 @@ import java.util.Comparator;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-
 public final class MathUtils {
 
     public static <T> T findBest(Collection<T> values, Predicate<T> filter, Compare<T> comparator, T fallback) {
@@ -32,6 +31,15 @@ public final class MathUtils {
     public static float clamp(float value) {
         return Math.clamp(value, 0f, 1f);
     }
+
+    public static float sin(float value) {
+        return (float) Math.sin(value);
+    }
+
+    public static float cos(float value) {
+        return (float) Math.cos(value);
+    }
+
 
     public static double clamp(double value) {
         return Math.clamp(value, 0f, 1d);

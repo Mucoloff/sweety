@@ -8,10 +8,8 @@ public class ProfileThread {
     private static final AtomicInteger THREAD_COUNTER = new AtomicInteger();
     private final AtomicInteger profileCount = new AtomicInteger(0);
     private final ExecutorService thread;
-    private final ThreadType type;
 
     public ProfileThread(final String name, final ThreadType type) {
-        this.type = type;
         String indexedName = name + "-" + THREAD_COUNTER.incrementAndGet();
         this.thread = switch (type) {
             case SINGLE -> ThreadUtil.singleThreadScheduler(indexedName);

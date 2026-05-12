@@ -7,6 +7,7 @@ import dev.sweety.netty.packet.model.Packet;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.io.Serializable;
+import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Objects;
@@ -74,7 +75,7 @@ public enum Balancers {
 
     @SuppressWarnings("unchecked")
     private static <T> T[] slice(T[] array, int start, int limit) {
-        T[] result = (T[]) java.lang.reflect.Array.newInstance(array.getClass().getComponentType(), limit);
+        T[] result = (T[]) Array.newInstance(array.getClass().getComponentType(), limit);
         for (int i = 0; i < limit; i++) {
             result[i] = array[(start + i) % array.length];
         }

@@ -4,7 +4,9 @@ import com.sun.net.httpserver.HttpExchange;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import java.io.IOException;
 import java.io.OutputStream;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
@@ -34,10 +36,10 @@ public final class HttpUtils {
     }
 
     public static String urlDecode(String s) {
-        return java.net.URLDecoder.decode(s, StandardCharsets.UTF_8);
+        return URLDecoder.decode(s, StandardCharsets.UTF_8);
     }
 
-    public static void sendJson(HttpExchange exchange, String body) throws java.io.IOException {
+    public static void sendJson(HttpExchange exchange, String body) throws IOException {
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
         exchange.sendResponseHeaders(200, bytes.length);
@@ -46,7 +48,7 @@ public final class HttpUtils {
         }
     }
 
-    public static void sendText(HttpExchange exchange, int status, String body) throws java.io.IOException {
+    public static void sendText(HttpExchange exchange, int status, String body) throws IOException {
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "text/plain; charset=utf-8");
         exchange.sendResponseHeaders(status, bytes.length);

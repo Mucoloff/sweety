@@ -1,7 +1,11 @@
 package dev.sweety.sql4j.entity;
 
 import dev.sweety.sql4j.api.connection.dialect.Dialect;
+import dev.sweety.sql4j.api.obj.Table;
+import dev.sweety.sql4j.api.obj.table.TableRegistry;
 import dev.sweety.sql4j.impl.connection.dialect.DialectType;
+import dev.sweety.sql4j.impl.query.QueryCache;
+import dev.sweety.sql4j.impl.query.entity.SelectEntity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -55,14 +59,14 @@ public class SQL4JDialectTest {
     @Test
     @DisplayName("SelectQuery: Dialect-Aware SQL")
     void testSelectQueryDialect() {
-        dev.sweety.sql4j.api.obj.table.TableRegistry registry = dev.sweety.sql4j.api.obj.table.TableRegistry.getDefault();
-        dev.sweety.sql4j.api.obj.Table<User> table = registry.get(User.class);
+        TableRegistry registry = TableRegistry.getDefault();
+        Table<User> table = registry.get(User.class);
         
-        dev.sweety.sql4j.impl.query.QueryCache cache = new dev.sweety.sql4j.impl.query.QueryCache();
+        QueryCache cache = new QueryCache();
         
         // SQLite
-        dev.sweety.sql4j.impl.query.entity.SelectEntity<User> selectSqlite = 
-            new dev.sweety.sql4j.impl.query.entity.SelectEntity<>(table, cache, DialectType.SQLITE.dialect(), registry);
+        SelectEntity<User> selectSqlite = 
+            new SelectEntity<>(table, cache, DialectType.SQLITE.dialect(), registry);
         String sqlSqlite = selectSqlite.limit(10).sql();
         System.out.println("SQLITE: " + sqlSqlite);
         assertTrue(sqlSqlite.contains("SELECT"), "Should be a SELECT");
@@ -71,8 +75,8 @@ public class SQL4JDialectTest {
         assertTrue(sqlSqlite.contains("LIMIT 10"), "Should have LIMIT 10");
 
         // MySQL
-        dev.sweety.sql4j.impl.query.entity.SelectEntity<User> selectMysql = 
-            new dev.sweety.sql4j.impl.query.entity.SelectEntity<>(table, cache, DialectType.MYSQL.dialect(), registry);
+        SelectEntity<User> selectMysql = 
+            new SelectEntity<>(table, cache, DialectType.MYSQL.dialect(), registry);
         String sqlMysql = selectMysql.limit(10).sql();
         System.out.println("MYSQL: " + sqlMysql);
         assertTrue(sqlMysql.contains("SELECT"), "Should be a SELECT");
