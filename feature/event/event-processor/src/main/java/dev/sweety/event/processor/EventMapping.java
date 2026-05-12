@@ -13,7 +13,7 @@ import java.util.function.Function;
 
 public class EventMapping {
 
-    private final Map<Class<?>, Function<Object, ? extends Event<?>>> events = new ConcurrentHashMap<>();
+    private final Map<Class<?>, Function<Object, ? extends Event<?>>> mappings = new ConcurrentHashMap<>();
 
     private final IEventSystem eventSystem;
 
@@ -23,7 +23,7 @@ public class EventMapping {
 
     public <T extends Event<T>> T dispatch(Object obj) {
         //noinspection unchecked
-        final Function<Object, T> function = (Function<Object, T>) events.get(obj.getClass());
+        final Function<Object, T> function = (Function<Object, T>) mappings.get(obj.getClass());
         if (function == null) return null;
         final T event = function.apply(obj);
         return eventSystem.dispatch(event);
@@ -35,7 +35,7 @@ public class EventMapping {
             Object... args
     ) {
         //noinspection unchecked
-        final Function<Object, T> function = (Function<Object, T>) events.get(obj.getClass());
+        final Function<Object, T> function = (Function<Object, T>) mappings.get(obj.getClass());
         if (function == null) return null;
         final T event = function.apply(obj);
         return eventSystem.dispatchWrapped(event, original, args);
@@ -48,14 +48,14 @@ public class EventMapping {
             Object... args
     ) {
         //noinspection unchecked
-        final Function<Object, T> function = (Function<Object, T>) events.get(obj.getClass());
+        final Function<Object, T> function = (Function<Object, T>) mappings.get(obj.getClass());
         if (function == null) return null;
         final T event = function.apply(obj);
         return eventSystem.dispatchWrapped(event, original, changedArgsMapper, args);
     }
 
-    public void registerEventMapping(Class<? extends Event<?>> eventClass, Class<?> clazz) {
-        Function<Object, ? extends Event<?>> construct = p -> {
+    public <E extends Event<?>, T> void registerEventMapping(Class<E> eventClass, Class<T> clazz) {
+        Function<Object, E> construct = p -> {
             try {
                 return eventClass.getConstructor(clazz).newInstance(p);
             } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
@@ -64,6 +64,11 @@ public class EventMapping {
             }
         };
 
-        events.put(clazz, construct);
+        registerEventMapping(clazz, construct);
     }
+
+    public <E extends Event<?>, T> void registerEventMapping(Class<T> clazz, Function<Object, E> constructor) {
+        mappings.put(clazz, constructor);
+    }
+
 }

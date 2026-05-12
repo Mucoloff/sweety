@@ -24,7 +24,7 @@ import java.util.stream.Stream;
     "dev.sweety.sql4j.api.annotation.Sql4jRepository",
     "dev.sweety.sql4j.api.annotation.Query"
 })
-@SupportedSourceVersion(SourceVersion.RELEASE_11)
+@SupportedSourceVersion(SourceVersion.RELEASE_24)
 @AutoService(Processor.class)
 public class SQL4JProcessor extends AbstractProcessor {
 

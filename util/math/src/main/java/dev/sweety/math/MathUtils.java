@@ -25,6 +25,10 @@ public final class MathUtils {
         return 1f / (1f + (float) Math.exp(-value));
     }
 
+    public static double sigmoid(double value) {
+        return 1f / (1d + Math.exp(-value));
+    }
+
     public static float clamp(float value) {
         return Math.clamp(value, 0f, 1f);
     }
