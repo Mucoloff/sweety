@@ -18,18 +18,51 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class EventSystem implements IEventSystem {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-    private static final Comparator<EventCallback<?>> priorityFilter = Comparator.comparingInt(EventCallback::priority);
+    private static final Comparator<EventCallback<?>> CALLBACK_ORDER =
+            Comparator.<EventCallback<?>>comparingInt(EventCallback::priority)
+                    .thenComparingLong(EventCallback::subscribeOrder);
+
+    private record LinkFieldSpec(Field field, Type eventType, int priority, State state, boolean annotationReadOnly) {
+    }
+
+    private static final ClassValue<List<LinkFieldSpec>> LINK_FIELDS = new ClassValue<>() {
+        @Override
+        protected List<LinkFieldSpec> computeValue(Class<?> type) {
+            List<LinkFieldSpec> out = new ArrayList<>();
+            for (Field f : type.getDeclaredFields()) {
+                LinkEvent ann = f.getAnnotation(LinkEvent.class);
+                if (ann == null) continue;
+                Type eventType;
+                try {
+                    eventType = ((ParameterizedType) f.getGenericType()).getActualTypeArguments()[0];
+                } catch (Throwable ignore) {
+                    continue;
+                }
+                int p = ann.priority() == -1 ? ann.level().getValue() : ann.priority();
+                out.add(new LinkFieldSpec(f, eventType, p, ann.state(), ann.readOnly()));
+            }
+            return List.copyOf(out);
+        }
+    };
+
+    private record CachedPlan(long generation, List<ExecutionStep<?>> steps) {
+    }
 
     private final Map<Type, List<EventCallback<?>>> callSiteMap = new ConcurrentHashMap<>();
     /** Per-event-type token for listener-only subscriptions (not tied to a user container). */
     private final Map<Type, Object> syntheticContainerByEventType = new ConcurrentHashMap<>();
     private final ThreadManager threadManager;
-    private final Map<Class<?>, List<ExecutionStep<?>>> executionPlanCache = new ConcurrentHashMap<>();
+    private final Executor asyncExecutor;
+    private final AtomicLong registrationGeneration = new AtomicLong(0);
+    private final AtomicLong subscribeOrderSeq = new AtomicLong(0);
+    private final Map<Class<?>, CachedPlan> executionPlanCache = new ConcurrentHashMap<>();
 
     private sealed interface ExecutionStep<T extends Event<?>> {
         void run(T event, EventSystem system);
@@ -37,20 +70,62 @@ public class EventSystem implements IEventSystem {
 
     private record ParallelStep<T extends Event<?>>(List<EventCallback<T>> group) implements ExecutionStep<T> {
         @Override
-        public void run(T event, EventSystem system) { system.executeParallel(group, event); }
+        public void run(T event, EventSystem system) {
+            system.executeParallel(group, event);
+        }
     }
 
     private record SequentialStep<T extends Event<?>>(EventCallback<T> cb) implements ExecutionStep<T> {
         @Override
-        public void run(T event, EventSystem system) { system.executeSequential(cb, event); }
+        public void run(T event, EventSystem system) {
+            system.executeSequential(cb, event);
+        }
+    }
+
+    public EventSystem(ThreadManager threadManager, Executor asyncExecutor) {
+        this.threadManager = threadManager;
+        this.asyncExecutor = asyncExecutor;
     }
 
     public EventSystem(ThreadManager threadManager) {
-        this.threadManager = threadManager;
+        this(threadManager, null);
     }
 
     public EventSystem() {
         this(new ThreadManager("event-dispatcher"));
+    }
+
+    private void insertCallback(List<EventCallback<?>> list, EventCallback<?> callback) {
+        int i = Collections.binarySearch(list, callback, CALLBACK_ORDER);
+        if (i < 0) {
+            i = -i - 1;
+        }
+        list.add(i, callback);
+    }
+
+    private void notifyCallSiteMutation(Type registrationType) {
+        registrationGeneration.incrementAndGet();
+        if (!(registrationType instanceof Class<?>)) {
+            executionPlanCache.clear();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T extends Event<?>> List<ExecutionStep<T>> executionPlanFor(Class<?> eventClass) {
+        for (; ; ) {
+            long currentGen = registrationGeneration.get();
+            CachedPlan cached = executionPlanCache.get(eventClass);
+            if (cached != null && cached.generation == currentGen) {
+                return (List<ExecutionStep<T>>) (Object) cached.steps;
+            }
+            List<ExecutionStep<?>> built = buildExecutionPlan(eventClass);
+            long genAfterBuild = registrationGeneration.get();
+            if (genAfterBuild != currentGen) {
+                continue;
+            }
+            executionPlanCache.put(eventClass, new CachedPlan(genAfterBuild, built));
+            return (List<ExecutionStep<T>>) (Object) built;
+        }
     }
 
     @Override
@@ -62,11 +137,10 @@ public class EventSystem implements IEventSystem {
         Objects.requireNonNull(eventType, "eventType cannot be null");
         Objects.requireNonNull(listener, "listener cannot be null");
         Objects.requireNonNull(state, "state cannot be null");
-        final List<EventCallback<?>> callSites = this.callSiteMap.computeIfAbsent(eventType, _ -> new CopyOnWriteArrayList<>());
-        final Object container = syntheticContainerByEventType.computeIfAbsent(eventType, _ -> new Object());
-        callSites.add(new EventCallback<>(container, listener, priority, state, readOnly));
-        callSites.sort(priorityFilter);
-        invalidateExecutionPlansFor(eventType);
+        List<EventCallback<?>> callSites = this.callSiteMap.computeIfAbsent(eventType, _ -> new CopyOnWriteArrayList<>());
+        Object container = syntheticContainerByEventType.computeIfAbsent(eventType, _ -> new Object());
+        insertCallback(callSites, new EventCallback<>(container, listener, priority, state, readOnly, subscribeOrderSeq.incrementAndGet()));
+        notifyCallSiteMutation(eventType);
     }
 
     @Override
@@ -114,54 +188,46 @@ public class EventSystem implements IEventSystem {
 
     @Override
     public <T extends Event<?>> void unsubscribe(final Class<T> eventType) {
-        final List<EventCallback<?>> callSites = this.callSiteMap.get(eventType);
+        List<EventCallback<?>> callSites = this.callSiteMap.get(eventType);
         if (callSites != null) {
             callSites.clear();
-            invalidateExecutionPlansFor(eventType);
+            notifyCallSiteMutation(eventType);
         }
     }
 
     @Override
     public void subscribe(@NotNull Object container) {
         Objects.requireNonNull(container, "container cannot be null");
-        for (final Field field : container.getClass().getDeclaredFields()) {
-            final LinkEvent annotation = field.getAnnotation(LinkEvent.class);
-            if (annotation == null) continue;
-
-            Type eventType;
-            try {
-                eventType = ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[0];
-            } catch (Throwable ignore) {
-                continue;
-            }
-
+        for (LinkFieldSpec spec : LINK_FIELDS.get(container.getClass())) {
+            Field field = spec.field;
+            Type eventType = spec.eventType;
             if (!field.canAccess(container)) field.setAccessible(true);
 
-            final Listener<? extends Event<?>> listener;
+            Listener<? extends Event<?>> listener;
             try {
+                //noinspection unchecked
                 listener = (Listener<? extends Event<?>>) LOOKUP.unreflectGetter(field).invokeWithArguments(container);
             } catch (Throwable ignored) {
                 continue;
             }
 
-            boolean readOnly = annotation.readOnly();
+            boolean readOnly = spec.annotationReadOnly;
             if (!readOnly && eventType instanceof Class<?> clazz) {
                 readOnly = !MutableEvent.class.isAssignableFrom(clazz);
             }
 
-            final List<EventCallback<?>> callSites = this.callSiteMap.computeIfAbsent(eventType, _ -> new CopyOnWriteArrayList<>());
-            callSites.add(new EventCallback<>(container, listener, annotation.priority() == -1 ? annotation.level().getValue() : annotation.priority(), annotation.state(), readOnly));
-            callSites.sort(priorityFilter);
-            invalidateExecutionPlansFor(eventType);
+            List<EventCallback<?>> callSites = this.callSiteMap.computeIfAbsent(eventType, _ -> new CopyOnWriteArrayList<>());
+            insertCallback(callSites, new EventCallback<>(container, listener, spec.priority, spec.state, readOnly, subscribeOrderSeq.incrementAndGet()));
+            notifyCallSiteMutation(eventType);
         }
     }
 
     @Override
     public void unsubscribe(final Object container) {
         for (Map.Entry<Type, List<EventCallback<?>>> entry : callSiteMap.entrySet()) {
-            final List<EventCallback<?>> callSites = entry.getValue();
+            List<EventCallback<?>> callSites = entry.getValue();
             if (callSites.removeIf(cb -> cb.container() == container)) {
-                invalidateExecutionPlansFor(entry.getKey());
+                notifyCallSiteMutation(entry.getKey());
             }
         }
     }
@@ -171,9 +237,7 @@ public class EventSystem implements IEventSystem {
         Objects.requireNonNull(event, "event cannot be null");
         if (event instanceof CancellableEvent<?> me) me.uncancel();
 
-        // Get or build the execution plan for this specific event class
-        //noinspection unchecked
-        List<ExecutionStep<T>> plan = (List<ExecutionStep<T>>) (Object) executionPlanCache.computeIfAbsent(event.getClass(), this::buildExecutionPlan);
+        List<ExecutionStep<T>> plan = executionPlanFor(event.getClass());
 
         if (plan.isEmpty()) return event;
 
@@ -251,7 +315,7 @@ public class EventSystem implements IEventSystem {
             Collections.addAll(toCheck, clazz.getInterfaces());
         }
 
-        result.sort(priorityFilter);
+        result.sort(CALLBACK_ORDER);
         return result;
     }
 
@@ -269,8 +333,7 @@ public class EventSystem implements IEventSystem {
 
     private <T extends Event<?>> void executeParallel(List<EventCallback<T>> group, T event) {
         if (group.isEmpty()) return;
-        
-        // Optimization: if there's only one listener, run it synchronously
+
         if (group.size() == 1) {
             executeSequential(group.getFirst(), event);
             return;
@@ -279,11 +342,20 @@ public class EventSystem implements IEventSystem {
         T immutableEvent = wrapImmutable(event);
 
         List<CompletableFuture<?>> futures = new ArrayList<>();
-        for (EventCallback<T> cb : group) {
-            if (shouldCall(cb, event)) {
-                futures.add(threadManager.fireAndForget(ThreadType.CACHED, t ->
-                        t.execute(() -> cb.listener().call(immutableEvent))
-                ));
+        Executor executor = asyncExecutor;
+        if (executor != null) {
+            for (EventCallback<T> cb : group) {
+                if (shouldCall(cb, event)) {
+                    futures.add(CompletableFuture.runAsync(() -> cb.listener().call(immutableEvent), executor));
+                }
+            }
+        } else {
+            for (EventCallback<T> cb : group) {
+                if (shouldCall(cb, event)) {
+                    futures.add(threadManager.fireAndForget(ThreadType.CACHED, t ->
+                            t.execute(() -> cb.listener().call(immutableEvent))
+                    ));
+                }
             }
         }
 
@@ -322,19 +394,6 @@ public class EventSystem implements IEventSystem {
                 (cb.state() == State.POST && event.isPost());
     }
 
-    /**
-     * Drops cached execution plans for concrete event classes that would observe this registration key
-     * when resolving listeners (subtype relationship).
-     */
-    private void invalidateExecutionPlansFor(Type registrationType) {
-        if (registrationType instanceof Class<?> rc) {
-            executionPlanCache.keySet().removeIf(rc::isAssignableFrom);
-        } else {
-            executionPlanCache.clear();
-        }
-    }
-
-
     @Override
     public <T extends MutableEvent<?>, R> Pair<T, R> dispatchWrapped(
             T event,
@@ -372,7 +431,8 @@ public class EventSystem implements IEventSystem {
         return Pair.of(post, call);
     }
 
-    private record EventCallback<T extends Event<?>>(Object container, Listener<T> listener, int priority, State state,
-                                                     boolean readOnly) {
+    private record EventCallback<T extends Event<?>>(
+            Object container, Listener<T> listener, int priority, State state,
+            boolean readOnly, long subscribeOrder) {
     }
 }
