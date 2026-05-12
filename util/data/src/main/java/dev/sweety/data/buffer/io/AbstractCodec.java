@@ -1,6 +1,5 @@
 package dev.sweety.data.buffer.io;
 
-import dev.sweety.data.buffer.AbstractBuffer;
-
-public interface AbstractCodec<T extends AbstractBuffer<T>> extends AbstractEncoder<T>, AbstractDecoder<T> {
+/** Combined read/write codec using {@link dev.sweety.data.buffer.BufferReader} / {@link dev.sweety.data.buffer.BufferWriter} (no type parameter). */
+public interface AbstractCodec extends AbstractEncoder, AbstractDecoder {
 }

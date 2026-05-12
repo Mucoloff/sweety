@@ -13,5 +13,6 @@ dependencies {
 
 
     implementation project(':network:netty')
+    implementation project(':util:data')
 }
 

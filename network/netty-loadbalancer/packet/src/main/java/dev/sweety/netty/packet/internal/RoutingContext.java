@@ -1,5 +1,6 @@
 package dev.sweety.netty.packet.internal;
 
+import dev.sweety.data.buffer.*;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.buffer.io.Codec;
 
@@ -11,12 +12,12 @@ public class RoutingContext implements Codec {
     }
 
     @Override
-    public void write(PacketBuffer buffer) {
+    public void write(BufferWriter buffer) {
 
     }
 
     @Override
-    public void read(PacketBuffer buffer) {
+    public void read(BufferReader buffer) {
 
     }
 

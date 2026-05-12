@@ -1,6 +1,6 @@
 package dev.sweety.saas.service.packet.global.monitoring.request;
 
-import dev.sweety.netty.packet.buffer.PacketBuffer;
+import dev.sweety.data.buffer.*;
 import dev.sweety.netty.packet.model.PacketTransaction;
 import dev.sweety.saas.service.ServiceType;
 import lombok.AllArgsConstructor;
@@ -23,17 +23,17 @@ public class MonitoringMetricReportRequest extends PacketTransaction.Transaction
     }
 
     @Override
-    public void write(PacketBuffer buffer) {
+    public void write(BufferWriter buffer) {
         buffer.writeObject(serviceType);
         buffer.writeVarLong(System.currentTimeMillis());
-        buffer.writeMap(metrics, PacketBuffer::writeString, PacketBuffer::writeVarLong);
+        buffer.writeMap(metrics, BufferWriter::writeString, BufferWriter::writeVarLong);
     }
 
     @Override
-    public void read(PacketBuffer buffer) {
+    public void read(BufferReader buffer) {
         this.serviceType = buffer.readObject(ServiceType.DECODER);
         this.timestamp = buffer.readVarLong();
-        this.metrics = buffer.readMap(PacketBuffer::readString, PacketBuffer::readVarLong, HashMap::new);
+        this.metrics = buffer.readMap(BufferReader::readString, BufferReader::readVarLong, HashMap::new);
     }
 
     public ServiceType serviceType() {

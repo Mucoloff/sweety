@@ -1,9 +1,9 @@
 package dev.sweety.data.buffer.io;
 
-import dev.sweety.data.buffer.AbstractBuffer;
+import dev.sweety.data.buffer.BufferWriter;
+/** Serializes into a {@link dev.sweety.data.buffer.BufferWriter} (no concrete buffer type parameter). */
+public interface AbstractEncoder {
 
-public interface AbstractEncoder<T extends AbstractBuffer<T>> {
-
-    void write(final T buffer);
+    void write(BufferWriter buffer);
 
 }

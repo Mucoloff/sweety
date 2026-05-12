@@ -50,8 +50,8 @@ public class PatchGenerator {
         if (oldJar == null || !oldJar.exists()) throw new IllegalArgumentException("Old JAR file not found: " + oldJar);
         if (newJar == null || !newJar.exists()) throw new IllegalArgumentException("New JAR file not found: " + newJar);
 
-        Archive oldArchive = new JarArchive(oldJar, filter, diffEngine.normalizer());
-        Archive newArchive = new JarArchive(newJar, filter, diffEngine.normalizer());
+        Archive oldArchive = new JarArchive(oldJar, filter, normalizer);
+        Archive newArchive = new JarArchive(newJar, filter, normalizer);
 
         Patch patch = diffEngine.diff(oldArchive, newArchive, fromVersion, toVersion);
 

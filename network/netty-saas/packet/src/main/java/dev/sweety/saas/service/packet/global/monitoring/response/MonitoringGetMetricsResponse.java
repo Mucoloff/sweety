@@ -1,6 +1,6 @@
 package dev.sweety.saas.service.packet.global.monitoring.response;
 
-import dev.sweety.netty.packet.buffer.PacketBuffer;
+import dev.sweety.data.buffer.*;
 import dev.sweety.netty.packet.model.PacketTransaction;
 import dev.sweety.saas.service.ServiceType;
 import lombok.AllArgsConstructor;
@@ -16,17 +16,17 @@ public class MonitoringGetMetricsResponse extends PacketTransaction.Transaction 
     private Map<ServiceType, Map<String, Long>> allMetrics; // serviceType -> (metricName -> value)
 
     @Override
-    public void write(PacketBuffer buffer) {
-        buffer.writeMap(allMetrics, PacketBuffer::writeObject, (buf, map) -> {
-            buf.writeMap(map, PacketBuffer::writeString, PacketBuffer::writeVarLong);
+    public void write(BufferWriter buffer) {
+        buffer.writeMap(allMetrics, BufferWriter::writeObject, (buf, map) -> {
+            buf.writeMap(map, BufferWriter::writeString, BufferWriter::writeVarLong);
         });
     }
 
     @Override
-    public void read(PacketBuffer buffer) {
+    public void read(BufferReader buffer) {
         this.allMetrics = buffer.readMap(
                 buf -> buf.readObject(ServiceType.DECODER),
-                buf -> buf.readMap(PacketBuffer::readString, PacketBuffer::readVarLong, HashMap::new),
+                buf -> buf.readMap(BufferReader::readString, BufferReader::readVarLong, HashMap::new),
                 HashMap::new
         );
     }

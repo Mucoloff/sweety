@@ -1,5 +1,6 @@
 package dev.sweety.netty.feature.batch;
 
+import dev.sweety.data.buffer.*;
 import dev.sweety.math.function.TriFunction;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.buffer.io.Codec;
@@ -71,13 +72,13 @@ public final class Batch implements Codec {
     }
 
     @Override
-    public void write(final PacketBuffer buffer) {
+    public void write(final BufferWriter buffer) {
         ensureRawPayload();
         buffer.writeBytes(this.rawBatchBytes);
     }
 
     @Override
-    public void read(final PacketBuffer buffer) {
+    public void read(final BufferReader buffer) {
         // Keep the payload raw and parse it only when decode() is requested.
         this.rawBatchBytes = buffer.getBytes();
         buffer.readerIndex(buffer.writerIndex());

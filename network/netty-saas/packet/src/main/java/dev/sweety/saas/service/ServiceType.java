@@ -1,5 +1,6 @@
 package dev.sweety.saas.service;
 
+import dev.sweety.data.buffer.BufferWriter;
 import dev.sweety.data.ChecksumUtils;
 import dev.sweety.data.HasId;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
@@ -64,7 +65,7 @@ public final class ServiceType implements HasId, Encoder {
     }
 
     @Override
-    public void write(PacketBuffer buffer) {
+    public void write(BufferWriter buffer) {
         buffer.writeVarInt(this.id);
     }
 

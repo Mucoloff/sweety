@@ -1,17 +1,13 @@
 package dev.sweety.data.buffer.io.callable;
 
-import dev.sweety.data.buffer.AbstractBuffer;
-
-import java.util.function.BiConsumer;
+import dev.sweety.data.buffer.BufferWriter;
 
 @FunctionalInterface
-public interface AbstractCallableEncoder<T, B extends AbstractBuffer<B>> extends BiConsumer<T, B> {
+public interface AbstractCallableEncoder<T> {
 
-    void write(final B buffer, final T data);
+    void write(BufferWriter buffer, T data);
 
-    @Override
-    default void accept(final T data, final B buffer) {
+    default void accept(T data, BufferWriter buffer) {
         write(buffer, data);
     }
 }
-

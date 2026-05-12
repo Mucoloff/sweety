@@ -1,5 +1,6 @@
 package dev.sweety.versioning.protocol.handshake;
 
+import dev.sweety.data.buffer.BufferWriter;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.buffer.io.Encoder;
 import dev.sweety.netty.packet.buffer.io.callable.CallableDecoder;
@@ -10,7 +11,7 @@ public record ResponseData(String token, Version version, DownloadType type) imp
     public static final CallableDecoder<ResponseData> DECODER = buffer -> new ResponseData(buffer.readString(), buffer.readObject(Version.DECODER), buffer.readEnum(DownloadType.class));
 
     @Override
-    public void write(PacketBuffer buffer) {
+    public void write(BufferWriter buffer) {
         buffer.writeString(this.token).writeObject(this.version).writeEnum(this.type);
     }
 }

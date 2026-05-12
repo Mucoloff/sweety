@@ -18,7 +18,7 @@ import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
-public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
+public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implements BufferReader, BufferWriter {
     private static final int MAX_ARRAY_SIZE = 1 << 23; // 8MB — ForwardData batches exceed 1MB at 3×1500p
     private static final int MAX_STRING_BYTES = 1 << 20;
 
@@ -90,6 +90,25 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
     private byte writeMask = 0, writeMaskIndex = 0;
     private int writePosIndex = 0;
     private byte readMask = 0, readMaskIndex = 0;
+
+    /**
+     * Resets packed-boolean read state. Call whenever the read cursor is moved without matching how many
+     * booleans were consumed (for example {@link #resetReaderIndex} or {@link #readerIndex(int)}).
+     */
+    protected final void resetPackedBooleanReadState() {
+        readMask = 0;
+        readMaskIndex = 0;
+    }
+
+    /**
+     * Resets packed-boolean write state. Call when the write cursor is rewound (for example
+     * {@link #resetWriterIndex} or {@link #writerIndex(int)}).
+     */
+    protected final void resetPackedBooleanWriteState() {
+        writeMask = 0;
+        writeMaskIndex = 0;
+        writePosIndex = 0;
+    }
 
     public Self writeBoolean(boolean value) {
         if (writeMaskIndex % 8 == 0) {
@@ -207,13 +226,13 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
         else throw new PacketDecodeException("Invalid enum ordinal: " + val).runtime();
     }
 
-    public <T extends Enum<T>, S> Self writeEnum(T value, Function<T, S> stateMapper, AbstractCallableEncoder<? super S, Self> stateEncoder) {
+    public <T extends Enum<T>, S> Self writeEnum(T value, Function<T, S> stateMapper, AbstractCallableEncoder<? super S> stateEncoder) {
         Self self = self();
         stateEncoder.write(self, stateMapper.apply(value));
         return self;
     }
 
-    public <T extends Enum<T>, S> T readEnum(AbstractCallableDecoder<? extends S, Self> stateDecoder, Function<S, T> mapper) {
+    public <T extends Enum<T>, S> T readEnum(AbstractCallableDecoder<? extends S> stateDecoder, Function<S, T> mapper) {
         return mapper.apply(stateDecoder.read(self()));
     }
 
@@ -376,7 +395,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
      * Writes a single presence marker then, if present, the payload. Used by {@link #writeObject}
      * and {@link #writeOptional} so both share the same wire layout without chaining public overloads.
      */
-    private <T> Self writeMarkedPayload(boolean present, @Nullable T valueIfPresent, AbstractCallableEncoder<? super T, Self> encoder) {
+    private <T> Self writeMarkedPayload(boolean present, @Nullable T valueIfPresent, AbstractCallableEncoder<? super T> encoder) {
         writePresence(present);
         Self self = self();
         if (!present) return self;
@@ -387,24 +406,24 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
     /**
      * Reads a presence marker; if absent returns {@code null}, otherwise decodes the payload.
      */
-    private <T> @Nullable T readMarkedPayload(AbstractCallableDecoder<? extends T, Self> decoder) {
+    private <T> @Nullable T readMarkedPayload(AbstractCallableDecoder<? extends T> decoder) {
         if (!readPresence()) return null;
         return decoder.read(self());
     }
 
-    public <T> Self writeObject(@Nullable T object, AbstractCallableEncoder<? super T, Self> encoder) {
+    public <T> Self writeObject(@Nullable T object, AbstractCallableEncoder<? super T> encoder) {
         return writeMarkedPayload(object != null, object, encoder);
     }
 
-    public <T> T readObject(AbstractCallableDecoder<? extends T, Self> decoder) {
+    public <T> T readObject(AbstractCallableDecoder<? extends T> decoder) {
         return readMarkedPayload(decoder);
     }
 
-    public <T> Optional<T> readOptional(AbstractCallableDecoder<? extends T, Self> decoder) {
+    public <T> Optional<T> readOptional(AbstractCallableDecoder<? extends T> decoder) {
         return Optional.ofNullable(readMarkedPayload(decoder));
     }
 
-    public <T extends AbstractDecoder<Self>> Optional<T> readOptional(Supplier<T> factory) {
+    public <T extends AbstractDecoder> Optional<T> readOptional(Supplier<T> factory) {
         return Optional.ofNullable(readMarkedPayload(buffer -> {
             T obj = factory.get();
             obj.read(buffer);
@@ -412,19 +431,19 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
         }));
     }
 
-    public <T> Self writeOptional(final Optional<T> optional, AbstractCallableEncoder<? super T, Self> encoder) {
+    public <T> Self writeOptional(final Optional<T> optional, AbstractCallableEncoder<? super T> encoder) {
         return writeMarkedPayload(optional.isPresent(), optional.orElse(null), encoder);
     }
 
-    public <T extends AbstractEncoder<Self>> Self writeOptional(final Optional<T> optional) {
+    public <T extends AbstractEncoder> Self writeOptional(final Optional<T> optional) {
         return writeOptional(optional, (buffer, t) -> t.write(buffer));
     }
 
-    public <T extends AbstractEncoder<Self>> Self writeObject(T object) {
+    public <T extends AbstractEncoder> Self writeObject(T object) {
         return writeObject(object, (buffer, t) -> t.write(buffer));
     }
 
-    public <T extends AbstractDecoder<Self>> T readObject(Supplier<T> factory) {
+    public <T extends AbstractDecoder> T readObject(Supplier<T> factory) {
         return readObject(buffer -> {
             T obj = factory.get();
             obj.read(buffer);
@@ -432,7 +451,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
         });
     }
 
-    public <T> Self writeIterable(Iterable<T> iterable, int size, AbstractCallableEncoder<? super T, Self> encoder) {
+    public <T> Self writeIterable(Iterable<T> iterable, int size, AbstractCallableEncoder<? super T> encoder) {
         if (writeNullCheck(iterable)) return self();
         writeVarInt(size);
         for (T entry : iterable) {
@@ -442,22 +461,23 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
     }
 
     @SafeVarargs
-    public final <T> Self writeArray(AbstractCallableEncoder<? super T, Self> encoder, T... array) {
+    @SuppressWarnings({"unchecked", "varargs"})
+    public final <T> Self writeArray(AbstractCallableEncoder<? super T> encoder, T... array) {
         if (writeNullCheck(array)) return self();
         writeVarInt(array.length);
         for (T entry : array) writeObject(entry, encoder);
         return self();
     }
 
-    public <T> Self writeCollection(Collection<T> collection, AbstractCallableEncoder<? super T, Self> encoder) {
+    public <T> Self writeCollection(Collection<T> collection, AbstractCallableEncoder<? super T> encoder) {
         return writeIterable(collection, collection.size(), encoder);
     }
 
-    public <T extends AbstractEncoder<Self>> Self writeCollection(Collection<T> collection) {
+    public <T extends AbstractEncoder> Self writeCollection(Collection<T> collection) {
         return writeCollection(collection, (buffer, t) -> t.write(buffer));
     }
 
-    public <T, C extends Collection<T>> C readCollection(AbstractCallableDecoder<? extends T, Self> decoder, IntFunction<C> collectionFactory) {
+    public <T, C extends Collection<T>> C readCollection(AbstractCallableDecoder<? extends T> decoder, IntFunction<C> collectionFactory) {
         if (!readPresence()) return null;
         final int size = readBoundedLength("collection", MAX_ARRAY_SIZE);
         final C collection = collectionFactory.apply(size);
@@ -465,11 +485,11 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
         return collection;
     }
 
-    public <T> List<T> readList(AbstractCallableDecoder<? extends T, Self> decoder) {
+    public <T> List<T> readList(AbstractCallableDecoder<? extends T> decoder) {
         return readCollection(decoder, ArrayList::new);
     }
 
-    public <T> T[] readArray(AbstractCallableDecoder<? extends T, Self> decoder, IntFunction<T[]> arrayFactory) {
+    public <T> T[] readArray(AbstractCallableDecoder<? extends T> decoder, IntFunction<T[]> arrayFactory) {
         if (!readPresence()) return null;
         int size = readBoundedLength("array", MAX_ARRAY_SIZE);
         T[] array = arrayFactory.apply(size);
@@ -479,11 +499,11 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
         return array;
     }
 
-    public <T extends AbstractDecoder<Self>> List<T> readCollection(Supplier<T> factory) {
+    public <T extends AbstractDecoder> List<T> readCollection(Supplier<T> factory) {
         return readList(buffer -> buffer.readObject(factory));
     }
 
-    public <K, V> Self writeMap(Map<K, V> map, AbstractCallableEncoder<Pair<K, V>, Self> encoder) {
+    public <K, V> Self writeMap(Map<K, V> map, AbstractCallableEncoder<Pair<K, V>> encoder) {
         if (writeNullCheck(map)) return self();
         writeVarInt(map.size());
         for (Map.Entry<K, V> entry : map.entrySet()) {
@@ -492,7 +512,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
         return self();
     }
 
-    public <K, V> Map<K, V> readMap(AbstractCallableDecoder<Pair<K, V>, Self> decoder, IntFunction<Map<K, V>> mapFactory) {
+    public <K, V> Map<K, V> readMap(AbstractCallableDecoder<Pair<K, V>> decoder, IntFunction<Map<K, V>> mapFactory) {
         if (!readPresence()) return null;
 
         int size = readBoundedLength("map", MAX_ARRAY_SIZE);
@@ -504,22 +524,22 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
         return map;
     }
 
-    public <K, V> Self writeMap(Map<K, V> map, AbstractCallableEncoder<? super K, Self> kEncoder, AbstractCallableEncoder<? super V, Self> vEncoder) {
+    public <K, V> Self writeMap(Map<K, V> map, AbstractCallableEncoder<? super K> kEncoder, AbstractCallableEncoder<? super V> vEncoder) {
         return writeMap(map, (buffer, data) -> {
             kEncoder.write(buffer, data.key());
             vEncoder.write(buffer, data.value());
         });
     }
 
-    public <K, V> Map<K, V> readMap(AbstractCallableDecoder<K, Self> kDecoder, AbstractCallableDecoder<V, Self> vDecoder, IntFunction<Map<K, V>> mapFactory) {
+    public <K, V> Map<K, V> readMap(AbstractCallableDecoder<K> kDecoder, AbstractCallableDecoder<V> vDecoder, IntFunction<Map<K, V>> mapFactory) {
         return readMap(buffer -> Pair.of(kDecoder.read(buffer), vDecoder.read(buffer)), mapFactory);
     }
 
-    public <K extends Enum<K>, V> Self writeEnumMap(EnumMap<K, V> map, AbstractCallableEncoder<? super V, Self> vEncoder) {
-        return writeMap(map, AbstractBuffer::writeEnum, vEncoder);
+    public <K extends Enum<K>, V> Self writeEnumMap(EnumMap<K, V> map, AbstractCallableEncoder<? super V> vEncoder) {
+        return writeMap(map, (buf, key) -> buf.writeEnum(key), vEncoder);
     }
 
-    public <K extends Enum<K>, V> EnumMap<K, V> readEnumMap(Class<K> keyClass, AbstractCallableDecoder<V, Self> vDecoder) {
+    public <K extends Enum<K>, V> EnumMap<K, V> readEnumMap(Class<K> keyClass, AbstractCallableDecoder<V> vDecoder) {
         final Map<K, V> tmp = readMap(buffer -> buffer.readEnum(keyClass), vDecoder, HashMap::new);
         final EnumMap<K, V> map = new EnumMap<>(keyClass);
         if (!tmp.isEmpty()) map.putAll(tmp);
@@ -572,7 +592,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
 
     public abstract Self writeBytes(byte[] data, int offset, int length);
 
-    public Self wrapData(AbstractEncoder<Self> encoder) {
+    public Self wrapData(AbstractEncoder encoder) {
         byte[] bytes = readAllBytes();
         encoder.write(self());
         return writeBytes(bytes);
@@ -693,8 +713,9 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> {
         }
     }
 
+    /** CRTP helper: unchecked cast matches {@link Self}-bound subclasses only. */
+    @SuppressWarnings("unchecked")
     private Self self() {
-        //noinspection unchecked
         return (Self) this;
     }
 

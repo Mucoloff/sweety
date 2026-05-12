@@ -1,5 +1,6 @@
 package dev.sweety.netty.packet.model;
 
+import dev.sweety.data.buffer.*;
 import dev.sweety.data.ChecksumUtils;
 import dev.sweety.math.RandomUtils;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
@@ -85,12 +86,12 @@ public abstract class PacketTransaction<R extends PacketTransaction.Transaction,
     public abstract static class Transaction implements Codec {
 
         @Override
-        public void write(final PacketBuffer buffer) {
+        public void write(final BufferWriter buffer) {
 
         }
 
         @Override
-        public void read(final PacketBuffer buffer) {
+        public void read(final BufferReader buffer) {
 
         }
 

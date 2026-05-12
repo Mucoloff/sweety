@@ -1,6 +1,7 @@
 package dev.sweety.versioning.version;
 
-import dev.sweety.netty.packet.buffer.PacketBuffer;
+import dev.sweety.data.buffer.BufferWriter;
+import dev.sweety.math.MathUtils;
 import dev.sweety.netty.packet.buffer.io.Encoder;
 import dev.sweety.netty.packet.buffer.io.callable.CallableDecoder;
 import dev.sweety.versioning.version.channel.Channel;
@@ -34,11 +35,11 @@ public record ReleaseInfo(
 
     @Override
     public float rollout() {
-        return Math.max(0f, Math.min(1f, this.rollout));
+        return MathUtils.clamp(this.rollout);
     }
 
     @Override
-    public void write(PacketBuffer buffer) {
+    public void write(BufferWriter buffer) {
         buffer.writeObject(this.version).writeEnum(this.channel).writeVarLong(updatedAt.toEpochMilli()).writeFloat(rollout);
     }
 

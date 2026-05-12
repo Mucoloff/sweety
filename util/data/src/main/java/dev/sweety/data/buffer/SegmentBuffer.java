@@ -8,7 +8,6 @@ public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
 
     private final Arena arena;
     private final MemorySegment segment;
-
     private final boolean owner;
 
     private int refCnt = 1;
@@ -20,6 +19,9 @@ public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
     private int markWriter;
 
     // ===================== CONSTRUCTORS =====================
+    public SegmentBuffer() {
+        this(256);
+    }
 
     public SegmentBuffer(int capacity) {
         this.arena = Arena.ofConfined();
@@ -37,9 +39,7 @@ public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
 
     @Override
     public boolean release() {
-        if (!owner) {
-            return false;
-        }
+        if (!owner) return false;
 
         if (--refCnt == 0) {
             arena.close();
@@ -74,6 +74,8 @@ public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
         readerIndex = 0;
         markReader = 0;
         markWriter = 0;
+        resetPackedBooleanReadState();
+        resetPackedBooleanWriteState();
     }
 
     // ===================== PRIMITIVES WRITE =====================
@@ -282,6 +284,7 @@ public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
     @Override
     public SegmentBuffer readerIndex(int readerIndex) {
         this.readerIndex = readerIndex;
+        resetPackedBooleanReadState();
         return this;
     }
 
@@ -293,6 +296,7 @@ public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
     @Override
     public SegmentBuffer writerIndex(int writerIndex) {
         this.writerIndex = writerIndex;
+        resetPackedBooleanWriteState();
         return this;
     }
 
@@ -305,6 +309,7 @@ public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
     @Override
     public SegmentBuffer resetReaderIndex() {
         readerIndex = markReader;
+        resetPackedBooleanReadState();
         return this;
     }
 
@@ -317,6 +322,7 @@ public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
     @Override
     public SegmentBuffer resetWriterIndex() {
         writerIndex = markWriter;
+        resetPackedBooleanWriteState();
         return this;
     }
 

@@ -1,7 +1,7 @@
 package dev.sweety.netty.packet.buffer.io;
 
-import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.data.buffer.io.AbstractDecoder;
 
-public interface Decoder extends AbstractDecoder<PacketBuffer> {
+/** Netty-facing alias for packet {@link AbstractDecoder} usage from {@code PacketBuffer}. */
+public interface Decoder extends AbstractDecoder {
 }

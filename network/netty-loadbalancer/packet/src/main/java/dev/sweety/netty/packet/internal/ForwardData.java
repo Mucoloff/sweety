@@ -1,5 +1,6 @@
 package dev.sweety.netty.packet.internal;
 
+import dev.sweety.data.buffer.*;
 import dev.sweety.math.function.TriFunction;
 import dev.sweety.netty.feature.batch.Batch;
 import dev.sweety.netty.packet.Packer;
@@ -46,7 +47,7 @@ public class ForwardData extends PacketTransaction.Transaction {
     }
 
     @Override
-    public void write(final PacketBuffer buffer) {
+    public void write(final BufferWriter buffer) {
         buffer.writeVarInt(this.senderId);
         buffer.writeVarInt(this.receiverId);
         this.context.write(buffer);
@@ -60,7 +61,7 @@ public class ForwardData extends PacketTransaction.Transaction {
     }
 
     @Override
-    public void read(final PacketBuffer buffer) {
+    public void read(final BufferReader buffer) {
         this.senderId = buffer.readVarInt();
         this.receiverId = buffer.readVarInt();
         this.context = new RoutingContext();

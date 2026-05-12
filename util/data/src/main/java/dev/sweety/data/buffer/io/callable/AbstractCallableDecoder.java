@@ -1,16 +1,16 @@
 package dev.sweety.data.buffer.io.callable;
 
-import dev.sweety.data.buffer.AbstractBuffer;
+import dev.sweety.data.buffer.BufferReader;
 
 import java.util.function.Function;
 
 @FunctionalInterface
-public interface AbstractCallableDecoder<T, K extends AbstractBuffer<K>> extends Function<K, T> {
+public interface AbstractCallableDecoder<T> extends Function<BufferReader, T> {
 
-    T read(final K buffer);
+    T read(BufferReader buffer);
 
     @Override
-    default T apply(final K buffer){
+    default T apply(BufferReader buffer) {
         return read(buffer);
     }
 }

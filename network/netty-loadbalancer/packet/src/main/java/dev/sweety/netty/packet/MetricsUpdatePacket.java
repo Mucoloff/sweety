@@ -3,7 +3,7 @@ package dev.sweety.netty.packet;
 import dev.sweety.netty.metrics.EMA;
 import dev.sweety.netty.metrics.SmoothedLoad;
 import dev.sweety.netty.metrics.state.NodeState;
-import dev.sweety.netty.packet.buffer.PacketBuffer;
+import dev.sweety.data.buffer.BufferReader;
 import dev.sweety.netty.packet.model.Packet;
 
 import java.util.HashMap;
@@ -48,7 +48,7 @@ public class MetricsUpdatePacket extends Packet {
         );
 
 
-        this.packetTimings = this.buffer().readMap(PacketBuffer::readVarInt, buf -> buf.readPercentual(SCALE), HashMap::new);
+        this.packetTimings = this.buffer().readMap(BufferReader::readVarInt, buf -> buf.readPercentual(SCALE), HashMap::new);
     }
 
     public SmoothedLoad load() {

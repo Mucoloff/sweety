@@ -1,12 +1,17 @@
 package dev.sweety.netty.packet.buffer;
 
-import dev.sweety.netty.packet.buffer.io.Codec;
+import dev.sweety.data.buffer.AbstractBuffer;
+import dev.sweety.data.buffer.BufferReader;
+import dev.sweety.data.buffer.BufferWriter;
+import dev.sweety.data.buffer.SegmentBuffer;
+import dev.sweety.data.buffer.io.AbstractCodec;
 
 import java.util.Optional;
+import java.util.function.Supplier;
 
 public class Test {
 
-    static class Example implements Codec {
+    static class Example implements AbstractCodec {
 
         public Example() {
 
@@ -20,17 +25,6 @@ public class Test {
         String text;
         int integer;
 
-        @Override
-        public void read(PacketBuffer buffer) {
-            text = buffer.readString();
-            integer = buffer.readVarInt();
-        }
-
-        @Override
-        public void write(PacketBuffer buffer) {
-            buffer.writeString(text);
-            buffer.writeVarInt(integer);
-        }
 
         @Override
         public String toString() {
@@ -39,15 +33,40 @@ public class Test {
                     ", integer=" + integer +
                     '}';
         }
+
+        @Override
+        public void read(BufferReader buffer) {
+            text = buffer.readString();
+            integer = buffer.readVarInt();
+        }
+
+        @Override
+        public void write(BufferWriter buffer) {
+            buffer.writeString(text);
+            buffer.writeVarInt(integer);
+        }
+
     }
 
     public static void main(String[] args) {
-        PacketBuffer buffer = new PacketBuffer();
+        test(PacketBuffer::new);
+        test(SegmentBuffer::new);
+        PacketBuffer buff = new PacketBuffer();
+        buff.writeString("");
+        buff.writeVarInt(0);
+        buff.writeOptional(Optional.of(new Example("text", 10)), (a,b) -> b.write(a));
+    }
 
-        // writeOptional / writeObject(null|value) and readObject / readOptional share one packed-boolean marker + payload.
-        //buffer.writeObject(new Example("text", 10));
-        buffer.writeOptional(Optional.of(new Example("text", 10)));
+    private static void test(Supplier<AbstractBuffer<?>> supplier) {
+        var buff1 = supplier.get();
+        var buff2 = supplier.get();
+        buff1.writeOptional(Optional.of(new Example("text", 10)));
+        read(buff1);
+        buff2.writeObject(new Example("text", 10));
+        read(buff2);
+    }
 
+    private static void read(AbstractBuffer<?> buffer) {
         buffer.markReaderIndex();
 
         Example example = buffer.readObject(Example::new);
@@ -58,8 +77,6 @@ public class Test {
         Optional<Example> opt = buffer.readOptional(Example::new);
 
         opt.ifPresentOrElse(value -> System.out.println("Optional is present: " + value), () -> System.out.println("Optional is empty"));
-
-
     }
 
 }

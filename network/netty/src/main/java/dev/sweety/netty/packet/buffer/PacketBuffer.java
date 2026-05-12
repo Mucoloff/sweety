@@ -2,9 +2,17 @@ package dev.sweety.netty.packet.buffer;
 
 import dev.sweety.data.buffer.AbstractBuffer;
 import dev.sweety.netty.packet.buffer.io.Encoder;
+import dev.sweety.netty.packet.buffer.io.callable.CallableDecoder;
+import dev.sweety.netty.packet.buffer.io.callable.CallableEncoder;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
+import it.unimi.dsi.fastutil.Pair;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.*;
+import java.util.function.Function;
+import java.util.function.IntFunction;
 
 public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
 
@@ -14,8 +22,12 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
         this.nettyBuffer = nettyBuffer;
     }
 
+    public PacketBuffer(int capacity) {
+        this(PooledByteBufAllocator.DEFAULT.buffer(capacity));
+    }
+
     public PacketBuffer() {
-        this(PooledByteBufAllocator.DEFAULT.buffer(256));
+        this(256);
     }
 
     public PacketBuffer(byte[] bytes) {
@@ -24,6 +36,8 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
 
     public void clear() {
         this.nettyBuffer.clear();
+        resetPackedBooleanReadState();
+        resetPackedBooleanWriteState();
     }
 
     //use writeVarInt
@@ -125,6 +139,7 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
 
     public PacketBuffer resetReaderIndex() {
         this.nettyBuffer.resetReaderIndex();
+        resetPackedBooleanReadState();
         return this;
     }
 
@@ -139,11 +154,13 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
 
     public PacketBuffer readerIndex(int readerIndex) {
         this.nettyBuffer.readerIndex(readerIndex);
+        resetPackedBooleanReadState();
         return this;
     }
 
     public PacketBuffer resetWriterIndex() {
         this.nettyBuffer.resetWriterIndex();
+        resetPackedBooleanWriteState();
         return this;
     }
 
@@ -158,6 +175,7 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
 
     public PacketBuffer writerIndex(int writerIndex) {
         this.nettyBuffer.writerIndex(writerIndex);
+        resetPackedBooleanWriteState();
         return this;
     }
 
@@ -320,4 +338,84 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
     protected void getBytes(int index, byte[] dst) {
         this.nettyBuffer.getBytes(index, dst);
     }
+
+
+    public <T extends Enum<T>, S> PacketBuffer writeEnum(T value, Function<T, S> stateMapper, CallableEncoder<? super S> stateEncoder) {
+        return super.writeEnum(value, stateMapper, stateEncoder);
+    }
+
+
+    public <T extends Enum<T>, S> T readEnum(CallableDecoder<? extends S> stateDecoder, Function<S, T> mapper) {
+        return super.readEnum(stateDecoder, mapper);
+    }
+
+
+    public <T> PacketBuffer writeOptional(Optional<T> optional, CallableEncoder<? super T> encoder) {
+        return super.writeOptional(optional, encoder);
+    }
+
+    public <T> PacketBuffer writeObject(@Nullable T object, CallableEncoder<? super T> encoder) {
+        return super.writeObject(object, encoder);
+    }
+
+
+    public <T> T readObject(CallableDecoder<? extends T> decoder) {
+        return super.readObject(decoder);
+    }
+
+
+    public <T> Optional<T> readOptional(CallableDecoder<? extends T> decoder) {
+        return super.readOptional(decoder);
+    }
+
+
+    public <T> PacketBuffer writeIterable(Iterable<T> iterable, int size, CallableEncoder<? super T> encoder) {
+        return super.writeIterable(iterable, size, encoder);
+    }
+
+
+    public <T> PacketBuffer writeCollection(Collection<T> collection, CallableEncoder<? super T> encoder) {
+        return super.writeCollection(collection, encoder);
+    }
+
+
+    public <T, C extends Collection<T>> C readCollection(CallableDecoder<? extends T> decoder, IntFunction<C> collectionFactory) {
+        return super.readCollection(decoder, collectionFactory);
+    }
+
+
+    public <T> List<T> readList(CallableDecoder<? extends T> decoder) {
+        return super.readList(decoder);
+    }
+
+
+    public <T> T[] readArray(CallableDecoder<? extends T> decoder, IntFunction<T[]> arrayFactory) {
+        return super.readArray(decoder, arrayFactory);
+    }
+
+    public <K, V> PacketBuffer writeMap(Map<K, V> map, CallableEncoder<Pair<K, V>> encoder) {
+        return super.writeMap(map, encoder);
+    }
+
+
+    public <K, V> Map<K, V> readMap(CallableDecoder<Pair<K, V>> decoder, IntFunction<Map<K, V>> mapFactory) {
+        return super.readMap(decoder, mapFactory);
+    }
+
+    public <K, V> PacketBuffer writeMap(Map<K, V> map, CallableEncoder<? super K> kEncoder, CallableEncoder<? super V> vEncoder) {
+        return super.writeMap(map, kEncoder, vEncoder);
+    }
+
+    public <K, V> Map<K, V> readMap(CallableDecoder<K> kDecoder, CallableDecoder<V> vDecoder, IntFunction<Map<K, V>> mapFactory) {
+        return super.readMap(kDecoder, vDecoder, mapFactory);
+    }
+
+    public <K extends Enum<K>, V> EnumMap<K, V> readEnumMap(Class<K> keyClass, CallableDecoder<V> vDecoder) {
+        return super.readEnumMap(keyClass, vDecoder);
+    }
+
+    public <K extends Enum<K>, V> PacketBuffer writeEnumMap(EnumMap<K, V> map, CallableEncoder<? super V> vEncoder) {
+        return super.writeEnumMap(map, vEncoder);
+    }
+
 }

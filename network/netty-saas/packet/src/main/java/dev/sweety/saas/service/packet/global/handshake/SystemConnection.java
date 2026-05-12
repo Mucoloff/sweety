@@ -1,6 +1,7 @@
 package dev.sweety.saas.service.packet.global.handshake;
 
 
+import dev.sweety.data.buffer.*;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.PacketTransaction;
 import dev.sweety.saas.service.ServiceType;
@@ -24,13 +25,13 @@ public class SystemConnection extends PacketTransaction.Transaction {
     }
 
     @Override
-    public void write(PacketBuffer buffer) {
+    public void write(BufferWriter buffer) {
         buffer.writeObject(serviceType);
         buffer.writeEnum(state);
     }
 
     @Override
-    public void read(PacketBuffer buffer) {
+    public void read(BufferReader buffer) {
         this.serviceType = buffer.readObject(ServiceType.DECODER);
         this.state = buffer.readEnum(State.class);
     }

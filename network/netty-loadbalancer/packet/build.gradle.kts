@@ -1,4 +1,5 @@
 dependencies {
+    implementation(project(":util:data"))
     implementation(project(":util:color"))
     implementation(project(":util:math"))
     implementation(project(":util:logger"))

@@ -1,9 +1,10 @@
 package dev.sweety.data.buffer.io;
 
-import dev.sweety.data.buffer.AbstractBuffer;
+import dev.sweety.data.buffer.BufferReader;
 
-public interface AbstractDecoder<T extends AbstractBuffer<T>> {
+/** Deserializes from a {@link BufferReader} (no concrete buffer type parameter). */
+public interface AbstractDecoder {
 
-    void read(final T buffer);
+    void read(BufferReader buffer);
 
 }

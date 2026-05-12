@@ -1,5 +1,6 @@
 package dev.sweety.versioning.version;
 
+import dev.sweety.data.buffer.BufferWriter;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.buffer.io.Encoder;
 import dev.sweety.netty.packet.buffer.io.callable.CallableDecoder;
@@ -25,7 +26,7 @@ public record LauncherInfo(UUID buildId, UUID clientId, Map<Artifact, Version> v
             );
 
     @Override
-    public void write(final PacketBuffer buffer) {
+    public void write(final BufferWriter buffer) {
         buffer.writeUuid(this.buildId).writeUuid(this.clientId);
         buffer.writeMap(versions, (b, artifact) -> b.writeString(artifact.name()), (b, version) -> b.writeObject(version));
         buffer.writeEnum(this.channel);

@@ -1,5 +1,6 @@
 package dev.sweety.versioning.protocol.handshake;
 
+import dev.sweety.data.buffer.*;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.PacketTransaction;
 import dev.sweety.versioning.version.artifact.Artifact;
@@ -38,13 +39,13 @@ public class HandshakeResponse extends PacketTransaction.Transaction {
     }
 
     @Override
-    public void write(final PacketBuffer buffer) {
+    public void write(final BufferWriter buffer) {
         buffer.writeEnum(this.state);
         buffer.writeMap(versions, (b, artifact) -> b.writeString(artifact.name()), (b, data) -> b.writeObject(data));
     }
 
     @Override
-    public void read(final PacketBuffer buffer) {
+    public void read(final BufferReader buffer) {
         this.state = buffer.readEnum(State.class);
         this.versions = buffer.readMap(
                 b -> new Artifact(b.readString()),

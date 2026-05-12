@@ -2,7 +2,8 @@ package dev.sweety.packet.processor;
 
 import com.google.auto.service.AutoService;
 import com.squareup.javapoet.*;
-import dev.sweety.netty.packet.buffer.PacketBuffer;
+import dev.sweety.data.buffer.BufferReader;
+import dev.sweety.data.buffer.BufferWriter;
 import dev.sweety.netty.packet.model.Packet;
 import org.jetbrains.annotations.NotNull;
 
@@ -256,13 +257,13 @@ public class PacketProcessor extends AbstractProcessor {
                     case DECLARED -> {
                         String typeString = componentType.toString();
                         if (typeString.equals("java.lang.String")) {
-                            writeConstructorBuilder.addStatement("this.buffer().writeArray($T::writeString,$N)", TypeName.get(PacketBuffer.class), fieldName);
-                            readConstructorBuilder.addStatement("this.$N = this.buffer().readArray($T::readString, $T[]::new)", fieldName, TypeName.get(PacketBuffer.class), TypeName.get(String.class));
+                            writeConstructorBuilder.addStatement("this.buffer().writeArray($T::writeString,$N)", TypeName.get(BufferWriter.class), fieldName);
+                            readConstructorBuilder.addStatement("this.$N = this.buffer().readArray($T::readString, $T[]::new)", fieldName, TypeName.get(BufferReader.class), TypeName.get(String.class));
                         } else if (typeString.equals("java.util.UUID")) {
-                            writeConstructorBuilder.addStatement("this.buffer().writeArray($T::writeUuid,$N)", TypeName.get(PacketBuffer.class), fieldName);
-                            readConstructorBuilder.addStatement("this.$N = this.buffer().readArray($T::readUuid, $T[]::new)", fieldName, TypeName.get(PacketBuffer.class), TypeName.get(UUID.class));
+                            writeConstructorBuilder.addStatement("this.buffer().writeArray($T::writeUuid,$N)", TypeName.get(BufferWriter.class), fieldName);
+                            readConstructorBuilder.addStatement("this.$N = this.buffer().readArray($T::readUuid, $T[]::new)", fieldName, TypeName.get(BufferReader.class), TypeName.get(UUID.class));
                         } else if (typeUtils.asElement(componentType).getKind() == ElementKind.ENUM) {
-                            writeConstructorBuilder.addStatement("this.buffer().writeArray($T::writeEnum,$N)", TypeName.get(PacketBuffer.class), fieldName);
+                            writeConstructorBuilder.addStatement("this.buffer().writeArray($T::writeEnum,$N)", TypeName.get(BufferWriter.class), fieldName);
                             // Usa una lambda per passare la classe dell'enum al decoder
                             readConstructorBuilder.addStatement("this.$N = this.buffer().readArray(buffer -> buffer.readEnum($T.class), $T[]::new)", fieldName, TypeName.get(componentType), TypeName.get(componentType));
                         } else {
@@ -274,8 +275,8 @@ public class PacketProcessor extends AbstractProcessor {
                                 switch (primitiveName) {
                                     case "int", "boolean", "float", "long", "short", "byte", "double" -> {
                                         String capitalized = capitalize(primitiveName);
-                                        writeConstructorBuilder.addStatement("this.buffer().writeArray($T::write$N,$N)", TypeName.get(PacketBuffer.class), capitalized, fieldName);
-                                        readConstructorBuilder.addStatement("this.$N = this.buffer().readArray($T::read$N, $T[]::new)", fieldName, TypeName.get(PacketBuffer.class), capitalized, typeName);
+                                        writeConstructorBuilder.addStatement("this.buffer().writeArray($T::write$N,$N)", TypeName.get(BufferWriter.class), capitalized, fieldName);
+                                        readConstructorBuilder.addStatement("this.$N = this.buffer().readArray($T::read$N, $T[]::new)", fieldName, TypeName.get(BufferReader.class), capitalized, typeName);
                                     }
 
                                     case "char" -> {

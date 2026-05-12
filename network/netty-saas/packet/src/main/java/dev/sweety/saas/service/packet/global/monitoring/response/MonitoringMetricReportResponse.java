@@ -1,5 +1,6 @@
 package dev.sweety.saas.service.packet.global.monitoring.response;
 
+import dev.sweety.data.buffer.*;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.PacketTransaction;
 import lombok.AllArgsConstructor;
@@ -12,12 +13,12 @@ public class MonitoringMetricReportResponse extends PacketTransaction.Transactio
     private boolean success;
 
     @Override
-    public void write(PacketBuffer buffer) {
+    public void write(BufferWriter buffer) {
         buffer.writeBoolean(success);
     }
 
     @Override
-    public void read(PacketBuffer buffer) {
+    public void read(BufferReader buffer) {
         this.success = buffer.readBoolean();
     }
 

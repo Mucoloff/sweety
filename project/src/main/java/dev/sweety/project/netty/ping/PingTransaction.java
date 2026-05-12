@@ -1,5 +1,6 @@
 package dev.sweety.project.netty.ping;
 
+import dev.sweety.data.buffer.*;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.PacketTransaction;
 import lombok.AllArgsConstructor;
@@ -38,12 +39,12 @@ public class PingTransaction extends PacketTransaction<PingTransaction.Ping, Pin
         String text;
 
         @Override
-        public void write(final PacketBuffer buffer) {
+        public void write(final BufferWriter buffer) {
             buffer.writeString(this.text);
         }
 
         @Override
-        public void read(final PacketBuffer buffer) {
+        public void read(final BufferReader buffer) {
             this.text = buffer.readString();
         }
     }
@@ -56,12 +57,12 @@ public class PingTransaction extends PacketTransaction<PingTransaction.Ping, Pin
         String text;
 
         @Override
-        public void write(final PacketBuffer buffer) {
+        public void write(final BufferWriter buffer) {
             buffer.writeString(this.text);
         }
 
         @Override
-        public void read(final PacketBuffer buffer) {
+        public void read(final BufferReader buffer) {
             this.text = buffer.readString();
         }
 

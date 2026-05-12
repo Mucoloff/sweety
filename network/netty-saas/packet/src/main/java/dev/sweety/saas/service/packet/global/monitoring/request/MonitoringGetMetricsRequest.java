@@ -1,5 +1,6 @@
 package dev.sweety.saas.service.packet.global.monitoring.request;
 
+import dev.sweety.data.buffer.*;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.PacketTransaction;
 import dev.sweety.saas.service.ServiceType;
@@ -14,13 +15,13 @@ public class MonitoringGetMetricsRequest extends PacketTransaction.Transaction {
     private long timeRange;
 
     @Override
-    public void write(PacketBuffer buffer) {
+    public void write(BufferWriter buffer) {
         buffer.writeObject(this.serviceType);
         buffer.writeVarLong(this.timeRange);
     }
 
     @Override
-    public void read(PacketBuffer buffer) {
+    public void read(BufferReader buffer) {
         this.serviceType = buffer.readObject(ServiceType.DECODER);
         this.timeRange = buffer.readVarLong();
     }
