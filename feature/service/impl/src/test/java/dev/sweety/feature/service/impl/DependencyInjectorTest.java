@@ -1,5 +1,6 @@
 package dev.sweety.feature.service.impl;
 
+import dev.sweety.feature.service.api.Provider;
 import dev.sweety.feature.service.api.Service;
 import dev.sweety.feature.service.api.ServiceRegistry;
 import dev.sweety.feature.service.api.annotation.Inject;
@@ -76,12 +77,27 @@ class DependencyInjectorTest {
 
     @Test
     void testMissingDependencyThrows() {
-        assertThrows(RuntimeException.class, () -> DependencyInjector.instantiate(registry, AppService.class));
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> DependencyInjector.instantiate(registry, AppService.class));
+        assertTrue(ex.getMessage().contains("constructor parameter"));
+        assertTrue(ex.getMessage().contains("DatabaseService"));
     }
 
     @Test
     void testMissingFieldDependencyThrows() {
-        assertThrows(RuntimeException.class, () -> DependencyInjector.instantiate(registry, FieldInjectionService.class));
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> DependencyInjector.instantiate(registry, FieldInjectionService.class));
+        assertTrue(ex.getMessage().contains("field"));
+        assertTrue(ex.getMessage().contains("db"));
+    }
+
+    @Test
+    void testCircularDependencyThrows() {
+        registry.put(CircB.class, (Provider<CircB>) () -> DependencyInjector.instantiate(registry, CircB.class));
+        registry.put(CircA.class, (Provider<CircA>) () -> DependencyInjector.instantiate(registry, CircA.class));
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> DependencyInjector.instantiate(registry, CircA.class));
+        assertTrue(ex.getMessage().contains("Circular dependency"));
     }
 
     @Test
@@ -93,6 +109,16 @@ class DependencyInjectorTest {
     void testNullArguments() {
         assertThrows(NullPointerException.class, () -> DependencyInjector.instantiate(null, AppService.class));
         assertThrows(NullPointerException.class, () -> DependencyInjector.instantiate(registry, null));
+    }
+
+    public static class CircA implements Service {
+        @Inject
+        public CircA(CircB b) {}
+    }
+
+    public static class CircB implements Service {
+        @Inject
+        public CircB(CircA a) {}
     }
 
     // Mock Services

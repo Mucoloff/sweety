@@ -79,8 +79,13 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
         ensureOpen();
         Objects.requireNonNull(key, "key cannot be null");
         Objects.requireNonNull(service, "service cannot be null");
+        // noinspection unchecked
+        Provider<T> oldProvider = (Provider<T>) services.get(key);
+        T oldValue = oldProvider == null ? null : oldProvider.get();
+        if (oldValue instanceof Service s) s.onDisable();
+        services.put(key, singleton(service));
         if (service instanceof Service s) s.onEnable();
-        return put(key, singleton(service));
+        return oldValue;
     }
 
     @Override
@@ -90,10 +95,12 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
         Objects.requireNonNull(key, "key cannot be null");
         Objects.requireNonNull(service, "service provider cannot be null");
         // noinspection unchecked
-        final Provider<T> provider = (Provider<T>) services.put(key, service);
-        T value = provider == null ? null : provider.get();
-        if (value instanceof Service s) s.onDisable();
-        return value;
+        Provider<T> oldProvider = (Provider<T>) services.get(key);
+        T oldValue = oldProvider == null ? null : oldProvider.get();
+        if (oldValue instanceof Service s) s.onDisable();
+        // noinspection unchecked
+        services.put(key, service);
+        return oldValue;
     }
 
     @Override

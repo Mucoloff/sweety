@@ -1,6 +1,7 @@
 package dev.sweety.feature.service.impl;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public final class ServiceContext<BaseType> {
@@ -26,6 +27,11 @@ public final class ServiceContext<BaseType> {
     }
 
     public List<BaseType> all() {
-        return manager.entrySet().stream().filter(baseType::isInstance).map(baseType::cast).collect(Collectors.toList());
+        return manager.entrySet().stream()
+                .map(e -> e.getValue().get())
+                .filter(Objects::nonNull)
+                .filter(baseType::isInstance)
+                .map(baseType::cast)
+                .collect(Collectors.toList());
     }
 }
