@@ -94,6 +94,7 @@ public class SQL4JProcessor extends AbstractProcessor {
         ClassName registryClass = ClassName.bestGuess(TABLE_REGISTRY);
         ClassName accessorInterface = ClassName.bestGuess(TABLE_ACCESSOR);
         ClassName relationClass = ClassName.bestGuess(TABLE_RELATION);
+        ClassName fetchTypeClass = ClassName.get("dev.sweety.sql4j.api.obj.annotation", "FetchType");
 
         TypeSpec.Builder mirrorBuilder = TypeSpec.classBuilder(mirrorName)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
@@ -201,13 +202,20 @@ public class SQL4JProcessor extends AbstractProcessor {
 
                     TypeName targetClass = getTargetClass(field);
                     String colRef = (mtoAnn != null) ? fieldName.toUpperCase() : "null";
-                    
+
+                    String fetchTypeStr = "LAZY";
+                    if (otmAnn != null) {
+                        fetchTypeStr = normalizeFetchType(getAnnotationValue(otmAnn, "fetchType"));
+                    } else if (mtmAnn != null) {
+                        fetchTypeStr = normalizeFetchType(getAnnotationValue(mtmAnn, "fetchType"));
+                    }
+
                     String relConst = fieldName.toUpperCase() + "_REL";
                     mirrorBuilder.addField(FieldSpec.builder(relationClass, relConst)
                             .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
                             .build());
-                    
-                    relations.add(new RelationData(relConst, relType, fieldName, targetClass, mappedBy, colRef));
+
+                    relations.add(new RelationData(relConst, relType, fieldName, targetClass, mappedBy, colRef, fetchTypeStr));
                 }
             }
         }
@@ -293,8 +301,16 @@ public class SQL4JProcessor extends AbstractProcessor {
             staticBlock.addStatement("INSTANCE.addColumn($L)", colConst);
         }
         for (RelationData rd : relations) {
-            staticBlock.addStatement("$L = new $T($T.Type.$L, FIELD_$L, $T.class, $S, null, $L)", 
-                    rd.constName, relationClass, relationClass, rd.type, rd.fieldName, rd.targetClass, rd.mappedBy, rd.colRef);
+            if ("MANY_TO_ONE".equals(rd.type())) {
+                staticBlock.addStatement("$L = new $T($T.Type.MANY_TO_ONE, FIELD_$L, $T.class, null, null, $L, $T.$L)",
+                        rd.constName, relationClass, relationClass, rd.fieldName, rd.targetClass, rd.colRef, fetchTypeClass, rd.fetchType);
+            } else if ("ONE_TO_MANY".equals(rd.type())) {
+                staticBlock.addStatement("$L = new $T($T.Type.ONE_TO_MANY, FIELD_$L, $T.class, $S, null, null, $T.$L)",
+                        rd.constName, relationClass, relationClass, rd.fieldName, rd.targetClass, rd.mappedBy, fetchTypeClass, rd.fetchType);
+            } else {
+                staticBlock.addStatement("$L = new $T($T.Type.MANY_TO_MANY, FIELD_$L, $T.class, $L, null, $L, $T.$L)",
+                        rd.constName, relationClass, relationClass, rd.fieldName, rd.targetClass, rd.mappedBy, rd.colRef, fetchTypeClass, rd.fetchType);
+            }
             staticBlock.addStatement("INSTANCE.addRelation($L)", rd.constName);
         }
         
@@ -445,6 +461,13 @@ public class SQL4JProcessor extends AbstractProcessor {
         return null;
     }
 
+    /** Resolves {@code OneToMany}/{@code ManyToMany} {@code fetchType} enum for generated {@link Table.Relation}. */
+    private static String normalizeFetchType(String raw) {
+        if (raw == null) return "LAZY";
+        if (raw.endsWith("EAGER") || raw.equals("EAGER")) return "EAGER";
+        return "LAZY";
+    }
+
     private TypeName getTargetClass(VariableElement field) {
         TypeMirror type = field.asType();
         if (type instanceof DeclaredType dt) {
@@ -583,6 +606,7 @@ public class SQL4JProcessor extends AbstractProcessor {
                              boolean isPrivate, boolean isPrimaryKey, boolean isAutoInc, boolean isNullable, boolean isSoftDelete) {
     }
 
-    private record RelationData(String constName, String type, String fieldName, TypeName targetClass, String mappedBy, String colRef) {
+    private record RelationData(String constName, String type, String fieldName, TypeName targetClass, String mappedBy,
+                                String colRef, String fetchType) {
     }
 }

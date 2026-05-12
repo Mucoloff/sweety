@@ -87,8 +87,24 @@ public final class UpdateBatch<T> extends AbstractQuery<int[]> implements BatchQ
         return ps.executeBatch();
     }
 
+    /**
+     * Internal constructor for chunk sub-batches: reuses the already-computed
+     * {@link Metadata} instead of rebuilding it via a new (empty) {@link QueryCache}.
+     */
+    private UpdateBatch(Table<T> table, List<T> instances, Metadata metadata) {
+        this.table = table;
+        this.instances = instances;
+        this.metadata = metadata;
+        this.chunkSize = 0;
+    }
+
     // ─── Chunked execution path (overrides Query default) ───────────────────────
 
+    /**
+     * When {@code chunkSize > 0} and the batch is larger than one chunk, splits the
+     * collection into sub-lists. The {@link Metadata} (SQL + column lists) is computed
+     * once and shared across all chunks (O4).
+     */
     @Override
     public CompletableFuture<int[]> execute(final SqlConnection connection) {
         if (chunkSize <= 0 || instances.size() <= chunkSize) {
@@ -99,8 +115,8 @@ public final class UpdateBatch<T> extends AbstractQuery<int[]> implements BatchQ
             List<List<T>> chunks = partition(new ArrayList<>(instances), chunkSize);
             try (Connection rawCon = connection.connection()) {
                 for (List<T> chunk : chunks) {
-                    UpdateBatch<T> sub = new UpdateBatch<>(table,
-                            connection.dialect(), chunk, new QueryCache(), 0);
+                    // O4: reuse parent metadata — no new QueryCache() + metadata rebuild per chunk
+                    UpdateBatch<T> sub = new UpdateBatch<>(table, chunk, this.metadata);
                     try (PreparedStatement ps = rawCon.prepareStatement(sub.buildSql())) {
                         sub.bind(ps);
                         parts.add(ps.executeBatch());

@@ -1,5 +1,6 @@
 package dev.sweety.sql4j.impl.query.entity;
 
+import dev.sweety.math.pool.ObjectPool;
 import dev.sweety.sql4j.api.connection.dialect.Dialect;
 import dev.sweety.sql4j.api.exception.Sql4jMappingException;
 import dev.sweety.sql4j.api.obj.Column;
@@ -10,7 +11,9 @@ import dev.sweety.sql4j.api.query.Criterion;
 import dev.sweety.sql4j.api.query.SelectQuery;
 import dev.sweety.sql4j.impl.query.QueryCache;
 
-import java.lang.reflect.Constructor;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -28,7 +31,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
     private final Dialect dialect;
     private final String whereClause;
     private final Object[] whereParams;
-    
+
     private Criterion criterion;
     private Set<String> selectedColumnNames;
     private int limit = -1;
@@ -43,7 +46,34 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
     // Captured during buildSql
     private transient Metadata<T> activeMetadata;
 
-    private record Metadata<T>(String sqlBase, Constructor<T> constructor, List<Column<?>> columns) {}
+    // O1: memoize the full SQL string — each SelectEntity instance is copy-on-write so
+    // its SQL is stable after the first call to buildSql().
+    private transient String cachedSql;
+
+    // O5: shared pool of StringBuilder instances to avoid per-call allocation when
+    // assembling the WHERE / GROUP BY / ORDER BY / LIMIT clauses.
+    private static final ObjectPool<StringBuilder> SB_POOL = new ObjectPool<>(
+            StringBuilder::new,
+            b -> {
+                b.setLength(0);
+                return true;
+            },
+            64
+    );
+
+    /**
+     * Per-table metadata cached in {@link QueryCache}.
+     *
+     * @param sqlBase       SELECT … FROM … fragment (stable per column set + dialect)
+     * @param constructor   MethodHandle for the entity no-arg constructor (faster than
+     *                      {@code Constructor.newInstance()} after JIT warmup)
+     * @param columns       ordered list of columns matching the SELECT projection
+     * @param columnIndices 1-based JDBC ResultSet column indices matching {@code columns}
+     *                      (O2: avoids per-row string → int lookup inside the JDBC driver)
+     */
+    private record Metadata<T>(String sqlBase, MethodHandle constructor,
+                               List<Column<?>> columns, int[] columnIndices) {
+    }
 
     private final TableRegistry registry;
 
@@ -85,6 +115,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
         this.groupByColumns = other.groupByColumns;
         this.havingCriterion = other.havingCriterion;
         this.projection = other.projection;
+        // cachedSql intentionally NOT copied: copy represents a potentially different query
     }
 
     public SelectEntity<T> copy() {
@@ -103,7 +134,6 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
         copy.selectedColumnNames = java.util.Arrays.stream(columns).map(Column::name).collect(Collectors.toSet());
         return copy;
     }
-
 
     public SelectEntity<T> limit(int limit) {
         SelectEntity<T> copy = copy();
@@ -166,23 +196,23 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
 
     private dev.sweety.sql4j.api.query.Query<List<T>> getDelegate() {
         if (delegatedJoinQuery == null && fetchRelations != null && fetchRelations.length > 0) {
-            dev.sweety.sql4j.impl.query.SelectJoin.Builder builder = 
-                new dev.sweety.sql4j.impl.query.SelectJoin.Builder(this.registry)
-                    .dialect(dialect)
-                    .includeDeleted(includeDeleted)
-                    .join(table);
-            
+            dev.sweety.sql4j.impl.query.SelectJoin.Builder builder =
+                    new dev.sweety.sql4j.impl.query.SelectJoin.Builder(this.registry)
+                            .dialect(dialect)
+                            .includeDeleted(includeDeleted)
+                            .join(table);
+
             for (Table.Relation rel : fetchRelations) {
                 builder.join(rel);
             }
             if (whereClause != null) builder.where(whereClause, whereParams);
             if (criterion != null) builder.where(criterion);
-            
+
             this.delegatedJoin = builder.build();
             if (limit > 0) delegatedJoin = delegatedJoin.limit(limit);
             if (offset > 0) delegatedJoin = delegatedJoin.offset(offset);
             if (orderBy != null) delegatedJoin = delegatedJoin.orderBy(orderBy, ascending);
-            
+
             delegatedJoinQuery = delegatedJoin.mapToHierarchy(table.clazz());
         }
         return delegatedJoinQuery;
@@ -190,11 +220,15 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
 
     @Override
     protected String buildSql() {
-        dev.sweety.sql4j.api.query.Query<List<T>> delegate = getDelegate();
-        if (delegate != null) return delegate.sql();
+        // O1: return memoized SQL when already built for this instance
+        if (cachedSql != null) return cachedSql;
 
-        dev.sweety.sql4j.api.connection.dialect.Dialect dialect = this.dialect;
-        String colKey = selectedColumnNames == null || selectedColumnNames.isEmpty() ? "*" : selectedColumnNames.stream().sorted().collect(Collectors.joining(","));
+        dev.sweety.sql4j.api.query.Query<List<T>> delegate = getDelegate();
+        if (delegate != null) return (cachedSql = delegate.sql());
+
+        String colKey = selectedColumnNames == null || selectedColumnNames.isEmpty()
+                ? "*"
+                : selectedColumnNames.stream().sorted().collect(Collectors.joining(","));
         String cacheKey = "select:base:" + table.name() + ":" + colKey + ":" + dialect.name();
 
         this.activeMetadata = cache.getMetadata(cacheKey, _ -> {
@@ -204,7 +238,9 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
             } else if (selectedColumnNames == null || selectedColumnNames.isEmpty()) {
                 selected = table.columns();
             } else {
-                selected = table.columns().stream().filter(c -> selectedColumnNames.contains(c.name())).collect(Collectors.toList());
+                selected = table.columns().stream()
+                        .filter(c -> selectedColumnNames.contains(c.name()))
+                        .collect(Collectors.toList());
             }
 
             String cols = selected.stream().map(c -> {
@@ -215,38 +251,60 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
             }).collect(Collectors.joining(", "));
             String sqlBase = "SELECT " + cols + " FROM " + table.toSql(dialect);
 
+            // O2: precompute 1-based ResultSet column indices (stable for this column list)
+            int[] indices = new int[selected.size()];
+            for (int i = 0; i < indices.length; i++) indices[i] = i + 1;
+
+            // O3: MethodHandle for no-arg constructor — after JIT warmup equals a direct `new`
             try {
-                Constructor<T> ctor = table.clazz().getDeclaredConstructor();
-                ctor.setAccessible(true);
-                return new Metadata<>(sqlBase, ctor, selected);
+                MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(
+                        table.clazz(), MethodHandles.lookup());
+                MethodHandle ctor = lookup.findConstructor(
+                        table.clazz(), MethodType.methodType(void.class));
+                return new Metadata<>(sqlBase, ctor, selected, indices);
             } catch (NoSuchMethodException e) {
-                throw new Sql4jMappingException("Entity " + table.clazz().getName() + " must have a public no-arg constructor", e);
+                throw new Sql4jMappingException(
+                        "Entity " + table.clazz().getName() + " must have a public no-arg constructor", e);
+            } catch (IllegalAccessException e) {
+                throw new Sql4jMappingException(
+                        "Cannot access constructor of " + table.clazz().getName(), e);
             }
         });
 
-        StringBuilder sqlBuilder = new StringBuilder(activeMetadata.sqlBase);
-        String where = buildWhereClause();
-        if (!where.isEmpty()) {
-            sqlBuilder.append(where);
-        }
+        // O5: borrow a StringBuilder from the pool; release in finally to avoid leaks
+        StringBuilder sqlBuilder = SB_POOL.obtain();
+        try {
+            sqlBuilder.append(activeMetadata.sqlBase);
+            String where = buildWhereClause();
+            if (!where.isEmpty()) {
+                sqlBuilder.append(where);
+            }
 
-        if (groupByColumns != null && !groupByColumns.isEmpty()) {
-            sqlBuilder.append(" GROUP BY ").append(groupByColumns.stream().map(c -> c.toSql(dialect)).collect(Collectors.joining(", ")));
-        }
+            if (groupByColumns != null && !groupByColumns.isEmpty()) {
+                sqlBuilder.append(" GROUP BY ")
+                        .append(groupByColumns.stream()
+                                .map(c -> c.toSql(dialect))
+                                .collect(Collectors.joining(", ")));
+            }
 
-        if (havingCriterion != null) {
-            sqlBuilder.append(" HAVING ").append(havingCriterion.toSql(dialect));
-        }
+            if (havingCriterion != null) {
+                sqlBuilder.append(" HAVING ").append(havingCriterion.toSql(dialect));
+            }
 
-        if (orderBy != null) {
-            sqlBuilder.append(" ORDER BY ").append(dialect.escape(orderBy)).append(ascending ? " ASC" : " DESC");
-        }
+            if (orderBy != null) {
+                sqlBuilder.append(" ORDER BY ")
+                        .append(dialect.escape(orderBy))
+                        .append(ascending ? " ASC" : " DESC");
+            }
 
-        if (limit > 0) {
-            sqlBuilder.append(dialect.limitOffsetSyntax(limit, offset));
-        }
+            if (limit > 0) {
+                sqlBuilder.append(dialect.limitOffsetSyntax(limit, offset));
+            }
 
-        return sqlBuilder.toString();
+            return (cachedSql = sqlBuilder.toString());
+        } finally {
+            SB_POOL.release(sqlBuilder);
+        }
     }
 
     private String buildWhereClause() {
@@ -261,9 +319,10 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
     }
 
     @Override
-    public java.util.concurrent.CompletableFuture<dev.sweety.sql4j.api.query.Page<T>> executePage(dev.sweety.sql4j.api.connection.SqlConnection con, int page, int size) {
+    public java.util.concurrent.CompletableFuture<dev.sweety.sql4j.api.query.Page<T>> executePage(
+            dev.sweety.sql4j.api.connection.SqlConnection con, int page, int size) {
         String countSql;
-        getDelegate(); // ensures delegatedJoin is built if needed
+        getDelegate();
         if (delegatedJoin != null) {
             countSql = delegatedJoin.countSql();
         } else {
@@ -275,21 +334,22 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
                 if (rs.next()) return rs.getLong(1);
                 return 0L;
             }
-        })).thenCompose(total -> this.limit(size).offset(page * size).execute(con).thenApply(content -> {
-            int totalPages = (int) Math.ceil((double) total / size);
-            return new dev.sweety.sql4j.api.query.Page<>(content, total, totalPages, page, size);
-        }));
+        })).thenCompose(total -> this.limit(size).offset(page * size).execute(con)
+                .thenApply(content -> {
+                    int totalPages = (int) Math.ceil((double) total / size);
+                    return new dev.sweety.sql4j.api.query.Page<>(content, total, totalPages, page, size);
+                }));
     }
 
     @Override
-    public java.util.concurrent.CompletableFuture<List<dev.sweety.sql4j.api.obj.Row>> executeAggregate(dev.sweety.sql4j.api.connection.SqlConnection con) {
+    public java.util.concurrent.CompletableFuture<List<dev.sweety.sql4j.api.obj.Row>> executeAggregate(
+            dev.sweety.sql4j.api.connection.SqlConnection con) {
         return con.executeAsync(dev.sweety.sql4j.api.query.Query.generate(this.sql(), this::bind, ps -> {
             try (java.sql.ResultSet rs = ps.executeQuery()) {
                 return dev.sweety.sql4j.api.obj.Row.fromResultSetAll(rs);
             }
         }));
     }
-
 
     @Override
     public void bind(PreparedStatement ps) throws SQLException {
@@ -313,19 +373,20 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
     }
 
     @Override
-    public java.util.concurrent.CompletableFuture<List<T>> execute(dev.sweety.sql4j.api.connection.SqlConnection con) {
+    public java.util.concurrent.CompletableFuture<List<T>> execute(
+            dev.sweety.sql4j.api.connection.SqlConnection con) {
         if (entityCache != null && entityCache.isEnabled() && entityCache.isCacheable(table.clazz())) {
-            // Check if it's a simple "select * from table where id = ?"
             boolean selectAll = selectedColumnNames == null || selectedColumnNames.isEmpty();
             boolean noJoin = fetchRelations == null || fetchRelations.length == 0;
             boolean noComplexWhere = whereClause == null || whereClause.isEmpty();
-            
+
             if (selectAll && noJoin && noComplexWhere && criterion != null) {
                 Object pkValue = criterion.getPkValue(table);
                 if (pkValue != null) {
                     T cached = entityCache.get(table.clazz(), pkValue);
                     if (cached != null) {
-                        return java.util.concurrent.CompletableFuture.completedFuture(java.util.Collections.singletonList(cached));
+                        return java.util.concurrent.CompletableFuture.completedFuture(
+                                java.util.Collections.singletonList(cached));
                     }
                 }
             }
@@ -333,10 +394,6 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
 
         return super.execute(con).thenApply(list -> {
             if (entityCache != null && entityCache.isEnabled() && list != null && !list.isEmpty()) {
-                // If it was a by-id query, we might want to cache it now if not already cached.
-                // But generally Repository.wrapWithCache or execute handles this.
-                // Here we just ensure that if we got results, and it's a @Cacheable entity, we could cache them.
-                // However, we only cache if it's a full select.
                 boolean selectAll = selectedColumnNames == null || selectedColumnNames.isEmpty();
                 if (selectAll) {
                     for (T entity : list) {
@@ -357,7 +414,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
         }
 
         if (activeMetadata == null) {
-            sql(); 
+            sql();
         }
 
         try (ResultSet rs = ps.executeQuery()) {
@@ -371,37 +428,41 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
 
     private T mapRow(ResultSet rs) throws SQLException {
         try {
-            T obj = activeMetadata.constructor.newInstance();
-            for (Column<?> c : activeMetadata.columns) {
-                c.set(obj, rs.getObject(c.name()));
+            // O3: MethodHandle.invoke() — equivalent to direct `new` after JIT warmup
+            @SuppressWarnings("unchecked")
+            T obj = (T) activeMetadata.constructor().invoke();
+            List<Column<?>> columns = activeMetadata.columns();
+            int[] indices = activeMetadata.columnIndices();
+            for (int i = 0; i < columns.size(); i++) {
+                // O2: index-based lookup avoids string→int per-column scan in the JDBC driver
+                columns.get(i).set(obj, rs.getObject(indices[i]));
             }
             return obj;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             throw new SQLException("Failed to instantiate entity: " + table.clazz().getName(), e);
         }
     }
 
     @Override
-    public java.util.concurrent.CompletableFuture<java.util.stream.Stream<T>> executeStream(dev.sweety.sql4j.api.connection.SqlConnection con) {
+    public java.util.concurrent.CompletableFuture<java.util.stream.Stream<T>> executeStream(
+            dev.sweety.sql4j.api.connection.SqlConnection con) {
         return java.util.concurrent.CompletableFuture.supplyAsync(() -> {
             try {
                 java.sql.Connection jdbcCon = con.connection();
                 String sql = this.sql();
-                
-                // Interceptors preExecute
+
                 for (dev.sweety.sql4j.api.interceptor.QueryInterceptor interceptor : con.interceptors()) {
                     interceptor.preExecute(this, jdbcCon);
                 }
 
-                java.sql.PreparedStatement ps = jdbcCon.prepareStatement(sql);
-                this.bind(ps);
-                java.sql.ResultSet rs = ps.executeQuery();
-                
-                return dev.sweety.sql4j.impl.query.util.ResultSetStream.create(jdbcCon, ps, rs, this::mapRow);
+                java.sql.PreparedStatement stmt = jdbcCon.prepareStatement(sql);
+                this.bind(stmt);
+                java.sql.ResultSet rsStream = stmt.executeQuery();
+
+                return dev.sweety.sql4j.impl.query.util.ResultSetStream.create(jdbcCon, stmt, rsStream, this::mapRow);
             } catch (java.sql.SQLException e) {
                 throw new java.util.concurrent.CompletionException(e);
             }
         }, con.executor());
     }
-
 }

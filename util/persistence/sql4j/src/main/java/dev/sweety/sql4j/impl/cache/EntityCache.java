@@ -27,10 +27,8 @@ public final class EntityCache {
 
     public boolean isCacheable(Class<?> clazz) {
         if (!enabled) return false;
-        return cacheableStatus.computeIfAbsent(clazz, k -> {
-            Cacheable ann = k.getAnnotation(Cacheable.class);
-            return ann != null && ann.maxSize() > 0;
-        });
+        return cacheableStatus.computeIfAbsent(clazz, k ->
+                k.getAnnotation(Cacheable.class) != null);
     }
 
     public <T> void put(Class<T> clazz, Object pk, T entity) {
@@ -71,9 +69,10 @@ public final class EntityCache {
     private Cache<Object, Object> getCache(Class<?> clazz) {
         return caches.computeIfAbsent(clazz, k -> {
             Cacheable ann = k.getAnnotation(Cacheable.class);
-            int maxSize = (ann != null && ann.maxSize() > 0) ? ann.maxSize() : DEFAULT_MAX_SIZE;
+            int maxSize = (ann != null && ann.maxSize() > 0) ? ann.maxSize() : -1;
 
-            Caffeine<Object, Object> builder = Caffeine.newBuilder().maximumSize(maxSize);
+            Caffeine<Object, Object> builder = Caffeine.newBuilder();
+            if (maxSize > 0) builder.maximumSize(maxSize);
 
             if (ann != null && ann.ttlSeconds() > 0) {
                 builder.expireAfterWrite(ann.ttlSeconds(), ann.ttlUnit());

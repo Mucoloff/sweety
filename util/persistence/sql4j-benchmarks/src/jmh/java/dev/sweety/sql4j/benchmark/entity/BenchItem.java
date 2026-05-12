@@ -18,7 +18,7 @@ public class BenchItem {
     @Column.Info(name = "name")
     private String name;
 
-    @Column.Info(name = "value")
+    @Column.Info(name = "score")
     private int value;
 
     public BenchItem() {}

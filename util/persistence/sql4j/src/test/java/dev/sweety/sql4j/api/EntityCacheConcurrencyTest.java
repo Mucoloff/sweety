@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class EntityCacheConcurrencyTest {
 
     // Minimal entity annotated with @Cacheable so EntityCache will service it
-    @Cacheable(maxSize = 500)
+    @Cacheable(maxSize = -1)
     @Table.Info(name = "dummy_concurrent")
     static class DummyEntity {
         @Column.Info(name = "id", primaryKey = true)
@@ -109,7 +109,7 @@ class EntityCacheConcurrencyTest {
                 for (int i = base; i < base + ENTRIES_PER_THREAD; i++) {
                     cache.put(DummyEntity.class, i, new DummyEntity(i, "updated-" + i));
                 }
-            }, Thread.ofVirtual().factory()::newThread));
+            }, r -> Thread.ofVirtual().start(r)));
             // Reader task (reads the SAME keys the writer is updating)
             futures.add(CompletableFuture.runAsync(() -> {
                 for (int i = base; i < base + ENTRIES_PER_THREAD; i++) {
@@ -117,7 +117,7 @@ class EntityCacheConcurrencyTest {
                         nullReads.incrementAndGet();
                     }
                 }
-            }, Thread.ofVirtual().factory()::newThread));
+            }, r -> Thread.ofVirtual().start(r)));
         }
 
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
@@ -140,7 +140,7 @@ class EntityCacheConcurrencyTest {
                 cache.put(DummyEntity.class, key, new DummyEntity(key, "v"));
                 cache.evict(DummyEntity.class, key);
                 cache.put(DummyEntity.class, key, new DummyEntity(key, "v2"));
-            }, Thread.ofVirtual().factory()::newThread));
+            }, r -> Thread.ofVirtual().start(r)));
         }
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
@@ -162,14 +162,14 @@ class EntityCacheConcurrencyTest {
                     cache.put(DummyEntity.class, i, new DummyEntity(i, "r" + round));
                 }
             }
-        }, Thread.ofVirtual().factory()::newThread));
+        }, r -> Thread.ofVirtual().start(r)));
 
         // Clearer: repeatedly evicts all
         futures.add(CompletableFuture.runAsync(() -> {
             for (int round = 0; round < 5; round++) {
                 cache.evictAll(DummyEntity.class);
             }
-        }, Thread.ofVirtual().factory()::newThread));
+        }, r -> Thread.ofVirtual().start(r)));
 
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 

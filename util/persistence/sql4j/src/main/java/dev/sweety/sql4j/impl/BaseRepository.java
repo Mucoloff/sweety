@@ -6,6 +6,7 @@ import dev.sweety.sql4j.api.exception.Sql4jQueryException;
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Row;
 import dev.sweety.sql4j.api.obj.Table;
+import dev.sweety.sql4j.api.obj.annotation.FetchType;
 import dev.sweety.sql4j.api.obj.table.TableRegistry;
 import dev.sweety.sql4j.api.query.*;
 import dev.sweety.sql4j.api.repository.Repository;
@@ -221,6 +222,22 @@ public class BaseRepository<Entity> implements Repository<Entity> {
         throw new Sql4jMappingException("No ManyToMany relation found between " + table.clazz().getSimpleName() + " and " + related.getClass().getSimpleName());
     }
 
+    /**
+     * Applies {@link FetchType#EAGER} {@link Table.Relation}s (collections only) so plain
+     * {@code select()} matches {@link SelectQuery#fetch(Table.Relation[])} for those relations.
+     */
+    private SelectEntity<Entity> withEagerRelations(SelectEntity<Entity> base) {
+        List<Table.Relation> eager = table.relations().stream()
+                .filter(r -> r.fetchType() == FetchType.EAGER
+                        && (r.type() == Table.Relation.Type.ONE_TO_MANY
+                            || r.type() == Table.Relation.Type.MANY_TO_MANY))
+                .toList();
+        if (eager.isEmpty()) {
+            return base;
+        }
+        return base.fetch(eager.toArray(Table.Relation[]::new));
+    }
+
     // ─── Entity-based reads ────────────────────────────────────────────────────
 
     /**
@@ -228,7 +245,7 @@ public class BaseRepository<Entity> implements Repository<Entity> {
      */
     public SelectQuery<Entity> select() {
         SelectEntity<Entity> query = cache.getQuery("selectAllPrototype:" + table.name(),
-                _ -> new SelectEntity<>(table, cache, dialect, registry));
+                _ -> withEagerRelations(new SelectEntity<>(table, cache, dialect, registry)));
         return query.withCache(entityCache); // We need to add withCache to SelectEntity
     }
 
@@ -245,7 +262,7 @@ public class BaseRepository<Entity> implements Repository<Entity> {
      * }</pre>
      */
     public SelectQuery<Entity> selectWhere(String where, Object... params) {
-        return new SelectEntity<>(table, where, cache, dialect, registry, params).withCache(entityCache);
+        return withEagerRelations(new SelectEntity<>(table, where, cache, dialect, registry, params)).withCache(entityCache);
     }
 
     public SelectQuery<Entity> select(Column<?>... columns) {
@@ -253,7 +270,9 @@ public class BaseRepository<Entity> implements Repository<Entity> {
     }
 
     public SelectQuery<Entity> select(String... columnNames) {
-        return new SelectEntity<Entity>(table, null, Set.of(columnNames), cache, dialect, registry, (Object[]) null).withCache(entityCache);
+        return withEagerRelations(
+                new SelectEntity<Entity>(table, null, Set.of(columnNames), cache, dialect, registry, (Object[]) null))
+                .withCache(entityCache);
     }
 
     public SelectRawQuery selectRaw(Column<?>... columns) {
@@ -269,7 +288,8 @@ public class BaseRepository<Entity> implements Repository<Entity> {
      * Unspecified entity fields are left at zero/null.
      */
     public SelectQuery<Entity> selectWhere(String where, Set<String> columnNames, Object... params) {
-        return new SelectEntity<Entity>(table, where, columnNames, cache, dialect, registry, params).withCache(entityCache);
+        return withEagerRelations(new SelectEntity<Entity>(table, where, columnNames, cache, dialect, registry, params))
+                .withCache(entityCache);
     }
 
     // ─── Row-based reads (lightweight, no entity instantiation) ────────────────
