@@ -1,8 +1,8 @@
 package dev.sweety.data;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.util.zip.CRC32C;
@@ -38,10 +38,10 @@ public final class ChecksumUtils {
         }
     }
 
-    public static  String getFileChecksum(File file) {
+    public static  String getFileChecksum(Path path) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            try (InputStream fis = new FileInputStream(file)) {
+            try (InputStream fis = Files.newInputStream(path)) {
                 byte[] buffer = new byte[8192];
                 int bytesRead;
                 while ((bytesRead = fis.read(buffer)) != -1) {

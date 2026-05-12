@@ -6,13 +6,13 @@ import dev.sweety.versioning.version.artifact.Artifact;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
+import java.nio.file.Path;
 
 public abstract class VersionableExtension extends Extension {
 
     private final Artifact artifact;
 
-    protected VersionableExtension(@NotNull String name, @NotNull String version, @Nullable String description, @NotNull File folder, @NotNull SimpleLogger logger) {
+    protected VersionableExtension(@NotNull String name, @NotNull String version, @Nullable String description, @NotNull Path folder, @NotNull SimpleLogger logger) {
         super(name, version, description, folder, logger);
         this.artifact = new Artifact(name);
     }

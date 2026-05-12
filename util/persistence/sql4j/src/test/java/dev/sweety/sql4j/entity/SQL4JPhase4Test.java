@@ -9,7 +9,8 @@ import dev.sweety.sql4j.api.repository.Repository;
 import dev.sweety.sql4j.impl.connection.ConnectionType;
 import org.junit.jupiter.api.*;
 
-import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,8 +28,8 @@ public class SQL4JPhase4Test {
     private Repository<User> users;
 
     @BeforeAll
-    void setup() {
-        new File("test_phase4.db").delete();
+    void setup() throws Exception {
+        Files.deleteIfExists(Path.of("test_phase4.db"));
         con = ConnectionType.SQLITE.create(Executors.newSingleThreadExecutor(), "test_phase4.db");
         db = new Database(con);
         users = db.createRepository(User.class);
@@ -47,9 +48,9 @@ public class SQL4JPhase4Test {
     }
 
     @AfterAll
-    void cleanup() {
+    void cleanup() throws Exception {
         db.close();
-        new File("test_phase4.db").delete();
+        Files.deleteIfExists(Path.of("test_phase4.db"));
     }
 
     @Test

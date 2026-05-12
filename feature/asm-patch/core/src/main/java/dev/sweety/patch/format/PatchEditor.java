@@ -2,12 +2,14 @@ package dev.sweety.patch.format;
 
 import dev.sweety.patch.model.Patch;
 import dev.sweety.patch.model.type.PatchTypes;
-import lombok.AllArgsConstructor;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.function.Consumer;
 
 public record PatchEditor(PatchReader reader, PatchWriter writer) {
@@ -16,28 +18,29 @@ public record PatchEditor(PatchReader reader, PatchWriter writer) {
         this(t.reader(), t.writer());
     }
 
-    public Patch read(File patchFile) throws IOException {
-        try (FileInputStream fis = new FileInputStream(patchFile)) {
-            return reader.read(fis);
+    public Patch read(Path patchFile) throws IOException {
+        try (InputStream in = Files.newInputStream(patchFile)) {
+            return reader.read(in);
         }
     }
 
     public void write(Patch patch, Path path) throws IOException {
-        final Path tmpFile = path.resolveSibling(path.getFileName() + ".tmp");
+        Path tmpFile = path.resolveSibling(path.getFileName() + ".tmp");
 
-        try (FileOutputStream fos = new FileOutputStream(tmpFile.toFile())) {
+        try (OutputStream fos = Files.newOutputStream(tmpFile,
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
             this.writer.write(patch, fos);
         }
 
         Files.move(tmpFile, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
     }
 
-    public void edit(File patchFile, Consumer<Patch> edit) throws IOException {
-        final Patch patch = read(patchFile);
+    public void edit(Path patchFile, Consumer<Patch> edit) throws IOException {
+        Patch patch = read(patchFile);
 
         edit.accept(patch);
 
-        write(patch, patchFile.toPath());
+        write(patch, patchFile);
     }
 
 }

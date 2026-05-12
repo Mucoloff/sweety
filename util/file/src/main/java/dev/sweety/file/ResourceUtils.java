@@ -32,17 +32,16 @@ public class ResourceUtils {
     }
 
     public static void zipDirectory(Path sourceDir, Path targetZip) {
-        File dir = sourceDir.toFile();
         try {
-            Files.write(targetZip, ArchiveUtils.zipSmart(dir));
+            Files.write(targetZip, ArchiveUtils.zipSmart(sourceDir));
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to zip directory: " + sourceDir, e);
         }
     }
 
-    public static File unzipFile(Path zipFile, Path targetDir) {
+    public static Path unzipFile(Path zipFile, Path targetDir) {
         try {
-            return ArchiveUtils.unzip(Files.readAllBytes(zipFile), targetDir.toFile());
+            return ArchiveUtils.unzip(Files.readAllBytes(zipFile), targetDir);
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to unzip file: " + zipFile, e);
         }

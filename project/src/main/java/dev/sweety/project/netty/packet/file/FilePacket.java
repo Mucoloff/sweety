@@ -6,7 +6,7 @@ import dev.sweety.netty.packet.model.Packet;
 import lombok.Getter;
 import lombok.SneakyThrows;
 
-import java.io.File;
+import java.nio.file.Path;
 
 @GenerateEvent
 public class FilePacket extends Packet {
@@ -17,7 +17,7 @@ public class FilePacket extends Packet {
     private int size;
 
     @SneakyThrows
-    public FilePacket(File file) {
+    public FilePacket(Path file) {
         FileBuffer.fromFile(file).write(buffer());
     }
 
@@ -27,7 +27,7 @@ public class FilePacket extends Packet {
         this._fileBuffer = FileBuffer.read(buffer());
     }
 
-    public File readFile(File dir) {
+    public Path readFile(Path dir) {
         return _fileBuffer.read(dir);
     }
 

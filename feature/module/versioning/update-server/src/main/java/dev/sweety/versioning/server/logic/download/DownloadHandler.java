@@ -24,7 +24,6 @@ import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.channel.Channel;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
@@ -126,7 +125,7 @@ public class DownloadHandler implements HttpHandler {
                     yield jarBytes;
                 }
                 case PATCH -> {
-                    Optional<File> cached = this.patchManager.cached(artifact, key.channel(), key.version(), from);
+                    Optional<Path> cached = this.patchManager.cached(artifact, key.channel(), key.version(), from);
 
                     if (cached.isEmpty()) {
                         exchange.getResponseHeaders().set("Content-Type", "application/java-archive");
@@ -134,7 +133,7 @@ public class DownloadHandler implements HttpHandler {
                         yield jarBytes;
                     }
 
-                    File file = this.patchManager.generatePatch(key, from);
+                    Path file = this.patchManager.generatePatch(key, from);
 
                     PatchEditor editor = new PatchEditor(PatchTypes.BIN);
 
@@ -144,7 +143,7 @@ public class DownloadHandler implements HttpHandler {
 
                     exchange.getResponseHeaders().set("Content-Type", "application/octet-stream");
                     exchange.getResponseHeaders().set("Content-Disposition", "attachment; filename=\"" + artifact + "-" + version + "-" + channel + "-" + clientId + ".patch\"");
-                    yield Files.readAllBytes(file.toPath());
+                    yield Files.readAllBytes(file);
                 }
             };
 

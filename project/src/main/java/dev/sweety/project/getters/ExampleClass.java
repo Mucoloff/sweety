@@ -2,8 +2,8 @@ package dev.sweety.project.getters;
 
 import dev.sweety.record.annotations.*;
 
-import java.io.File;
-import java.util.UUID;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 @RecordData(includeStatic = true, setterTypes = Setter.Type.BUILDER)
 public class ExampleClass {
@@ -39,8 +39,8 @@ public class ExampleClass {
 
     @SneakyThrows
     public void excepthandler() {
-        File f = new File("test");
-        f.createNewFile();
+        Path f = Path.of("test");
+        Files.createFile(f);
     }
 
 }

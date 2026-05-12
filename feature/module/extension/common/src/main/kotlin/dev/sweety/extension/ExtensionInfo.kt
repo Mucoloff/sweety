@@ -2,8 +2,8 @@ package dev.sweety.extension
 
 import dev.sweety.config.json.GsonUtils
 import dev.sweety.extension.exception.ExtensionNotFoundException
-import java.io.File
 import java.io.InputStreamReader
+import java.nio.file.Path
 import java.util.jar.JarFile
 
 data class ExtensionInfo(
@@ -18,10 +18,10 @@ data class ExtensionInfo(
 
         @JvmStatic
         @Throws(Exception::class)
-        fun of(file: File, extensionName: String): ExtensionInfo {
-            JarFile(file).use { jar ->
+        fun of(path: Path, extensionName: String): ExtensionInfo {
+            JarFile(path.toFile()).use { jar ->
                 val entry = jar.getJarEntry("$extensionName.json") ?: throw ExtensionNotFoundException(
-                    extensionName, file.path, GsonUtils.write(
+                    extensionName, path.toString(), GsonUtils.write(
                         BASE, ExtensionInfo::class.java
                     )
                 )

@@ -11,10 +11,11 @@ import dev.sweety.patch.model.Patch;
 import dev.sweety.patch.model.type.PatchType;
 import dev.sweety.patch.verify.PatchValidator;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 
 public class PatchGenerator {
 
@@ -32,11 +33,12 @@ public class PatchGenerator {
         this.validator = new PatchValidator(hashFunction);
     }
 
-    public File generate(File input, File output, File patchDir, String patch, String fromVersion, String toVersion, PatchFilter filter) throws IOException {
-        final File patchFile = new File(patchDir, patch + this.extension);
-        final Patch generatedPatch;
+    public Path generate(Path input, Path output, Path patchDir, String patch, String fromVersion, String toVersion, PatchFilter filter) throws IOException {
+        Path patchFile = patchDir.resolve(patch + this.extension);
+        Patch generatedPatch;
 
-        try (FileOutputStream out = new FileOutputStream(patchFile)) {
+        try (OutputStream out = Files.newOutputStream(patchFile,
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
             generatedPatch = generate(input, output, out, fromVersion, toVersion, filter);
         }
 
@@ -45,10 +47,10 @@ public class PatchGenerator {
         return patchFile;
     }
 
-    public Patch generate(File oldJar, File newJar, OutputStream out, String fromVersion, String toVersion, PatchFilter filter) {
+    public Patch generate(Path oldJar, Path newJar, OutputStream out, String fromVersion, String toVersion, PatchFilter filter) {
 
-        if (oldJar == null || !oldJar.exists()) throw new IllegalArgumentException("Old JAR file not found: " + oldJar);
-        if (newJar == null || !newJar.exists()) throw new IllegalArgumentException("New JAR file not found: " + newJar);
+        if (oldJar == null || !Files.exists(oldJar)) throw new IllegalArgumentException("Old JAR file not found: " + oldJar);
+        if (newJar == null || !Files.exists(newJar)) throw new IllegalArgumentException("New JAR file not found: " + newJar);
 
         Archive oldArchive = new JarArchive(oldJar, filter, normalizer);
         Archive newArchive = new JarArchive(newJar, filter, normalizer);

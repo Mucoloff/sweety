@@ -1,39 +1,31 @@
 package dev.sweety.extension.manager.loader;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.concurrent.CompletableFuture;
 
 public final class DownloadFile {
 
-    public static CompletableFuture<File> downloadFromURL(String urlStr, String fileName, boolean saveToDisk) {
+    public static CompletableFuture<Path> downloadFromURL(String urlStr, Path targetPath, boolean saveToDisk) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 final URL url = new URI(urlStr).toURL();
-                //final Path filePath
-                final File file = saveToDisk
-                        ? Path.of(fileName).toFile()
-                        : new File("download_" + validateFileName(fileName));
-                //: Files.createTempFile("download_", "_" + validate(fileName));
-                //final File file = filePath.toFile();
+                final Path file = saveToDisk
+                        ? targetPath
+                        : Files.createTempFile("download_", "_" + validateFileName(targetPath.getFileName().toString()));
 
                 if (saveToDisk) {
-                    if (file.getParentFile() == null || !file.getParentFile().mkdirs()) {
-                        file.createNewFile();
-                    }
-                } else {
-                    file.deleteOnExit();
+                    Path parent = file.getParent();
+                    if (parent != null) Files.createDirectories(parent);
                 }
 
                 try (InputStream in = url.openStream()) {
-                    try (FileOutputStream fos = new FileOutputStream(file)) {
-                        fos.write(in.readAllBytes());
-                    }
-                    //Files.copy(in, filePath, StandardCopyOption.REPLACE_EXISTING);
+                    Files.copy(in, file, StandardCopyOption.REPLACE_EXISTING);
                 }
 
                 return file;
@@ -50,4 +42,3 @@ public final class DownloadFile {
         return fileName.replaceAll(invalidChars, "-");
     }
 }
-

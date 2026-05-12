@@ -1,8 +1,8 @@
 package dev.sweety.project.config;
 
 import dev.sweety.config.yml.*;
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -41,8 +41,8 @@ public class YamlTest {
 
     public static void main1(String[] args) throws IOException {
 
-        File file = new File("config.yml");
-        FileConfiguration config = new FileConfiguration();
+        Path file = Path.of("config.yml");
+        YamlConfiguration config = new YamlConfiguration();
 
         config.set("app.name", "YamlTestApp");
         config.set("app.version", 1);

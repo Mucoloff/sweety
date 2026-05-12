@@ -5,34 +5,31 @@ import dev.sweety.data.buffer.BufferReader;
 import dev.sweety.data.buffer.BufferWriter;
 import dev.sweety.data.buffer.io.AbstractEncoder;
 
-import java.io.BufferedOutputStream;import java.io.File;
-import java.io.FileOutputStream;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 
 public record FileBuffer(String fileName, boolean isDir, byte[] bytes) implements AbstractEncoder {
 
     private static final int ZIP_THRESHOLD = 64 * 1024; // 64 KB
     private static final String EXTENSION = ".buff.zip";
 
-    // --- CREA UN FILEBUFFER DA FILE O DIRECTORY ---
-    public static FileBuffer fromFile(File file) throws IOException {
-        if (file.isDirectory()) return zipDirectory(file);
-        if (Files.size(file.toPath()) > ZIP_THRESHOLD) return zipFile(file);
-        return new FileBuffer(file.getName(), false, Files.readAllBytes(file.toPath()));
+    public static FileBuffer fromFile(Path file) throws IOException {
+        if (Files.isDirectory(file)) return zipDirectory(file);
+        if (Files.size(file) > ZIP_THRESHOLD) return zipFile(file);
+        return new FileBuffer(file.getFileName().toString(), false, Files.readAllBytes(file));
     }
 
-    // --- ZIP SOLO UN FILE SINGOLO ---
-    private static FileBuffer zipFile(File file) throws IOException {
-        return new FileBuffer(file.getName() + EXTENSION, false, ArchiveUtils.zipFile(file));
+    private static FileBuffer zipFile(Path file) throws IOException {
+        return new FileBuffer(file.getFileName().toString() + EXTENSION, false, ArchiveUtils.zipFile(file));
     }
 
-    // --- ZIP RICORSIVO PER DIRECTORY ---
-    private static FileBuffer zipDirectory(File dir) throws IOException {
-        return new FileBuffer(dir.getName() + EXTENSION, true, ArchiveUtils.zipDirectory(dir));
+    private static FileBuffer zipDirectory(Path dir) throws IOException {
+        return new FileBuffer(dir.getFileName().toString() + EXTENSION, true, ArchiveUtils.zipDirectory(dir));
     }
 
-    // --- LETTURA DA PACKETBUFFER ---
     public static FileBuffer read(final BufferReader buffer) {
         String name = buffer.readString();
         boolean dir = buffer.readBoolean();
@@ -47,8 +44,7 @@ public record FileBuffer(String fileName, boolean isDir, byte[] bytes) implement
         buffer.writeByteArray(bytes);
     }
 
-    // --- UNZIP SICURO ---
-    public File unzip(File outputDir) {
+    public Path unzip(Path outputDir) {
         try {
             return ArchiveUtils.unzip(bytes, outputDir);
         } catch (IOException e) {
@@ -56,27 +52,23 @@ public record FileBuffer(String fileName, boolean isDir, byte[] bytes) implement
         }
     }
 
-    // --- SALVA FILE BUFFER SU DISCO (GESTISCE ZIP AUTOMATICAMENTE) ---
-    public File read(File directory) {
-        if (!directory.exists()) {
-            try {
-                Files.createDirectories(directory.toPath());
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to create directory: " + directory.getAbsolutePath(), e);
-            }
-        }
+    public Path read(Path directory) {
+        try {
+            Files.createDirectories(directory);
 
-        if (fileName.endsWith(EXTENSION)) {
-            File temp = new File(directory, fileName.replace(EXTENSION, ""));
-            return unzip(temp);
-        } else {
-            File out = new File(directory, fileName);
-            try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(out))) {
+            if (fileName.endsWith(EXTENSION)) {
+                Path temp = directory.resolve(fileName.replace(EXTENSION, ""));
+                Files.createDirectories(temp);
+                return unzip(temp);
+            }
+
+            Path out = directory.resolve(fileName);
+            try (OutputStream bos = new BufferedOutputStream(Files.newOutputStream(out))) {
                 bos.write(bytes);
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to write FileBuffer to disk: " + out.getAbsolutePath(), e);
             }
             return out;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to write FileBuffer to disk: " + fileName, e);
         }
     }
 

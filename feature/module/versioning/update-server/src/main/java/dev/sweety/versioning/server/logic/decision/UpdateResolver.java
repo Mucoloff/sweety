@@ -11,8 +11,9 @@ import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.channel.Channel;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.zip.CRC32;
@@ -97,16 +98,23 @@ public final class UpdateResolver {
 
         final long size;
         try {
-            size = releaseManager.resolveBaseJar(artifact, releaseChannel, version).toFile().length();
+            size = Files.size(releaseManager.resolveBaseJar(artifact, releaseChannel, version));
         } catch (Exception e) {
             return DownloadType.FULL;
         }
 
-        final Optional<File> cachedPatch = patchManager.cached(artifact, releaseChannel, version, current);
+        final Optional<Path> cachedPatch = patchManager.cached(artifact, releaseChannel, version, current);
 
         if (cachedPatch.isEmpty()) return DownloadType.FULL;
 
-        if (cachedPatch.get().length() >= size * Settings.PERCENT_SIZE) {
+        long patchSize;
+        try {
+            patchSize = Files.size(cachedPatch.get());
+        } catch (Exception e) {
+            return DownloadType.FULL;
+        }
+
+        if (patchSize >= size * Settings.PERCENT_SIZE) {
             return DownloadType.FULL;
         }
 

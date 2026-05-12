@@ -7,7 +7,6 @@ import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.channel.Channel;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -53,13 +52,13 @@ public class ExtensionUpdater<T extends VersionableExtension> {
             return false;
         }
 
-        File currentFile = manager.getFile(extension);
+        Path currentFile = manager.jarPath(extension);
         if (currentFile == null) {
             LOGGER.error("Could not resolve local file for extension " + extension.name());
             return false;
         }
 
-        Path targetPath = currentFile.toPath();
+        Path targetPath = currentFile;
         Path updatePath = targetPath.resolveSibling(targetPath.getFileName() + ".update");
 
         Files.copy(newJar, updatePath, StandardCopyOption.REPLACE_EXISTING);

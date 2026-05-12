@@ -4,11 +4,11 @@ import dev.sweety.patch.bytecode.ClassNormalizer;
 import dev.sweety.patch.diff.PatchFilter;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.jar.JarEntry;
@@ -16,27 +16,27 @@ import java.util.jar.JarFile;
 
 public class JarArchive implements Archive {
 
-    private final File file;
+    private final Path path;
     private final PatchFilter filter;
     private final ClassNormalizer normalizer;
 
-    public JarArchive(File file, PatchFilter filter, ClassNormalizer normalizer) {
-        this.file = file;
+    public JarArchive(Path path, PatchFilter filter, ClassNormalizer normalizer) {
+        this.path = path;
         this.filter = filter;
         this.normalizer = normalizer;
     }
 
-    public JarArchive(File file) {
-        this(file, path -> false, null);
+    public JarArchive(Path path) {
+        this(path, p -> false, null);
     }
 
     @Override
     public Map<String, byte[]> entries() {
         Map<String, byte[]> entries = new TreeMap<>();
 
-        if (!file.exists()) throw new RuntimeException("Archive file does not exist: " + file.getAbsolutePath());
+        if (!Files.exists(path)) throw new RuntimeException("Archive file does not exist: " + path.toAbsolutePath());
 
-        try (JarFile jar = new JarFile(file)) {
+        try (JarFile jar = new JarFile(path.toFile())) {
             Enumeration<JarEntry> jarEntries = jar.entries();
 
             while (jarEntries.hasMoreElements()) {
@@ -57,7 +57,7 @@ public class JarArchive implements Archive {
                 }
             }
         } catch (IOException e) {
-            throw new RuntimeException("Failed to read JAR archive: " + file.getAbsolutePath(), e);
+            throw new RuntimeException("Failed to read JAR archive: " + path.toAbsolutePath(), e);
         }
 
         return entries;

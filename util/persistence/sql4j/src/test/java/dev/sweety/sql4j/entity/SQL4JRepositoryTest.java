@@ -12,6 +12,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Executors;
 
@@ -51,7 +53,7 @@ public class SQL4JRepositoryTest {
     @org.junit.jupiter.api.AfterEach
     public void tearDown() throws Exception {
         if (sqlCon != null) sqlCon.close();
-        new java.io.File(dbPath).delete();
+        Files.deleteIfExists(Path.of(dbPath));
     }
 
     @Test

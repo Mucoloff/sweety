@@ -8,7 +8,6 @@ import dev.sweety.patch.filter.DefaultPatchFilter;
 import dev.sweety.patch.generator.PatchGenerator;
 import dev.sweety.patch.hash.Sha256Hash;
 import dev.sweety.patch.model.type.PatchTypes;
-import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.server.logic.cache.CacheKey;
 import dev.sweety.versioning.server.logic.storage.Storage;
@@ -17,10 +16,9 @@ import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.channel.Channel;
-import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayDeque;
@@ -53,13 +51,13 @@ public class PatchManager {
         this.releaseManager = releaseManager;
     }
 
-    public File generatePatch(CacheKey key, Version from) throws IOException {
+    public Path generatePatch(CacheKey key, Version from) throws IOException {
         Path artifactPath = storage.resolveArtifactPath(key.artifact());
-        File cachedPath = key.toPath(artifactPath).toFile();
-        File dir = key.toPath(artifactPath, "v" + from.toString()).toFile();
-        dir.mkdirs();
+        Path cachedPath = key.toPath(artifactPath);
+        Path dir = key.toPath(artifactPath, "v" + from.toString());
+        Files.createDirectories(dir);
         CacheKey oldKey = new CacheKey(key.artifact(), key.channel(), from, key.clientId());
-        File oldPath = oldKey.toPath(artifactPath).toFile();
+        Path oldPath = oldKey.toPath(artifactPath);
 
         return generator.generate(oldPath, cachedPath, dir, key.clientId().toString(), from.toString(), key.version().toString(), ONLY_SIGNATURE);
     }
@@ -68,7 +66,7 @@ public class PatchManager {
         int distance = Settings.MAX_PATCH_VER_DISTANCE;
 
         final Deque<ReleaseInfo> history = new ArrayDeque<>(releaseManager.history(artifact, channel));
-        File newJar = this.releaseManager.resolveBaseJar(artifact, channel, latest).toFile();
+        Path newJar = this.releaseManager.resolveBaseJar(artifact, channel, latest);
 
         while (distance > 0 && !history.isEmpty()) {
             Version old = history.pollFirst().version();
@@ -82,33 +80,33 @@ public class PatchManager {
         }
     }
 
-    public Optional<File> cached(Artifact artifact, Channel channel, Version latest, Version current) {
+    public Optional<Path> cached(Artifact artifact, Channel channel, Version latest, Version current) {
         PatchBucket bucket = bucket(artifact, channel, latest);
         return Optional.ofNullable(bucket.get(current));
     }
 
-    private void generatePatch(File newJar, Artifact artifact, Channel channel, Version latest, Version old) throws IOException {
+    private void generatePatch(Path newJar, Artifact artifact, Channel channel, Version latest, Version old) throws IOException {
 
         PatchBucket bucket = bucket(artifact, channel, latest);
 
-        File existing = bucket.get(old);
+        Path existing = bucket.get(old);
         if (existing != null) {
             return;
         }
 
-        File oldJar = this.releaseManager.resolveBaseJar(artifact, channel, old).toFile();
+        Path oldJar = this.releaseManager.resolveBaseJar(artifact, channel, old);
 
         final String fromVer = old.toString();
         final String toVer = latest.toString();
 
         Path versionRoot = latest.resolve(storage.resolveArtifactPath(artifact).resolve(channel.prettyName()));
-        File path = versionRoot.resolve("patch").toFile();
-        path.mkdirs();
+        Path patchDir = versionRoot.resolve("patch");
+        Files.createDirectories(patchDir);
 
-        File patch = generator.generate(
+        Path patch = generator.generate(
                 oldJar,
                 newJar,
-                path,
+                patchDir,
                 "v" + fromVer,
                 fromVer,
                 toVer,
@@ -132,17 +130,17 @@ public class PatchManager {
     }
 
     public static class PatchBucket {
-        private final Cache<Version, File> cache = Caffeine.newBuilder()
+        private final Cache<Version, Path> cache = Caffeine.newBuilder()
                 .maximumSize(Settings.MAX_PATCH_VER_DISTANCE)
                 .expireAfterAccess(Duration.ofMinutes(30))
                 .build();
 
-        public File get(Version from) {
+        public Path get(Version from) {
             return cache.getIfPresent(from);
         }
 
-        public void put(Version from, File file) {
-            cache.put(from, file);
+        public void put(Version from, Path path) {
+            cache.put(from, path);
         }
     }
 }

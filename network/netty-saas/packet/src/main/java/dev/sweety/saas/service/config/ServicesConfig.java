@@ -6,8 +6,8 @@ import dev.sweety.saas.service.ServiceType;
 
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
 import java.io.Writer;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Supplier;
 
@@ -24,7 +24,7 @@ public class ServicesConfig {
         this.services = services;
     }
 
-    public static ServicesConfig load(File configFile) {
+    public static ServicesConfig load(Path configFile) {
 
         final Configuration configuration = get.get();
         configuration.load(configFile);
@@ -68,7 +68,7 @@ public class ServicesConfig {
         return new ServicesConfig(hub, services);
     }
 
-    public void save(File file) {
+    public void save(Path file) {
         final Configuration configuration = get.get();
         configuration.set("hub", hub);
 

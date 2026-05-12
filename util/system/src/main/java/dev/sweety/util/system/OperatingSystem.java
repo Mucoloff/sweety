@@ -2,13 +2,12 @@ package dev.sweety.util.system;
 
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.Locale;
+import java.nio.file.Path;import java.util.Locale;
 
 public enum OperatingSystem {
     LINUX("linux"),
@@ -78,11 +77,11 @@ public enum OperatingSystem {
 
     }
 
-    public void open(File file) {
+    public void open(Path path) {
         try {
-            this.open(file.toURI().toURL());
+            this.open(path.toUri().toURL());
         } catch (MalformedURLException exception) {
-            System.err.printf("Couldn't open file %s %s\n", file, exception);
+            System.err.printf("Couldn't open file %s %s\n", path, exception);
         }
 
     }

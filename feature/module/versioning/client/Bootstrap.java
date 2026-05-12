@@ -1,4 +1,3 @@
-import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 
@@ -47,31 +46,27 @@ public class Bootstrap {
             }
         }
 
-        File appJar = new File(jarName);
-        File newJar = new File(jarName + ".new");
+        Path appJar = Path.of(jarName);
+        Path newJar = Path.of(jarName + ".new");
 
-        // update
-        if (newJar.exists()) {
+        if (Files.exists(newJar)) {
             System.out.println("Updating to new version...");
-            Files.move(newJar.toPath(), appJar.toPath(),
+            Files.move(newJar, appJar,
                     StandardCopyOption.REPLACE_EXISTING,
                     StandardCopyOption.ATOMIC_MOVE);
         }
 
         List<String> command = new ArrayList<>();
 
-        String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
+        Path javaBin = Paths.get(System.getProperty("java.home"), "bin", "java");
 
-        command.add(javaBin);
+        command.add(javaBin.toString());
 
-        // VM args
         command.addAll(jvmArgs);
 
-        // jar
         command.add("-jar");
-        command.add(appJar.getName());
+        command.add(appJar.getFileName().toString());
 
-        // app args
         command.addAll(appArgs);
 
         System.exit(new ProcessBuilder(command).inheritIO().start().waitFor());

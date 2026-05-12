@@ -12,10 +12,11 @@ import java.nio.charset.StandardCharsets;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.List;
-import java.util.Arrays;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 import java.util.zip.ZipEntry;
@@ -45,18 +46,18 @@ public class PatchApplier {
         return extension;
     }
 
-    public void patch(File input, File output, File patchDir, String patch) throws IOException {
-        final File patchFile = new File(patchDir, patch + this.extension);
-        try (FileInputStream patchStream = new FileInputStream(patchFile)) {
+    public void patch(Path input, Path output, Path patchDir, String patch) throws IOException {
+        Path patchFile = patchDir.resolve(patch + this.extension);
+        try (InputStream patchStream = Files.newInputStream(patchFile)) {
             apply(input, patchStream, output);
         }
 
-        try (FileInputStream verifyStream = new FileInputStream(patchFile)) {
+        try (InputStream verifyStream = Files.newInputStream(patchFile)) {
             this.validator.validate(this.reader.read(verifyStream), new JarArchive(output));
         }
     }
 
-    public void apply(File original, InputStream patchStream, File output) {
+    public void apply(Path original, InputStream patchStream, Path output) {
         Patch patch = reader.read(patchStream);
 
         Archive archive = new JarArchive(original);
@@ -125,14 +126,14 @@ public class PatchApplier {
     }
 
     private List<String> toLines(byte[] data) {
-         String content = new String(data, java.nio.charset.StandardCharsets.UTF_8);
-         return java.util.Arrays.asList(content.split("\\r?\\n", -1));
+         String content = new String(data, StandardCharsets.UTF_8);
+         return Arrays.asList(content.split("\\r?\\n", -1));
     }
 
-    private void writeJar(Map<String, byte[]> entries, File file) {
-        File temp = new File(file.getAbsolutePath() + ".tmp");
+    private void writeJar(Map<String, byte[]> entries, Path file) {
+        Path temp = file.resolveSibling(file.getFileName().toString() + ".tmp");
 
-        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(temp))) {
+        try (JarOutputStream jos = new JarOutputStream(new BufferedOutputStream(Files.newOutputStream(temp)))) {
             jos.setLevel(9);
             for (Map.Entry<String, byte[]> entry : entries.entrySet()) {
                 JarEntry jarEntry = new JarEntry(entry.getKey());
@@ -145,13 +146,13 @@ public class PatchApplier {
             }
 
         } catch (IOException e) {
-            throw new RuntimeException("Failed to write output JAR: " + file.getAbsolutePath(), e);
+            throw new RuntimeException("Failed to write output JAR: " + file.toAbsolutePath(), e);
         }
 
         try {
-            Files.move(temp.toPath(), file.toPath(), REPLACE_EXISTING, ATOMIC_MOVE);
+            Files.move(temp, file, REPLACE_EXISTING, ATOMIC_MOVE);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to write output JAR: " + file.getAbsolutePath(), e);
+            throw new RuntimeException("Failed to write output JAR: " + file.toAbsolutePath(), e);
         }
     }
 }

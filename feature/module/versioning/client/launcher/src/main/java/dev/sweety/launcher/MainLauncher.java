@@ -11,6 +11,7 @@ import dev.sweety.versioning.protocol.PacketRegistry;
 import dev.sweety.versioning.protocol.handshake.State;
 import dev.sweety.versioning.version.artifact.Artifact;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
@@ -38,7 +39,7 @@ public class MainLauncher {
 
         final UpdaterClient updater = new UpdaterClient(config, PacketRegistry.REGISTRY, updateManager, save);
 
-        if (appJar.toFile().exists()) {
+        if (Files.exists(appJar)) {
             new ProcessBuilder(Path.of(System.getProperty("java.home"), "bin", "java").toString(), "-jar", appJar.toAbsolutePath().toString())
                     .inheritIO()
                     .start()

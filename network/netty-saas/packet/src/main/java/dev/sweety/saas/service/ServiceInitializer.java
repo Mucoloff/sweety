@@ -4,12 +4,13 @@ import dev.sweety.color.AnsiColor;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.saas.service.config.ServicesConfig;
 
-import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.function.BiFunction;
 
 public class ServiceInitializer {
 
-    public static <S extends Messenger<?>> S create(final String[] args, final File configFile, final BiFunction<ServicesConfig, Integer, S> serviceConstructor) {
+    public static <S extends Messenger<?>> S create(final String[] args, final Path configFile, final BiFunction<ServicesConfig, Integer, S> serviceConstructor) {
         int id;
         if (args.length != 1) id = 0;
         else try {
@@ -19,8 +20,8 @@ public class ServiceInitializer {
         }
 
         try {
-            if (!configFile.exists())
-                System.err.println("Could not find " + configFile.getAbsolutePath());
+            if (!Files.exists(configFile))
+                System.err.println("Could not find " + configFile.toAbsolutePath());
 
             final ServicesConfig config = ServicesConfig.load(configFile);
 
@@ -34,7 +35,7 @@ public class ServiceInitializer {
         }
     }
 
-    public static <S extends Messenger<?>> void init(final String[] args, final File configFile, final BiFunction<ServicesConfig, Integer, S> serviceConstructor) {
+    public static <S extends Messenger<?>> void init(final String[] args, final Path configFile, final BiFunction<ServicesConfig, Integer, S> serviceConstructor) {
         final S service = create(args, configFile, serviceConstructor);
         Messenger.init(service);
     }

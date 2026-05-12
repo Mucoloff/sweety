@@ -6,49 +6,54 @@ import dev.sweety.extension.ExtensionInfo;
 import dev.sweety.extension.manager.loader.DownloadFile;
 import dev.sweety.extension.manager.loader.ExtensionClassLoader;
 
-import java.io.File;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 public class ExtensionManager<T extends Extension> {
 
-    protected final File rootDir;
+    protected final Path rootDir;
     private final Map<String, T> extensions = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<T, ExtensionInfo> infos = new java.util.concurrent.ConcurrentHashMap<>();
     private final SimpleLogger logger = new SimpleLogger(ExtensionManager.class);
     private final Class<T> extensionClass;
     private final String extensionName;
 
-    public ExtensionManager(final File parent, final Class<T> extensionClass) {
+    public ExtensionManager(final Path parent, final Class<T> extensionClass) {
         this.extensionClass = extensionClass;
         this.extensionName = extensionClass.getSimpleName().toLowerCase();
-        this.rootDir = new File(parent, extensionName + "s");
-        if (!this.rootDir.exists()) this.rootDir.mkdirs();
+        this.rootDir = parent.resolve(extensionName + "s");
+        try {
+            if (!Files.isDirectory(rootDir)) Files.createDirectories(rootDir);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public File getRootDir() {
+    public Path getRootDir() {
         return rootDir;
     }
 
     public CompletableFuture<T> loadExtensionFromUrl(final String url) {
         String fileName = url.substring(url.lastIndexOf('/') + 1);
-        File localFile = new File(rootDir, fileName);
+        Path localFile = rootDir.resolve(fileName);
 
         logger.info("Avvio download dell'estensione da " + url);
 
-        return DownloadFile.downloadFromURL(url, localFile.getAbsolutePath(), true)
+        return DownloadFile.downloadFromURL(url, localFile, true)
                 .thenApply(this::loadExtension);
     }
 
-    public T loadExtension(final File jarFile) {
+    public T loadExtension(final Path jarFile) {
         try {
             final ExtensionInfo info = ExtensionInfo.of(jarFile, this.extensionName.toLowerCase(Locale.ROOT));
 
             if (extensions.containsKey(info.name())) {
-                logger.error("Impossibile caricare " + this.extensionName + " " + jarFile.getName() + ": Un " + this.extensionName + " con il nome '" + info.name() + "' esiste già.");
+                logger.error("Impossibile caricare " + this.extensionName + " " + jarFile.getFileName() + ": Un " + this.extensionName + " con il nome '" + info.name() + "' esiste già.");
                 return null;
             }
 
@@ -56,7 +61,7 @@ public class ExtensionManager<T extends Extension> {
             try (ExtensionClassLoader<T> classLoader = new ExtensionClassLoader<>(jarFile, info, this.extensionClass, this.rootDir)) {
                 extension = classLoader.extension();
             } catch (Exception e) {
-                logger.error("Impossibile caricare " + this.extensionName + " " + jarFile.getName() + ": Fallita l'inizializzazione della classe principale.", e);
+                logger.error("Impossibile caricare " + this.extensionName + " " + jarFile.getFileName() + ": Fallita l'inizializzazione della classe principale.", e);
                 return null;
             }
 
@@ -67,21 +72,22 @@ public class ExtensionManager<T extends Extension> {
             this.infos.put(extension, info);
             return extension;
         } catch (Throwable thrown) {
-            logger.error("Impossibile abilitare " + this.extensionName + " " + jarFile.getName() + "!", thrown);
+            logger.error("Impossibile abilitare " + this.extensionName + " " + jarFile.getFileName() + "!", thrown);
             return null;
         }
     }
 
     public void load() {
-        final File[] jars = this.rootDir.listFiles((dir, name) -> name.endsWith(".jar"));
-        if (jars == null) return;
+        if (!Files.isDirectory(rootDir)) return;
 
-        try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
-            for (final File jarFile : jars) {
-                scope.fork(() -> loadExtension(jarFile));
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(rootDir, "*.jar")) {
+            try (var scope = new java.util.concurrent.StructuredTaskScope.ShutdownOnFailure()) {
+                for (Path jarFile : stream) {
+                    scope.fork(() -> loadExtension(jarFile));
+                }
+                scope.join();
+                scope.throwIfFailed();
             }
-            scope.join();
-            scope.throwIfFailed();
         } catch (Exception e) {
             logger.error("Failed to load extensions in parallel", e);
         }

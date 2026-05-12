@@ -62,31 +62,30 @@ public final class ArchiveUtils {
     // ZIP OPERATIONS
     // ==================================================================================
 
-    public static byte[] zipSmart(File file) throws IOException {
-        if (file.isDirectory()) return zipDirectory(file);
-        if (Files.size(file.toPath()) > ZIP_THRESHOLD) return zipFile(file);
-        return Files.readAllBytes(file.toPath());
+    public static byte[] zipSmart(Path path) throws IOException {
+        if (Files.isDirectory(path)) return zipDirectory(path);
+        if (Files.size(path) > ZIP_THRESHOLD) return zipFile(path);
+        return Files.readAllBytes(path);
     }
 
-    public static byte[] zipFile(File file) throws IOException {
+    public static byte[] zipFile(Path file) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (ZipOutputStream zos = createZipOutputStream(baos)) {
-            zos.putNextEntry(new ZipEntry(file.getName()));
-            Files.copy(file.toPath(), zos);
+            zos.putNextEntry(new ZipEntry(file.getFileName().toString()));
+            Files.copy(file, zos);
             zos.closeEntry();
         }
         return baos.toByteArray();
     }
 
-    public static byte[] zipDirectory(File dir) throws IOException {
+    public static byte[] zipDirectory(Path root) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (ZipOutputStream zos = createZipOutputStream(baos)) {
-            Path root = dir.toPath();
             Files.walkFileTree(root, new SimpleFileVisitor<>() {
                 @Override
                 public @NotNull FileVisitResult preVisitDirectory(@NotNull Path d, @NotNull BasicFileAttributes attrs) throws IOException {
                     if (!d.equals(root)) {
-                        String entryName = root.relativize(d).toString().replace(File.separatorChar, '/') + "/";
+                        String entryName = root.relativize(d).toString().replace('\\', '/') + "/";
                         zos.putNextEntry(new ZipEntry(entryName));
                         zos.closeEntry();
                     }
@@ -95,7 +94,7 @@ public final class ArchiveUtils {
 
                 @Override
                 public @NotNull FileVisitResult visitFile(@NotNull Path f, @NotNull BasicFileAttributes attrs) throws IOException {
-                    String entryName = root.relativize(f).toString().replace(File.separatorChar, '/');
+                    String entryName = root.relativize(f).toString().replace('\\', '/');
                     zos.putNextEntry(new ZipEntry(entryName));
                     Files.copy(f, zos);
                     zos.closeEntry();
@@ -129,40 +128,33 @@ public final class ArchiveUtils {
         throw new IOException("ZIP contains no file entries");
     }
 
-    public static File unzip(byte[] zipData, File outputDir) throws IOException {
-        if (!outputDir.exists() && !outputDir.mkdirs()) {
-            throw new IOException("Cannot create output dir: " + outputDir);
-        }
-
-        String targetDir = outputDir.getCanonicalPath();
+    public static Path unzip(byte[] zipData, Path outputDir) throws IOException {
+        Files.createDirectories(outputDir);
+        Path targetDir = outputDir.toAbsolutePath().normalize();
 
         try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipData))) {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
                 String entryName = entry.getName();
 
-                // Skip invalid entries
                 if (entryName.isBlank() || entryName.equals("/") || entryName.equals("\\")) {
                     zis.closeEntry();
                     continue;
                 }
 
-                // Security check for Zip Slip
-                File targetFile = new File(outputDir, entryName);
-                if (!targetFile.getCanonicalPath().startsWith(targetDir + File.separator)) {
+                Path targetFile = outputDir.resolve(entryName).normalize();
+                Path absTarget = targetFile.toAbsolutePath().normalize();
+
+                if (!absTarget.startsWith(targetDir)) {
                     throw new SecurityException("Invalid zip entry (Path Traversal attempt): " + entryName);
                 }
 
                 if (entry.isDirectory()) {
-                    if (!targetFile.exists() && !targetFile.mkdirs()) {
-                        throw new IOException("Failed to create dir: " + targetFile);
-                    }
+                    Files.createDirectories(absTarget);
                 } else {
-                    File parent = targetFile.getParentFile();
-                    if (parent != null && !parent.exists() && !parent.mkdirs()) {
-                        throw new IOException("Failed to create parent dir: " + parent);
-                    }
-                    try (OutputStream os = new BufferedOutputStream(Files.newOutputStream(targetFile.toPath()))) {
+                    Path parent = absTarget.getParent();
+                    if (parent != null) Files.createDirectories(parent);
+                    try (OutputStream os = new BufferedOutputStream(Files.newOutputStream(absTarget))) {
                         zis.transferTo(os);
                     }
                 }

@@ -119,7 +119,7 @@ public class UpdateManager {
         }
 
         try {
-            applier.patch(backup.toFile(), newFile.toFile(), downloaded.getParent().toFile(), original.getFileName() + version.toString());
+            applier.patch(backup, newFile, downloaded.getParent(), original.getFileName() + version.toString());
             Files.deleteIfExists(downloaded);
             Files.deleteIfExists(backup);
             return true;

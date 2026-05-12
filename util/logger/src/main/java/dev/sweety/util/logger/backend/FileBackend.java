@@ -6,20 +6,26 @@ import dev.sweety.util.logger.formatter.LogFormatter;
 import dev.sweety.util.logger.level.LogLevel;
 import dev.sweety.util.logger.formatter.SimpleLogFormatter;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Writer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 
 public class FileBackend implements LoggerBackend {
 
-    private final FileWriter fileWriter;
+    private final Writer fileWriter;
     private final LogFormatter formatter;
 
-    public FileBackend(File file) throws IOException {
-        this(new FileWriter(file), new SimpleLogFormatter());
+    public FileBackend(Path file) throws IOException {
+        this(Files.newBufferedWriter(file,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.WRITE,
+                StandardOpenOption.TRUNCATE_EXISTING),
+                new SimpleLogFormatter());
     }
 
-    public FileBackend(FileWriter fileWriter, LogFormatter formatter) {
+    public FileBackend(Writer fileWriter, LogFormatter formatter) {
         this.fileWriter = fileWriter;
         this.formatter = formatter;
     }

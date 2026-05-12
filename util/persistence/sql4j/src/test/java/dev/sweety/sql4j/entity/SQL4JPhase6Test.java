@@ -8,7 +8,8 @@ import dev.sweety.sql4j.api.repository.Repository;
 import dev.sweety.sql4j.impl.connection.ConnectionType;
 import org.junit.jupiter.api.*;
 
-import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -23,7 +24,7 @@ public class SQL4JPhase6Test {
 
     @BeforeAll
     void setup() throws Exception {
-        new File("test_phase6.db").delete();
+        Files.deleteIfExists(Path.of("test_phase6.db"));
         con = ConnectionType.SQLITE.create(Executors.newSingleThreadExecutor(), "test_phase6.db");
         db = new Database(con);
         users = db.createRepository(User.class);
@@ -33,7 +34,7 @@ public class SQL4JPhase6Test {
     @AfterAll
     void cleanup() throws Exception {
         db.close();
-        new File("test_phase6.db").delete();
+        Files.deleteIfExists(Path.of("test_phase6.db"));
     }
 
     @AfterEach

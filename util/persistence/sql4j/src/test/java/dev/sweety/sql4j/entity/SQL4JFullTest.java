@@ -9,6 +9,8 @@ import dev.sweety.sql4j.api.repository.Repository;
 import dev.sweety.sql4j.impl.connection.ConnectionType;
 import org.junit.jupiter.api.*;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Executors;
 
@@ -24,13 +26,12 @@ public class SQL4JFullTest {
     private Repository<Project> projects;
     private Repository<Task> tasks;
 
+    private String dbName;
+
     @BeforeEach
     public void setup() {
         SqlRunner.setLogger(SqlLogger.stdout());
-        // Use a UNIQUE FILE-based database for EACH test to ensure total isolation and persistence
-        String dbName = "sql4j_test_" + System.nanoTime() + ".db";
-        java.io.File dbFile = new java.io.File(dbName);
-        dbFile.deleteOnExit(); // Clean up on JVM exit
+        dbName = "sql4j_test_" + System.nanoTime() + ".db";
 
         con = ConnectionType.SQLITE.create(Executors.newSingleThreadExecutor(), dbName);
 
@@ -266,7 +267,8 @@ public class SQL4JFullTest {
     }
 
     @AfterEach
-    public void tearDown() {
+    public void tearDown() throws Exception {
         db.close();
+        Files.deleteIfExists(Path.of(dbName));
     }
 }

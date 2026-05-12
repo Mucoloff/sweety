@@ -4,7 +4,7 @@ import dev.sweety.util.logger.SimpleLogger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
+import java.nio.file.Path;
 
 public abstract class Extension implements Toggleable {
 
@@ -14,18 +14,18 @@ public abstract class Extension implements Toggleable {
     private final String description;
 
     @NotNull
-    private final File dataFolder;
+    private final Path dataFolder;
 
     @NotNull
     private final SimpleLogger logger;
 
     private boolean enabled;
 
-    protected Extension(final @NotNull String name, @NotNull String version, @Nullable String description, @NotNull final File folder, @NotNull SimpleLogger logger) {
+    protected Extension(final @NotNull String name, @NotNull String version, @Nullable String description, @NotNull final Path folder, @NotNull SimpleLogger logger) {
         this.name = name;
         this.version = version;
         this.description = description;
-        this.dataFolder = new File(folder, name);
+        this.dataFolder = folder.resolve(name);
         this.logger = logger;
     }
 
@@ -55,7 +55,7 @@ public abstract class Extension implements Toggleable {
         return description;
     }
 
-    public @NotNull File dataFolder() {
+    public @NotNull Path dataFolder() {
         return dataFolder;
     }
 

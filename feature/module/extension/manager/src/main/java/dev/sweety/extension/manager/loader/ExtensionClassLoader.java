@@ -5,12 +5,12 @@ import dev.sweety.extension.Extension;
 import dev.sweety.extension.ExtensionInfo;
 import dev.sweety.extension.exception.InvalidExtensionException;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.Path;
 import java.security.CodeSigner;
 import java.security.CodeSource;
 import java.util.Enumeration;
@@ -29,11 +29,11 @@ public class ExtensionClassLoader<T extends Extension> extends URLClassLoader {
 
     private final T extension;
 
-    public ExtensionClassLoader(final File jarFile, final ExtensionInfo info, final Class<T> parent, File rootDir) throws Exception {
-        super(new URL[]{jarFile.toURI().toURL()}, parent.getClassLoader());
-        this.jar = new JarFile(jarFile);
+    public ExtensionClassLoader(final Path jarFile, final ExtensionInfo info, final Class<T> parent, Path rootDir) throws Exception {
+        super(new URL[]{jarFile.toUri().toURL()}, parent.getClassLoader());
+        this.jar = new JarFile(jarFile.toFile());
         this.manifest = this.jar.getManifest();
-        this.url = jarFile.toURI().toURL();
+        this.url = jarFile.toUri().toURL();
 
         final Class<?> mainClass;
         try {
@@ -46,7 +46,7 @@ public class ExtensionClassLoader<T extends Extension> extends URLClassLoader {
             throw new InvalidExtensionException(mainClass, "does not extend", parent);
         }
 
-        final Constructor<? extends T> declaredConstructor = mainClass.asSubclass(parent).getDeclaredConstructor(String.class, String.class, String.class, File.class, SimpleLogger.class);
+        final Constructor<? extends T> declaredConstructor = mainClass.asSubclass(parent).getDeclaredConstructor(String.class, String.class, String.class, Path.class, SimpleLogger.class);
 
         declaredConstructor.setAccessible(true);
 

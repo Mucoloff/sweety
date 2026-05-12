@@ -11,7 +11,7 @@ import dev.sweety.config.yml.YamlConfiguration;
 
 import javax.sql.rowset.spi.XmlReader;
 import java.beans.XMLEncoder;
-import java.io.File;
+import java.nio.file.Path;
 import java.util.*;
 
 public class TestProperties {
@@ -93,7 +93,7 @@ public class TestProperties {
         System.out.println("testing configuration " + configuration.getClass().getSimpleName());
         try {
             testWrite(configuration);
-            File file = new File("test." + configuration.extension());
+            Path file = Path.of("test." + configuration.extension());
             configuration.save(file);
             configuration.load(file);
             testRead(configuration);

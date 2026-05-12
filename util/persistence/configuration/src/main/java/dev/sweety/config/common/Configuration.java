@@ -7,7 +7,13 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
-import java.util.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public abstract class Configuration {
 
@@ -44,16 +50,20 @@ public abstract class Configuration {
         }
     }
 
-    public void save(File file) {
-        try (FileOutputStream out = new FileOutputStream(file)) {
+    public void save(Path path) {
+        try (OutputStream out = Files.newOutputStream(path,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.WRITE)) {
             save(out);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public void load(File file) {
-        try (FileInputStream in = new FileInputStream(file)) {
+    public void load(Path path) {
+        try (InputStream in = Files.newInputStream(path,
+                StandardOpenOption.READ)) {
             load(in);
         } catch (IOException e) {
             throw new RuntimeException(e);

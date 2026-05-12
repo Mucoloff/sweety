@@ -3,7 +3,7 @@ package dev.sweety.saas.service;
 import dev.sweety.saas.service.config.ServiceNodeConfig;
 import dev.sweety.saas.service.config.ServicesConfig;
 
-import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -11,7 +11,7 @@ public class Main {
 
     public static void main(String[] args) {
 
-        File file = new File("services.yml");
+        Path file = Path.of("services.yml");
 
 
         new ServicesConfig(new ServiceNodeConfig(ServiceType.of("hub"), "127.0.0.1", 4000),
