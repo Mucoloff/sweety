@@ -1,24 +1,38 @@
 package dev.sweety.filter;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.BeforeEach;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Test per CountMinSketch con HashFunction personalizzato
- */
 class CountMinSketchTest {
 
     private CountMinSketch sketchDefault;
-    private CountMinSketch sketchCustom;
-    private TestHashFunction testHashFunction;
 
-    @BeforeEach
+    private CountMinSketch sketchCustom;
+    private HashFunction[] customHashers;
+    private AtomicInteger[] customCalls;
+
+    @org.junit.jupiter.api.BeforeEach
     void setUp() {
         sketchDefault = new CountMinSketch(1024, 5);
-        testHashFunction = new TestHashFunction();
-        sketchCustom = new CountMinSketch(1024, 5, testHashFunction);
+        customCalls = new AtomicInteger[5];
+        customHashers = buildTrackingHashers(customCalls);
+        sketchCustom = new CountMinSketch(1024, customHashers);
+    }
+
+    static HashFunction[] buildTrackingHashers(AtomicInteger[] calls) {
+        HashFunction[] arr = new HashFunction[calls.length];
+        for (int i = 0; i < calls.length; i++) {
+            calls[i] = new AtomicInteger();
+            final int row = i;
+            arr[i] = data -> {
+                calls[row].incrementAndGet();
+                return row * 1_000_003 ^ java.util.Arrays.hashCode(data);
+            };
+        }
+        return arr;
     }
 
     @Test
@@ -34,18 +48,22 @@ class CountMinSketchTest {
     }
 
     @Test
-    void testAddAndEstimateWithCustomHashFunction() {
+    void testAddAndEstimateWithCustomHashFunctions() {
         byte[] data1 = "test1".getBytes();
 
         int estimateBefore = sketchCustom.estimate(data1);
         assertEquals(0, estimateBefore);
 
         sketchCustom.add(data1);
-        assertTrue(testHashFunction.hash1Called);
-        assertTrue(testHashFunction.hash2Called);
+        for (AtomicInteger c : customCalls) {
+            assertTrue(c.get() >= 1, "each custom hasher should run on add");
+        }
 
         int estimateAfter = sketchCustom.estimate(data1);
         assertTrue(estimateAfter > 0, "Estimate should be positive after adding");
+        for (AtomicInteger c : customCalls) {
+            assertTrue(c.get() >= 2, "each hasher used again on estimate");
+        }
     }
 
     @Test
@@ -92,48 +110,8 @@ class CountMinSketchTest {
     }
 
     @Test
-    void testConstructorWithNullHashFunction() {
-        // Deve usare il default MurmurHashFunction
-        CountMinSketch sketch = new CountMinSketch(512, 3, null);
-        byte[] data = "test".getBytes();
-
-        sketch.add(data);
-        assertTrue(sketch.estimate(data) > 0);
-    }
-
-    /**
-     * HashFunction di test per verificare che viene usato
-     */
-    static class TestHashFunction implements HashFunction {
-        public boolean hash1Called = false;
-        public boolean hash2Called = false;
-        private int counter = 0;
-
-        @Override
-        public int hash1(byte[] data) {
-            hash1Called = true;
-            return 31 * (counter++) ^ computeHashCode(data);
-        }
-
-        @Override
-        public int hash2(byte[] data) {
-            hash2Called = true;
-            return 37 * (counter++) ^ computeHashCode(data);
-        }
-
-        void resetCalls() {
-            hash1Called = false;
-            hash2Called = false;
-            counter = 0;
-        }
-
-        private int computeHashCode(byte[] data) {
-            int hash = 0;
-            for (byte b : data) {
-                hash = hash * 31 + b;
-            }
-            return hash;
-        }
+    void testDepthMatchesHasherCount() {
+        assertEquals(5, sketchDefault.hashFunctionCount());
+        assertEquals(5, sketchCustom.hashFunctionCount());
     }
 }
-

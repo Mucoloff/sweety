@@ -1,23 +1,15 @@
 package dev.sweety.filter;
 
 /**
- * Interfaccia per strategie di hash personalizzate.
- * Genera due hash base da cui le implementazioni di filtri
- * derivano k hash usando Kirsch-Mitzenmacher.
+ * Una singola funzione hash su {@code byte[]}.
+ * Passare più istanze (es. con seed diversi) ai costruttori di sketch e bloom filter.
  */
+@FunctionalInterface
 public interface HashFunction {
-    /**
-     * Primo hash della sequenza.
-     * @param data i dati da hashare
-     * @return valore hash (può essere negativo)
-     */
-    int hash1(byte[] data);
 
     /**
-     * Secondo hash della sequenza.
-     * @param data i dati da hashare
-     * @return valore hash (può essere negativo)
+     * @param data dati da hashare; non modificare l'array nell'implementazione salvo stipulazione contraria
+     * @return valore hash (può essere qualsiasi {@code int}; il chiamante applica il modulo sulla dimensione)
      */
-    int hash2(byte[] data);
+    int hash(byte[] data);
 }
-

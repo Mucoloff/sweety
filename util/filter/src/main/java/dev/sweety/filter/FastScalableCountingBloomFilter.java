@@ -1,91 +1,120 @@
 package dev.sweety.filter;
 
-import dev.sweety.data.ChecksumUtils;
-public class FastScalableCountingBloomFilter {
-    private byte[] filter;
-    private final int hashFunctions;
-    private final double growthFactor;
+import java.util.Collection;
+import java.util.Objects;
 
+/**
+ * Bloom filter counting scalabile (con ridimensionamento opzionale del vettore di bucket).
+ * <p>Stessi punti API di {@link CountMinSketch} dove si applica:
+ * {@link #add(byte[])}, {@link #elements()}, {@link #hashFunctionCount()}, {@link #bucketCount()},
+ * {@link #indicesFor(byte[])}, oltre a {@link #contains(byte[])} e {@link #remove(byte[])}.</p>
+ */
+public class FastScalableCountingBloomFilter {
+
+    private byte[] filter;
+    private final HashFunction[] hashers;
+    private final double growthFactor;
     private int elements;
 
     public int elements() {
         return elements;
     }
 
-    public FastScalableCountingBloomFilter(int initialSize, int hashFunctions, double growthFactor) {
-        this.hashFunctions = hashFunctions;
+    public FastScalableCountingBloomFilter(int initialBucketCount, double growthFactor,
+                                           Collection<? extends HashFunction> hashFunctions) {
         this.growthFactor = growthFactor;
-        this.filter = new byte[initialSize];
+        this.hashers = HashFunctions.copy(hashFunctions);
+        this.filter = new byte[initialBucketCount];
         this.elements = 0;
     }
 
-    private int[] getHashes(byte[] data) {
-        int[] hashes = new int[hashFunctions];
-
-        int h1 = ChecksumUtils.murmurHash3(data, 12345);
-        int h2 = ChecksumUtils.crc32Int(data, 54321);
-        int h3 = ChecksumUtils.sha256Int(data, 12345);
-
-        for (int i = 0; i < hashFunctions; i++) {
-            // Combiniamo i tre hash diversi per generare k hash
-            hashes[i] = Math.abs((h1 + i * h2 + i*i * h3) % filter.length);
+    /** @see #FastScalableCountingBloomFilter(int, double, Collection) */
+    public FastScalableCountingBloomFilter(int initialBucketCount, double growthFactor, HashFunction... hashers) {
+        if (Objects.requireNonNull(hashers, "hashers must not be null").length == 0) {
+            throw new IllegalArgumentException("pass at least one HashFunction");
         }
-        return hashes;
+        this.growthFactor = growthFactor;
+        this.hashers = HashFunctions.copy(hashers);
+        this.filter = new byte[initialBucketCount];
+        this.elements = 0;
+    }
+
+    /** Hash Murmur predefinite; vedi {@link HashFunctions#murmur3Defaults(int)}. */
+    public FastScalableCountingBloomFilter(int initialBucketCount, int hashFunctionCount, double growthFactor) {
+        this(initialBucketCount, growthFactor, HashFunctions.murmur3Defaults(hashFunctionCount));
     }
 
     public synchronized void add(byte[] data) {
-        int[] hashes = getHashes(data);
-        for (int h : hashes) {
+        int[] idx = indicesFor(data);
+        for (int h : idx) {
             filter[h]++;
         }
         elements++;
-        if (needsExpansion()) expand();
+        if (needsExpansion()) {
+            expand();
+        }
     }
 
     public synchronized boolean contains(byte[] data) {
-        int[] hashes = getHashes(data);
-        for (int h : hashes) {
-            if (filter[h] == 0) return false;
+        int[] idx = indicesFor(data);
+        for (int h : idx) {
+            if (filter[h] == 0) {
+                return false;
+            }
         }
         return true;
     }
 
     public synchronized void remove(byte[] data) {
-        int[] hashes = getHashes(data);
-        for (int h : hashes) {
-            if (filter[h] > 0) filter[h]--;
+        int[] idx = indicesFor(data);
+        for (int h : idx) {
+            if (filter[h] > 0) {
+                filter[h]--;
+            }
         }
         elements = Math.max(0, elements - 1);
     }
 
-    private boolean needsExpansion() {
-        double load = (double) elements / filter.length;
-        return load > 0.7; // se saturazione >70%
-    }
-
-    private synchronized void expand() {
-        int newSize = (int)(filter.length * growthFactor);
-        byte[] newFilter = new byte[newSize];
-        System.arraycopy(filter, 0, newFilter, 0, filter.length);
-        filter = newFilter;
-    }
-
-    public double getEstimatedFPP() {
-        // stima probabilità falsi positivi: (1 - e^(-k*n/m))^k
-        double k = hashFunctions;
+    /** Stima probabilistica di falso positivo (model bloom classico). */
+    public double estimatedFalsePositiveProbability() {
+        int k = hashers.length;
         double n = elements;
         double m = filter.length;
         return Math.pow(1 - Math.exp(-k * n / m), k);
     }
 
-    public int getSize() {
+    /** Lunghezza attuale del vettore di bucket (post–eventuale {@link #add}). */
+    public int bucketCount() {
         return filter.length;
     }
 
-    // debug rapido
-    @Override
-    public String toString() {
-        return "FastSCBF{size=" + filter.length + ", elements=" + elements + ", FalsePositiveProb=" + getEstimatedFPP() + "}";
+    /** Numero di funzioni hash. */
+    public int hashFunctionCount() {
+        return hashers.length;
     }
 
+    /**
+     * Come {@link CountMinSketch#indicesFor(byte[])}: indici modulo {@link #bucketCount()}.
+     */
+    public int[] indicesFor(byte[] data) {
+        return HashFunctions.bucketIndices(data, hashers, filter.length);
+    }
+
+    private boolean needsExpansion() {
+        double load = (double) elements / filter.length;
+        return load > 0.7;
+    }
+
+    private synchronized void expand() {
+        int newSize = (int) (filter.length * growthFactor);
+        byte[] newFilter = new byte[newSize];
+        System.arraycopy(filter, 0, newFilter, 0, filter.length);
+        filter = newFilter;
+    }
+
+    @Override
+    public String toString() {
+        return "FastSCBF{bucketCount=" + filter.length + ", elements=" + elements
+                + ", fpEst=" + estimatedFalsePositiveProbability() + "}";
+    }
 }

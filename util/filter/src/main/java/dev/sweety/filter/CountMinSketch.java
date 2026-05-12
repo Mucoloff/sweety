@@ -1,67 +1,101 @@
 package dev.sweety.filter;
 
-import dev.sweety.data.ChecksumUtils;
+import java.util.Collection;
+import java.util.Objects;
 
+/**
+ * Count–Min Sketch: una riga per ogni hash ({@link #hashFunctionCount()}),
+ * lunghezza fissa {@link #bucketCount()}.
+ * <p>Allineamento con {@link FastScalableCountingBloomFilter}: {@link #add(byte[])},
+ * {@link #elements()}, {@link #hashFunctionCount()}, {@link #bucketCount()},
+ * {@link #indicesFor(byte[])}.</p>
+ */
 public class CountMinSketch {
 
     private final int[][] table;
-    private final int width;
-    private final int depth;
-    private int count;
+    private final int bucketCount;
+    private final HashFunction[] hashers;
+    private int elements;
 
-    public CountMinSketch(int width, int depth) {
-        this.width = width;
-        this.depth = depth;
-        this.table = new int[depth][width];
-        this.count = 0;
+    /**
+     * @param hashFunctions una funzione hash per riga; {@link #hashFunctionCount()}
+     *                      coincide con il numero di elementi (ordine dall’iteratore)
+     */
+    public CountMinSketch(int bucketCount, Collection<? extends HashFunction> hashFunctions) {
+        this.bucketCount = bucketCount;
+        this.hashers = HashFunctions.copy(hashFunctions);
+        this.table = new int[this.hashers.length][bucketCount];
+        this.elements = 0;
+    }
+
+    /** @see #CountMinSketch(int, Collection) */
+    public CountMinSketch(int bucketCount, HashFunction... hashers) {
+        if (Objects.requireNonNull(hashers, "hashers must not be null").length == 0) {
+            throw new IllegalArgumentException("pass at least one HashFunction");
+        }
+        this.bucketCount = bucketCount;
+        this.hashers = HashFunctions.copy(hashers);
+        this.table = new int[this.hashers.length][bucketCount];
+        this.elements = 0;
+    }
+
+    /** Stesse hash di default Murmur degli altri costruttori con collection / varargs. */
+    public CountMinSketch(int bucketCount, int hashFunctionCount) {
+        this(bucketCount, HashFunctions.murmur3Defaults(hashFunctionCount));
     }
 
     public void add(byte[] data) {
-        int[] hashes = this.getHashes(data);
-        for (int i = 0; i < depth; i++) {
-
-            if (this.table[i][hashes[i]] < Integer.MAX_VALUE) {
-                this.table[i][hashes[i]]++;
+        int[] idx = indicesFor(data);
+        for (int i = 0; i < hashers.length; i++) {
+            if (this.table[i][idx[i]] < Integer.MAX_VALUE) {
+                this.table[i][idx[i]]++;
             }
         }
-        this.count++;
+        this.elements++;
     }
 
     /**
-     * Dimezza tutti i valori nella tabella.
-     * Da chiamare periodicamente (es. ogni 60 secondi) per dare priorità
-     * ai dati recenti e "dimenticare" quelli vecchi
+     * Dimezza tutti i contatori nella tabella (es. per privilegiare traffico recente).
      */
     public void age() {
-        for (int i = 0; i < depth; i++) {
-            for (int j = 0; j < width; j++) {
-                // >> 1 == / 2
+        for (int i = 0; i < hashers.length; i++) {
+            for (int j = 0; j < bucketCount; j++) {
                 this.table[i][j] >>= 1;
             }
         }
-        this.count >>= 1;
+        this.elements >>= 1;
     }
 
+    /** Stima inferiore della frequenza. */
     public int estimate(byte[] data) {
-        int[] hashes = this.getHashes(data);
+        int[] idx = indicesFor(data);
         int res = Integer.MAX_VALUE;
-        for (int i = 0; i < depth; i++) {
-            res = Math.min(res, table[i][hashes[i]]);
+        for (int i = 0; i < hashers.length; i++) {
+            res = Math.min(res, table[i][idx[i]]);
         }
         return res;
     }
 
-    private int[] getHashes(byte[] data) {
-        final int[] hashes = new int[depth];
+    /** Aggiunte registrate dall’instanziazione. */
+    public int elements() {
+        return elements;
+    }
 
-        // Murmur3
-        final int h1 = ChecksumUtils.murmurHash3(data, 0x12345678);
-        final int h2 = ChecksumUtils.murmurHash3(data, h1);
+    /** Numero di funzioni hash (righe nel sketch). */
+    public int hashFunctionCount() {
+        return hashers.length;
+    }
 
-        for (int i = 0; i < depth; i++) {
-            //  Kirsch-Mitzenmacher per generare k hash da soli 2
-            hashes[i] = Math.abs((h1 + i * h2) % width);
-        }
-        return hashes;
+    /** Larghezza di una riga (numero di contatori/bucket per riga). */
+    public int bucketCount() {
+        return bucketCount;
+    }
+
+    /**
+     * Indici di bucket per ogni funzione hash ({@link Math#floorMod}); stesso contratto di
+     * {@link FastScalableCountingBloomFilter#indicesFor(byte[])}.
+     */
+    public int[] indicesFor(byte[] data) {
+        return HashFunctions.bucketIndices(data, hashers, bucketCount);
     }
 }
