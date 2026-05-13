@@ -78,10 +78,15 @@ public class ExtensionManager<T extends Extension> {
                 return null;
             }
 
+            if (this.extensions.putIfAbsent(extension.name(), extension) != null) {
+                try { classLoader.close(); } catch (Exception ignored) {}
+                logger.error("Conflitto di caricamento concorrente: Un " + this.extensionName + " con il nome '" + info.name() + "' è stato appena caricato.");
+                return null;
+            }
+
             this.logger.info(extension.name() + " v" + info.version() + " è ora abilitato.");
             extension.setEnabled(true);
 
-            this.extensions.put(extension.name(), extension);
             this.infos.put(extension, info);
             this.classLoaders.put(extension, classLoader);
             return extension;

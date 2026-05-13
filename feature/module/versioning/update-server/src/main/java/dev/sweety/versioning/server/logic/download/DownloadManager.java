@@ -9,7 +9,7 @@ import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.server.logic.download.token.Token;
 import dev.sweety.versioning.util.Utils;
 import dev.sweety.versioning.version.channel.Channel;
-import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 
@@ -25,7 +25,7 @@ public class DownloadManager extends ExpirableGarbage<UUID, Token> {
     /**
      * Genera un token e lo aggiunge al map + garbage
      */
-    public synchronized String generate(UUID clientId, Artifact artifact, Channel channel, Version version, Version from, DownloadType downloadType) {
+    public String generate(UUID clientId, Artifact artifact, Channel channel, Version version, Version from, DownloadType downloadType) {
 
         final Token token = new Token(clientId, artifact, channel, version, from, downloadType, Settings.DOWNLOAD_EXPIRE_DELAY_MS);
         final UUID tokenId = token.token();
@@ -38,12 +38,12 @@ public class DownloadManager extends ExpirableGarbage<UUID, Token> {
     /**
      * Cerca e rimuove un token valido
      */
-    public synchronized @NotNull Token search(String tokenId) throws TokenExpiredException, InvalidTokenException {
+    public @Nullable Token search(String tokenId) {
         final UUID id;
         try {
             id = Utils.parseUuid(tokenId);
         } catch (IllegalArgumentException e) {
-            throw new InvalidTokenException("invalid token!");
+            return null;
         }
 
         return super.consume(id);

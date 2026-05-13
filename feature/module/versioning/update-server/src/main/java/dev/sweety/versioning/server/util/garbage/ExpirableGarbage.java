@@ -4,9 +4,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Expiry;
 import dev.sweety.time.Expirable;
-import dev.sweety.versioning.exception.InvalidTokenException;
-import dev.sweety.versioning.exception.TokenExpiredException;
-import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.TimeUnit;
 
@@ -44,21 +42,20 @@ public class ExpirableGarbage<Key, Value extends Expirable> implements IGarbage<
     }
 
     @Override
-    public @NotNull Value get(Key key) throws TokenExpiredException, InvalidTokenException {
+    public @Nullable Value get(Key key) {
         Value value = cache.getIfPresent(key);
-        if (value == null) throw new InvalidTokenException("value not found!");
+        if (value == null) return null;
         if (value.expired()) {
             cache.invalidate(key);
-            throw new TokenExpiredException("value expired! " + Math.max(0, value.expiryTime()));
+            return null;
         }
         return value;
     }
 
     @Override
-    public @NotNull Value consume(Key key) throws TokenExpiredException, InvalidTokenException {
+    public @Nullable Value consume(Key key) {
         Value value = cache.asMap().remove(key);
-        if (value == null) throw new InvalidTokenException("value not found!");
-        if (value.expired()) throw new TokenExpiredException("value expired! " + Math.max(0, value.expiryTime()));
+        if (value == null || value.expired()) return null;
         return value;
     }
 

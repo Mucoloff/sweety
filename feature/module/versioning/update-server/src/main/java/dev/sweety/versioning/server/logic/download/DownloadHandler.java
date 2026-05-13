@@ -79,10 +79,8 @@ public class DownloadHandler implements HttpHandler {
                 return;
             }
 
-            final Token token;
-            try {
-                token = this.downloadManager.search(_token);
-            } catch (InvalidTokenException | TokenExpiredException e) {
+            final Token token = this.downloadManager.search(_token);
+            if (token == null) {
                 LOGGER.warn("Invalid or expired download token for clientId=" + id);
                 HttpUtils.sendText(exchange, 400, "Invalid or expired token");
                 return;

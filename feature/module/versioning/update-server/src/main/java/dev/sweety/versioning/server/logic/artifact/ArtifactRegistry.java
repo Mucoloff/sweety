@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ArtifactRegistry {
 
-    private final Map<String, ArtifactMetadata> registry = new ConcurrentHashMap<>();
+    private final Map<Artifact, ArtifactMetadata> registry = new ConcurrentHashMap<>();
     private final String globalSecret;
 
     public ArtifactRegistry(String globalSecret) {
@@ -19,12 +19,12 @@ public class ArtifactRegistry {
     }
 
     public void register(ArtifactMetadata metadata) {
-        registry.put(metadata.artifact().name().toUpperCase(), metadata);
+        registry.put(metadata.artifact(), metadata);
     }
 
     @Nullable
     public ArtifactMetadata getMetadata(Artifact artifact) {
-        return registry.get(artifact.name().toUpperCase());
+        return registry.get(artifact);
     }
 
     public String getSecret(Artifact artifact) {

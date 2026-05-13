@@ -87,12 +87,8 @@ public class NettyUpdateServer extends SimpleServer {
                 
                 ReleaseInfo latest = releaseManager.resolveLatest(artifact, channel);
 
-                ForcedUpdate forcedUpdate = null;
-
                 final ExpirableGarbage<UUID, ForcedUpdate> garbage = getForcedUpdates(artifact);
-                try {
-                    forcedUpdate = garbage.get(clientId);
-                } catch (InvalidTokenException | TokenExpiredException ignored) {}
+                ForcedUpdate forcedUpdate = garbage.get(clientId);
 
                 UpdateDecision decision = UpdateResolver.resolve(
                         clientId,

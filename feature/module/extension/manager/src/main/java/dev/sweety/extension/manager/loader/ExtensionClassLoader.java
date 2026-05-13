@@ -22,6 +22,10 @@ import java.util.jar.Manifest;
 
 public class ExtensionClassLoader<T extends Extension> extends URLClassLoader {
 
+    static {
+        ClassLoader.registerAsParallelCapable();
+    }
+
     private final JarFile jar;
     private final Manifest manifest;
     private final URL url;
@@ -57,45 +61,50 @@ public class ExtensionClassLoader<T extends Extension> extends URLClassLoader {
         Class<?> result = this.classes.get(name);
 
         if (result == null) {
-            final String path = name.replace('.', '/').concat(".class");
-            final JarEntry entry = jar.getJarEntry(path);
+            synchronized (getClassLoadingLock(name)) {
+                result = this.classes.get(name);
+                if (result == null) {
+                    final String path = name.replace('.', '/').concat(".class");
+                    final JarEntry entry = jar.getJarEntry(path);
 
-            if (entry != null) {
-                final byte[] classBytes;
+                    if (entry != null) {
+                        final byte[] classBytes;
 
-                try (InputStream inputStream = jar.getInputStream(entry)) {
-                    classBytes = inputStream.readAllBytes();
-                } catch (IOException ex) {
-                    throw new ClassNotFoundException(name, ex);
-                }
+                        try (InputStream inputStream = jar.getInputStream(entry)) {
+                            classBytes = inputStream.readAllBytes();
+                        } catch (IOException ex) {
+                            throw new ClassNotFoundException(name, ex);
+                        }
 
-                final int dot = name.lastIndexOf('.');
+                        final int dot = name.lastIndexOf('.');
 
-                if (dot != -1) {
-                    final String pkgName = name.substring(0, dot);
+                        if (dot != -1) {
+                            final String pkgName = name.substring(0, dot);
 
-                    if (getDefinedPackage(pkgName) == null) {
-                        try {
-                            if (manifest != null) {
-                                definePackage(pkgName, manifest, url);
-                            } else {
-                                definePackage(pkgName, null, null, null, null, null, null, null);
-                            }
-                        } catch (IllegalArgumentException ex) {
                             if (getDefinedPackage(pkgName) == null) {
-                                throw new IllegalStateException("Cannot find package " + pkgName);
+                                try {
+                                    if (manifest != null) {
+                                        definePackage(pkgName, manifest, url);
+                                    } else {
+                                        definePackage(pkgName, null, null, null, null, null, null, null);
+                                    }
+                                } catch (IllegalArgumentException ex) {
+                                    if (getDefinedPackage(pkgName) == null) {
+                                        throw new IllegalStateException("Cannot find package " + pkgName);
+                                    }
+                                }
                             }
                         }
+
+                        final CodeSigner[] signers = entry.getCodeSigners();
+                        final CodeSource source = new CodeSource(url, signers);
+                        result = defineClass(name, classBytes, 0, classBytes.length, source);
+
+                        if (result == null) result = super.findClass(name);
+
+                        classes.put(name, result);
                     }
                 }
-
-                final CodeSigner[] signers = entry.getCodeSigners();
-                final CodeSource source = new CodeSource(url, signers);
-                result = defineClass(name, classBytes, 0, classBytes.length, source);
-
-                if (result == null) result = super.findClass(name);
-
-                classes.put(name, result);
             }
         }
 
