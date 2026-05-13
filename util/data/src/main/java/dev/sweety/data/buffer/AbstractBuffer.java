@@ -18,11 +18,23 @@ import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
-public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implements BufferReader, BufferWriter {
+public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implements BufferReader, BufferWriter, PackedBooleanAccessor<Self> {
     private static final int MAX_ARRAY_SIZE = 1 << 23; // 8MB — ForwardData batches exceed 1MB at 3×1500p
     private static final int MAX_STRING_BYTES = 1 << 20;
 
     public abstract void clear();
+
+    public abstract Self discardReadBytes();
+
+    public abstract int capacity();
+
+    public abstract int writableBytes();
+
+    public abstract Self ensureWritable(int minWritableBytes);
+
+    public boolean isReadable(int bytes) {
+        return readableBytes() >= bytes;
+    }
 
     //use writeVarInt
     @Deprecated
@@ -58,12 +70,25 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
     }
 
     public Self writeVarInt(int value) {
-        writeVarUnsigned(value & 0xFFFFFFFFL);
+        while ((value & ~0x7F) != 0) {
+            writeByte((byte) ((value & 0x7F) | 0x80));
+            value >>>= 7;
+        }
+        writeByte((byte) value);
         return self();
     }
 
     public int readVarInt() {
-        return (int) readVarUnsigned(5);
+        int numRead = 0;
+        int result = 0;
+        byte read;
+        do {
+            read = readByte();
+            result |= (read & 0x7F) << (7 * numRead);
+            numRead++;
+            if (numRead > 5) throw new PacketDecodeException("VarInt too big").runtime();
+        } while ((read & 0x80) != 0);
+        return result;
     }
 
     public Self writeVarLong(long value) {
@@ -91,47 +116,30 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
     private int writePosIndex = 0;
     private byte readMask = 0, readMaskIndex = 0;
 
-    /**
-     * Resets packed-boolean read state. Call whenever the read cursor is moved without matching how many
-     * booleans were consumed (for example {@link #resetReaderIndex} or {@link #readerIndex(int)}).
-     */
-    protected final void resetPackedBooleanReadState() {
-        readMask = 0;
-        readMaskIndex = 0;
-    }
-
-    /**
-     * Resets packed-boolean write state. Call when the write cursor is rewound (for example
-     * {@link #resetWriterIndex} or {@link #writerIndex(int)}).
-     */
-    protected final void resetPackedBooleanWriteState() {
-        writeMask = 0;
-        writeMaskIndex = 0;
-        writePosIndex = 0;
-    }
-
+    @Override
     public Self writeBoolean(boolean value) {
-        if (writeMaskIndex % 8 == 0) {
-            writePosIndex = writerIndex();
-            writeByte(writeMask = 0);
-        }
-
-        if (value) writeMask |= (byte) (1 << (writeMaskIndex % 8));
-
-        setByte(writePosIndex, writeMask);
-        writeMaskIndex++;
-        return self();
+        return PackedBooleanAccessor.super.writeBoolean(value);
     }
 
+    @Override
     public boolean readBoolean() {
-        if (readMaskIndex % 8 == 0) {
-            if (!isReadable())
-                throw new PacketDecodeException("Unable to read boolean", new EOFException()).runtime();
-            readMask = readByte();
-        }
-
-        return ((readMask >> (readMaskIndex++ % 8)) & 1) != 0;
+        return PackedBooleanAccessor.super.readBoolean();
     }
+
+    @Override public byte writeMask() { return writeMask; }
+    @Override public void writeMask(byte writeMask) { this.writeMask = writeMask; }
+
+    @Override public byte writeMaskIndex() { return writeMaskIndex; }
+    @Override public void writeMaskIndex(byte writeMaskIndex) { this.writeMaskIndex = writeMaskIndex; }
+
+    @Override public int writePosIndex() { return writePosIndex; }
+    @Override public void writePosIndex(int writePosIndex) { this.writePosIndex = writePosIndex; }
+
+    @Override public byte readMask() { return readMask; }
+    @Override public void readMask(byte readMask) { this.readMask = readMask; }
+
+    @Override public byte readMaskIndex() { return readMaskIndex; }
+    @Override public void readMaskIndex(byte readMaskIndex) { this.readMaskIndex = readMaskIndex; }
 
     public abstract Self setByte(int index, byte value);
 
@@ -205,25 +213,50 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
         return readString(StandardCharsets.UTF_8);
     }
 
+    public Self writeStringArray(String... array) {
+        if (writeNullCheck(array)) return self();
+        writeVarInt(array.length);
+        for (String i : array) writeString(i);
+        return self();
+    }
+
+    public String[] readStringArray() {
+        if (!readPresence()) return null;
+        int len = readBoundedLength("String[]", MAX_ARRAY_SIZE);
+        String[] arr = new String[len];
+        for (int i = 0; i < len; i++) arr[i] = readString();
+        return arr;
+    }
+
     public Self writeEnum(Enum<?> enumVal) {
         final int val = enumVal instanceof HasId hasId ? hasId.id() : enumVal.ordinal();
         return writeVarInt(val);
     }
 
+    private static final ClassValue<Map<Integer, ?>> ENUM_ID_CACHE = new ClassValue<>() {
+        @Override
+        protected Map<Integer, ?> computeValue(Class<?> type) {
+            var constants = type.getEnumConstants();
+            var map = new HashMap<Integer, Object>(constants.length);
+            for (Object c : constants) map.put(((HasId) c).id(), c);
+            return Map.copyOf(map);
+        }
+    };
+
     public <T extends Enum<T>> T readEnum(Class<T> clazz) {
-        T[] constants = clazz.getEnumConstants();
         int val = this.readVarInt();
 
         if (HasId.class.isAssignableFrom(clazz)) {
-            for (T c : constants) {
-                if (((HasId) c).id() != val) continue;
-                return c;
-            }
-            throw new PacketDecodeException("Invalid enum id: " + val).runtime();
+            //noinspection unchecked
+            T result = (T) ENUM_ID_CACHE.get(clazz).get(val);
+            if (result == null)
+                throw new PacketDecodeException("Invalid enum id: " + val).runtime();
+            return result;
         }
 
+        T[] constants = clazz.getEnumConstants();
         if (val >= 0 && val < constants.length) return constants[val];
-        else throw new PacketDecodeException("Invalid enum ordinal: " + val).runtime();
+        throw new PacketDecodeException("Invalid enum ordinal: " + val).runtime();
     }
 
     public <T extends Enum<T>, S> Self writeEnum(T value, Function<T, S> stateMapper, AbstractCallableEncoder<? super S> stateEncoder) {
@@ -461,7 +494,6 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
     }
 
     @SafeVarargs
-    @SuppressWarnings({"unchecked", "varargs"})
     public final <T> Self writeArray(AbstractCallableEncoder<? super T> encoder, T... array) {
         if (writeNullCheck(array)) return self();
         writeVarInt(array.length);
@@ -525,25 +557,72 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
     }
 
     public <K, V> Self writeMap(Map<K, V> map, AbstractCallableEncoder<? super K> kEncoder, AbstractCallableEncoder<? super V> vEncoder) {
-        return writeMap(map, (buffer, data) -> {
-            kEncoder.write(buffer, data.key());
-            vEncoder.write(buffer, data.value());
-        });
+        if (writeNullCheck(map)) return self();
+        writeVarInt(map.size());
+        for (Map.Entry<K, V> entry : map.entrySet()) {
+            kEncoder.write(self(), entry.getKey());
+            vEncoder.write(self(), entry.getValue());
+        }
+        return self();
     }
 
     public <K, V> Map<K, V> readMap(AbstractCallableDecoder<K> kDecoder, AbstractCallableDecoder<V> vDecoder, IntFunction<Map<K, V>> mapFactory) {
-        return readMap(buffer -> Pair.of(kDecoder.read(buffer), vDecoder.read(buffer)), mapFactory);
+        if (!readPresence()) return null;
+        int size = readBoundedLength("map", MAX_ARRAY_SIZE);
+        Map<K, V> map = mapFactory.apply(size);
+        for (int i = 0; i < size; i++) {
+            K key = kDecoder.read(self());
+            V val = vDecoder.read(self());
+            map.put(key, val);
+        }
+        return map;
     }
 
     public <K extends Enum<K>, V> Self writeEnumMap(EnumMap<K, V> map, AbstractCallableEncoder<? super V> vEncoder) {
-        return writeMap(map, (buf, key) -> buf.writeEnum(key), vEncoder);
+        return writeMap(map, BufferWriter::writeEnum, vEncoder);
     }
 
     public <K extends Enum<K>, V> EnumMap<K, V> readEnumMap(Class<K> keyClass, AbstractCallableDecoder<V> vDecoder) {
-        final Map<K, V> tmp = readMap(buffer -> buffer.readEnum(keyClass), vDecoder, HashMap::new);
-        final EnumMap<K, V> map = new EnumMap<>(keyClass);
-        if (!tmp.isEmpty()) map.putAll(tmp);
+        if (!readPresence()) return null;
+        int size = readBoundedLength("enumMap", MAX_ARRAY_SIZE);
+        EnumMap<K, V> map = new EnumMap<>(keyClass);
+        for (int i = 0; i < size; i++) {
+            K key = readEnum(keyClass);
+            V val = vDecoder.read(self());
+            map.put(key, val);
+        }
         return map;
+    }
+
+    public <E extends Enum<E>> Self writeEnumSet(EnumSet<E> set, Class<E> type) {
+        if (writeNullCheck(set)) return self();
+        E[] universe = type.getEnumConstants();
+        if (universe.length <= 64) {
+            long bits = 0;
+            for (E e : set) bits |= 1L << e.ordinal();
+            return writeVarLong(bits);
+        }
+        writeVarInt(set.size());
+        for (E e : set) writeEnum(e);
+        return self();
+    }
+
+    public <E extends Enum<E>> EnumSet<E> readEnumSet(Class<E> type) {
+        if (!readPresence()) return null;
+        E[] universe = type.getEnumConstants();
+        EnumSet<E> set = EnumSet.noneOf(type);
+        if (universe.length <= 64) {
+            long bits = readVarLong();
+            for (E e : universe) {
+                if ((bits & (1L << e.ordinal())) != 0) set.add(e);
+            }
+            return set;
+        }
+        int size = readBoundedLength("enumSet", MAX_ARRAY_SIZE);
+        for (int i = 0; i < size; i++) {
+            set.add(readEnum(type));
+        }
+        return set;
     }
 
     public abstract boolean release();
@@ -713,10 +792,19 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
         }
     }
 
-    /** CRTP helper: unchecked cast matches {@link Self}-bound subclasses only. */
-    @SuppressWarnings("unchecked")
+    /**
+     * CRTP helper: unchecked cast matches {@link Self}-bound subclasses only.
+     */
     private Self self() {
+        //noinspection unchecked
         return (Self) this;
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName()
+                + "(ridx=" + readerIndex() + ", widx=" + writerIndex()
+                + ", readable=" + readableBytes() + ")";
     }
 
 }

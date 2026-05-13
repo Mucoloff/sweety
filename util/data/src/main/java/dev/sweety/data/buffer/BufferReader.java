@@ -57,6 +57,8 @@ public interface BufferReader {
 
     boolean isReadable();
 
+    boolean isReadable(int bytes);
+
     int readableBytes();
 
     int readerIndex();
@@ -69,6 +71,8 @@ public interface BufferReader {
     BufferReader markReaderIndex();
 
     BufferReader resetReaderIndex();
+
+    BufferReader discardReadBytes();
 
     BufferReader readBytes(byte[] data);
 
@@ -85,6 +89,8 @@ public interface BufferReader {
     <T extends Enum<T>, S> T readEnum(AbstractCallableDecoder<? extends S> stateDecoder, Function<S, T> mapper);
 
     UUID readUuid();
+
+    String[] readStringArray();
 
     byte[] readByteArray();
 
@@ -125,6 +131,8 @@ public interface BufferReader {
     <K, V> Map<K, V> readMap(AbstractCallableDecoder<K> kDecoder, AbstractCallableDecoder<V> vDecoder, IntFunction<Map<K, V>> mapFactory);
 
     <K extends Enum<K>, V> EnumMap<K, V> readEnumMap(Class<K> keyClass, AbstractCallableDecoder<V> vDecoder);
+
+    <E extends Enum<E>> java.util.EnumSet<E> readEnumSet(Class<E> type);
 
     double readPercentual(double scale);
 

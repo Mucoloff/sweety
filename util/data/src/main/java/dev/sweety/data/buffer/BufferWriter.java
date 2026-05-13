@@ -58,6 +58,12 @@ public interface BufferWriter {
 
     BufferWriter writerIndex(int writerIndex);
 
+    int capacity();
+
+    int writableBytes();
+
+    BufferWriter ensureWritable(int minWritableBytes);
+
     BufferWriter markWriterIndex();
 
     BufferWriter resetWriterIndex();
@@ -75,6 +81,8 @@ public interface BufferWriter {
     <T extends Enum<T>, S> BufferWriter writeEnum(T value, Function<T, S> stateMapper, AbstractCallableEncoder<? super S> stateEncoder);
 
     BufferWriter writeUuid(UUID uuid);
+
+    BufferWriter writeStringArray(String... array);
 
     BufferWriter writeByteArray(byte... bytes);
 
@@ -113,6 +121,8 @@ public interface BufferWriter {
     <K, V> BufferWriter writeMap(Map<K, V> map, AbstractCallableEncoder<? super K> kEncoder, AbstractCallableEncoder<? super V> vEncoder);
 
     <K extends Enum<K>, V> BufferWriter writeEnumMap(EnumMap<K, V> map, AbstractCallableEncoder<? super V> vEncoder);
+
+    <E extends Enum<E>> BufferWriter writeEnumSet(java.util.EnumSet<E> set, Class<E> type);
 
     BufferWriter wrapData(AbstractEncoder encoder);
 

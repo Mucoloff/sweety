@@ -3,12 +3,14 @@ package dev.sweety.data.buffer;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
+import java.util.Deque;
 
 public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
 
-    private final Arena arena;
-    private final MemorySegment segment;
+    private Arena arena;
+    private MemorySegment segment;
     private final boolean owner;
+    private Deque<Arena> oldArenas;
 
     private int refCnt = 1;
 
@@ -43,6 +45,11 @@ public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
 
         if (--refCnt == 0) {
             arena.close();
+            if (oldArenas != null) {
+                while (!oldArenas.isEmpty()) {
+                    try { oldArenas.pop().close(); } catch (Exception ignored) {}
+                }
+            }
             return true;
         }
 
@@ -78,106 +85,152 @@ public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
         resetPackedBooleanWriteState();
     }
 
+    // ===================== MEMORY MANAGEMENT =====================
+
+    @Override
+    public int capacity() {
+        return (int) segment.byteSize();
+    }
+
+    @Override
+    public int writableBytes() {
+        return capacity() - writerIndex;
+    }
+
+    @Override
+    public SegmentBuffer ensureWritable(int minWritableBytes) {
+        if (writableBytes() >= minWritableBytes) return this;
+        if (!owner) throw new IllegalStateException("Cannot grow a non-owning SegmentBuffer");
+
+        int targetCapacity = capacity();
+        int minNewCapacity = writerIndex + minWritableBytes;
+        while (targetCapacity < minNewCapacity) {
+            targetCapacity += (targetCapacity >> 1); // grow by 1.5x
+        }
+
+        Arena newArena = Arena.ofConfined();
+        MemorySegment newSegment = newArena.allocate(targetCapacity);
+        MemorySegment.copy(segment, 0, newSegment, 0, capacity());
+
+        if (oldArenas == null) oldArenas = new java.util.ArrayDeque<>();
+        oldArenas.push(arena);
+
+        this.arena = newArena;
+        this.segment = newSegment;
+        return this;
+    }
+
+    @Override
+    public SegmentBuffer discardReadBytes() {
+        if (readerIndex == 0) return this;
+        int readable = readableBytes();
+        if (readable > 0) {
+            MemorySegment.copy(segment, ValueLayout.JAVA_BYTE, readerIndex,
+                               segment, ValueLayout.JAVA_BYTE, 0, readable);
+        }
+        writerIndex = readable;
+        readerIndex = 0;
+        markReader = 0;
+        markWriter = Math.min(markWriter, writerIndex);
+        resetPackedBooleanReadState();
+        resetPackedBooleanWriteState();
+        return this;
+    }
+
+    private long reserveAndAdvance(ValueLayout layout) {
+        int bytes = (int) layout.byteSize();
+        ensureWritable(bytes);
+        long offset = writerIndex;
+        writerIndex += bytes;
+        return offset;
+    }
+
     // ===================== PRIMITIVES WRITE =====================
 
     @Override
     public SegmentBuffer writeByte(byte value) {
-        segment.set(ValueLayout.JAVA_BYTE, writerIndex, value);
-        writerIndex += Byte.BYTES;
+        segment.set(ValueLayout.JAVA_BYTE, reserveAndAdvance(ValueLayout.JAVA_BYTE), value);
         return this;
     }
 
     @Override
     public SegmentBuffer writeShort(short value) {
-        segment.set(ValueLayout.JAVA_SHORT, writerIndex, value);
-        writerIndex += Short.BYTES;
+        segment.set(ValueLayout.JAVA_SHORT, reserveAndAdvance(ValueLayout.JAVA_SHORT), value);
         return this;
     }
 
     @Override
     public SegmentBuffer writeInt(int value) {
-        segment.set(ValueLayout.JAVA_INT, writerIndex, value);
-        writerIndex += Integer.BYTES;
+        segment.set(ValueLayout.JAVA_INT, reserveAndAdvance(ValueLayout.JAVA_INT), value);
         return this;
     }
 
     @Override
     public SegmentBuffer writeLong(long value) {
-        segment.set(ValueLayout.JAVA_LONG, writerIndex, value);
-        writerIndex += Long.BYTES;
+        segment.set(ValueLayout.JAVA_LONG, reserveAndAdvance(ValueLayout.JAVA_LONG), value);
         return this;
     }
 
     @Override
     public SegmentBuffer writeFloat(float value) {
-        segment.set(ValueLayout.JAVA_FLOAT, writerIndex, value);
-        writerIndex += Float.BYTES;
+        segment.set(ValueLayout.JAVA_FLOAT, reserveAndAdvance(ValueLayout.JAVA_FLOAT), value);
         return this;
     }
 
     @Override
     public SegmentBuffer writeDouble(double value) {
-        segment.set(ValueLayout.JAVA_DOUBLE, writerIndex, value);
-        writerIndex += Double.BYTES;
+        segment.set(ValueLayout.JAVA_DOUBLE, reserveAndAdvance(ValueLayout.JAVA_DOUBLE), value);
         return this;
     }
 
     @Override
     public SegmentBuffer writeChar(char value) {
-        segment.set(ValueLayout.JAVA_CHAR, writerIndex, value);
-        writerIndex += Character.BYTES;
+        segment.set(ValueLayout.JAVA_CHAR, reserveAndAdvance(ValueLayout.JAVA_CHAR), value);
         return this;
+    }
+
+    private long advanceRead(ValueLayout layout) {
+        int bytes = (int) layout.byteSize();
+        long offset = readerIndex;
+        readerIndex += bytes;
+        return offset;
     }
 
     // ===================== PRIMITIVES READ =====================
 
     @Override
     public byte readByte() {
-        byte v = segment.get(ValueLayout.JAVA_BYTE, readerIndex);
-        readerIndex += Byte.BYTES;
-        return v;
+        return segment.get(ValueLayout.JAVA_BYTE, advanceRead(ValueLayout.JAVA_BYTE));
     }
 
     @Override
     public short readShort() {
-        short v = segment.get(ValueLayout.JAVA_SHORT, readerIndex);
-        readerIndex += Short.BYTES;
-        return v;
+        return segment.get(ValueLayout.JAVA_SHORT, advanceRead(ValueLayout.JAVA_SHORT));
     }
 
     @Override
     public int readInt() {
-        int v = segment.get(ValueLayout.JAVA_INT, readerIndex);
-        readerIndex += Integer.BYTES;
-        return v;
+        return segment.get(ValueLayout.JAVA_INT, advanceRead(ValueLayout.JAVA_INT));
     }
 
     @Override
     public long readLong() {
-        long v = segment.get(ValueLayout.JAVA_LONG, readerIndex);
-        readerIndex += Long.BYTES;
-        return v;
+        return segment.get(ValueLayout.JAVA_LONG, advanceRead(ValueLayout.JAVA_LONG));
     }
 
     @Override
     public float readFloat() {
-        float v = segment.get(ValueLayout.JAVA_FLOAT, readerIndex);
-        readerIndex += Float.BYTES;
-        return v;
+        return segment.get(ValueLayout.JAVA_FLOAT, advanceRead(ValueLayout.JAVA_FLOAT));
     }
 
     @Override
     public double readDouble() {
-        double v = segment.get(ValueLayout.JAVA_DOUBLE, readerIndex);
-        readerIndex += Double.BYTES;
-        return v;
+        return segment.get(ValueLayout.JAVA_DOUBLE, advanceRead(ValueLayout.JAVA_DOUBLE));
     }
 
     @Override
     public char readChar() {
-        char v = segment.get(ValueLayout.JAVA_CHAR, readerIndex);
-        readerIndex += Character.BYTES;
-        return v;
+        return segment.get(ValueLayout.JAVA_CHAR, advanceRead(ValueLayout.JAVA_CHAR));
     }
 
     @Override
@@ -342,6 +395,7 @@ public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
 
     @Override
     public SegmentBuffer writeBytes(byte[] data) {
+        ensureWritable(data.length);
         MemorySegment.copy(data, 0, segment, ValueLayout.JAVA_BYTE, writerIndex, data.length);
         writerIndex += data.length;
         return this;
@@ -349,6 +403,7 @@ public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
 
     @Override
     public SegmentBuffer writeBytes(byte[] data, int offset, int length) {
+        ensureWritable(length);
         MemorySegment.copy(data, offset, segment, ValueLayout.JAVA_BYTE, writerIndex, length);
         writerIndex += length;
         return this;
@@ -356,9 +411,12 @@ public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
 
     @Override
     public SegmentBuffer writeBuffer(SegmentBuffer other) {
-        byte[] tmp = new byte[other.readableBytes()];
-        other.readBytes(tmp);
-        writeBytes(tmp);
+        int len = other.readableBytes();
+        ensureWritable(len);
+        MemorySegment.copy(other.segment, ValueLayout.JAVA_BYTE, other.readerIndex,
+                           this.segment, ValueLayout.JAVA_BYTE, this.writerIndex, len);
+        other.readerIndex += len;
+        this.writerIndex += len;
         return this;
     }
 
@@ -384,11 +442,11 @@ public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
 
     @Override
     public SegmentBuffer readRetainedSlice(int length) {
-        return readSlice(length);
+        return readSlice(length).retain();
     }
 
     @Override
     public SegmentBuffer retainedSlice(int index, int length) {
-        return slice(index, length);
+        return slice(index, length).retain();
     }
 }
