@@ -39,6 +39,7 @@ public class DownloadHandler implements HttpHandler {
     private final ClientRegistry clientRegistry;
     private final IReleaseService releaseManager;
     private final PatchManager patchManager;
+    private final RateLimiter globalRateLimiter;
 
     public DownloadHandler(DownloadManager downloadManager, CacheManager cacheManager, ClientRegistry clientRegistry, IReleaseService releaseManager, PatchManager patchManager) {
         this.downloadManager = downloadManager;
@@ -46,6 +47,7 @@ public class DownloadHandler implements HttpHandler {
         this.clientRegistry = clientRegistry;
         this.releaseManager = releaseManager;
         this.patchManager = patchManager;
+        this.globalRateLimiter = RateLimiter.create(Settings.DOWNLOAD_SPEED);
     }
 
     @Override
@@ -143,15 +145,13 @@ public class DownloadHandler implements HttpHandler {
 
             exchange.sendResponseHeaders(200, data.length);
 
-            RateLimiter limiter = RateLimiter.create(Settings.DOWNLOAD_SPEED); // 50 KB/s
-
             try (OutputStream os = exchange.getResponseBody()) {
                 int offset = 0;
 
                 while (offset < data.length) {
                     int len = Math.min(1024, data.length - offset);
 
-                    limiter.acquire(len);
+                    globalRateLimiter.acquire(len);
 
                     os.write(data, offset, len);
                     offset += len;

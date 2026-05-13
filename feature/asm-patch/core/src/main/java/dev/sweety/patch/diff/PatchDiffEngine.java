@@ -100,9 +100,15 @@ public class PatchDiffEngine {
             return add(path, Objects.requireNonNull(newA.readEntry(path), "missing new entry: " + path));
         }
         if (inOld) {
-            if (entriesSemanticallyEqual(path, oldA, newA)) {
+            long s1 = oldA.uncompressedSize(path);
+            long s2 = newA.uncompressedSize(path);
+            long c1 = oldA.crc32(path);
+            long c2 = newA.crc32(path);
+            
+            if (s1 == s2 && s1 >= 0 && c1 == c2 && c1 >= 0) {
                 return null;
             }
+            
             byte[] oldData = oldA.readEntry(path);
             byte[] newData = newA.readEntry(path);
             if (shouldModify(path, oldData, newData)) {
@@ -110,24 +116,6 @@ public class PatchDiffEngine {
             }
         }
         return null;
-    }
-
-    private boolean entriesSemanticallyEqual(String path, Archive oldA, Archive newA) {
-        long s1 = oldA.uncompressedSize(path);
-        long s2 = newA.uncompressedSize(path);
-        if (s1 >= 0 && s2 >= 0 && s1 != s2) {
-            byte[] o = oldA.readEntry(path);
-            byte[] n = newA.readEntry(path);
-            return !shouldModify(path, o, n);
-        }
-        long c1 = oldA.crc32(path);
-        long c2 = newA.crc32(path);
-        if (c1 >= 0 && c2 >= 0 && s1 >= 0 && s2 >= 0 && s1 == s2 && c1 == c2) {
-            return true;
-        }
-        byte[] o = oldA.readEntry(path);
-        byte[] n = newA.readEntry(path);
-        return !shouldModify(path, o, n);
     }
 
     private boolean shouldModify(String path, byte[] oldData, byte[] newData) {
@@ -180,15 +168,7 @@ public class PatchDiffEngine {
     }
 
     private boolean compareLines(List<String> a, List<String> b) {
-        if (a.size() != b.size()) {
-            return false;
-        }
-        for (int i = 0; i < a.size(); i++) {
-            if (!a.get(i).equals(b.get(i))) {
-                return false;
-            }
-        }
-        return true;
+        return a.equals(b);
     }
 
     private PatchOperation delete(String path) {

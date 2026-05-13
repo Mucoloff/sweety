@@ -75,7 +75,7 @@ public class JavaArchive implements Archive, AutoCloseable {
             return null;
         }
         try (InputStream is = jf.getInputStream(entry)) {
-            byte[] data = readAllBytes(is);
+            byte[] data = is.readAllBytes();
             if (path.endsWith(".class") && normalizer != null) {
                 data = normalizer.normalize(data);
             }
@@ -119,13 +119,5 @@ public class JavaArchive implements Archive, AutoCloseable {
         }
     }
 
-    private byte[] readAllBytes(InputStream is) throws IOException {
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        byte[] data = new byte[8192];
-        int n;
-        while ((n = is.read(data)) != -1) {
-            buffer.write(data, 0, n);
-        }
-        return buffer.toByteArray();
-    }
+
 }

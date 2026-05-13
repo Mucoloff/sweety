@@ -1,6 +1,7 @@
 package dev.sweety.versioning.server.logic.webhook;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -21,23 +22,39 @@ public class WebhookRateLimiter {
 
     static class RateWindow {
 
-        private final AtomicInteger count = new AtomicInteger();
-        private final AtomicLong start = new AtomicLong(System.nanoTime());
-        private final long rateLimitWindow;
+        private final AtomicLong state = new AtomicLong();
+        private final long windowSeconds;
 
-        RateWindow(long rateLimitWindow) {
-            this.rateLimitWindow = rateLimitWindow;
+        RateWindow(long rateLimitWindowNanos) {
+            this.windowSeconds = TimeUnit.NANOSECONDS.toSeconds(rateLimitWindowNanos);
+            this.state.set(pack(System.nanoTime() / 1_000_000_000L, 0));
         }
 
-
         boolean allow(int limit) {
-            final long now = System.nanoTime();
-            final long s = start.get();
+            long now = System.nanoTime() / 1_000_000_000L;
+            long prev = state.getAndUpdate(s -> {
+                long ts = s >>> 32;
+                int count = (int) s;
+                if (now - ts >= windowSeconds) {
+                    return pack(now, 1);
+                }
+                if (count < limit) {
+                    return pack(ts, count + 1);
+                }
+                return s;
+            });
 
-            if (now - s > this.rateLimitWindow && start.compareAndSet(s, now)) count.set(0);
+            long prevTs = prev >>> 32;
+            int prevCount = (int) prev;
 
-            return count.getAndIncrement() < limit;
+            if (now - prevTs >= windowSeconds) {
+                return true;
+            }
+            return prevCount < limit;
+        }
 
+        private static long pack(long ts, int count) {
+            return (ts << 32) | (count & 0xFFFFFFFFL);
         }
 
     }

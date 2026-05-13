@@ -57,7 +57,7 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
     }
 
     @Override
-    
+
     public <T> T getOrNull(@NotNull final ServiceKey<T> key) {
         ensureOpen();
         Objects.requireNonNull(key, "key cannot be null");
@@ -74,37 +74,46 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
     }
 
     @Override
-    
+
     public <T> T put(@NotNull final ServiceKey<T> key, final T service) {
         ensureOpen();
         Objects.requireNonNull(key, "key cannot be null");
         Objects.requireNonNull(service, "service cannot be null");
-        // noinspection unchecked
-        Provider<T> oldProvider = (Provider<T>) services.get(key);
-        T oldValue = oldProvider == null ? null : oldProvider.get();
+
+        Provider<T>[] old = new Provider[1];
+        services.compute(key, (k, prev) -> {
+            //noinspection unchecked
+            old[0] = (Provider<T>) prev;
+            return singleton(service);
+        });
+
+        T oldValue = old[0] == null ? null : old[0].get();
         if (oldValue instanceof Service s) s.onDisable();
-        services.put(key, singleton(service));
         if (service instanceof Service s) s.onEnable();
         return oldValue;
     }
 
     @Override
-    
+
     public <T> T put(@NotNull final ServiceKey<T> key, final Provider<T> service) {
         ensureOpen();
         Objects.requireNonNull(key, "key cannot be null");
         Objects.requireNonNull(service, "service provider cannot be null");
-        // noinspection unchecked
-        Provider<T> oldProvider = (Provider<T>) services.get(key);
-        T oldValue = oldProvider == null ? null : oldProvider.get();
+
+        Provider<T>[] old = new Provider[1];
+        services.compute(key, (k, prev) -> {
+            //noinspection unchecked
+            old[0] = (Provider<T>) prev;
+            return service;
+        });
+
+        T oldValue = old[0] == null ? null : old[0].get();
         if (oldValue instanceof Service s) s.onDisable();
-        // noinspection unchecked
-        services.put(key, service);
         return oldValue;
     }
 
     @Override
-    
+
     public <T> T putIfAbsent(@NotNull final ServiceKey<T> key, final T service) {
         ensureOpen();
         Objects.requireNonNull(key, "key cannot be null");
@@ -113,7 +122,7 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
     }
 
     @Override
-    
+
     public <T> T putIfAbsent(@NotNull final ServiceKey<T> key, final Provider<T> service) {
         ensureOpen();
         Objects.requireNonNull(key, "key cannot be null");
@@ -134,7 +143,7 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
     }
 
     @Override
-    
+
     public <T> T remove(@NotNull ServiceKey<T> key) {
         ensureOpen();
         Objects.requireNonNull(key, "key cannot be null");
@@ -155,7 +164,8 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
             if (value instanceof Service s) {
                 try {
                     s.onDisable();
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }
             if (value instanceof AutoCloseable) {
                 try {

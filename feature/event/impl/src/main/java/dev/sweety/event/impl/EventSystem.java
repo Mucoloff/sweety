@@ -112,20 +112,19 @@ public class EventSystem implements IEventSystem {
 
     @SuppressWarnings("unchecked")
     private <T extends Event<?>> List<ExecutionStep<T>> executionPlanFor(Class<?> eventClass) {
-        for (; ; ) {
-            long currentGen = registrationGeneration.get();
+        long currentGen;
+        List<ExecutionStep<?>> built;
+        do {
+            currentGen = registrationGeneration.get();
             CachedPlan cached = executionPlanCache.get(eventClass);
             if (cached != null && cached.generation == currentGen) {
                 return (List<ExecutionStep<T>>) (Object) cached.steps;
             }
-            List<ExecutionStep<?>> built = buildExecutionPlan(eventClass);
-            long genAfterBuild = registrationGeneration.get();
-            if (genAfterBuild != currentGen) {
-                continue;
-            }
-            executionPlanCache.put(eventClass, new CachedPlan(genAfterBuild, built));
-            return (List<ExecutionStep<T>>) (Object) built;
-        }
+            built = buildExecutionPlan(eventClass);
+        } while (registrationGeneration.get() != currentGen);
+
+        executionPlanCache.put(eventClass, new CachedPlan(currentGen, built));
+        return (List<ExecutionStep<T>>) (Object) built;
     }
 
     @Override
@@ -198,6 +197,8 @@ public class EventSystem implements IEventSystem {
     @Override
     public void subscribe(@NotNull Object container) {
         Objects.requireNonNull(container, "container cannot be null");
+        boolean mutated = false;
+        Type lastMutatedType = null;
         for (LinkFieldSpec spec : LINK_FIELDS.get(container.getClass())) {
             Field field = spec.field;
             Type eventType = spec.eventType;
@@ -218,7 +219,11 @@ public class EventSystem implements IEventSystem {
 
             List<EventCallback<?>> callSites = this.callSiteMap.computeIfAbsent(eventType, _ -> new CopyOnWriteArrayList<>());
             insertCallback(callSites, new EventCallback<>(container, listener, spec.priority, spec.state, readOnly, subscribeOrderSeq.incrementAndGet()));
-            notifyCallSiteMutation(eventType);
+            mutated = true;
+            lastMutatedType = eventType;
+        }
+        if (mutated) {
+            notifyCallSiteMutation(lastMutatedType);
         }
     }
 
@@ -279,14 +284,14 @@ public class EventSystem implements IEventSystem {
                     currentBatch.add(cb);
                 } else {
                     if (!currentBatch.isEmpty()) {
-                        plan.add(new ParallelStep<>(new ArrayList<>(currentBatch)));
-                        currentBatch.clear();
+                        plan.add(new ParallelStep<>(currentBatch));
+                        currentBatch = new ArrayList<>();
                     }
                     plan.add(new SequentialStep<>(cb));
                 }
             }
             if (!currentBatch.isEmpty()) {
-                plan.add(new ParallelStep<>(new ArrayList<>(currentBatch)));
+                plan.add(new ParallelStep<>(currentBatch));
             }
         }
         return plan;
@@ -297,12 +302,12 @@ public class EventSystem implements IEventSystem {
         List<EventCallback<T>> result = new ArrayList<>();
         Set<Type> seenTypes = new HashSet<>();
 
-        Queue<Class<?>> toCheck = new LinkedList<>();
+        Deque<Class<?>> toCheck = new ArrayDeque<>();
         toCheck.add(eventClass);
 
         while (!toCheck.isEmpty()) {
-            Class<?> clazz = toCheck.poll();
-            if (clazz == null || !seenTypes.add(clazz)) continue;
+            Class<?> clazz = toCheck.remove();
+            if (!seenTypes.add(clazz)) continue;
 
             List<EventCallback<?>> list = callSiteMap.get(clazz);
             if (list != null) {
@@ -311,7 +316,8 @@ public class EventSystem implements IEventSystem {
                 }
             }
 
-            toCheck.add(clazz.getSuperclass());
+            Class<?> superclass = clazz.getSuperclass();
+            if (superclass != null) toCheck.add(superclass);
             Collections.addAll(toCheck, clazz.getInterfaces());
         }
 
@@ -341,26 +347,28 @@ public class EventSystem implements IEventSystem {
 
         T immutableEvent = wrapImmutable(event);
 
-        List<CompletableFuture<?>> futures = new ArrayList<>();
+        CompletableFuture<?>[] futures = new CompletableFuture[group.size()];
+        int idx = 0;
         Executor executor = asyncExecutor;
+        
         if (executor != null) {
             for (EventCallback<T> cb : group) {
                 if (shouldCall(cb, event)) {
-                    futures.add(CompletableFuture.runAsync(() -> cb.listener().call(immutableEvent), executor));
+                    futures[idx++] = CompletableFuture.runAsync(() -> cb.listener().call(immutableEvent), executor);
                 }
             }
         } else {
             for (EventCallback<T> cb : group) {
                 if (shouldCall(cb, event)) {
-                    futures.add(threadManager.fireAndForget(ThreadType.CACHED, t ->
+                    futures[idx++] = threadManager.fireAndForget(ThreadType.CACHED, t ->
                             t.execute(() -> cb.listener().call(immutableEvent))
-                    ));
+                    );
                 }
             }
         }
 
-        if (!futures.isEmpty()) {
-            CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
+        if (idx > 0) {
+            CompletableFuture.allOf(idx == futures.length ? futures : java.util.Arrays.copyOf(futures, idx)).join();
             if (isCancelled(immutableEvent)) {
                 cancel(event);
             }
@@ -389,9 +397,11 @@ public class EventSystem implements IEventSystem {
     }
 
     private boolean shouldCall(EventCallback<?> cb, Event<?> event) {
-        return cb.state() == State.BOTH ||
-                (cb.state() == State.PRE && event.isPre()) ||
-                (cb.state() == State.POST && event.isPost());
+        return switch (cb.state()) {
+            case BOTH -> true;
+            case PRE -> event.isPre();
+            case POST -> event.isPost();
+        };
     }
 
     @Override

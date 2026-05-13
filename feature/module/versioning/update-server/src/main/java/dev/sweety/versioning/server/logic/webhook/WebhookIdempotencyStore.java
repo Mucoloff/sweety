@@ -1,42 +1,25 @@
 package dev.sweety.versioning.server.logic.webhook;
 
-import java.util.concurrent.ConcurrentHashMap;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import java.util.concurrent.TimeUnit;
 
 public class WebhookIdempotencyStore {
 
-    private final ConcurrentHashMap<String, Long> deliveries = new ConcurrentHashMap<>();
-    private final long ttl;
+    private final Cache<String, Boolean> deliveries;
 
-    public WebhookIdempotencyStore(long ttl) {
-        this.ttl = ttl;
+    public WebhookIdempotencyStore(long ttlMs) {
+        this.deliveries = Caffeine.newBuilder()
+                .maximumSize(10_000)
+                .expireAfterWrite(ttlMs, TimeUnit.MILLISECONDS)
+                .build();
     }
 
     public boolean isProcessed(String id) {
-        lazyCleanup();
-        if (id == null) return false;
-
-        Long time = deliveries.get(id);
-        if (time == null) return false;
-
-        if (System.currentTimeMillis() - time > ttl) {
-            deliveries.remove(id);
-            return false;
-        }
-
-        return true;
+        return id != null && deliveries.getIfPresent(id) != null;
     }
 
     public void mark(String id) {
-        if (id != null) deliveries.put(id, System.currentTimeMillis());
+        if (id != null) deliveries.put(id, Boolean.TRUE);
     }
-
-    private void lazyCleanup() {
-        if (deliveries.size() > 1000) cleanup();
-    }
-
-    public void cleanup() {
-        long now = System.currentTimeMillis();
-        deliveries.entrySet().removeIf(e -> now - e.getValue() > ttl);
-    }
-
 }

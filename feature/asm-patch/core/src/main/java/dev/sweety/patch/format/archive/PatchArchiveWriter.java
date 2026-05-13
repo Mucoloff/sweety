@@ -72,45 +72,7 @@ public class PatchArchiveWriter implements PatchWriter {
 
     @Override
     public void write(Patch patch, OutputStream out) {
-        try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(out))) {
-            zos.setLevel(Deflater.BEST_COMPRESSION);
-
-            PatchArchiveIndex index = new PatchArchiveIndex();
-            index.header = PatchArchiveConstants.HEADER;
-            index.fromVersion = patch.getFromVersion();
-            index.toVersion = patch.getToVersion();
-
-            int payloadSeq = 0;
-            List<PatchArchiveOpEntry> entries = new ArrayList<>();
-            for (PatchOperation op : patch.getOperations()) {
-                PatchArchiveOpEntry e = new PatchArchiveOpEntry();
-                e.type = op.type().name().toLowerCase(Locale.ROOT);
-                e.path = op.path();
-                e.hash = op.hash();
-                e.method = op.method() == PatchOperation.Method.TEXT_DIFF ? "text_diff" : "replacement";
-
-                if (op.type() != PatchOperation.Type.DELETE) {
-                    byte[] data = op.data();
-                    if (data == null) {
-                        throw new PatchException("Patch operation has no data for " + op.type() + ": " + op.path());
-                    }
-                    e.payloadEntry = PatchArchiveConstants.PAYLOAD_PREFIX + payloadSeq++;
-                    PatchArchiveEntryNames.requireValidPayloadRef(e.payloadEntry);
-                    putPayload(zos, e.payloadEntry, data);
-                }
-                entries.add(e);
-            }
-            index.operations = entries;
-
-            byte[] indexJson = Header.GSON.toJson(index).getBytes(StandardCharsets.UTF_8);
-            ZipEntry indexEntry = new ZipEntry(PatchArchiveConstants.INDEX_ENTRY);
-            indexEntry.setTime(0);
-            zos.putNextEntry(indexEntry);
-            zos.write(indexJson);
-            zos.closeEntry();
-        } catch (IOException e) {
-            throw new PatchException("Failed to write patch archive", e);
-        }
+        writeStreaming(patch.getFromVersion(), patch.getToVersion(), out, patch.getOperations().iterator());
     }
 
     private static void putPayload(ZipOutputStream zos, String entryName, byte[] data) throws IOException {
