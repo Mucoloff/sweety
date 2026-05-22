@@ -19,19 +19,20 @@ public final class Utils {
     }
 
     public static byte[] toBytes(Version version) {
-        int maj = version.major(), min = version.minor(), pat = version.patch();
-        return new byte[]{
-            (byte)(maj >>> 24), (byte)(maj >>> 16), (byte)(maj >>> 8), (byte) maj,
-            (byte)(min >>> 24), (byte)(min >>> 16), (byte)(min >>> 8), (byte) min,
-            (byte)(pat >>> 24), (byte)(pat >>> 16), (byte)(pat >>> 8), (byte) pat
-        };
+        return toBytes(version.major(), version.minor(), version.patch());
     }
 
-    public static byte[] toBytes(int value) {
-        return new byte[]{
-            (byte)(value >>> 24), (byte)(value >>> 16), (byte)(value >>> 8), (byte) value
-        };
+    public static byte[] toBytes(int... value) {
+        byte[] bytes = new byte[value.length * 4];
+        for (int i = 0; i < value.length * 4; i += 4) {
+            bytes[i] = (byte) (value[i] >>> 24);
+            bytes[i + 1] = (byte) (value[i] >>> 16);
+            bytes[i + 2] = (byte) (value[i] >>> 8);
+            bytes[i + 3] = (byte) value[i];
+        }
+        return bytes;
     }
 
-    private Utils() {}
+    private Utils() {
+    }
 }

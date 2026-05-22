@@ -24,7 +24,7 @@ public class CacheManager {
 
         if (Files.exists(cachedPath)) return Files.readAllBytes(cachedPath);
 
-        Object lock = locks.computeIfAbsent(key, _k -> new Object());
+        Object lock = locks.computeIfAbsent(key, _ -> new Object());
         synchronized (lock) {
             try {
                 if (Files.exists(cachedPath)) return Files.readAllBytes(cachedPath);
