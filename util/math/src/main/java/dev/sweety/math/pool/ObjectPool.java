@@ -21,15 +21,21 @@ import java.util.function.Supplier;
  */
 public interface ObjectPool<T> {
 
-    /** Acquires an object from the pool, creating a new one if the pool is empty. */
+    /**
+     * Acquires an object from the pool, creating a new one if the pool is empty.
+     */
     @Acquire
     T acquire();
 
-    /** Returns {@code obj} to the pool. Silently ignored if null or pool is full. */
+    /**
+     * Returns {@code obj} to the pool. Silently ignored if null or pool is full.
+     */
     @Release
     void release(T obj);
 
-    /** Borrows an object, applies {@code fn}, releases it, and yields the result. */
+    /**
+     * Borrows an object, applies {@code fn}, releases it, and yields the result.
+     */
     @Borrows
     default <V> V use(Function<T, V> fn) {
         T obj = acquire();
@@ -52,11 +58,14 @@ public interface ObjectPool<T> {
     }
 
     static <T> ObjectPool<T> threadLocal(Supplier<T> factory, Consumer<T> reset, int maxPerThread) {
-        return threadLocal(factory, reset, _ -> {}, maxPerThread);
+        return threadLocal(factory, reset, _ -> {
+        }, maxPerThread);
     }
 
     static <T> ObjectPool<T> threadLocal(Supplier<T> factory, int maxPerThread) {
-        return threadLocal(factory, _ -> {}, _ -> {}, maxPerThread);
+        return threadLocal(factory, _ -> {
+        }, _ -> {
+        }, maxPerThread);
     }
 
     /**
@@ -71,11 +80,14 @@ public interface ObjectPool<T> {
     }
 
     static <T> ObjectPool<T> shared(Supplier<T> factory, Consumer<T> reset, int maxSize) {
-        return shared(factory, reset, _ -> {}, maxSize);
+        return shared(factory, reset, _ -> {
+        }, maxSize);
     }
 
     static <T> ObjectPool<T> shared(Supplier<T> factory, int maxSize) {
-        return shared(factory, _ -> {}, _ -> {}, maxSize);
+        return shared(factory, _ -> {
+        }, _ -> {
+        }, maxSize);
     }
 
     // ========================== IMPLEMENTATIONS ==========================
@@ -141,10 +153,14 @@ public interface ObjectPool<T> {
         @Override
         public void release(T obj) {
             if (obj == null) return;
+
             int c;
             do {
                 c = count.get();
-                if (c >= maxSize) { onDiscard.accept(obj); return; }
+                if (c >= maxSize) {
+                    onDiscard.accept(obj);
+                    return;
+                }
             } while (!count.compareAndSet(c, c + 1));
             reset.accept(obj);
             pool.offerFirst(obj);

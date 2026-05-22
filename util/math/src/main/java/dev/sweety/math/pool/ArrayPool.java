@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.IntFunction;
+import java.util.function.Function;
 import java.util.function.ToIntFunction;
 
 /**
@@ -36,6 +37,17 @@ public interface ArrayPool<T> {
     /** Returns {@code arr} to the pool if it is within the acceptable size range. */
     @Release
     void release(T arr);
+
+    /** Borrows an array of at least {@code minSize}, applies {@code fn}, releases it, yields result. */
+    @Borrows
+    default <V> V use(int minSize, Function<T, V> fn) {
+        T arr = acquire(minSize);
+        try {
+            return fn.apply(arr);
+        } finally {
+            release(arr);
+        }
+    }
 
     // ========================== TYPED CONVENIENCE FACTORIES ==========================
 
