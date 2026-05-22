@@ -18,6 +18,7 @@ dependencies {
     implementation(project(":feature:asm-patch:asm-patch-core"))
     implementation(project(":feature:asm-patch:generator"))
 
+    testImplementation(project(":feature:module:versioning:client-http"))
     testImplementation("org.junit.platform:junit-platform-suite:1.9.3")
     testImplementation("org.junit.platform:junit-platform-suite-api:1.9.3")
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")

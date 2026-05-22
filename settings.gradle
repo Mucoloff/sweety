@@ -25,6 +25,7 @@ include 'feature:asm-patch:applier'
 
 include 'feature:module:versioning'
 include 'feature:module:versioning:protocol'
+include 'feature:module:versioning:client-http'
 
 include 'feature:module:versioning:client'
 include 'feature:module:versioning:client:app'
