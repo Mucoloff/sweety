@@ -7,6 +7,7 @@ import dev.sweety.data.buffer.io.callable.AbstractCallableDecoder;
 import dev.sweety.data.buffer.io.callable.AbstractCallableEncoder;
 import dev.sweety.exception.PacketDecodeException;
 import dev.sweety.math.MathUtils;
+import dev.sweety.math.pool.Release;
 import it.unimi.dsi.fastutil.Pair;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -19,7 +20,7 @@ import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
-public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implements BufferReader, BufferWriter, PackedBooleanAccessor<Self> {
+public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implements BufferReader, BufferWriter, PackedBooleanAccessor<Self>, AutoCloseable {
     protected static final int MAX_ARRAY_SIZE = 1 << 23; // 8MB — ForwardData batches exceed 1MB at 3×1500p
     private static final int MAX_STRING_BYTES = 1 << 20;
 
@@ -629,6 +630,13 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
     }
 
     public abstract boolean release();
+
+    /** Delegates to {@link #release()} for try-with-resources support. */
+    @Release
+    @Override
+    public void close() {
+        release();
+    }
 
     public abstract Self retain(int increment);
 

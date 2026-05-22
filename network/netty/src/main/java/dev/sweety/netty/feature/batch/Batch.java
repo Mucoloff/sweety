@@ -161,8 +161,7 @@ public final class Batch implements Codec {
     }
 
     private byte[] serializePayload() {
-        final PacketBuffer payload = PacketBufferAllocator.DEFAULT.buffer();
-        try {
+        try (PacketBuffer payload = PacketBufferAllocator.DEFAULT.buffer()) {
             payload.writeVarInt(this.packetCount);
             for (int i = 0; i < this.packetCount; i++) {
                 payload.writeVarInt(this.packetIds[i]);
@@ -170,8 +169,6 @@ public final class Batch implements Codec {
                 payload.writeByteArray(this.packetData[i]);
             }
             return payload.getBytes();
-        } finally {
-            payload.release();
         }
     }
 }

@@ -1,5 +1,6 @@
 package dev.sweety.data.buffer;
 
+import dev.sweety.math.pool.Acquire;
 import dev.sweety.math.pool.ObjectPool;
 
 import java.util.function.Consumer;
@@ -27,6 +28,7 @@ public abstract class PooledBufferAllocator<B extends AbstractBuffer<B>> {
         );
     }
 
+    @Acquire
     public B buffer(int initialCapacity) {
         B buf = pool.acquire();
         if (buf.capacity() < initialCapacity)

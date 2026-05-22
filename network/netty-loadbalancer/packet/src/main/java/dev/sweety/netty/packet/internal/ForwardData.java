@@ -52,12 +52,9 @@ public class ForwardData extends PacketTransaction.Transaction {
         buffer.writeVarInt(this.senderId);
         buffer.writeVarInt(this.receiverId);
         this.context.write(buffer);
-        final PacketBuffer payload = PacketBufferAllocator.DEFAULT.buffer();
-        try {
+        try (PacketBuffer payload = PacketBufferAllocator.DEFAULT.buffer()) {
             this.batch.write(payload);
             buffer.writeByteArray(payload.getBytes());
-        } finally {
-            payload.release();
         }
     }
 

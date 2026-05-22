@@ -40,8 +40,7 @@ public final class HandshakeProof {
         try {
             Mac mac = Mac.getInstance(HMAC_ALG);
             mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), HMAC_ALG));
-            PacketBuffer buf = PacketBufferAllocator.DEFAULT.buffer();
-            try {
+            try (PacketBuffer buf = PacketBufferAllocator.DEFAULT.buffer()) {
                 buf.writeUuid(buildId);
                 buf.writeUuid(clientId);
                 versions.entrySet().stream()
@@ -56,8 +55,6 @@ public final class HandshakeProof {
                     throw new IllegalStateException("unexpected HMAC length: " + tag.length);
                 }
                 return tag;
-            } finally {
-                buf.release();
             }
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             throw new IllegalStateException(e);
