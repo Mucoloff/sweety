@@ -46,6 +46,14 @@ public interface ObjectPool<T> {
         }
     }
 
+    @Borrows
+    default void consume(Consumer<T> fn) {
+        this.use(obj -> {
+            fn.accept(obj);
+            return null;
+        });
+    }
+
     // ========================== FACTORIES ==========================
 
     /**

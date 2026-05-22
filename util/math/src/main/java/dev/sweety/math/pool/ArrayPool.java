@@ -34,11 +34,15 @@ public interface ArrayPool<T> {
     @Acquire
     T acquire(int minSize);
 
-    /** Returns {@code arr} to the pool if it is within the acceptable size range. */
+    /**
+     * Returns {@code arr} to the pool if it is within the acceptable size range.
+     */
     @Release
     void release(T arr);
 
-    /** Borrows an array of at least {@code minSize}, applies {@code fn}, releases it, yields result. */
+    /**
+     * Borrows an array of at least {@code minSize}, applies {@code fn}, releases it, yields result.
+     */
     @Borrows
     default <V> V use(int minSize, Function<T, V> fn) {
         T arr = acquire(minSize);
@@ -47,6 +51,14 @@ public interface ArrayPool<T> {
         } finally {
             release(arr);
         }
+    }
+
+    @Borrows
+    default void consume(int minSize, Consumer<T> fn) {
+        this.use(minSize, arr -> {
+            fn.accept(arr);
+            return null;
+        });
     }
 
     // ========================== TYPED CONVENIENCE FACTORIES ==========================
@@ -111,7 +123,8 @@ public interface ArrayPool<T> {
 
     static <T> ArrayPool<T> shared(IntFunction<T> factory, ToIntFunction<T> length,
                                    int defaultSize, int maxPoolSize) {
-        return shared(factory, length, defaultSize, _ -> {}, maxPoolSize);
+        return shared(factory, length, defaultSize, _ -> {
+        }, maxPoolSize);
     }
 
     // ========================== IMPLEMENTATIONS ==========================
@@ -143,7 +156,10 @@ public interface ArrayPool<T> {
             Iterator<T> it = deque.iterator();
             while (it.hasNext()) {
                 T arr = it.next();
-                if (length.applyAsInt(arr) >= minSize) { it.remove(); return arr; }
+                if (length.applyAsInt(arr) >= minSize) {
+                    it.remove();
+                    return arr;
+                }
             }
             return factory.apply(Math.max(defaultSize, minSize));
         }
@@ -196,11 +212,17 @@ public interface ArrayPool<T> {
         public void release(T arr) {
             if (arr == null) return;
             int len = length.applyAsInt(arr);
-            if (len < defaultSize / 2 || len > defaultSize * 2) { onDiscard.accept(arr); return; }
+            if (len < defaultSize / 2 || len > defaultSize * 2) {
+                onDiscard.accept(arr);
+                return;
+            }
             int c;
             do {
                 c = count.get();
-                if (c >= maxPoolSize) { onDiscard.accept(arr); return; }
+                if (c >= maxPoolSize) {
+                    onDiscard.accept(arr);
+                    return;
+                }
             } while (!count.compareAndSet(c, c + 1));
             pool.offerFirst(arr);
         }

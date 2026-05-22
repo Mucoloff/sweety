@@ -22,7 +22,7 @@ public abstract class PooledBufferAllocator<B extends AbstractBuffer<B>> {
         // after field assignment completes. Avoids the javac "self-reference in initializer" error.
         this.pool = ObjectPool.threadLocal(
                 () -> create(256, this::recycle),
-                buf -> buf.poolReset(),
+                AbstractBuffer::poolReset,
                 this::onDiscard,
                 MAX_PER_THREAD
         );
