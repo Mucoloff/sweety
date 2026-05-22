@@ -1,6 +1,5 @@
 package dev.sweety.netty.messaging.listener.encoder;
 
-import dev.sweety.data.ChecksumUtils;
 import dev.sweety.data.buffer.BufferPool;
 import dev.sweety.data.compress.CompressUtils;
 import dev.sweety.file.ResourceUtils;
@@ -48,7 +47,7 @@ public class PacketEncoder {
         if (hasTimestamp) out.writeVarLong(packet.timestamp());
 
         // Compute checksum directly on ByteBuf
-        CRC32C crc32 = ChecksumUtils.crc32(true);
+        CRC32C crc32 = BufferPool.DEFAULT.acquireCrc32c();
         crc32.update(SEED_BUFFER.duplicate());
 
         if (hasPayload) {

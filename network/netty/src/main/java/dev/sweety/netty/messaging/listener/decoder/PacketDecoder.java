@@ -1,6 +1,5 @@
 package dev.sweety.netty.messaging.listener.decoder;
 
-import dev.sweety.data.ChecksumUtils;
 import dev.sweety.data.buffer.BufferPool;
 import dev.sweety.data.compress.CompressUtils;
 import dev.sweety.exception.PacketDecodeException;
@@ -61,7 +60,7 @@ public class PacketDecoder {
             } else timestamp = Messenger.timeMode.now();
 
             // Validate checksum
-            final CRC32C crc32 = ChecksumUtils.crc32(true);
+            final CRC32C crc32 = BufferPool.DEFAULT.acquireCrc32c();
             crc32.update(SEED_BUFFER.duplicate());
 
             final ByteBuf payloadBuf;

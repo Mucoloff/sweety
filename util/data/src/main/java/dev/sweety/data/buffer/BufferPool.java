@@ -2,6 +2,7 @@ package dev.sweety.data.buffer;
 
 import dev.sweety.math.pool.ArrayPool;
 
+import java.util.zip.CRC32C;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
@@ -25,46 +26,73 @@ public final class BufferPool {
             ThreadLocal.withInitial(() -> new Deflater(Deflater.DEFAULT_COMPRESSION));
     private final ThreadLocal<Inflater> inflaterLocal =
             ThreadLocal.withInitial(Inflater::new);
+    private final ThreadLocal<CRC32C> crc32cLocal =
+            ThreadLocal.withInitial(CRC32C::new);
 
     private static final int MIN_POOLED_BYTES = 64;
     private static final int MAX_POOLED_BYTES = 1 << 20; // 1 MB
-    private static final int MAX_BUCKET       = 20;       // log2(1 MB)
-    private static final int MAX_PER_BUCKET   = 8;
+    private static final int MAX_BUCKET = 20;       // log2(1 MB)
+    private static final int MAX_PER_BUCKET = 8;
 
-    @SuppressWarnings("unchecked")
     private final ArrayPool<byte[]>[] scratchBuckets = createBuckets();
 
-    @SuppressWarnings("unchecked")
+
     private static ArrayPool<byte[]>[] createBuckets() {
+        //noinspection unchecked
         ArrayPool<byte[]>[] buckets = new ArrayPool[MAX_BUCKET + 1];
         for (int i = 0; i <= MAX_BUCKET; i++)
             buckets[i] = ArrayPool.threadLocal(byte[]::new, a -> a.length, 1 << i, MAX_PER_BUCKET);
         return buckets;
     }
 
-    private BufferPool() {}
+    private BufferPool() {
+    }
 
     // ===================== BUFFER ACQUISITION =====================
 
-    public NioBuffer nio(int cap)          { return NioBufferAllocator.POOLED.buffer(cap); }
-    public NioBuffer nio()                 { return NioBufferAllocator.POOLED.buffer(); }
-    public SegmentBuffer segment(int cap)  { return SegmentBufferAllocator.POOLED.buffer(cap); }
-    public SegmentBuffer segment()         { return SegmentBufferAllocator.POOLED.buffer(); }
+    public NioBuffer nio(int cap) {
+        return NioBufferAllocator.POOLED.buffer(cap);
+    }
+
+    public NioBuffer nio() {
+        return NioBufferAllocator.POOLED.buffer();
+    }
+
+    public SegmentBuffer segment(int cap) {
+        return SegmentBufferAllocator.POOLED.buffer(cap);
+    }
+
+    public SegmentBuffer segment() {
+        return SegmentBufferAllocator.POOLED.buffer();
+    }
 
     // ===================== DEFLATER / INFLATER =====================
 
-    /** Returns the thread-local {@link Deflater}, reset and ready for new input. */
+    /**
+     * Returns the thread-local {@link Deflater}, reset and ready for new input.
+     */
     public Deflater acquireDeflater() {
         Deflater d = deflaterLocal.get();
         d.reset();
         return d;
     }
 
-    /** Returns the thread-local {@link Inflater}, reset and ready for new input. */
+    /**
+     * Returns the thread-local {@link Inflater}, reset and ready for new input.
+     */
     public Inflater acquireInflater() {
         Inflater i = inflaterLocal.get();
         i.reset();
         return i;
+    }
+
+    /**
+     * Returns the thread-local {@link CRC32C}, reset and ready for new input.
+     */
+    public CRC32C acquireCrc32c() {
+        CRC32C c = crc32cLocal.get();
+        c.reset();
+        return c;
     }
 
     // ===================== SCRATCH byte[] POOL =====================
