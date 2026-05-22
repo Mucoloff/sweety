@@ -3,6 +3,7 @@ package dev.sweety.versioning.server.api.netty;
 import dev.sweety.netty.messaging.impl.SimpleServer;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.time.store.ExpiryStore;
 import dev.sweety.versioning.exception.InvalidTokenException;
 import dev.sweety.versioning.exception.TokenExpiredException;
 import dev.sweety.versioning.protocol.handshake.*;
@@ -50,7 +51,7 @@ public class NettyUpdateServer extends SimpleServer {
     }
 
     private ExpiryCache<UUID, ForcedUpdate> getForcedUpdates(Artifact artifact) {
-        return forcedUpdates.computeIfAbsent(artifact, a -> new ExpiryCache<>(Settings.MAX_CONCURRENT_DOWNLOADS));
+        return forcedUpdates.computeIfAbsent(artifact, a -> ExpiryStore.of(Settings.MAX_CONCURRENT_DOWNLOADS));
     }
 
     @Override

@@ -32,7 +32,7 @@ public interface ExpiryStore<K, V> {
      * Returns a Caffeine-backed store for {@link Expirable} values.
      * Expiry is driven by each value's own {@link Expirable#expireAt()} deadline.
      */
-    static <K, V extends Expirable> ExpiryStore<K, V> of(int maxSize) {
+    static <K, V extends Expirable> ExpiryCache<K, V> of(int maxSize) {
         return new ExpiryCache<>(maxSize);
     }
 
@@ -40,7 +40,7 @@ public interface ExpiryStore<K, V> {
      * Returns a store that wraps any value type with a fixed TTL.
      * All entries expire {@code ttl} after insertion regardless of value type.
      */
-    static <K, V> ExpiryStore<K, V> timed(int maxSize, Duration ttl) {
+    static <K, V> TimedExpiryCache<K, V> timed(int maxSize, Duration ttl) {
         return new TimedExpiryCache<>(maxSize, ttl);
     }
 }

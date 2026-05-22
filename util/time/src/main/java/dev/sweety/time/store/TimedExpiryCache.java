@@ -16,7 +16,7 @@ public class TimedExpiryCache<K, V> implements ExpiryStore<K, V> {
     private final ExpiryCache<K, Entry<V>> internal;
     private final long ttlNanos;
 
-    public TimedExpiryCache(int maxSize, Duration ttl) {
+    protected TimedExpiryCache(int maxSize, Duration ttl) {
         this.internal = new ExpiryCache<>(maxSize);
         this.ttlNanos = ttl.toNanos();
     }

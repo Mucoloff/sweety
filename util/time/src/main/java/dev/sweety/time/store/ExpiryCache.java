@@ -20,7 +20,7 @@ public class ExpiryCache<K, V extends Expirable> implements ExpiryStore<K, V> {
 
     private final Cache<K, V> cache;
 
-    public ExpiryCache(int maxSize) {
+    protected ExpiryCache(int maxSize) {
         this.cache = Caffeine.newBuilder()
                 .maximumSize(maxSize)
                 .expireAfter(new Expiry<K, V>() {
