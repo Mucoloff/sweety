@@ -1,87 +1,144 @@
 package dev.sweety.math.pool;
 
+import java.util.ArrayDeque;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntFunction;
 import java.util.function.ToIntFunction;
 
 /**
- * Specialized pool for arrays with size requirements, backed by a lock-free
- * {@link ConcurrentLinkedDeque}.
+ * Pooling interface for reusable arrays of any type.
  *
- * <p>Works with any array type ({@code float[]}, {@code int[]}, {@code Object[]}, etc.).
- * Only the top-of-deque entry is inspected for size eligibility ({@link #obtain(int)});
- * if it is too small a new array is allocated rather than scanning the whole pool.
+ * <p>Two implementations are available via the factory methods:
+ * <ul>
+ *   <li>{@link #threadLocal} — per-thread ArrayDeque, zero contention.
+ *   <li>{@link #shared} — ConcurrentLinkedDeque, safe for cross-thread use.
+ *       Fixes the peek/pollFirst TOCTOU present in the previous implementation:
+ *       {@code pollFirst()} is called directly; if the taken array is too small it is
+ *       dropped (not returned to the pool) and a fresh one is allocated.
+ * </ul>
  *
- * @param <T> the array type (e.g. {@code int[]}, {@code Object[]})
+ * <p>Both variants accept any array type via {@code IntFunction<T>} (factory) and
+ * {@code ToIntFunction<T>} (length extractor). Convenience factories for {@code byte[]},
+ * {@code int[]}, and {@code float[]} are provided.
  */
-public class ArrayPool<T> {
-
-    private final ConcurrentLinkedDeque<T> pool = new ConcurrentLinkedDeque<>();
-    private final AtomicInteger count = new AtomicInteger(0);
-    private final IntFunction<T> factory;
-    private final ToIntFunction<T> lengthExtractor;
-    private final int defaultSize;
-    private final int maxPoolSize;
-
-    public ArrayPool(IntFunction<T> factory, ToIntFunction<T> lengthExtractor,
-                     int defaultSize, int maxPoolSize) {
-        this.factory = factory;
-        this.lengthExtractor = lengthExtractor;
-        this.defaultSize = defaultSize;
-        this.maxPoolSize = maxPoolSize;
-    }
+public interface ArrayPool<T> {
 
     /**
-     * Returns a pooled array whose length is {@code >= minSize}, or allocates a new one.
-     * Only the most-recently-used (head) array is checked; if it is too small a fresh
-     * allocation is returned and the pooled entry is left for a future caller.
-     *
-     * @param minSize minimum required array length
-     * @return a non-null array of length {@code >= minSize}
+     * Returns an array whose length is {@code >= minSize}.
+     * The returned array may be larger than requested.
      */
-    public T obtain(int minSize) {
-        T top = pool.peekFirst();
-        if (top != null && lengthExtractor.applyAsInt(top) >= minSize) {
-            T taken = pool.pollFirst();
-            if (taken != null) {
+    T acquire(int minSize);
+
+    /** Returns {@code arr} to the pool if it is within the acceptable size range. */
+    void release(T arr);
+
+    // ========================== TYPED CONVENIENCE FACTORIES ==========================
+
+    static ArrayPool<byte[]>  threadLocalBytes(int defaultSize, int maxPerThread) {
+        return threadLocal(byte[]::new, a -> a.length, defaultSize, maxPerThread);
+    }
+    static ArrayPool<int[]>   threadLocalInts(int defaultSize, int maxPerThread) {
+        return threadLocal(int[]::new, a -> a.length, defaultSize, maxPerThread);
+    }
+    static ArrayPool<float[]> threadLocalFloats(int defaultSize, int maxPerThread) {
+        return threadLocal(float[]::new, a -> a.length, defaultSize, maxPerThread);
+    }
+
+    static ArrayPool<byte[]>  sharedBytes(int defaultSize, int maxPoolSize) {
+        return shared(byte[]::new, a -> a.length, defaultSize, maxPoolSize);
+    }
+    static ArrayPool<int[]>   sharedInts(int defaultSize, int maxPoolSize) {
+        return shared(int[]::new, a -> a.length, defaultSize, maxPoolSize);
+    }
+    static ArrayPool<float[]> sharedFloats(int defaultSize, int maxPoolSize) {
+        return shared(float[]::new, a -> a.length, defaultSize, maxPoolSize);
+    }
+
+    // ========================== GENERIC FACTORIES ==========================
+
+    static <T> ArrayPool<T> threadLocal(IntFunction<T> factory, ToIntFunction<T> length,
+                                        int defaultSize, int maxPerThread) {
+        return new ThreadLocalImpl<>(factory, length, defaultSize, maxPerThread);
+    }
+
+    static <T> ArrayPool<T> shared(IntFunction<T> factory, ToIntFunction<T> length,
+                                   int defaultSize, int maxPoolSize) {
+        return new SharedImpl<>(factory, length, defaultSize, maxPoolSize);
+    }
+
+    // ========================== IMPLEMENTATIONS ==========================
+
+    final class ThreadLocalImpl<T> implements ArrayPool<T> {
+        private final ThreadLocal<ArrayDeque<T>> pool = ThreadLocal.withInitial(ArrayDeque::new);
+        private final IntFunction<T> factory;
+        private final ToIntFunction<T> length;
+        private final int defaultSize;
+        private final int maxPerThread;
+
+        ThreadLocalImpl(IntFunction<T> factory, ToIntFunction<T> length,
+                        int defaultSize, int maxPerThread) {
+            this.factory = factory;
+            this.length = length;
+            this.defaultSize = defaultSize;
+            this.maxPerThread = maxPerThread;
+        }
+
+        @Override
+        public T acquire(int minSize) {
+            ArrayDeque<T> deque = pool.get();
+            T arr = deque.poll();
+            if (arr != null && length.applyAsInt(arr) >= minSize) return arr;
+            // arr was too small or absent — allocate fresh
+            return factory.apply(Math.max(defaultSize, minSize));
+        }
+
+        @Override
+        public void release(T arr) {
+            if (arr == null) return;
+            int len = length.applyAsInt(arr);
+            if (len < defaultSize / 2 || len > defaultSize * 2) return;
+            ArrayDeque<T> deque = pool.get();
+            if (deque.size() < maxPerThread) deque.push(arr);
+        }
+    }
+
+    final class SharedImpl<T> implements ArrayPool<T> {
+        private final ConcurrentLinkedDeque<T> pool = new ConcurrentLinkedDeque<>();
+        private final AtomicInteger count = new AtomicInteger();
+        private final IntFunction<T> factory;
+        private final ToIntFunction<T> length;
+        private final int defaultSize;
+        private final int maxPoolSize;
+
+        SharedImpl(IntFunction<T> factory, ToIntFunction<T> length,
+                   int defaultSize, int maxPoolSize) {
+            this.factory = factory;
+            this.length = length;
+            this.defaultSize = defaultSize;
+            this.maxPoolSize = maxPoolSize;
+        }
+
+        @Override
+        public T acquire(int minSize) {
+            // pollFirst directly — no peek/poll TOCTOU
+            T arr = pool.pollFirst();
+            if (arr != null) {
                 count.decrementAndGet();
-                return taken;
+                if (length.applyAsInt(arr) >= minSize) return arr;
+                // too small — drop it, allocate fresh
+            }
+            return factory.apply(Math.max(defaultSize, minSize));
+        }
+
+        @Override
+        public void release(T arr) {
+            if (arr == null) return;
+            int len = length.applyAsInt(arr);
+            if (count.get() < maxPoolSize && len >= defaultSize / 2 && len <= defaultSize * 2) {
+                pool.offerFirst(arr);
+                count.incrementAndGet();
             }
         }
-        return factory.apply(Math.max(defaultSize, minSize));
-    }
-
-    /**
-     * Returns {@code array} to the pool if its length is within the acceptable range
-     * ({@code [defaultSize/2, defaultSize*2]}) and the pool is not full.
-     *
-     * @param array the array to return (ignored if {@code null})
-     */
-    public void release(T array) {
-        if (array == null) return;
-        int length = lengthExtractor.applyAsInt(array);
-        if (count.get() < maxPoolSize && length >= defaultSize / 2 && length <= defaultSize * 2) {
-            pool.offerFirst(array);
-            count.incrementAndGet();
-        }
-    }
-
-    /**
-     * Removes all pooled arrays and resets the size counter.
-     */
-    public void clear() {
-        pool.clear();
-        count.set(0);
-    }
-
-    /**
-     * Returns the approximate number of arrays currently in the pool.
-     * This is an O(1) read.
-     *
-     * @return current pool size
-     */
-    public int size() {
-        return count.get();
     }
 }

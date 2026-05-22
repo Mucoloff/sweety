@@ -1,103 +1,130 @@
 package dev.sweety.math.pool;
 
+import java.util.ArrayDeque;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
- * Generic thread-safe object pool backed by a lock-free {@link ConcurrentLinkedDeque}.
+ * Pooling interface for reusable objects.
  *
- * <p>Compared to the previous {@code synchronized + ArrayDeque} implementation:
+ * <p>Two implementations are available via the factory methods:
  * <ul>
- *   <li>{@link #obtain()} and {@link #release} are lock-free (CAS-based).</li>
- *   <li>{@link #size()} is an O(1) {@link AtomicInteger} read instead of a lock+traverse.</li>
- *   <li>Throughput scales linearly with the number of threads rather than serialising on a
- *       single monitor.</li>
+ *   <li>{@link #threadLocal} — per-thread ArrayDeque, zero contention, same-thread release contract.
+ *   <li>{@link #shared} — ConcurrentLinkedDeque, safe for cross-thread acquire/release.
  * </ul>
  *
- * @param <T> the pooled object type
+ * <p>Inspired by {@code io.netty.util.Recycler}: each implementation maps to Recycler's
+ * ThreadLocal (per-thread batch) and shared (MPMC queue) modes respectively.
  */
-public class ObjectPool<T> {
+public interface ObjectPool<T> {
 
-    private final ConcurrentLinkedDeque<T> pool = new ConcurrentLinkedDeque<>();
-    private final AtomicInteger count = new AtomicInteger(0);
-    private final Supplier<T> factory;
-    private final Predicate<T> validator;
-    private final int maxSize;
+    /** Acquires an object from the pool, creating a new one if the pool is empty. */
+    T acquire();
 
-    public ObjectPool(Supplier<T> factory) {
-        this(factory, _ -> true, Integer.MAX_VALUE);
-    }
+    /** Returns {@code obj} to the pool. Silently ignored if null or pool is full. */
+    void release(T obj);
 
-    public ObjectPool(Supplier<T> factory, int maxSize) {
-        this(factory, _ -> true, maxSize);
-    }
-
-    public ObjectPool(Supplier<T> factory, Predicate<T> validator, int maxSize) {
-        this.factory = factory;
-        this.validator = validator;
-        this.maxSize = maxSize;
-    }
-
-    /**
-     * Returns a pooled instance, or creates a new one if the pool is empty.
-     *
-     * @return a non-null instance ready for use
-     */
-    public T obtain() {
-        T obj = pool.pollFirst();
-        if (obj != null) {
-            count.decrementAndGet();
-            return obj;
-        }
-        return factory.get();
-    }
-
-    /**
-     * Borrows an object, applies {@code consume}, then automatically releases it back.
-     *
-     * @param <V>     return type of {@code consume}
-     * @param consume function to apply to the borrowed object
-     * @return the result of {@code consume}
-     */
-    public <V> V get(Function<T, V> consume) {
-        T obj = obtain();
-        V result = consume.apply(obj);
-        release(obj);
-        return result;
-    }
-
-    /**
-     * Returns {@code obj} to the pool if it passes the validator and the pool is not full.
-     * Discards the object silently if either condition is not met.
-     *
-     * @param obj the object to return (ignored if {@code null})
-     */
-    public void release(T obj) {
-        if (obj == null) return;
-        if (count.get() < maxSize && validator.test(obj)) {
-            pool.offerFirst(obj);
-            count.incrementAndGet();
+    /** Borrows an object, applies {@code fn}, returns it, and yields the result. */
+    default <V> V use(Function<T, V> fn) {
+        T obj = acquire();
+        try {
+            return fn.apply(obj);
+        } finally {
+            release(obj);
         }
     }
 
+    // ========================== FACTORIES ==========================
+
     /**
-     * Removes all pooled objects and resets the size counter.
+     * Per-thread pool. No synchronization — zero overhead for same-thread alloc/release.
+     * Do NOT release from a different thread than the one that acquired.
      */
-    public void clear() {
-        pool.clear();
-        count.set(0);
+    static <T> ObjectPool<T> threadLocal(Supplier<T> factory, Consumer<T> reset, int maxPerThread) {
+        return new ThreadLocalImpl<>(factory, reset, maxPerThread);
+    }
+
+    static <T> ObjectPool<T> threadLocal(Supplier<T> factory, int maxPerThread) {
+        return threadLocal(factory, __ -> {}, maxPerThread);
     }
 
     /**
-     * Returns the approximate number of objects currently in the pool.
-     * This is an O(1) read and does not require a lock.
-     *
-     * @return current pool size
+     * Shared pool, safe for concurrent acquire/release across threads.
+     * Uses a lock-free ConcurrentLinkedDeque.
      */
-    public int size() {
-        return count.get();
+    static <T> ObjectPool<T> shared(Supplier<T> factory, Consumer<T> reset, int maxSize) {
+        return new SharedImpl<>(factory, reset, maxSize);
+    }
+
+    static <T> ObjectPool<T> shared(Supplier<T> factory, int maxSize) {
+        return shared(factory, __ -> {}, maxSize);
+    }
+
+    // ========================== IMPLEMENTATIONS ==========================
+
+    final class ThreadLocalImpl<T> implements ObjectPool<T> {
+        private final ThreadLocal<ArrayDeque<T>> pool = ThreadLocal.withInitial(ArrayDeque::new);
+        private final Supplier<T> factory;
+        private final Consumer<T> reset;
+        private final int maxPerThread;
+
+        ThreadLocalImpl(Supplier<T> factory, Consumer<T> reset, int maxPerThread) {
+            this.factory = factory;
+            this.reset = reset;
+            this.maxPerThread = maxPerThread;
+        }
+
+        @Override
+        public T acquire() {
+            T obj = pool.get().poll();
+            return obj != null ? obj : factory.get();
+        }
+
+        @Override
+        public void release(T obj) {
+            if (obj == null) return;
+            ArrayDeque<T> deque = pool.get();
+            if (deque.size() < maxPerThread) {
+                reset.accept(obj);
+                deque.push(obj);
+            }
+        }
+    }
+
+    final class SharedImpl<T> implements ObjectPool<T> {
+        private final ConcurrentLinkedDeque<T> pool = new ConcurrentLinkedDeque<>();
+        private final AtomicInteger count = new AtomicInteger();
+        private final Supplier<T> factory;
+        private final Consumer<T> reset;
+        private final int maxSize;
+
+        SharedImpl(Supplier<T> factory, Consumer<T> reset, int maxSize) {
+            this.factory = factory;
+            this.reset = reset;
+            this.maxSize = maxSize;
+        }
+
+        @Override
+        public T acquire() {
+            T obj = pool.pollFirst();
+            if (obj != null) {
+                count.decrementAndGet();
+                return obj;
+            }
+            return factory.get();
+        }
+
+        @Override
+        public void release(T obj) {
+            if (obj == null) return;
+            if (count.get() < maxSize) {
+                reset.accept(obj);
+                pool.offerFirst(obj);
+                count.incrementAndGet();
+            }
+        }
     }
 }

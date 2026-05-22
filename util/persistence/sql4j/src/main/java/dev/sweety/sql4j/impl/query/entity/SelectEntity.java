@@ -69,14 +69,8 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
 
     // O5: shared pool of StringBuilder instances to avoid per-call allocation when
     // assembling the WHERE / GROUP BY / ORDER BY / LIMIT clauses.
-    private static final ObjectPool<StringBuilder> SB_POOL = new ObjectPool<>(
-            StringBuilder::new,
-            b -> {
-                b.setLength(0);
-                return true;
-            },
-            64
-    );
+    private static final ObjectPool<StringBuilder> SB_POOL =
+            ObjectPool.shared(StringBuilder::new, b -> b.setLength(0), 64);
 
     /**
      * Per-table metadata cached in {@link QueryCache}.
@@ -289,7 +283,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
         });
 
         // O5: borrow a StringBuilder from the pool; release in finally to avoid leaks
-        StringBuilder sqlBuilder = SB_POOL.obtain();
+        StringBuilder sqlBuilder = SB_POOL.acquire();
         try {
             sqlBuilder.append(activeMetadata.sqlBase);
             String where = buildWhereClause();
