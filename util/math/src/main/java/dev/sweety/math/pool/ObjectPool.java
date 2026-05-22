@@ -43,12 +43,17 @@ public interface ObjectPool<T> {
      * Per-thread pool. No synchronization — zero overhead for same-thread alloc/release.
      * Do NOT release from a different thread than the one that acquired.
      */
+    static <T> ObjectPool<T> threadLocal(Supplier<T> factory, Consumer<T> reset,
+                                         Consumer<T> onDiscard, int maxPerThread) {
+        return new ThreadLocalImpl<>(factory, reset, onDiscard, maxPerThread);
+    }
+
     static <T> ObjectPool<T> threadLocal(Supplier<T> factory, Consumer<T> reset, int maxPerThread) {
-        return new ThreadLocalImpl<>(factory, reset, maxPerThread);
+        return threadLocal(factory, reset, _ -> {}, maxPerThread);
     }
 
     static <T> ObjectPool<T> threadLocal(Supplier<T> factory, int maxPerThread) {
-        return threadLocal(factory, __ -> {}, maxPerThread);
+        return threadLocal(factory, _ -> {}, _ -> {}, maxPerThread);
     }
 
     /**
@@ -60,7 +65,7 @@ public interface ObjectPool<T> {
     }
 
     static <T> ObjectPool<T> shared(Supplier<T> factory, int maxSize) {
-        return shared(factory, __ -> {}, maxSize);
+        return shared(factory, _ -> {}, maxSize);
     }
 
     // ========================== IMPLEMENTATIONS ==========================
@@ -69,11 +74,13 @@ public interface ObjectPool<T> {
         private final ThreadLocal<ArrayDeque<T>> pool = ThreadLocal.withInitial(ArrayDeque::new);
         private final Supplier<T> factory;
         private final Consumer<T> reset;
+        private final Consumer<T> onDiscard;
         private final int maxPerThread;
 
-        ThreadLocalImpl(Supplier<T> factory, Consumer<T> reset, int maxPerThread) {
+        ThreadLocalImpl(Supplier<T> factory, Consumer<T> reset, Consumer<T> onDiscard, int maxPerThread) {
             this.factory = factory;
             this.reset = reset;
+            this.onDiscard = onDiscard;
             this.maxPerThread = maxPerThread;
         }
 
@@ -90,6 +97,8 @@ public interface ObjectPool<T> {
             if (deque.size() < maxPerThread) {
                 reset.accept(obj);
                 deque.push(obj);
+            } else {
+                onDiscard.accept(obj);
             }
         }
     }

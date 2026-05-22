@@ -1,32 +1,37 @@
 package dev.sweety.data.buffer;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
+import dev.sweety.math.pool.ObjectPool;
+
 import java.util.function.Consumer;
 
 /**
- * Shared thread-local pool logic for buffer allocators.
+ * Thread-local object pool for buffer allocators, backed by {@link ObjectPool#threadLocal}.
  *
  * <p>Subclasses implement {@link #create} to supply fresh instances and optionally
  * {@link #onDiscard} to clean up surplus buffers (e.g. close off-heap arenas).
- * Everything else — the ThreadLocal deque, poll/push, poolReset, ensureWritable — lives here.
  */
 public abstract class PooledBufferAllocator<B extends AbstractBuffer<B>> {
 
     static final int MAX_PER_THREAD = 32;
 
-    private final ThreadLocal<Deque<B>> pool = ThreadLocal.withInitial(ArrayDeque::new);
+    private final ObjectPool<B> pool;
+
+    protected PooledBufferAllocator() {
+        // `this::recycle` captures `this`, not `pool` — pool is read by recycle() at call time,
+        // after field assignment completes. Avoids the javac "self-reference in initializer" error.
+        this.pool = ObjectPool.threadLocal(
+                () -> create(256, this::recycle),
+                buf -> buf.poolReset(),
+                this::onDiscard,
+                MAX_PER_THREAD
+        );
+    }
 
     public B buffer(int initialCapacity) {
-        Deque<B> local = pool.get();
-        B buf = local.poll();
-        if (buf != null) {
-            buf.poolReset();
-            if (buf.capacity() < initialCapacity)
-                buf.ensureWritable(initialCapacity - buf.capacity());
-            return buf;
-        }
-        return create(initialCapacity, this::recycle);
+        B buf = pool.acquire();
+        if (buf.capacity() < initialCapacity)
+            buf.ensureWritable(initialCapacity - buf.capacity());
+        return buf;
     }
 
     protected abstract B create(int cap, Consumer<B> recycler);
@@ -34,8 +39,6 @@ public abstract class PooledBufferAllocator<B extends AbstractBuffer<B>> {
     protected void onDiscard(B buf) {}
 
     private void recycle(B buf) {
-        Deque<B> local = pool.get();
-        if (local.size() < MAX_PER_THREAD) local.push(buf);
-        else onDiscard(buf);
+        pool.release(buf);
     }
 }
