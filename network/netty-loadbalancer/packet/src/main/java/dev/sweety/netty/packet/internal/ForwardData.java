@@ -5,7 +5,6 @@ import dev.sweety.math.function.TriFunction;
 import dev.sweety.netty.feature.batch.Batch;
 import dev.sweety.netty.packet.Packer;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
-import dev.sweety.netty.packet.buffer.PacketBufferAllocator;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.model.PacketTransaction;
 
@@ -52,10 +51,8 @@ public class ForwardData extends PacketTransaction.Transaction {
         buffer.writeVarInt(this.senderId);
         buffer.writeVarInt(this.receiverId);
         this.context.write(buffer);
-        try (PacketBuffer payload = PacketBufferAllocator.DEFAULT.buffer()) {
-            this.batch.write(payload);
-            buffer.writeByteArray(payload.getBytes());
-        }
+        // rawBatchBytes() returns the pre-serialized form, skipping an intermediate PacketBuffer allocation
+        buffer.writeByteArray(this.batch.rawBatchBytes());
     }
 
     @Override

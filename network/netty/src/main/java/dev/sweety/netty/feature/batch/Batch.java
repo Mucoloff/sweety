@@ -29,38 +29,36 @@ public final class Batch implements Codec {
 
         if (packets == null || packets.length == 0) {
             this.decoded = true;
-            this.rawBatchBytes = serializePayload();
             return;
         }
 
+        // Two parallel arrays: IDs cached here to avoid calling idMap twice per packet
+        final int[] tempIds = new int[packets.length];
         final List<Packet> validPackets = new ArrayList<>(packets.length);
+        int validCount = 0;
+
         for (final Packet packet : packets) {
-            if (packet == null || exclusion.test(packet)) {
-                continue;
-            }
-
+            if (packet == null || exclusion.test(packet)) continue;
             final Integer mappedId = idMap.apply(packet.getClass());
-            if (mappedId == null || mappedId < 0) {
-                continue;
-            }
-
+            if (mappedId == null || mappedId < 0) continue;
+            tempIds[validCount++] = mappedId;
             validPackets.add(packet);
         }
 
-        this.packetCount = validPackets.size();
-        this.packetIds = new int[this.packetCount];
-        this.packetTimestamps = new long[this.packetCount];
-        this.packetData = new byte[this.packetCount][];
+        this.packetCount = validCount;
+        this.packetIds = new int[validCount];
+        this.packetTimestamps = new long[validCount];
+        this.packetData = new byte[validCount][];
 
-        for (int i = 0; i < this.packetCount; i++) {
+        for (int i = 0; i < validCount; i++) {
             final Packet packet = validPackets.get(i);
-            this.packetIds[i] = idMap.apply(packet.getClass());
+            this.packetIds[i] = tempIds[i];
             this.packetTimestamps[i] = packet.timestamp();
             this.packetData[i] = packet.buffer().getBytes();
         }
 
         this.decoded = true;
-        this.rawBatchBytes = serializePayload();
+        // rawBatchBytes is generated lazily on first call to rawBatchBytes() or write()
     }
 
     public Batch() {
@@ -74,8 +72,18 @@ public final class Batch implements Codec {
 
     @Override
     public void write(final BufferWriter buffer) {
-        ensureRawPayload();
-        buffer.writeBytes(this.rawBatchBytes);
+        if (this.decoded) {
+            // Write fields directly — skip rawBatchBytes intermediate copy
+            buffer.writeVarInt(this.packetCount);
+            for (int i = 0; i < this.packetCount; i++) {
+                buffer.writeVarInt(this.packetIds[i]);
+                buffer.writeVarLong(this.packetTimestamps[i]);
+                buffer.writeByteArray(this.packetData[i]);
+            }
+        } else {
+            ensureRawPayload();
+            buffer.writeBytes(this.rawBatchBytes);
+        }
     }
 
     @Override
