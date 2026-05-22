@@ -8,6 +8,8 @@ public abstract class Packet {
 
     private final int _id;
     private final long _timestamp;
+    // Not pooled: _buffer lifetime equals packet lifetime, not a bounded scope.
+    // Pooling would require rewriting every packet subclass in the dependent project.
     private @NotNull
     final PacketBuffer _buffer;
 
