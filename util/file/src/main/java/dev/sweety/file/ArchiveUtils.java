@@ -1,6 +1,6 @@
 package dev.sweety.file;
 
-
+import dev.sweety.data.buffer.BufferPool;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
@@ -37,9 +37,7 @@ public final class ArchiveUtils {
             if (data.length < signature.length) {
                 throw new IOException("Data too short for compressed format");
             }
-
-            byte[] fileSignature = Arrays.copyOfRange(data, 0, signature.length);
-            if (!Arrays.equals(fileSignature, signature)) {
+            if (!Arrays.equals(data, 0, signature.length, signature, 0, signature.length)) {
                 return data;
             }
             startOffset = signature.length;
@@ -54,8 +52,7 @@ public final class ArchiveUtils {
     public static boolean isGzipCompressed(byte[] data, byte[] signature) {
         if (signature == null || signature.length == 0) return false;
         if (data.length < signature.length) return false;
-        byte[] fileSignature = Arrays.copyOfRange(data, 0, signature.length);
-        return Arrays.equals(fileSignature, signature);
+        return Arrays.equals(data, 0, signature.length, signature, 0, signature.length);
     }
 
     // ==================================================================================
@@ -72,7 +69,7 @@ public final class ArchiveUtils {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (ZipOutputStream zos = createZipOutputStream(baos)) {
             zos.putNextEntry(new ZipEntry(file.getFileName().toString()));
-            Files.copy(file, zos);
+            copyWithScratch(file, zos);
             zos.closeEntry();
         }
         return baos.toByteArray();
@@ -96,7 +93,7 @@ public final class ArchiveUtils {
                 public @NotNull FileVisitResult visitFile(@NotNull Path f, @NotNull BasicFileAttributes attrs) throws IOException {
                     String entryName = root.relativize(f).toString().replace('\\', '/');
                     zos.putNextEntry(new ZipEntry(entryName));
-                    Files.copy(f, zos);
+                    copyWithScratch(f, zos);
                     zos.closeEntry();
                     return FileVisitResult.CONTINUE;
                 }
@@ -106,17 +103,29 @@ public final class ArchiveUtils {
     }
 
     public static byte[] zipBytes(byte[] data, String entryName) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        return zipBytes(data, entryName, data.length);
+    }
+
+    /** Variant that treats only the first {@code length} bytes of {@code data} as the payload.
+     *  Useful when {@code data} is a pooled (possibly oversized) scratch array. */
+    public static byte[] zipBytes(byte[] data, String entryName, int length) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream(length + 64);
         try (ZipOutputStream zos = createZipOutputStream(baos)) {
             zos.putNextEntry(new ZipEntry(entryName));
-            zos.write(data);
+            zos.write(data, 0, length);
             zos.closeEntry();
         }
         return baos.toByteArray();
     }
 
     public static byte[] unzipFirstFile(byte[] zipData) throws IOException {
-        try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipData))) {
+        return unzipFirstFile(zipData, zipData.length);
+    }
+
+    /** Variant that treats only the first {@code length} bytes of {@code zipData} as the ZIP stream.
+     *  Useful when {@code zipData} is a pooled (possibly oversized) scratch array. */
+    public static byte[] unzipFirstFile(byte[] zipData, int length) throws IOException {
+        try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipData, 0, length))) {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
                 if (entry.isDirectory()) {
@@ -155,7 +164,7 @@ public final class ArchiveUtils {
                     Path parent = absTarget.getParent();
                     if (parent != null) Files.createDirectories(parent);
                     try (OutputStream os = new BufferedOutputStream(Files.newOutputStream(absTarget))) {
-                        zis.transferTo(os);
+                        transferWithScratch(zis, os);
                     }
                 }
                 zis.closeEntry();
@@ -172,6 +181,26 @@ public final class ArchiveUtils {
         ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(out));
         zos.setLevel(Deflater.BEST_COMPRESSION);
         return zos;
+    }
+
+    private static void copyWithScratch(Path src, OutputStream dst) throws IOException {
+        byte[] scratch = BufferPool.DEFAULT.borrowBytes(16384);
+        try (InputStream is = Files.newInputStream(src)) {
+            int n;
+            while ((n = is.read(scratch)) > 0) dst.write(scratch, 0, n);
+        } finally {
+            BufferPool.DEFAULT.returnBytes(scratch);
+        }
+    }
+
+    private static void transferWithScratch(InputStream src, OutputStream dst) throws IOException {
+        byte[] scratch = BufferPool.DEFAULT.borrowBytes(16384);
+        try {
+            int n;
+            while ((n = src.read(scratch)) > 0) dst.write(scratch, 0, n);
+        } finally {
+            BufferPool.DEFAULT.returnBytes(scratch);
+        }
     }
 
     private ArchiveUtils(){}
