@@ -58,12 +58,13 @@ public class PacketEncoder {
             if (readable < ZIP_THRESHOLD) {
                 compressed = false;
             } else {
-                byte[] src = BufferPool.DEFAULT.borrowBytes(readable);
+                // srcView is a zero-copy NIO view — no byte[] borrow for input
+                ByteBuffer srcView = toWrite.nioBuffer(0, readable);
                 byte[] dst = BufferPool.DEFAULT.borrowBytes(readable);
+                ByteBuffer dstView = ByteBuffer.wrap(dst, 0, readable);
                 Deflater deflater = BufferPool.DEFAULT.acquireDeflater();
                 try {
-                    payloadNetty.getBytes(payloadNetty.readerIndex(), src, 0, readable);
-                    int compressedLen = CompressUtils.deflate(src, readable, dst, deflater);
+                    int compressedLen = CompressUtils.deflate(srcView, dstView, deflater);
                     if (compressedLen < 0 || compressedLen >= readable) {
                         compressed = false;
                     } else {
@@ -75,7 +76,6 @@ public class PacketEncoder {
                         compressed = true;
                     }
                 } finally {
-                    BufferPool.DEFAULT.returnBytes(src);
                     BufferPool.DEFAULT.returnBytes(dst);
                     BufferPool.DEFAULT.releaseDeflater(deflater);
                 }

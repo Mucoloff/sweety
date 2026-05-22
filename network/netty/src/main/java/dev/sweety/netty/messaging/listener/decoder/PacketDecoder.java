@@ -83,19 +83,18 @@ public class PacketDecoder {
                     final ByteBuffer nio = nioView.nioBuffer(0, compressedLen);
                     crc32.update(nio);
 
-                    final byte[] src = BufferPool.DEFAULT.borrowBytes(compressedLen);
+                    // srcView is a zero-copy NIO view — no byte[] borrow for input
+                    final ByteBuffer srcView = nioView.nioBuffer(0, compressedLen);
                     final Inflater inflater = BufferPool.DEFAULT.acquireInflater();
                     try {
-                        nioView.getBytes(nioView.readerIndex(), src, 0, compressedLen);
                         final byte[] decompressed = new byte[uncompressedLen];
                         try {
-                            CompressUtils.inflate(src, compressedLen, decompressed, uncompressedLen, inflater);
+                            CompressUtils.inflate(srcView, ByteBuffer.wrap(decompressed), inflater);
                         } catch (DataFormatException e) {
                             throw new PacketDecodeException("Failed to inflate payload", e);
                         }
                         payloadBuf = Unpooled.wrappedBuffer(decompressed); // zero-copy wrap
                     } finally {
-                        BufferPool.DEFAULT.returnBytes(src);
                         BufferPool.DEFAULT.releaseInflater(inflater);
                         slice.release();
                     }
