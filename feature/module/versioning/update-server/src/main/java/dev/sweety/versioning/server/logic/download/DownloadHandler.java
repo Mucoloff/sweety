@@ -17,7 +17,7 @@ import dev.sweety.versioning.server.logic.patch.JarInjector;
 import dev.sweety.versioning.server.logic.patch.PatchDefinition;
 import dev.sweety.versioning.server.logic.patch.PatchManager;
 import dev.sweety.versioning.server.util.http.HttpUtils;
-import dev.sweety.versioning.util.Utils;
+import dev.sweety.data.ObjectUtils;
 import dev.sweety.versioning.version.IReleaseService;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
@@ -75,7 +75,7 @@ public class DownloadHandler implements HttpHandler {
 
             final UUID id;
             try {
-                id = Utils.parseUuid(_clientId);
+                id = ObjectUtils.parseUuid(_clientId);
             } catch (IllegalArgumentException e) {
                 HttpUtils.sendText(exchange, 400, "Invalid clientId");
                 return;

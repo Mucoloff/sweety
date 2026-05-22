@@ -7,6 +7,7 @@ import dev.sweety.versioning.protocol.handshake.DownloadType;
 import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.server.logic.download.DownloadManager;
 import dev.sweety.versioning.server.util.http.HttpUtils;
+import dev.sweety.data.ObjectUtils;
 import dev.sweety.versioning.util.Utils;
 import dev.sweety.versioning.version.IReleaseService;
 import dev.sweety.versioning.version.Version;
@@ -70,7 +71,7 @@ public final class ReleaseDownloadTokenHandler implements HttpHandler {
         }
         UUID clientId;
         try {
-            clientId = Utils.parseUuid(json.get("clientId").getAsString());
+            clientId = ObjectUtils.parseUuid(json.get("clientId").getAsString());
         } catch (IllegalArgumentException e) {
             HttpUtils.sendText(exchange, 400, "invalid clientId");
             return;

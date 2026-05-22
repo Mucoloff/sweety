@@ -1,6 +1,9 @@
 package dev.sweety.time.store;
 
+import dev.sweety.time.Expirable;
 import org.jetbrains.annotations.Nullable;
+
+import java.time.Duration;
 
 /**
  * Bounded key-value store where entries expire after a time-to-live.
@@ -24,4 +27,20 @@ public interface ExpiryStore<K, V> {
 
     /** Forces eviction of expired entries. Optional — implementations backed by Caffeine clean up asynchronously. */
     default void cleanUp() {}
+
+    /**
+     * Returns a Caffeine-backed store for {@link Expirable} values.
+     * Expiry is driven by each value's own {@link Expirable#expireAt()} deadline.
+     */
+    static <K, V extends Expirable> ExpiryStore<K, V> of(int maxSize) {
+        return new ExpiryCache<>(maxSize);
+    }
+
+    /**
+     * Returns a store that wraps any value type with a fixed TTL.
+     * All entries expire {@code ttl} after insertion regardless of value type.
+     */
+    static <K, V> ExpiryStore<K, V> timed(int maxSize, Duration ttl) {
+        return new TimedExpiryCache<>(maxSize, ttl);
+    }
 }

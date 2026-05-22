@@ -7,7 +7,7 @@ import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.exception.*;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.server.logic.download.token.Token;
-import dev.sweety.versioning.util.Utils;
+import dev.sweety.data.ObjectUtils;
 import dev.sweety.versioning.version.channel.Channel;
 import org.jetbrains.annotations.Nullable;
 
@@ -41,7 +41,7 @@ public class DownloadManager extends ExpiryCache<UUID, Token> {
     public @Nullable Token search(String tokenId) {
         final UUID id;
         try {
-            id = Utils.parseUuid(tokenId);
+            id = ObjectUtils.parseUuid(tokenId);
         } catch (IllegalArgumentException e) {
             return null;
         }

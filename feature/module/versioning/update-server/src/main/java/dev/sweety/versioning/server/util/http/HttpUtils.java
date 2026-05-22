@@ -1,6 +1,7 @@
 package dev.sweety.versioning.server.util.http;
 
 import com.sun.net.httpserver.HttpExchange;
+import dev.sweety.data.ChecksumUtils;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -68,15 +69,6 @@ public final class HttpUtils {
         return diff == 0;
     }
 
-    public static String toHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder(bytes.length * 2);
-        for (byte b : bytes) {
-            sb.append(Character.forDigit((b >> 4) & 0xF, 16));
-            sb.append(Character.forDigit(b & 0xF, 16));
-        }
-        return sb.toString();
-    }
-
     public static boolean verifySignature(String secret, String signature, byte[] body) {
 
         if (secret == null || signature == null) return false;
@@ -89,9 +81,9 @@ public final class HttpUtils {
             ));
             byte[] digest = mac.doFinal(body);
 
-            String expected = toHex(digest);
+            String expected = ChecksumUtils.bytesToHex(digest);
 
-            return constantEquals(expected, signature);
+            return constantTimeEquals(expected, signature);
         } catch (Exception e) {
             return false;
         }
@@ -119,14 +111,6 @@ public final class HttpUtils {
         int end = header.indexOf('"', start);
 
         return header.substring(start, end);
-
-    }
-
-    private static boolean constantEquals(String a, String b) {
-        if (a.length() != b.length()) return false;
-        int r = 0;
-        for (int i = 0; i < a.length(); i++) r |= a.charAt(i) ^ b.charAt(i);
-        return r == 0;
 
     }
 

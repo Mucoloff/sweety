@@ -1,9 +1,9 @@
 package dev.sweety.versioning.util;
 
 import com.google.gson.Gson;
+import dev.sweety.data.ObjectUtils;
 import dev.sweety.versioning.version.Version;
 
-import java.nio.ByteBuffer;
 import java.util.UUID;
 
 public final class Utils {
@@ -14,33 +14,23 @@ public final class Utils {
         return GSON.get();
     }
 
-    public static String formatUuid(String uuidStr) {
-        return uuidStr.contains("-")
-                ? uuidStr
-                : uuidStr.replaceFirst("(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}+)", "$1-$2-$3-$4-$5");
-    }
-
-    public static UUID parseUuid(String uuidStr) {
-        return UUID.fromString(formatUuid(uuidStr));
-    }
-
     public static byte[] toBytes(UUID uuid) {
-        ByteBuffer buffer = ByteBuffer.allocate(16);
-        buffer.putLong(uuid.getMostSignificantBits());
-        buffer.putLong(uuid.getLeastSignificantBits());
-        return buffer.array();
+        return ObjectUtils.uuidToBytes(uuid);
     }
 
     public static byte[] toBytes(Version version) {
-        ByteBuffer buffer = ByteBuffer.allocate(12);
-        buffer.putInt(version.major());
-        buffer.putInt(version.minor());
-        buffer.putInt(version.patch());
-        return buffer.array();
+        int maj = version.major(), min = version.minor(), pat = version.patch();
+        return new byte[]{
+            (byte)(maj >>> 24), (byte)(maj >>> 16), (byte)(maj >>> 8), (byte) maj,
+            (byte)(min >>> 24), (byte)(min >>> 16), (byte)(min >>> 8), (byte) min,
+            (byte)(pat >>> 24), (byte)(pat >>> 16), (byte)(pat >>> 8), (byte) pat
+        };
     }
 
     public static byte[] toBytes(int value) {
-        return ByteBuffer.allocate(4).putInt(value).array();
+        return new byte[]{
+            (byte)(value >>> 24), (byte)(value >>> 16), (byte)(value >>> 8), (byte) value
+        };
     }
 
     private Utils() {}

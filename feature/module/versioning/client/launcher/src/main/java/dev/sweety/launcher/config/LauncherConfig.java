@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev.sweety.build.BuildInfo;
 import dev.sweety.versioning.security.HandshakeProof;
+import dev.sweety.data.ObjectUtils;
 import dev.sweety.versioning.util.Utils;
 import dev.sweety.versioning.version.LauncherInfo;
 import dev.sweety.versioning.version.Version;
@@ -71,14 +72,14 @@ public record LauncherConfig(String url,
 
         UUID buildId;
         try {
-            buildId = Utils.parseUuid(BuildInfo.BUILD_ID);
+            buildId = ObjectUtils.parseUuid(BuildInfo.BUILD_ID);
         } catch (IllegalArgumentException e) {
             buildId = UUID.nameUUIDFromBytes(BuildInfo.BUILD_ID.getBytes(StandardCharsets.UTF_8));
         }
 
         UUID clientId;
         try {
-            clientId = Utils.parseUuid(BuildInfo.CLIENT_ID);
+            clientId = ObjectUtils.parseUuid(BuildInfo.CLIENT_ID);
         } catch (IllegalArgumentException e) {
             clientId = UUID.nameUUIDFromBytes(BuildInfo.CLIENT_ID.getBytes(StandardCharsets.UTF_8));
         }

@@ -66,13 +66,29 @@ public final class ObjectUtils {
     }
 
     public static String formatUuid(String uuidStr) {
-        return uuidStr.contains("-")
-                ? uuidStr
-                : uuidStr.replaceFirst("(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}+)", "$1-$2-$3-$4-$5");
+        int len = uuidStr.length();
+        if (len == 36) return uuidStr;
+        if (len != 32) throw new IllegalArgumentException("Invalid UUID string: " + uuidStr);
+        return uuidStr.substring(0, 8) + '-' +
+               uuidStr.substring(8, 12) + '-' +
+               uuidStr.substring(12, 16) + '-' +
+               uuidStr.substring(16, 20) + '-' +
+               uuidStr.substring(20);
     }
 
     public static UUID parseUuid(String uuidStr) {
         return UUID.fromString(formatUuid(uuidStr));
+    }
+
+    public static byte[] uuidToBytes(UUID uuid) {
+        long msb = uuid.getMostSignificantBits();
+        long lsb = uuid.getLeastSignificantBits();
+        return new byte[]{
+            (byte)(msb >>> 56), (byte)(msb >>> 48), (byte)(msb >>> 40), (byte)(msb >>> 32),
+            (byte)(msb >>> 24), (byte)(msb >>> 16), (byte)(msb >>> 8),  (byte) msb,
+            (byte)(lsb >>> 56), (byte)(lsb >>> 48), (byte)(lsb >>> 40), (byte)(lsb >>> 32),
+            (byte)(lsb >>> 24), (byte)(lsb >>> 16), (byte)(lsb >>> 8),  (byte) lsb
+        };
     }
 
 }
