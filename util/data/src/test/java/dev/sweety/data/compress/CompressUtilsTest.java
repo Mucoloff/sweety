@@ -17,11 +17,13 @@ class CompressUtilsTest {
         Deflater deflater = BufferPool.DEFAULT.acquireDeflater();
         byte[] compressed = new byte[input.length + 64];
         int compLen = CompressUtils.deflate(input, input.length, compressed, deflater);
+        BufferPool.DEFAULT.releaseDeflater(deflater);
         assertTrue(compLen > 0, "deflate returned " + compLen);
 
         Inflater inflater = BufferPool.DEFAULT.acquireInflater();
         byte[] output = new byte[input.length];
         int outLen = CompressUtils.inflate(compressed, compLen, output, input.length, inflater);
+        BufferPool.DEFAULT.releaseInflater(inflater);
         assertEquals(input.length, outLen);
         return output;
     }
@@ -61,6 +63,7 @@ class CompressUtilsTest {
         Deflater deflater = BufferPool.DEFAULT.acquireDeflater();
         byte[] tinyDst = new byte[4];
         int result = CompressUtils.deflate(data, data.length, tinyDst, deflater);
+        BufferPool.DEFAULT.releaseDeflater(deflater);
         assertEquals(-1, result, "should return -1 when dst too small");
     }
 
@@ -69,10 +72,11 @@ class CompressUtilsTest {
         Deflater d = BufferPool.DEFAULT.acquireDeflater();
         d.setInput(new byte[]{1, 2, 3}, 0, 3);
         d.finish();
-        // acquire again — must be reset
+        BufferPool.DEFAULT.releaseDeflater(d);
+
         Deflater d2 = BufferPool.DEFAULT.acquireDeflater();
-        assertSame(d, d2, "ThreadLocal: same thread returns same instance");
         assertFalse(d2.finished(), "Deflater must be reset on acquire");
+        BufferPool.DEFAULT.releaseDeflater(d2);
     }
 
     @Test
@@ -81,18 +85,21 @@ class CompressUtilsTest {
         Deflater deflater = BufferPool.DEFAULT.acquireDeflater();
         byte[] comp = new byte[64];
         int compLen = CompressUtils.deflate(src, src.length, comp, deflater);
+        BufferPool.DEFAULT.releaseDeflater(deflater);
 
         Inflater i = BufferPool.DEFAULT.acquireInflater();
         byte[] out = new byte[src.length];
         CompressUtils.inflate(comp, compLen, out, src.length, i);
+        BufferPool.DEFAULT.releaseInflater(i);
 
-        // acquire again — must be reset, usable for a second inflate
+        // re-acquire — must be reset and usable for a second inflate
         Inflater i2 = BufferPool.DEFAULT.acquireInflater();
-        assertSame(i, i2);
         deflater = BufferPool.DEFAULT.acquireDeflater();
         compLen = CompressUtils.deflate(src, src.length, comp, deflater);
+        BufferPool.DEFAULT.releaseDeflater(deflater);
         byte[] out2 = new byte[src.length];
         CompressUtils.inflate(comp, compLen, out2, src.length, i2);
         assertArrayEquals(src, out2);
+        BufferPool.DEFAULT.releaseInflater(i2);
     }
 }

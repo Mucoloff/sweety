@@ -79,10 +79,11 @@ class BufferPoolTest {
         Deflater d1 = pool.acquireDeflater();
         d1.setInput(new byte[]{1, 2, 3}, 0, 3);
         d1.finish();
+        pool.releaseDeflater(d1);
 
         Deflater d2 = pool.acquireDeflater();
-        assertSame(d1, d2, "same thread must return same ThreadLocal Deflater");
         assertFalse(d2.finished(), "Deflater must be reset on acquire");
+        pool.releaseDeflater(d2);
     }
 
     @Test
@@ -93,15 +94,27 @@ class BufferPoolTest {
         deflater.finish();
         byte[] comp = new byte[64];
         int compLen = deflater.deflate(comp);
+        pool.releaseDeflater(deflater);
 
         Inflater i1 = pool.acquireInflater();
         i1.setInput(comp, 0, compLen);
         byte[] out = new byte[src.length];
         i1.inflate(out, 0, src.length);
+        pool.releaseInflater(i1);
 
         Inflater i2 = pool.acquireInflater();
-        assertSame(i1, i2, "same thread must return same ThreadLocal Inflater");
-        assertFalse(i2.needsInput() && i2.getRemaining() > 0, "Inflater must be reset");
+        // after reset, inflater must be usable for a fresh inflate
+        deflater = pool.acquireDeflater();
+        deflater.setInput(src);
+        deflater.finish();
+        compLen = deflater.deflate(comp);
+        pool.releaseDeflater(deflater);
+
+        byte[] out2 = new byte[src.length];
+        i2.setInput(comp, 0, compLen);
+        i2.inflate(out2, 0, src.length);
+        assertArrayEquals(src, out2);
+        pool.releaseInflater(i2);
     }
 
     @Test

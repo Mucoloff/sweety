@@ -84,10 +84,10 @@ public class PacketDecoder {
                     crc32.update(nio);
 
                     final byte[] src = BufferPool.DEFAULT.borrowBytes(compressedLen);
+                    final Inflater inflater = BufferPool.DEFAULT.acquireInflater();
                     try {
                         nioView.getBytes(nioView.readerIndex(), src, 0, compressedLen);
                         final byte[] decompressed = new byte[uncompressedLen];
-                        Inflater inflater = BufferPool.DEFAULT.acquireInflater();
                         try {
                             CompressUtils.inflate(src, compressedLen, decompressed, uncompressedLen, inflater);
                         } catch (DataFormatException e) {
@@ -96,6 +96,7 @@ public class PacketDecoder {
                         payloadBuf = Unpooled.wrappedBuffer(decompressed); // zero-copy wrap
                     } finally {
                         BufferPool.DEFAULT.returnBytes(src);
+                        BufferPool.DEFAULT.releaseInflater(inflater);
                         slice.release();
                     }
                 } else {

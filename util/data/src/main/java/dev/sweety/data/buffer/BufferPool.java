@@ -3,6 +3,7 @@ package dev.sweety.data.buffer;
 import dev.sweety.math.pool.Acquire;
 import dev.sweety.math.pool.ArrayPool;
 import dev.sweety.math.pool.Borrows;
+import dev.sweety.math.pool.ObjectPool;
 
 import java.util.zip.CRC32C;
 import java.util.zip.Deflater;
@@ -24,10 +25,22 @@ public final class BufferPool {
 
     public static final BufferPool DEFAULT = new BufferPool();
 
-    private final ThreadLocal<Deflater> deflaterLocal =
-            ThreadLocal.withInitial(() -> new Deflater(Deflater.DEFAULT_COMPRESSION));
-    private final ThreadLocal<Inflater> inflaterLocal =
-            ThreadLocal.withInitial(Inflater::new);
+    // Shared pools (not ThreadLocal) so onDiscard=end() bounds native heap on thread death.
+    // Size 16: up to 16 concurrent compression ops before new instances are created.
+    private static final int CODEC_POOL_SIZE = 16;
+    private final ObjectPool<Deflater> deflaterPool = ObjectPool.shared(
+            () -> new Deflater(Deflater.DEFAULT_COMPRESSION),
+            Deflater::reset,
+            Deflater::end,
+            CODEC_POOL_SIZE
+    );
+    private final ObjectPool<Inflater> inflaterPool = ObjectPool.shared(
+            Inflater::new,
+            Inflater::reset,
+            Inflater::end,
+            CODEC_POOL_SIZE
+    );
+    // CRC32C is pure Java — no native resources, ThreadLocal is fine.
     private final ThreadLocal<CRC32C> crc32cLocal =
             ThreadLocal.withInitial(CRC32C::new);
 
@@ -75,21 +88,29 @@ public final class BufferPool {
     // ===================== DEFLATER / INFLATER =====================
 
     /**
-     * Returns the thread-local {@link Deflater}, reset and ready for new input.
+     * Acquires a {@link Deflater} from the shared pool, already reset.
+     * <strong>Must</strong> be returned via {@link #releaseDeflater(Deflater)} after use.
      */
     public Deflater acquireDeflater() {
-        Deflater d = deflaterLocal.get();
-        d.reset();
-        return d;
+        return deflaterPool.acquire();
+    }
+
+    /** Returns a previously acquired {@link Deflater} to the shared pool. */
+    public void releaseDeflater(Deflater d) {
+        deflaterPool.release(d);
     }
 
     /**
-     * Returns the thread-local {@link Inflater}, reset and ready for new input.
+     * Acquires an {@link Inflater} from the shared pool, already reset.
+     * <strong>Must</strong> be returned via {@link #releaseInflater(Inflater)} after use.
      */
     public Inflater acquireInflater() {
-        Inflater i = inflaterLocal.get();
-        i.reset();
-        return i;
+        return inflaterPool.acquire();
+    }
+
+    /** Returns a previously acquired {@link Inflater} to the shared pool. */
+    public void releaseInflater(Inflater i) {
+        inflaterPool.release(i);
     }
 
     /**

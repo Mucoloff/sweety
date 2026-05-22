@@ -60,22 +60,24 @@ public class PacketEncoder {
             } else {
                 byte[] src = BufferPool.DEFAULT.borrowBytes(readable);
                 byte[] dst = BufferPool.DEFAULT.borrowBytes(readable);
+                Deflater deflater = BufferPool.DEFAULT.acquireDeflater();
                 try {
                     payloadNetty.getBytes(payloadNetty.readerIndex(), src, 0, readable);
-                    Deflater deflater = BufferPool.DEFAULT.acquireDeflater();
                     int compressedLen = CompressUtils.deflate(src, readable, dst, deflater);
                     if (compressedLen < 0 || compressedLen >= readable) {
                         compressed = false;
                     } else {
+                        // new byte[] required for Unpooled.wrappedBuffer zero-copy ownership transfer
                         byte[] exact = new byte[compressedLen];
                         System.arraycopy(dst, 0, exact, 0, compressedLen);
                         toWrite.release();
-                        toWrite = Unpooled.wrappedBuffer(exact); // zero-copy wrap
+                        toWrite = Unpooled.wrappedBuffer(exact);
                         compressed = true;
                     }
                 } finally {
                     BufferPool.DEFAULT.returnBytes(src);
                     BufferPool.DEFAULT.returnBytes(dst);
+                    BufferPool.DEFAULT.releaseDeflater(deflater);
                 }
             }
 
