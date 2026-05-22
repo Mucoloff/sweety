@@ -4,7 +4,7 @@ import com.sun.net.httpserver.HttpServer;
 import dev.sweety.versioning.client.http.HttpCachingReleaseService;
 import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.server.logic.release.ReleaseManager;
-import dev.sweety.versioning.server.logic.storage.Storage;
+import dev.sweety.versioning.server.adapter.out.storage.Storage;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;

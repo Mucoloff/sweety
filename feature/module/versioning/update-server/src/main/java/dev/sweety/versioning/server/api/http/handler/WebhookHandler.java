@@ -4,11 +4,11 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.versioning.protocol.update.ReleaseBroadcastType;
-import dev.sweety.versioning.server.logic.actions.ReleaseBroadcastConsumer;
-import dev.sweety.versioning.server.logic.artifact.ArtifactRegistry;
+import dev.sweety.versioning.server.port.out.ReleaseBroadcaster;
+import dev.sweety.versioning.server.domain.artifact.ArtifactRegistry;
 import dev.sweety.versioning.server.logic.patch.PatchManager;
-import dev.sweety.versioning.server.logic.webhook.WebhookIdempotencyStore;
-import dev.sweety.versioning.server.logic.webhook.WebhookRateLimiter;
+import dev.sweety.versioning.server.adapter.out.webhook.WebhookIdempotencyStore;
+import dev.sweety.versioning.server.adapter.out.webhook.WebhookRateLimiter;
 import dev.sweety.versioning.server.util.http.Multipart;
 import dev.sweety.versioning.version.IReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;
@@ -31,9 +31,9 @@ public class WebhookHandler implements HttpHandler {
     private final WebhookRateLimiter rateLimiter;
     private final PatchManager patchManager;
 
-    private ReleaseBroadcastConsumer broadcast;
+    private ReleaseBroadcaster broadcast;
 
-    public WebhookHandler setBroadcast(ReleaseBroadcastConsumer broadcast) {
+    public WebhookHandler setBroadcast(ReleaseBroadcaster broadcast) {
         this.broadcast = broadcast;
         return this;
     }

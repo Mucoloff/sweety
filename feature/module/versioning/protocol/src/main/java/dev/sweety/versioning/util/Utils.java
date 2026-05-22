@@ -24,11 +24,13 @@ public final class Utils {
 
     public static byte[] toBytes(int... value) {
         byte[] bytes = new byte[value.length * 4];
-        for (int i = 0; i < value.length * 4; i += 4) {
-            bytes[i] = (byte) (value[i] >>> 24);
-            bytes[i + 1] = (byte) (value[i] >>> 16);
-            bytes[i + 2] = (byte) (value[i] >>> 8);
-            bytes[i + 3] = (byte) value[i];
+        for (int i = 0; i < value.length; i++) {
+            int v = value[i];
+            int off = i * 4;
+            bytes[off]     = (byte) (v >>> 24);
+            bytes[off + 1] = (byte) (v >>> 16);
+            bytes[off + 2] = (byte) (v >>> 8);
+            bytes[off + 3] = (byte)  v;
         }
         return bytes;
     }

@@ -2,7 +2,8 @@ package dev.sweety.versioning.server.logic.decision;
 
 import dev.sweety.versioning.protocol.handshake.DownloadType;
 import dev.sweety.versioning.server.Settings;
-import dev.sweety.versioning.server.api.netty.ForcedUpdate;
+import dev.sweety.versioning.server.domain.client.ForcedUpdate;
+import dev.sweety.versioning.server.domain.decision.UpdateDecision;
 import dev.sweety.versioning.server.logic.patch.PatchManager;
 import dev.sweety.versioning.version.IReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;

@@ -1,11 +1,12 @@
-package dev.sweety.versioning.server.logic.webhook;
+package dev.sweety.versioning.server.adapter.out.webhook;
+
+import dev.sweety.versioning.server.port.out.WebhookRateLimitGate;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class WebhookRateLimiter {
+public class WebhookRateLimiter implements WebhookRateLimitGate {
 
     private final ConcurrentHashMap<String, RateWindow> ip = new ConcurrentHashMap<>();
     private final RateWindow global;
@@ -56,16 +57,12 @@ public class WebhookRateLimiter {
         private static long pack(long ts, int count) {
             return (ts << 32) | (count & 0xFFFFFFFFL);
         }
-
     }
 
+    @Override
     public boolean allow(String ip) {
         if (!global.allow(this.globalRateLimit)) return false;
-
         final RateWindow window = this.ip.computeIfAbsent(ip == null ? "unknown" : ip, _ -> new RateWindow(this.rateLimitWindow));
-
         return window.allow(this.perIpRateLimit);
-
     }
-
 }

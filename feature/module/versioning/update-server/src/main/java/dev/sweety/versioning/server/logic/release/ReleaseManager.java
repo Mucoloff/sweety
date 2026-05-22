@@ -5,7 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.versioning.server.Settings;
-import dev.sweety.versioning.server.logic.storage.Storage;
+import dev.sweety.versioning.server.adapter.out.storage.Storage;
 import dev.sweety.versioning.util.Utils;
 import dev.sweety.versioning.version.IReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;

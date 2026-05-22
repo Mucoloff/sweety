@@ -1,4 +1,4 @@
-package dev.sweety.versioning.server.logic.actions;
+package dev.sweety.versioning.server.port.out;
 
 import dev.sweety.versioning.protocol.update.ReleaseBroadcastType;
 import dev.sweety.versioning.version.ReleaseInfo;
@@ -7,7 +7,6 @@ import dev.sweety.versioning.version.channel.Channel;
 import org.jetbrains.annotations.Nullable;
 
 @FunctionalInterface
-public interface ReleaseBroadcastConsumer {
-
+public interface ReleaseBroadcaster {
     void broadcast(Artifact artifact, ReleaseInfo target, Channel channel, ReleaseBroadcastType type, @Nullable ReleaseInfo previous);
 }

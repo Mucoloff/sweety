@@ -6,13 +6,13 @@ import dev.sweety.thread.ProfileThread;
 import dev.sweety.versioning.protocol.PacketRegistry;
 import dev.sweety.versioning.server.api.http.HttpUpdateServer;
 import dev.sweety.versioning.server.api.netty.NettyUpdateServer;
-import dev.sweety.versioning.server.logic.artifact.ArtifactRegistry;
-import dev.sweety.versioning.server.logic.cache.CacheManager;
-import dev.sweety.versioning.server.logic.client.ClientRegistry;
+import dev.sweety.versioning.server.domain.artifact.ArtifactRegistry;
+import dev.sweety.versioning.server.adapter.out.cache.CacheManager;
+import dev.sweety.versioning.server.domain.client.ClientRegistry;
 import dev.sweety.versioning.server.logic.download.DownloadManager;
 import dev.sweety.versioning.server.logic.patch.PatchManager;
 import dev.sweety.versioning.server.logic.release.ReleaseManager;
-import dev.sweety.versioning.server.logic.storage.Storage;
+import dev.sweety.versioning.server.adapter.out.storage.Storage;
 import dev.sweety.versioning.util.Utils;
 import org.jetbrains.annotations.NotNull;
 

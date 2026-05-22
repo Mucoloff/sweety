@@ -1,7 +1,7 @@
-package dev.sweety.versioning.server.logic.cache;
+package dev.sweety.versioning.server.adapter.out.cache;
 
-import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.Version;
+import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.channel.Channel;
 
 import java.nio.file.Path;
@@ -22,5 +22,4 @@ public record CacheKey(Artifact artifact, Channel channel, Version version, UUID
     public Path toPath(Path root) {
         return toPath(root, ".jar");
     }
-
 }

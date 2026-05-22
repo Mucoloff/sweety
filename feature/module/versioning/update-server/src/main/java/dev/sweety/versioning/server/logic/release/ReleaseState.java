@@ -1,6 +1,6 @@
 package dev.sweety.versioning.server.logic.release;
 
-import dev.sweety.versioning.server.logic.storage.Storage;
+import dev.sweety.versioning.server.adapter.out.storage.Storage;
 import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.channel.Channel;

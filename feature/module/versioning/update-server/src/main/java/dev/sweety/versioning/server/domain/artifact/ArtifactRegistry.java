@@ -1,4 +1,4 @@
-package dev.sweety.versioning.server.logic.artifact;
+package dev.sweety.versioning.server.domain.artifact;
 
 import dev.sweety.versioning.version.artifact.Artifact;
 import org.jetbrains.annotations.Nullable;
@@ -13,7 +13,6 @@ public class ArtifactRegistry {
 
     public ArtifactRegistry(String globalSecret) {
         this.globalSecret = globalSecret;
-        // Register core artifacts with global secret by default
         register(new ArtifactMetadata(Artifact.APP, globalSecret));
         register(new ArtifactMetadata(Artifact.LAUNCHER, globalSecret));
     }
@@ -32,8 +31,5 @@ public class ArtifactRegistry {
         return metadata != null ? metadata.secret() : globalSecret;
     }
 
-    public record ArtifactMetadata(
-            Artifact artifact,
-            String secret
-    ) {}
+    public record ArtifactMetadata(Artifact artifact, String secret) {}
 }

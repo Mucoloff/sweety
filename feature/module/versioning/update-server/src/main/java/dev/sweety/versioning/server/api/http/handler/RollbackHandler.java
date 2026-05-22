@@ -4,7 +4,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.versioning.protocol.update.ReleaseBroadcastType;
-import dev.sweety.versioning.server.logic.actions.ReleaseBroadcastConsumer;
+import dev.sweety.versioning.server.port.out.ReleaseBroadcaster;
 import dev.sweety.versioning.server.util.http.HttpUtils;
 import dev.sweety.versioning.server.util.http.Multipart;
 import dev.sweety.versioning.version.IReleaseService;
@@ -25,9 +25,9 @@ public class RollbackHandler implements HttpHandler {
     private final String rollbackToken;
     private final IReleaseService releaseManager;
 
-    private ReleaseBroadcastConsumer broadcast;
+    private ReleaseBroadcaster broadcast;
 
-    public RollbackHandler setBroadcast(ReleaseBroadcastConsumer broadcast) {
+    public RollbackHandler setBroadcast(ReleaseBroadcaster broadcast) {
         this.broadcast = broadcast;
         return this;
     }

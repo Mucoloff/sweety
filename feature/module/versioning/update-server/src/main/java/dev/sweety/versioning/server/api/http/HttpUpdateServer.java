@@ -7,15 +7,15 @@ import dev.sweety.versioning.server.api.http.handler.LatestReleaseHttpHandler;
 import dev.sweety.versioning.server.api.http.handler.ReleaseDownloadTokenHandler;
 import dev.sweety.versioning.server.api.http.handler.RollbackHandler;
 import dev.sweety.versioning.server.api.http.handler.WebhookHandler;
-import dev.sweety.versioning.server.logic.actions.ReleaseBroadcastConsumer;
-import dev.sweety.versioning.server.logic.artifact.ArtifactRegistry;
-import dev.sweety.versioning.server.logic.cache.CacheManager;
-import dev.sweety.versioning.server.logic.client.ClientRegistry;
+import dev.sweety.versioning.server.port.out.ReleaseBroadcaster;
+import dev.sweety.versioning.server.domain.artifact.ArtifactRegistry;
+import dev.sweety.versioning.server.adapter.out.cache.CacheManager;
+import dev.sweety.versioning.server.domain.client.ClientRegistry;
 import dev.sweety.versioning.server.logic.download.DownloadHandler;
 import dev.sweety.versioning.server.logic.download.DownloadManager;
 import dev.sweety.versioning.server.logic.patch.PatchManager;
-import dev.sweety.versioning.server.logic.webhook.WebhookIdempotencyStore;
-import dev.sweety.versioning.server.logic.webhook.WebhookRateLimiter;
+import dev.sweety.versioning.server.adapter.out.webhook.WebhookIdempotencyStore;
+import dev.sweety.versioning.server.adapter.out.webhook.WebhookRateLimiter;
 import dev.sweety.versioning.version.IReleaseService;
 
 import java.io.IOException;
@@ -62,7 +62,7 @@ public class HttpUpdateServer {
         return server.getAddress().getPort();
     }
 
-    public void setBroadcast(ReleaseBroadcastConsumer broadcast) {
+    public void setBroadcast(ReleaseBroadcaster broadcast) {
         this.webhookHandler.setBroadcast(broadcast);
         this.rollbackHandler.setBroadcast(broadcast);
     }

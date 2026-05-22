@@ -1,6 +1,6 @@
-package dev.sweety.versioning.server.logic.cache;
+package dev.sweety.versioning.server.adapter.out.cache;
 
-import dev.sweety.versioning.server.logic.storage.Storage;
+import dev.sweety.versioning.server.adapter.out.storage.Storage;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -41,5 +41,4 @@ public class CacheManager {
             }
         }
     }
-
 }

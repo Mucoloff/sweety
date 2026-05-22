@@ -1,4 +1,4 @@
-package dev.sweety.versioning.server.logic.storage;
+package dev.sweety.versioning.server.adapter.out.storage;
 
 import dev.sweety.versioning.version.artifact.Artifact;
 
@@ -48,7 +48,7 @@ public class Storage {
         return settings;
     }
 
-    public static Path temp(Path path){
+    public static Path temp(Path path) {
         return path.resolveSibling(path.getFileName() + ".tmp");
     }
 }
