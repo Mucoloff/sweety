@@ -2,6 +2,7 @@ package dev.sweety.versioning.server.api.netty;
 
 import dev.sweety.versioning.security.HandshakeProof;
 import dev.sweety.versioning.server.Settings;
+import dev.sweety.versioning.server.adapter.in.netty.NettyHandshakeTrust;
 import dev.sweety.versioning.version.LauncherInfo;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;

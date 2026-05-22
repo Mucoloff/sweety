@@ -6,11 +6,13 @@ import dev.sweety.versioning.client.http.HttpTokenDownloadReleaseService;
 import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.server.adapter.out.cache.CacheManager;
 import dev.sweety.versioning.server.domain.client.ClientRegistry;
-import dev.sweety.versioning.server.logic.download.DownloadHandler;
-import dev.sweety.versioning.server.logic.download.DownloadManager;
-import dev.sweety.versioning.server.logic.patch.PatchManager;
+import dev.sweety.versioning.server.adapter.in.http.DownloadHandler;
+import dev.sweety.versioning.server.adapter.in.http.LatestReleaseHttpHandler;
+import dev.sweety.versioning.server.adapter.in.http.ReleaseDownloadTokenHandler;
+import dev.sweety.versioning.server.adapter.out.token.InMemoryDownloadTokenStore;
+import dev.sweety.versioning.server.application.patch.PatchManager;
 import dev.sweety.versioning.server.adapter.out.storage.FileReleaseRepository;
-import dev.sweety.versioning.server.logic.release.ReleaseManager;
+import dev.sweety.versioning.server.application.release.ReleaseManager;
 import dev.sweety.versioning.server.adapter.out.storage.Storage;
 import dev.sweety.versioning.util.Utils;
 import dev.sweety.versioning.version.Version;
@@ -54,7 +56,7 @@ class ReleaseDownloadTokenHandlerIntegrationTest {
         byte[] jar = new byte[]{0x50, 0x4b, 0x03, 0x04};
         assertNotNull(rm.applyRelease(new Artifact("TOK"), Channel.STABLE, new Version(4, 0, 1), 1f, jar));
 
-        DownloadManager dm = new DownloadManager();
+        InMemoryDownloadTokenStore dm = new InMemoryDownloadTokenStore();
         CacheManager cache = new CacheManager(storage);
         ClientRegistry clients = new ClientRegistry();
         PatchManager patches = new PatchManager(storage, rm);
@@ -105,7 +107,7 @@ class ReleaseDownloadTokenHandlerIntegrationTest {
         byte[] jar = new byte[]{4, 5, 6};
         assertNotNull(rm.applyRelease(new Artifact("EXTT"), Channel.BETA, new Version(1, 1, 0), 1f, jar));
 
-        DownloadManager dm = new DownloadManager();
+        InMemoryDownloadTokenStore dm = new InMemoryDownloadTokenStore();
         CacheManager cache = new CacheManager(storage);
         ClientRegistry clients = new ClientRegistry();
         PatchManager patches = new PatchManager(storage, rm);
