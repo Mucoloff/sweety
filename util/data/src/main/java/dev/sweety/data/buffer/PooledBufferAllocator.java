@@ -11,7 +11,7 @@ import java.util.function.Consumer;
  * {@link #onDiscard} to clean up surplus buffers (e.g. close off-heap arenas).
  * Everything else — the ThreadLocal deque, poll/push, poolReset, ensureWritable — lives here.
  */
-abstract class PooledBufferAllocator<B extends AbstractBuffer<B>> {
+public abstract class PooledBufferAllocator<B extends AbstractBuffer<B>> {
 
     static final int MAX_PER_THREAD = 32;
 

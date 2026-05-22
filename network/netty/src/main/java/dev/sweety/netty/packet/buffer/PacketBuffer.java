@@ -7,19 +7,25 @@ import dev.sweety.netty.packet.buffer.io.callable.CallableEncoder;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
+import java.nio.ByteBuffer;
 import it.unimi.dsi.fastutil.Pair;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 
 public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
 
-    private final ByteBuf nettyBuffer;
+    static final int DEFAULT_CAPACITY = 256;
+
+    private ByteBuf nettyBuffer;
+    private final Consumer<PacketBuffer> recycler;
 
     public PacketBuffer(ByteBuf nettyBuffer) {
         this.nettyBuffer = nettyBuffer;
+        this.recycler = null;
     }
 
     public PacketBuffer(int capacity) {
@@ -27,20 +33,62 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
     }
 
     public PacketBuffer() {
-        this(256);
+        this(DEFAULT_CAPACITY);
     }
 
     public PacketBuffer(byte[] bytes) {
         this(Unpooled.wrappedBuffer(bytes));
     }
 
+    /** Pool ctor — used by {@link PacketBufferAllocator}. */
+    PacketBuffer(int capacity, Consumer<PacketBuffer> recycler) {
+        this.nettyBuffer = PooledByteBufAllocator.DEFAULT.buffer(capacity);
+        this.recycler = recycler;
+    }
+
+    @Override
+    protected void poolReset() {
+        if (nettyBuffer == null) {
+            nettyBuffer = PooledByteBufAllocator.DEFAULT.buffer(DEFAULT_CAPACITY);
+        } else {
+            nettyBuffer.clear();
+        }
+        resetPackedBooleanReadState();
+        resetPackedBooleanWriteState();
+    }
+
+    @Override
     public void clear() {
         this.nettyBuffer.clear();
         resetPackedBooleanReadState();
         resetPackedBooleanWriteState();
     }
 
+    @Override
+    public PacketBuffer discardReadBytes() {
+        this.nettyBuffer.discardReadBytes();
+        resetPackedBooleanReadState();
+        return this;
+    }
+
+    @Override
+    public int capacity() {
+        return this.nettyBuffer.capacity();
+    }
+
+    @Override
+    public int writableBytes() {
+        return this.nettyBuffer.writableBytes();
+    }
+
+    @Override
+    public PacketBuffer ensureWritable(int minWritableBytes) {
+        this.nettyBuffer.ensureWritable(minWritableBytes);
+        return this;
+    }
+
     //use writeVarInt
+    @Override
     @Deprecated
     public PacketBuffer writeInt(int value) {
         this.nettyBuffer.writeInt(value);
@@ -48,57 +96,69 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
     }
 
     //use readVarInt
+    @Override
     @Deprecated
     public int readInt() {
         return this.nettyBuffer.readInt();
     }
 
+    @Override
     public PacketBuffer writeDouble(double value) {
         this.nettyBuffer.writeDouble(value);
         return this;
     }
 
+    @Override
     public double readDouble() {
         return this.nettyBuffer.readDouble();
     }
 
+    @Override
     public PacketBuffer writeShort(short value) {
         this.nettyBuffer.writeShort(value);
         return this;
     }
 
+    @Override
     public short readShort() {
         return this.nettyBuffer.readShort();
     }
 
+    @Override
     public PacketBuffer writeByte(byte value) {
         this.nettyBuffer.writeByte(value);
         return this;
     }
 
+    @Override
     public byte readByte() {
         return this.nettyBuffer.readByte();
     }
 
+    @Override
     public PacketBuffer writeChar(char value) {
         this.nettyBuffer.writeChar(value);
         return this;
     }
 
+    @Override
     public char readChar() {
         return this.nettyBuffer.readChar();
     }
 
+    @Override
     public PacketBuffer writeFloat(float value) {
         this.nettyBuffer.writeFloat(value);
         return this;
     }
 
+    @Override
     public float readFloat() {
         return this.nettyBuffer.readFloat();
     }
 
     //use writeVarLong
+    @Override
     @Deprecated
     public PacketBuffer writeLong(long value) {
         this.nettyBuffer.writeLong(value);
@@ -106,89 +166,112 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
     }
 
     //use readVarLong
+    @Override
     @Deprecated
     public long readLong() {
         return this.nettyBuffer.readLong();
     }
 
+    @Override
     public short readUnsignedByte() {
         return this.nettyBuffer.readUnsignedByte();
     }
 
+    @Override
     public boolean release() {
-        return this.nettyBuffer.release();
+        boolean released = nettyBuffer.release();
+        if (released && recycler != null) {
+            nettyBuffer = null;
+            recycler.accept(this);
+        }
+        return released;
     }
 
+    @Override
     public PacketBuffer retain(int increment) {
         this.nettyBuffer.retain(increment);
         return this;
     }
 
+    @Override
     public PacketBuffer retain() {
         this.nettyBuffer.retain();
         return this;
     }
 
+    @Override
     public int refCnt() {
         return this.nettyBuffer.refCnt();
     }
 
+    @Override
     public int readableBytes() {
         return this.nettyBuffer.readableBytes();
     }
 
+    @Override
     public PacketBuffer resetReaderIndex() {
         this.nettyBuffer.resetReaderIndex();
         resetPackedBooleanReadState();
         return this;
     }
 
+    @Override
     public PacketBuffer markReaderIndex() {
         this.nettyBuffer.markReaderIndex();
         return this;
     }
 
+    @Override
     public int readerIndex() {
         return this.nettyBuffer.readerIndex();
     }
 
+    @Override
     public PacketBuffer readerIndex(int readerIndex) {
         this.nettyBuffer.readerIndex(readerIndex);
         resetPackedBooleanReadState();
         return this;
     }
 
+    @Override
     public PacketBuffer resetWriterIndex() {
         this.nettyBuffer.resetWriterIndex();
         resetPackedBooleanWriteState();
         return this;
     }
 
+    @Override
     public PacketBuffer markWriterIndex() {
         this.nettyBuffer.markWriterIndex();
         return this;
     }
 
+    @Override
     public int writerIndex() {
         return this.nettyBuffer.writerIndex();
     }
 
+    @Override
     public PacketBuffer writerIndex(int writerIndex) {
         this.nettyBuffer.writerIndex(writerIndex);
         resetPackedBooleanWriteState();
         return this;
     }
 
+    @Override
     public PacketBuffer readBytes(byte[] data) {
         this.nettyBuffer.readBytes(data);
         return this;
     }
 
+    @Override
     public PacketBuffer writeBytes(byte[] data) {
         this.nettyBuffer.writeBytes(data);
         return this;
     }
 
+    @Override
     public PacketBuffer writeBytes(byte[] data, int offset, int length) {
         this.nettyBuffer.writeBytes(data, offset, length);
         return this;
@@ -207,6 +290,7 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
     }
 
     // Prefer zero-copy when possible
+    @Override
     public PacketBuffer writeBuffer(PacketBuffer other) {
         // Avoid other.getBytes(); write directly from underlying ByteBuf
         this.nettyBuffer.writeBytes(other.nettyBuffer);
@@ -244,6 +328,21 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
         return this.nettyBuffer;
     }
 
+    /**
+     * Wraps a {@link ByteBuffer} as a {@link PacketBuffer} (zero-copy via Netty's {@code Unpooled.wrappedBuffer}).
+     */
+    public static PacketBuffer wrap(ByteBuffer bb) {
+        return new PacketBuffer(Unpooled.wrappedBuffer(bb));
+    }
+
+    /**
+     * Returns a NIO {@link ByteBuffer} view of the readable bytes.
+     * Backed by the same memory — use with care when the underlying ByteBuf is direct.
+     */
+    public ByteBuffer asNioBuffer() {
+        return this.nettyBuffer.nioBuffer();
+    }
+
     @Override
     public PacketBuffer setByte(int index, byte value) {
         this.nettyBuffer.setByte(index, value);
@@ -278,13 +377,11 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
         return this.nettyBuffer.getInt(index);
     }
 
-
     @Override
     public PacketBuffer setLong(int index, long value) {
         this.nettyBuffer.setLong(index, value);
         return this;
     }
-
 
     @Override
     public long getLong(int index) {

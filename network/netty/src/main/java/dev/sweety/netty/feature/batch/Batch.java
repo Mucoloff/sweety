@@ -3,6 +3,7 @@ package dev.sweety.netty.feature.batch;
 import dev.sweety.data.buffer.*;
 import dev.sweety.math.function.TriFunction;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
+import dev.sweety.netty.packet.buffer.PacketBufferAllocator;
 import dev.sweety.netty.packet.buffer.io.Codec;
 import dev.sweety.netty.packet.model.Packet;
 
@@ -160,15 +161,17 @@ public final class Batch implements Codec {
     }
 
     private byte[] serializePayload() {
-        final PacketBuffer payload = new PacketBuffer();
-        payload.writeVarInt(this.packetCount);
-
-        for (int i = 0; i < this.packetCount; i++) {
-            payload.writeVarInt(this.packetIds[i]);
-            payload.writeVarLong(this.packetTimestamps[i]);
-            payload.writeByteArray(this.packetData[i]);
+        final PacketBuffer payload = PacketBufferAllocator.DEFAULT.buffer();
+        try {
+            payload.writeVarInt(this.packetCount);
+            for (int i = 0; i < this.packetCount; i++) {
+                payload.writeVarInt(this.packetIds[i]);
+                payload.writeVarLong(this.packetTimestamps[i]);
+                payload.writeByteArray(this.packetData[i]);
+            }
+            return payload.getBytes();
+        } finally {
+            payload.release();
         }
-
-        return payload.getBytes();
     }
 }

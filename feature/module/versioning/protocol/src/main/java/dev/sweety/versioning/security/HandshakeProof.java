@@ -1,6 +1,7 @@
 package dev.sweety.versioning.security;
 
 import dev.sweety.netty.packet.buffer.PacketBuffer;
+import dev.sweety.netty.packet.buffer.PacketBufferAllocator;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.channel.Channel;
@@ -39,21 +40,25 @@ public final class HandshakeProof {
         try {
             Mac mac = Mac.getInstance(HMAC_ALG);
             mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), HMAC_ALG));
-            PacketBuffer buf = new PacketBuffer();
-            buf.writeUuid(buildId);
-            buf.writeUuid(clientId);
-            versions.entrySet().stream()
-                    .sorted(Comparator.comparing(e -> e.getKey().name()))
-                    .forEach(e -> {
-                        buf.writeString(e.getKey().name());
-                        buf.writeObject(e.getValue());
-                    });
-            buf.writeEnum(channel);
-            byte[] tag = mac.doFinal(buf.readAllBytes());
-            if (tag.length != LENGTH) {
-                throw new IllegalStateException("unexpected HMAC length: " + tag.length);
+            PacketBuffer buf = PacketBufferAllocator.DEFAULT.buffer();
+            try {
+                buf.writeUuid(buildId);
+                buf.writeUuid(clientId);
+                versions.entrySet().stream()
+                        .sorted(Comparator.comparing(e -> e.getKey().name()))
+                        .forEach(e -> {
+                            buf.writeString(e.getKey().name());
+                            buf.writeObject(e.getValue());
+                        });
+                buf.writeEnum(channel);
+                byte[] tag = mac.doFinal(buf.readAllBytes());
+                if (tag.length != LENGTH) {
+                    throw new IllegalStateException("unexpected HMAC length: " + tag.length);
+                }
+                return tag;
+            } finally {
+                buf.release();
             }
-            return tag;
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             throw new IllegalStateException(e);
         }
