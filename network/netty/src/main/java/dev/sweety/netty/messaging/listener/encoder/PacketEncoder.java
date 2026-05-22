@@ -1,8 +1,9 @@
 package dev.sweety.netty.messaging.listener.encoder;
 
 import dev.sweety.data.ChecksumUtils;
+import dev.sweety.data.buffer.BufferPool;
+import dev.sweety.data.compress.CompressUtils;
 import dev.sweety.file.ResourceUtils;
-import dev.sweety.file.ArchiveUtils;
 import dev.sweety.netty.messaging.exception.PacketEncodeException;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
@@ -11,13 +12,17 @@ import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.zip.CRC32C;
+import java.util.zip.Deflater;
 
 public class PacketEncoder {
     static final int ZIP_THRESHOLD = 256;
+
+    private static final ByteBuffer SEED_BUFFER = ByteBuffer.wrap(new byte[]{
+            (byte) (Messenger.SEED >>> 24), (byte) (Messenger.SEED >>> 16),
+            (byte) (Messenger.SEED >>> 8),  (byte)  Messenger.SEED
+    }).asReadOnlyBuffer();
     final IPacketRegistry packetRegistry;
 
     public PacketEncoder(final IPacketRegistry packetRegistry) {
@@ -44,8 +49,7 @@ public class PacketEncoder {
 
         // Compute checksum directly on ByteBuf
         CRC32C crc32 = ChecksumUtils.crc32(true);
-        final ByteBuffer seedBuf = ByteBuffer.allocate(4).putInt(Messenger.SEED).order(ByteOrder.BIG_ENDIAN).flip();
-        crc32.update(seedBuf);
+        crc32.update(SEED_BUFFER.duplicate());
 
         if (hasPayload) {
             final boolean compressed;
@@ -55,29 +59,35 @@ public class PacketEncoder {
             if (readable < ZIP_THRESHOLD) {
                 compressed = false;
             } else {
-                // Attempt compression; only accept if beneficial
-                byte[] src = new byte[readable];
-                payloadNetty.getBytes(payloadNetty.readerIndex(), src);
-                byte[] zipped;
+                byte[] src = BufferPool.DEFAULT.borrowBytes(readable);
+                byte[] dst = BufferPool.DEFAULT.borrowBytes(readable);
                 try {
-                    zipped = ArchiveUtils.zipBytes(src, "zipped-buffer");
-                } catch (IOException e) {
-                    zipped = src;
-                }
-                if (zipped.length >= src.length) {
-                    compressed = false;
-                } else {
-                    toWrite.release();
-                    toWrite = Unpooled.wrappedBuffer(zipped); // Netty ByteBuf from compressed data
-                    compressed = true;
+                    payloadNetty.getBytes(payloadNetty.readerIndex(), src, 0, readable);
+                    Deflater deflater = BufferPool.DEFAULT.acquireDeflater();
+                    int compressedLen = CompressUtils.deflate(src, readable, dst, deflater);
+                    if (compressedLen < 0 || compressedLen >= readable) {
+                        compressed = false;
+                    } else {
+                        byte[] exact = new byte[compressedLen];
+                        System.arraycopy(dst, 0, exact, 0, compressedLen);
+                        toWrite.release();
+                        toWrite = Unpooled.wrappedBuffer(exact); // zero-copy wrap
+                        compressed = true;
+                    }
+                } finally {
+                    BufferPool.DEFAULT.returnBytes(src);
+                    BufferPool.DEFAULT.returnBytes(dst);
                 }
             }
 
             ByteBuffer nio = toWrite.nioBuffer(0, toWrite.readableBytes());
             crc32.update(nio);
 
-            out.writeBoolean(compressed).writeVarInt(toWrite.readableBytes());
-            // Write payload bytes zero-copy where possible
+            if (compressed) {
+                out.writeBoolean(true).writeVarInt(readable).writeVarInt(toWrite.readableBytes());
+            } else {
+                out.writeBoolean(false).writeVarInt(toWrite.readableBytes());
+            }
             out.nettyBuffer().writeBytes(toWrite, toWrite.readableBytes());
             toWrite.release();
         }

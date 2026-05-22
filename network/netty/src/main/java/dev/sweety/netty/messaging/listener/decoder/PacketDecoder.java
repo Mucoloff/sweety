@@ -1,7 +1,8 @@
 package dev.sweety.netty.messaging.listener.decoder;
 
 import dev.sweety.data.ChecksumUtils;
-import dev.sweety.file.ArchiveUtils;
+import dev.sweety.data.buffer.BufferPool;
+import dev.sweety.data.compress.CompressUtils;
 import dev.sweety.exception.PacketDecodeException;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
@@ -10,15 +11,20 @@ import dev.sweety.netty.packet.registry.IPacketRegistry;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.List;
 import java.util.zip.CRC32C;
+import java.util.zip.DataFormatException;
+import java.util.zip.Inflater;
 
 public class PacketDecoder {
 
     private static final int MAX_PAYLOAD_SIZE = 1 << 20; // 1 MB — reject oversized payloads
+
+    private static final ByteBuffer SEED_BUFFER = ByteBuffer.wrap(new byte[]{
+            (byte) (Messenger.SEED >>> 24), (byte) (Messenger.SEED >>> 16),
+            (byte) (Messenger.SEED >>> 8),  (byte)  Messenger.SEED
+    }).asReadOnlyBuffer();
     private final IPacketRegistry packetRegistry;
 
     public PacketDecoder(final IPacketRegistry packetRegistry) {
@@ -36,9 +42,7 @@ public class PacketDecoder {
     }
 
     public static void decode(final PacketBuffer in, final List<Packet> out, final IPacketRegistry packetRegistry) throws PacketDecodeException {
-        final ByteBuffer seedBuf = ByteBuffer.allocate(4).putInt(Messenger.SEED).order(ByteOrder.BIG_ENDIAN).flip();
-
-        if (in.readableBytes() - seedBuf.remaining() < 2) return; // minimal header
+        if (in.readableBytes() - Integer.BYTES < 2) return; // minimal header
         in.markReaderIndex();
 
         try {
@@ -58,7 +62,7 @@ public class PacketDecoder {
 
             // Validate checksum
             final CRC32C crc32 = ChecksumUtils.crc32(true);
-            crc32.update(seedBuf);
+            crc32.update(SEED_BUFFER.duplicate());
 
             final ByteBuf payloadBuf;
             if (!hasPayload) {
@@ -66,31 +70,45 @@ public class PacketDecoder {
             } else {
                 final boolean compressed = in.readBoolean();
 
-                // Check if we can read the payload length
                 if (cantRead(in, 1)) return;
-                final int payloadLength = in.readVarInt();
-
-                if (cantRead(in, payloadLength)) return;
-
-                // Get a retained slice of the payload for zero-copy checksum
-                final PacketBuffer slice = in.readRetainedSlice(payloadLength);
-                final ByteBuf nioView = slice.nettyBuffer();
-
-                final ByteBuffer nio = nioView.nioBuffer(0, payloadLength);
-                crc32.update(nio);
 
                 if (compressed) {
-                    final byte[] data = new byte[payloadLength];
-                    nioView.getBytes(nioView.readerIndex(), data);
-                    final byte[] unzipped;
+                    final int uncompressedLen = in.readVarInt();
+                    if (cantRead(in, 1)) return;
+                    final int compressedLen = in.readVarInt();
+                    if (cantRead(in, compressedLen)) return;
+
+                    final PacketBuffer slice = in.readRetainedSlice(compressedLen);
+                    final ByteBuf nioView = slice.nettyBuffer();
+
+                    final ByteBuffer nio = nioView.nioBuffer(0, compressedLen);
+                    crc32.update(nio);
+
+                    final byte[] src = BufferPool.DEFAULT.borrowBytes(compressedLen);
                     try {
-                        unzipped = ArchiveUtils.unzipFirstFile(data);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
+                        nioView.getBytes(nioView.readerIndex(), src, 0, compressedLen);
+                        final byte[] decompressed = new byte[uncompressedLen];
+                        Inflater inflater = BufferPool.DEFAULT.acquireInflater();
+                        try {
+                            CompressUtils.inflate(src, compressedLen, decompressed, uncompressedLen, inflater);
+                        } catch (DataFormatException e) {
+                            throw new PacketDecodeException("Failed to inflate payload", e);
+                        }
+                        payloadBuf = Unpooled.wrappedBuffer(decompressed); // zero-copy wrap
+                    } finally {
+                        BufferPool.DEFAULT.returnBytes(src);
+                        slice.release();
                     }
-                    payloadBuf = Unpooled.wrappedBuffer(unzipped);
-                    slice.release();
                 } else {
+                    final int payloadLength = in.readVarInt();
+                    if (cantRead(in, payloadLength)) return;
+
+                    final PacketBuffer slice = in.readRetainedSlice(payloadLength);
+                    final ByteBuf nioView = slice.nettyBuffer();
+
+                    final ByteBuffer nio = nioView.nioBuffer(0, payloadLength);
+                    crc32.update(nio);
+
                     payloadBuf = nioView; // pass through retained slice
                 }
             }
