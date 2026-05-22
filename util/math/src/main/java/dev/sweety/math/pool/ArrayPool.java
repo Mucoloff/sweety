@@ -1,6 +1,7 @@
 package dev.sweety.math.pool;
 
 import java.util.ArrayDeque;
+import java.util.Iterator;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -92,8 +93,13 @@ public interface ArrayPool<T> {
     }
 
     static <T> ArrayPool<T> shared(IntFunction<T> factory, ToIntFunction<T> length,
+                                   int defaultSize, Consumer<T> onDiscard, int maxPoolSize) {
+        return new SharedImpl<>(factory, length, defaultSize, onDiscard, maxPoolSize);
+    }
+
+    static <T> ArrayPool<T> shared(IntFunction<T> factory, ToIntFunction<T> length,
                                    int defaultSize, int maxPoolSize) {
-        return new SharedImpl<>(factory, length, defaultSize, maxPoolSize);
+        return shared(factory, length, defaultSize, _ -> {}, maxPoolSize);
     }
 
     // ========================== IMPLEMENTATIONS ==========================
@@ -118,8 +124,15 @@ public interface ArrayPool<T> {
         @Override
         public T acquire(int minSize) {
             ArrayDeque<T> deque = pool.get();
-            T arr = deque.poll();
-            if (arr != null && length.applyAsInt(arr) >= minSize) return arr;
+            // Fast path: head is large enough
+            T head = deque.peekFirst();
+            if (head != null && length.applyAsInt(head) >= minSize) return deque.pollFirst();
+            // Slow path: scan for first array that fits, leave the rest in place
+            Iterator<T> it = deque.iterator();
+            while (it.hasNext()) {
+                T arr = it.next();
+                if (length.applyAsInt(arr) >= minSize) { it.remove(); return arr; }
+            }
             return factory.apply(Math.max(defaultSize, minSize));
         }
 
@@ -142,13 +155,15 @@ public interface ArrayPool<T> {
         private final AtomicInteger count = new AtomicInteger();
         private final IntFunction<T> factory;
         private final ToIntFunction<T> length;
+        private final Consumer<T> onDiscard;
         private final int defaultSize;
         private final int maxPoolSize;
 
         SharedImpl(IntFunction<T> factory, ToIntFunction<T> length,
-                   int defaultSize, int maxPoolSize) {
+                   int defaultSize, Consumer<T> onDiscard, int maxPoolSize) {
             this.factory = factory;
             this.length = length;
+            this.onDiscard = onDiscard;
             this.defaultSize = defaultSize;
             this.maxPoolSize = maxPoolSize;
         }
@@ -169,10 +184,13 @@ public interface ArrayPool<T> {
         public void release(T arr) {
             if (arr == null) return;
             int len = length.applyAsInt(arr);
-            if (count.get() < maxPoolSize && len >= defaultSize / 2 && len <= defaultSize * 2) {
-                pool.offerFirst(arr);
-                count.incrementAndGet();
-            }
+            if (len < defaultSize / 2 || len > defaultSize * 2) { onDiscard.accept(arr); return; }
+            int c;
+            do {
+                c = count.get();
+                if (c >= maxPoolSize) { onDiscard.accept(arr); return; }
+            } while (!count.compareAndSet(c, c + 1));
+            pool.offerFirst(arr);
         }
     }
 }

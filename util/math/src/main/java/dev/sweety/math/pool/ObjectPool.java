@@ -61,14 +61,21 @@ public interface ObjectPool<T> {
 
     /**
      * Shared pool, safe for concurrent acquire/release across threads.
-     * Uses a lock-free ConcurrentLinkedDeque.
+     * Uses a lock-free ConcurrentLinkedDeque. {@code onDiscard} is called for surplus objects
+     * (e.g. to release native resources). Release is CAS-bounded to prevent exceeding
+     * {@code maxSize} under concurrent access.
      */
+    static <T> ObjectPool<T> shared(Supplier<T> factory, Consumer<T> reset,
+                                    Consumer<T> onDiscard, int maxSize) {
+        return new SharedImpl<>(factory, reset, onDiscard, maxSize);
+    }
+
     static <T> ObjectPool<T> shared(Supplier<T> factory, Consumer<T> reset, int maxSize) {
-        return new SharedImpl<>(factory, reset, maxSize);
+        return shared(factory, reset, _ -> {}, maxSize);
     }
 
     static <T> ObjectPool<T> shared(Supplier<T> factory, int maxSize) {
-        return shared(factory, _ -> {}, maxSize);
+        return shared(factory, _ -> {}, _ -> {}, maxSize);
     }
 
     // ========================== IMPLEMENTATIONS ==========================
@@ -111,11 +118,13 @@ public interface ObjectPool<T> {
         private final AtomicInteger count = new AtomicInteger();
         private final Supplier<T> factory;
         private final Consumer<T> reset;
+        private final Consumer<T> onDiscard;
         private final int maxSize;
 
-        SharedImpl(Supplier<T> factory, Consumer<T> reset, int maxSize) {
+        SharedImpl(Supplier<T> factory, Consumer<T> reset, Consumer<T> onDiscard, int maxSize) {
             this.factory = factory;
             this.reset = reset;
+            this.onDiscard = onDiscard;
             this.maxSize = maxSize;
         }
 
@@ -132,11 +141,13 @@ public interface ObjectPool<T> {
         @Override
         public void release(T obj) {
             if (obj == null) return;
-            if (count.get() < maxSize) {
-                reset.accept(obj);
-                pool.offerFirst(obj);
-                count.incrementAndGet();
-            }
+            int c;
+            do {
+                c = count.get();
+                if (c >= maxSize) { onDiscard.accept(obj); return; }
+            } while (!count.compareAndSet(c, c + 1));
+            reset.accept(obj);
+            pool.offerFirst(obj);
         }
     }
 }
