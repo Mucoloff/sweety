@@ -1,6 +1,8 @@
 package dev.sweety.data.buffer;
 
+import dev.sweety.math.pool.Acquire;
 import dev.sweety.math.pool.ArrayPool;
+import dev.sweety.math.pool.Borrows;
 
 import java.util.zip.CRC32C;
 import java.util.zip.Deflater;
@@ -50,18 +52,22 @@ public final class BufferPool {
 
     // ===================== BUFFER ACQUISITION =====================
 
+    @Acquire
     public NioBuffer nio(int cap) {
         return NioBufferAllocator.POOLED.buffer(cap);
     }
 
+    @Acquire
     public NioBuffer nio() {
         return NioBufferAllocator.POOLED.buffer();
     }
 
+    @Acquire
     public SegmentBuffer segment(int cap) {
         return SegmentBufferAllocator.POOLED.buffer(cap);
     }
 
+    @Acquire
     public SegmentBuffer segment() {
         return SegmentBufferAllocator.POOLED.buffer();
     }
@@ -102,6 +108,7 @@ public final class BufferPool {
      * The returned array may be larger (next power of 2). Caller must return it via
      * {@link #returnBytes(byte[])} after use.
      */
+    @Borrows
     public byte[] borrowBytes(int minLen) {
         if (minLen <= 0) return new byte[0];
         if (minLen > MAX_POOLED_BYTES) return new byte[minLen];

@@ -1,5 +1,7 @@
 package dev.sweety.data.buffer;
 
+import dev.sweety.math.pool.Acquire;
+
 import java.lang.foreign.Arena;
 import java.util.function.Consumer;
 
@@ -16,8 +18,10 @@ import java.util.function.Consumer;
  */
 public interface SegmentBufferAllocator {
 
+    @Acquire
     SegmentBuffer buffer(int initialCapacity);
 
+    @Acquire
     default SegmentBuffer buffer() {
         return buffer(SegmentBuffer.DEFAULT_CAPACITY);
     }

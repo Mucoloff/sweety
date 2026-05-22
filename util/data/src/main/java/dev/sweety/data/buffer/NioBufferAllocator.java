@@ -1,5 +1,7 @@
 package dev.sweety.data.buffer;
 
+import dev.sweety.math.pool.Acquire;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.function.Consumer;
@@ -16,8 +18,10 @@ import java.util.function.Consumer;
  */
 public interface NioBufferAllocator {
 
+    @Acquire
     NioBuffer buffer(int initialCapacity);
 
+    @Acquire
     default NioBuffer buffer() {
         return buffer(NioBuffer.DEFAULT_CAPACITY);
     }

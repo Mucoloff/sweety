@@ -1,6 +1,7 @@
 package dev.sweety.netty.packet.buffer;
 
 import dev.sweety.data.buffer.PooledBufferAllocator;
+import dev.sweety.math.pool.Acquire;
 
 import java.util.function.Consumer;
 
@@ -18,8 +19,10 @@ import java.util.function.Consumer;
  */
 public interface PacketBufferAllocator {
 
+    @Acquire
     PacketBuffer buffer(int initialCapacity);
 
+    @Acquire
     default PacketBuffer buffer() {
         return buffer(PacketBuffer.DEFAULT_CAPACITY);
     }
