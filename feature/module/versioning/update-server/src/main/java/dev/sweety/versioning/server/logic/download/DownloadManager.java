@@ -2,7 +2,7 @@ package dev.sweety.versioning.server.logic.download;
 
 import dev.sweety.versioning.protocol.handshake.DownloadType;
 import dev.sweety.versioning.server.Settings;
-import dev.sweety.versioning.server.util.garbage.ExpirableGarbage;
+import dev.sweety.time.store.ExpiryCache;
 import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.exception.*;
 import dev.sweety.versioning.version.Version;
@@ -13,7 +13,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 
-public class DownloadManager extends ExpirableGarbage<UUID, Token> {
+public class DownloadManager extends ExpiryCache<UUID, Token> {
     /**
      * expire in millis
      */
