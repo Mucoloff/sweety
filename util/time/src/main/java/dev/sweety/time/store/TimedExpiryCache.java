@@ -3,6 +3,8 @@ package dev.sweety.time.store;
 import dev.sweety.time.Expirable;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Duration;
+
 /**
  * {@link ExpiryStore} that wraps any value type with a fixed TTL by associating a
  * monotonic deadline ({@code System.currentTimeMillis() + ttlMillis}) with each entry.
@@ -12,16 +14,16 @@ import org.jetbrains.annotations.Nullable;
 public class TimedExpiryCache<K, V> implements ExpiryStore<K, V> {
 
     private final ExpiryCache<K, Entry<V>> internal;
-    private final long ttlMillis;
+    private final long ttlNanos;
 
-    public TimedExpiryCache(int maxSize, long ttlMillis) {
+    public TimedExpiryCache(int maxSize, Duration ttl) {
         this.internal = new ExpiryCache<>(maxSize);
-        this.ttlMillis = ttlMillis;
+        this.ttlNanos = ttl.toNanos();
     }
 
     @Override
     public void add(K key, V value) {
-        internal.add(key, new Entry<>(value, System.currentTimeMillis() + ttlMillis));
+        internal.add(key, new Entry<>(value, System.nanoTime() + ttlNanos));
     }
 
     @Override

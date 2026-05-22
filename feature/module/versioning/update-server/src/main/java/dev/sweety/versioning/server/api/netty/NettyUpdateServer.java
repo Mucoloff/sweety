@@ -147,7 +147,7 @@ public class NettyUpdateServer extends SimpleServer {
                     channel,
                     previous != null ? previous.version() : null,
                     target.version(),
-                    System.currentTimeMillis() + Settings.DOWNLOAD_EXPIRE_DELAY_MS
+                    System.nanoTime() + java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(Settings.DOWNLOAD_EXPIRE_DELAY_MS)
             );
         } else forcedUpdate = null;
 

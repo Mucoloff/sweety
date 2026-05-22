@@ -11,6 +11,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.CRC32;
 
 public record Token(UUID clientId, Artifact artifact, Channel channel, Version version, Version from, DownloadType downloadType,
@@ -19,8 +20,8 @@ public record Token(UUID clientId, Artifact artifact, Channel channel, Version v
 
     private static final byte[] SECRET = Settings.TOKEN_GEN_SALT.getBytes(StandardCharsets.UTF_8);
 
-    public Token(UUID clientId, Artifact artifact, Channel channel, Version version, Version from, DownloadType downloadType, long delay) {
-        this(clientId, artifact, channel, version, from, downloadType, System.currentTimeMillis() + delay, token(clientId, artifact, version, channel, downloadType, delay));
+    public Token(UUID clientId, Artifact artifact, Channel channel, Version version, Version from, DownloadType downloadType, long delayMs) {
+        this(clientId, artifact, channel, version, from, downloadType, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(delayMs), token(clientId, artifact, version, channel, downloadType, delayMs));
     }
 
     private static UUID token(UUID clientId, Artifact artifact, Version version, Channel channel, DownloadType downloadType, long expireAt) {
@@ -65,8 +66,4 @@ public record Token(UUID clientId, Artifact artifact, Channel channel, Version v
         };
     }
 
-    /*@Override
-    public long now() {
-        return System.nanoTime();
-    }*/
 }

@@ -6,16 +6,15 @@ import com.github.benmanes.caffeine.cache.Expiry;
 import dev.sweety.time.Expirable;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.concurrent.TimeUnit;
-
 /**
  * {@link ExpiryStore} backed by a Caffeine cache for {@link Expirable} values.
  *
  * <p>Caffeine handles expiry transparently via per-entry TTL derived from
- * {@link Expirable#expiryTime()}. {@link #get} uses {@code getIfPresent} so Caffeine's
- * expiry filter already applies — no secondary {@code expired()} check needed.
- * {@link #consume} uses the raw backing map to atomically remove; it re-checks
- * {@code expired()} because raw map access bypasses Caffeine's filter.
+ * {@link Expirable#expiryTime()} (nanoseconds remaining). {@link #get} uses
+ * {@code getIfPresent} so Caffeine's expiry filter already applies — no secondary
+ * {@code expired()} check needed. {@link #consume} uses the raw backing map to
+ * atomically remove; it re-checks {@code expired()} because raw map access bypasses
+ * Caffeine's filter.
  */
 public class ExpiryCache<K, V extends Expirable> implements ExpiryStore<K, V> {
 
@@ -28,7 +27,8 @@ public class ExpiryCache<K, V extends Expirable> implements ExpiryStore<K, V> {
                     @Override
                     public long expireAfterCreate(K key, V value, long currentTime) {
                         if (!value.hasExpiry()) return Long.MAX_VALUE;
-                        return TimeUnit.MILLISECONDS.toNanos(Math.max(0, value.expiryTime()));
+                        // expiryTime() returns remaining nanos (nanoTime-based) — no conversion needed
+                        return Math.max(0L, value.expiryTime());
                     }
 
                     @Override
