@@ -3,21 +3,18 @@ package dev.sweety.versioning.server.api.netty;
 import dev.sweety.netty.messaging.impl.SimpleServer;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
-import dev.sweety.time.store.ExpiryStore;
 import dev.sweety.versioning.exception.InvalidTokenException;
 import dev.sweety.versioning.exception.TokenExpiredException;
 import dev.sweety.versioning.protocol.handshake.*;
 import dev.sweety.versioning.protocol.update.ReleaseBroadcastType;
-import dev.sweety.versioning.protocol.update.ReleasePacket;
-import dev.sweety.versioning.server.Settings;
-import dev.sweety.versioning.server.domain.client.ClientInfo;
+import dev.sweety.versioning.server.adapter.out.broadcast.BroadcastChannelGroup;
 import dev.sweety.versioning.server.domain.client.ForcedUpdate;
 import dev.sweety.versioning.server.domain.decision.UpdateDecision;
 import dev.sweety.versioning.server.logic.decision.UpdateResolver;
 import dev.sweety.versioning.server.logic.download.DownloadManager;
 import dev.sweety.versioning.server.logic.patch.PatchManager;
 import dev.sweety.versioning.server.logic.release.ReleaseManager;
-import dev.sweety.time.store.ExpiryCache;
+import dev.sweety.versioning.server.port.out.ReleaseBroadcaster;
 import dev.sweety.versioning.version.LauncherInfo;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
@@ -30,19 +27,14 @@ import org.jetbrains.annotations.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
-public class NettyUpdateServer extends SimpleServer {
+public class NettyUpdateServer extends SimpleServer implements ReleaseBroadcaster {
 
     private final DownloadManager downloadManager;
     private final ReleaseManager releaseManager;
-    private final Runnable stop;
-
     private final PatchManager patchManager;
-
-    private final Map<Artifact, ExpiryCache<UUID, ForcedUpdate>> forcedUpdates = new ConcurrentHashMap<>();
-
-    private final ConcurrentHashMap<ChannelHandlerContext, ClientInfo> clientInfos = new ConcurrentHashMap<>();
+    private final Runnable stop;
+    private final BroadcastChannelGroup channelGroup;
 
     public NettyUpdateServer(String host, int port, IPacketRegistry packetRegistry, DownloadManager downloadManager, ReleaseManager releaseManager, PatchManager patchManager, Runnable stop) {
         super(host, port, packetRegistry);
@@ -50,10 +42,7 @@ public class NettyUpdateServer extends SimpleServer {
         this.releaseManager = releaseManager;
         this.patchManager = patchManager;
         this.stop = stop;
-    }
-
-    private ExpiryCache<UUID, ForcedUpdate> getForcedUpdates(Artifact artifact) {
-        return forcedUpdates.computeIfAbsent(artifact, a -> ExpiryStore.of(Settings.MAX_CONCURRENT_DOWNLOADS));
+        this.channelGroup = new BroadcastChannelGroup(this::sendPacket);
     }
 
     @Override
@@ -74,110 +63,52 @@ public class NettyUpdateServer extends SimpleServer {
             }
 
             final Map<Artifact, Version> versions = info.versions();
-
             final UUID clientId = info.clientId();
             final Channel channel = info.channel();
 
-            this.clientInfos.put(ctx, new ClientInfo(clientId, channel));
+            channelGroup.register(ctx, clientId, channel);
 
             final Map<Artifact, ResponseData> responseData = new HashMap<>();
-
             State state = State.UP_TO_DATE;
 
             for (Map.Entry<Artifact, Version> entry : versions.entrySet()) {
                 Artifact artifact = entry.getKey();
                 Version current = entry.getValue();
-                
-                ReleaseInfo latest = releaseManager.resolveLatest(artifact, channel);
 
-                final ExpiryCache<UUID, ForcedUpdate> garbage = getForcedUpdates(artifact);
-                ForcedUpdate forcedUpdate = garbage.get(clientId);
+                ReleaseInfo latest = releaseManager.resolveLatest(artifact, channel);
+                ForcedUpdate forcedUpdate = channelGroup.getForcedUpdate(artifact, clientId);
 
                 UpdateDecision decision = UpdateResolver.resolve(
-                        clientId,
-                        channel,
-                        artifact,
-                        current,
-                        latest,
-                        latest.rollout(),
-                        forcedUpdate,
-                        patchManager,
-                        releaseManager
+                        clientId, channel, artifact, current, latest,
+                        latest.rollout(), forcedUpdate, patchManager, releaseManager
                 );
 
                 if (decision.update()) {
                     String token = downloadManager.generate(
-                            clientId,
-                            artifact,
-                            latest.channel(),
-                            decision.targetVersion(),
-                            current,
-                            decision.downloadType()
+                            clientId, artifact, latest.channel(),
+                            decision.targetVersion(), current, decision.downloadType()
                     );
-
                     state = State.UPDATED;
                     responseData.put(artifact, new ResponseData(token, decision.targetVersion(), decision.downloadType()));
 
                     if (decision.forced()) {
-                        garbage.remove(clientId);
+                        channelGroup.removeForcedUpdate(artifact, clientId);
                     }
                 }
             }
 
-            final HandshakeResponse response = new HandshakeResponse(state, responseData);
-
-            this.sendPacket(ctx, new HandshakeTransaction(transaction.getRequestId(), response));
+            this.sendPacket(ctx, new HandshakeTransaction(transaction.getRequestId(), new HandshakeResponse(state, responseData)));
         }
     }
 
-    public void broadcast(
-            Artifact artifact,
-            ReleaseInfo target,
-            Channel channel,
-            ReleaseBroadcastType type,
-            @Nullable ReleaseInfo previous
-    ) {
-
-        final boolean isForced = type == ReleaseBroadcastType.FORCED || type == ReleaseBroadcastType.ROLLBACK;
-
-        final ReleasePacket packet = new ReleasePacket(artifact, target, type);
-
-        // forced update solo per alcuni casi
-        final ForcedUpdate forcedUpdate;
-
-        if (isForced) {
-            forcedUpdate = new ForcedUpdate(
-                    channel,
-                    previous != null ? previous.version() : null,
-                    target.version(),
-                    System.nanoTime() + java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(Settings.DOWNLOAD_EXPIRE_DELAY_MS)
-            );
-        } else forcedUpdate = null;
-
-        final ExpiryCache<UUID, ForcedUpdate> garbage = getForcedUpdates(artifact);
-
-        this.clientInfos.entrySet()
-                .stream()
-                .filter(entry -> entry.getValue().channel().accepts(channel))
-                .forEach((entry) -> {
-                    ChannelHandlerContext ctx = entry.getKey();
-                    UUID clientId = entry.getValue().id();
-                    if (forcedUpdate != null) {
-                        garbage.add(clientId, forcedUpdate);
-                    }
-
-                    sendPacket(ctx, packet);
-                });
+    @Override
+    public void broadcast(Artifact artifact, ReleaseInfo target, Channel channel, ReleaseBroadcastType type, @Nullable ReleaseInfo previous) {
+        channelGroup.broadcast(artifact, target, channel, type, previous);
     }
-
 
     @Override
     public void quit(ChannelHandlerContext ctx, ChannelPromise promise) {
         super.quit(ctx, promise);
-        ClientInfo client = this.clientInfos.remove(ctx);
-        if (client != null) {
-            this.forcedUpdates.forEach((artifact, garbage) -> garbage.remove(client.id()));
-        }
+        channelGroup.remove(ctx);
     }
-
 }

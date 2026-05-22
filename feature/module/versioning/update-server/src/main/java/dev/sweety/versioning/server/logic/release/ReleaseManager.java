@@ -1,12 +1,11 @@
 package dev.sweety.versioning.server.logic.release;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.server.adapter.out.storage.Storage;
-import dev.sweety.versioning.util.Utils;
+import dev.sweety.versioning.server.port.in.PublishReleaseUseCase;
+import dev.sweety.versioning.server.port.in.RollbackReleaseUseCase;
+import dev.sweety.versioning.server.port.out.ReleaseRepository;
 import dev.sweety.versioning.version.IReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
@@ -20,22 +19,20 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.time.Instant;
 import java.util.Collection;
-import java.util.Deque;
-import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class ReleaseManager implements IReleaseService {
+public class ReleaseManager implements IReleaseService, PublishReleaseUseCase, RollbackReleaseUseCase {
     private static final SimpleLogger LOGGER = new SimpleLogger(ReleaseManager.class);
 
     private final Map<Artifact, ReleaseState> states = new ConcurrentHashMap<>();
     private final Storage storage;
+    private final ReleaseRepository repository;
 
-    public ReleaseManager(Storage storage) throws IOException {
+    public ReleaseManager(Storage storage, ReleaseRepository repository) throws IOException {
         this.storage = storage;
-        // Pre-register core artifacts
+        this.repository = repository;
         getOrRegister(Artifact.APP);
         getOrRegister(Artifact.LAUNCHER);
     }
@@ -44,7 +41,7 @@ public class ReleaseManager implements IReleaseService {
         return states.computeIfAbsent(artifact, a -> {
             try {
                 ReleaseState state = new ReleaseState(a, storage);
-                loadOrDefault(state);
+                repository.load(a, state);
                 return state;
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
@@ -67,76 +64,6 @@ public class ReleaseManager implements IReleaseService {
         synchronized (s.lock) {
             return s.history(channel);
         }
-    }
-
-    private void loadOrDefault(ReleaseState s) throws IOException {
-        if (!Files.exists(s.metadata())) {
-            for (Channel channel : Channel.values()) s.latest(channel, ReleaseInfo.DEFAULT(channel));
-            persist(s);
-            return;
-        }
-
-        JsonObject root = Utils.gson().fromJson(Files.readString(s.metadata()), JsonObject.class);
-
-        for (Channel channel : Channel.values()) {
-            JsonObject channelEntry = root.getAsJsonObject(channel.prettyName());
-            if (channelEntry == null) continue;
-
-            JsonObject latest = channelEntry.getAsJsonObject("latest");
-            JsonArray hist = channelEntry.getAsJsonArray("history");
-            if (hist != null) {
-                hist.asList().stream()
-                        .map(JsonElement::getAsJsonObject)
-                        .map(this::deserialize)
-                        .filter(info -> {
-                            if (info.channel() == channel) return true;
-                            LOGGER.warn("Invalid channel for release " + info + ", expected " + channel);
-                            return false;
-                        })
-                        .forEach(s.history(channel)::addLast);
-            }
-            s.latest(channel, deserialize(latest));
-        }
-    }
-
-    private void persist(ReleaseState s) throws IOException {
-        JsonObject root = new JsonObject();
-
-        for (Channel channel : Channel.values()) {
-            JsonObject channelEntry = new JsonObject();
-            channelEntry.add("latest", serialize(s.latest(channel)));
-            
-            JsonArray hist = new JsonArray();
-            s.history(channel).stream()
-                    .map(this::serialize)
-                    .forEach(hist::add);
-            
-            channelEntry.add("history", hist);
-            root.add(channel.prettyName(), channelEntry);
-        }
-
-        Path tmpFile = Storage.temp(s.metadata());
-        Files.writeString(tmpFile, Utils.gson().toJson(root));
-
-        Files.move(tmpFile, s.metadata(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-    }
-
-    private JsonObject serialize(ReleaseInfo state) {
-        JsonObject obj = new JsonObject();
-        obj.addProperty("version", state.version().toString());
-        obj.addProperty("channel", state.channel().prettyName());
-        obj.addProperty("updatedAt", state.updatedAt().toString());
-        obj.addProperty("rollout", state.rollout());
-        return obj;
-    }
-
-    private ReleaseInfo deserialize(JsonObject obj) {
-        return new ReleaseInfo(
-                Version.parse(obj.get("version").getAsString()),
-                Channel.valueOf(obj.get("channel").getAsString().toUpperCase()),
-                Float.parseFloat(obj.get("rollout").getAsString()), 
-                Instant.parse(obj.get("updatedAt").getAsString())
-        );
     }
 
     private Path resolveFile(Path path, Artifact artifact, Channel channel, Version version) throws IOException {
@@ -169,7 +96,7 @@ public class ReleaseManager implements IReleaseService {
             ReleaseInfo prev = s.history(channel).pollFirst();
             if (prev == null) return null;
             s.latest(channel, prev);
-            persist(s);
+            repository.save(artifact, s);
             return prev;
         }
     }
@@ -180,7 +107,7 @@ public class ReleaseManager implements IReleaseService {
         synchronized (s.lock) {
             ReleaseInfo current = s.latest(channel);
             ReleaseInfo next = current.withRollout(rollout);
-            return applyNextRelease(s, channel, current, next);
+            return applyNextRelease(artifact, s, channel, current, next);
         }
     }
 
@@ -201,11 +128,11 @@ public class ReleaseManager implements IReleaseService {
             final ReleaseInfo current = s.latest(channel);
             final Version nextVer = version != null ? version : current.version();
             final ReleaseInfo next = ReleaseInfo.of(nextVer, channel, rollout);
-            return applyNextRelease(s, channel, current, next);
+            return applyNextRelease(artifact, s, channel, current, next);
         }
     }
 
-    private ReleaseInfo applyNextRelease(ReleaseState s, Channel channel, ReleaseInfo current, ReleaseInfo next) throws IOException {
+    private ReleaseInfo applyNextRelease(Artifact artifact, ReleaseState s, Channel channel, ReleaseInfo current, ReleaseInfo next) throws IOException {
         if (next.version().equals(current.version())
                 && next.channel().equals(current.channel())
                 && Float.compare(next.rollout(), current.rollout()) == 0) {
@@ -217,7 +144,7 @@ public class ReleaseManager implements IReleaseService {
             s.history(channel).removeLast();
 
         s.latest(channel, next);
-        persist(s);
+        repository.save(artifact, s);
         return next;
     }
 

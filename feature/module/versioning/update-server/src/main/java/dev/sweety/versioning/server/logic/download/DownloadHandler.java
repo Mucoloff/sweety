@@ -12,7 +12,7 @@ import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.server.adapter.out.cache.CacheKey;
 import dev.sweety.versioning.server.adapter.out.cache.CacheManager;
 import dev.sweety.versioning.server.domain.client.ClientRegistry;
-import dev.sweety.versioning.server.logic.download.token.Token;
+import dev.sweety.versioning.server.domain.download.Token;
 import dev.sweety.versioning.server.logic.patch.JarInjector;
 import dev.sweety.versioning.server.logic.patch.PatchDefinition;
 import dev.sweety.versioning.server.logic.patch.PatchManager;

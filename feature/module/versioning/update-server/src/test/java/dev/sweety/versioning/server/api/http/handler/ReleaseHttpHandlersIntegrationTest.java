@@ -3,6 +3,7 @@ package dev.sweety.versioning.server.api.http.handler;
 import com.sun.net.httpserver.HttpServer;
 import dev.sweety.versioning.client.http.HttpCachingReleaseService;
 import dev.sweety.versioning.server.Settings;
+import dev.sweety.versioning.server.adapter.out.storage.FileReleaseRepository;
 import dev.sweety.versioning.server.logic.release.ReleaseManager;
 import dev.sweety.versioning.server.adapter.out.storage.Storage;
 import dev.sweety.versioning.version.ReleaseInfo;
@@ -41,7 +42,7 @@ class ReleaseHttpHandlersIntegrationTest {
     @Test
     void latestAndBaseJar_handlers(@TempDir Path tmp) throws Exception {
         Storage storage = new Storage(tmp);
-        ReleaseManager rm = new ReleaseManager(storage);
+        ReleaseManager rm = new ReleaseManager(storage, new FileReleaseRepository());
         byte[] jar = new byte[]{0x50, 0x4b, 0x03, 0x04};
         ReleaseInfo applied = rm.applyRelease(
                 new Artifact("PLUG"),
@@ -83,7 +84,7 @@ class ReleaseHttpHandlersIntegrationTest {
     @Test
     void baseJar_withoutKey_returns403(@TempDir Path tmp) throws Exception {
         Storage storage = new Storage(tmp);
-        ReleaseManager rm = new ReleaseManager(storage);
+        ReleaseManager rm = new ReleaseManager(storage, new FileReleaseRepository());
         rm.applyRelease(new Artifact("P2"), Channel.STABLE, new Version(1, 0, 0), 1f, new byte[]{7});
 
         Settings.RELEASE_API_KEY = "";

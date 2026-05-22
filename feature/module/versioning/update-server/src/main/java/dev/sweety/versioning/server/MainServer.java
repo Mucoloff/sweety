@@ -8,6 +8,7 @@ import dev.sweety.versioning.server.api.http.HttpUpdateServer;
 import dev.sweety.versioning.server.api.netty.NettyUpdateServer;
 import dev.sweety.versioning.server.domain.artifact.ArtifactRegistry;
 import dev.sweety.versioning.server.adapter.out.cache.CacheManager;
+import dev.sweety.versioning.server.adapter.out.storage.FileReleaseRepository;
 import dev.sweety.versioning.server.domain.client.ClientRegistry;
 import dev.sweety.versioning.server.logic.download.DownloadManager;
 import dev.sweety.versioning.server.logic.patch.PatchManager;
@@ -34,7 +35,7 @@ public class MainServer {
         loadSettings(storage.settings());
 
         final ArtifactRegistry artifactRegistry = new ArtifactRegistry(Settings.WEBHOOK_SECRET);
-        final ReleaseManager releaseManager = new ReleaseManager(storage);
+        final ReleaseManager releaseManager = new ReleaseManager(storage, new FileReleaseRepository());
         final PatchManager patchManager = new PatchManager(storage, releaseManager);
         final CacheManager cacheManager = new CacheManager(storage);
         final ClientRegistry clientRegistry = new ClientRegistry();
