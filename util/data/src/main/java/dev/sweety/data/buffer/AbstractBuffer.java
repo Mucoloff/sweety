@@ -8,9 +8,10 @@ import dev.sweety.data.buffer.io.callable.AbstractCallableEncoder;
 import dev.sweety.exception.PacketDecodeException;
 import dev.sweety.math.MathUtils;
 import it.unimi.dsi.fastutil.Pair;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.EOFException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -19,10 +20,13 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
 public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implements BufferReader, BufferWriter, PackedBooleanAccessor<Self> {
-    private static final int MAX_ARRAY_SIZE = 1 << 23; // 8MB — ForwardData batches exceed 1MB at 3×1500p
+    protected static final int MAX_ARRAY_SIZE = 1 << 23; // 8MB — ForwardData batches exceed 1MB at 3×1500p
     private static final int MAX_STRING_BYTES = 1 << 20;
 
     public abstract void clear();
+
+    /** Reset state for pool reuse. Called by the allocator after reclaiming from the pool. */
+    protected abstract void poolReset();
 
     public abstract Self discardReadBytes();
 
@@ -233,13 +237,13 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
         return writeVarInt(val);
     }
 
-    private static final ClassValue<Map<Integer, ?>> ENUM_ID_CACHE = new ClassValue<>() {
+    private static final ClassValue<Int2ObjectMap<?>> ENUM_ID_CACHE = new ClassValue<>() {
         @Override
-        protected Map<Integer, ?> computeValue(Class<?> type) {
+        protected Int2ObjectMap<?> computeValue(Class<?> type) {
             var constants = type.getEnumConstants();
-            var map = new HashMap<Integer, Object>(constants.length);
+            var map = new Int2ObjectOpenHashMap<>(constants.length);
             for (Object c : constants) map.put(((HasId) c).id(), c);
-            return Map.copyOf(map);
+            return map;
         }
     };
 
@@ -274,11 +278,9 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
     }
 
     public UUID readUuid() {
-        if (this.readableBytes() < 1)
-            throw new PacketDecodeException("Not enough readableBytes to read UUID: " + readableBytes()).runtime();
+        requireReadable(1, "uuid");
         final long mst = readVarLong();
-        if (this.readableBytes() < 1)
-            throw new PacketDecodeException("Not enough readableBytes to read UUID: " + readableBytes()).runtime();
+        requireReadable(1, "uuid");
         return new UUID(mst, readVarLong());
     }
 
@@ -302,7 +304,6 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
 
     public boolean[] readBooleanArray() {
         int len = readBoundedLength("boolean[]", MAX_ARRAY_SIZE);
-        requireReadable((len + 7) / 8, "boolean[]");
         boolean[] arr = new boolean[len];
         for (int i = 0; i < len; i++) arr[i] = readBoolean();
         return arr;
@@ -310,6 +311,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
 
     public Self writeCharArray(char... array) {
         writeVarInt(array.length);
+        ensureWritable(array.length * Character.BYTES);
         for (char i : array) writeChar(i);
         return self();
     }
@@ -324,6 +326,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
 
     public Self writeIntArray(int... array) {
         writeVarInt(array.length);
+        ensureWritable(array.length * Integer.BYTES);
         for (int i : array) writeInt(i);
         return self();
     }
@@ -351,6 +354,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
 
     public Self writeShortArray(short... array) {
         writeVarInt(array.length);
+        ensureWritable(array.length * Short.BYTES);
         for (short i : array) writeShort(i);
         return self();
     }
@@ -365,6 +369,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
 
     public Self writeFloatArray(float... array) {
         writeVarInt(array.length);
+        ensureWritable(array.length * Float.BYTES);
         for (float i : array) writeFloat(i);
         return self();
     }
@@ -379,6 +384,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
 
     public Self writeDoubleArray(double... array) {
         writeVarInt(array.length);
+        ensureWritable(array.length * Double.BYTES);
         for (double i : array) writeDouble(i);
         return self();
     }
@@ -409,13 +415,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
     }
 
     private boolean readPresence() {
-        try {
-            return this.readBoolean();
-        } catch (Exception e) {
-            PacketDecodeException ex = new PacketDecodeException("Unable to read presence marker", new EOFException());
-            ex.addStackTrace(e.getStackTrace());
-            throw ex.runtime();
-        }
+        return this.readBoolean();
     }
 
     private <T> boolean writeNullCheck(T object) {
@@ -487,18 +487,18 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
     public <T> Self writeIterable(Iterable<T> iterable, int size, AbstractCallableEncoder<? super T> encoder) {
         if (writeNullCheck(iterable)) return self();
         writeVarInt(size);
-        for (T entry : iterable) {
-            writeObject(entry, encoder);
-        }
-        return self();
+        Self self = self();
+        for (T entry : iterable) encoder.write(self, entry);
+        return self;
     }
 
     @SafeVarargs
     public final <T> Self writeArray(AbstractCallableEncoder<? super T> encoder, T... array) {
         if (writeNullCheck(array)) return self();
         writeVarInt(array.length);
-        for (T entry : array) writeObject(entry, encoder);
-        return self();
+        Self self = self();
+        for (T entry : array) encoder.write(self, entry);
+        return self;
     }
 
     public <T> Self writeCollection(Collection<T> collection, AbstractCallableEncoder<? super T> encoder) {
@@ -513,7 +513,8 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
         if (!readPresence()) return null;
         final int size = readBoundedLength("collection", MAX_ARRAY_SIZE);
         final C collection = collectionFactory.apply(size);
-        for (int i = 0; i < size; i++) collection.add(readObject(decoder));
+        Self self = self();
+        for (int i = 0; i < size; i++) collection.add(decoder.read(self));
         return collection;
     }
 
@@ -525,9 +526,8 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
         if (!readPresence()) return null;
         int size = readBoundedLength("array", MAX_ARRAY_SIZE);
         T[] array = arrayFactory.apply(size);
-        for (int i = 0; i < size; i++) {
-            array[i] = readObject(decoder);
-        }
+        Self self = self();
+        for (int i = 0; i < size; i++) array[i] = decoder.read(self);
         return array;
     }
 
@@ -535,22 +535,25 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
         return readList(buffer -> buffer.readObject(factory));
     }
 
+    /** @deprecated Use {@link #writeMap(Map, AbstractCallableEncoder, AbstractCallableEncoder)} to avoid per-entry Pair allocation. */
+    @Deprecated
     public <K, V> Self writeMap(Map<K, V> map, AbstractCallableEncoder<Pair<K, V>> encoder) {
         if (writeNullCheck(map)) return self();
         writeVarInt(map.size());
-        for (Map.Entry<K, V> entry : map.entrySet()) {
-            writeObject(Pair.of(entry.getKey(), entry.getValue()), encoder);
-        }
-        return self();
+        Self self = self();
+        for (Map.Entry<K, V> entry : map.entrySet()) encoder.write(self, Pair.of(entry.getKey(), entry.getValue()));
+        return self;
     }
 
+    /** @deprecated Use {@link #readMap(AbstractCallableDecoder, AbstractCallableDecoder, IntFunction)} to avoid per-entry Pair allocation. */
+    @Deprecated
     public <K, V> Map<K, V> readMap(AbstractCallableDecoder<Pair<K, V>> decoder, IntFunction<Map<K, V>> mapFactory) {
         if (!readPresence()) return null;
-
         int size = readBoundedLength("map", MAX_ARRAY_SIZE);
         Map<K, V> map = mapFactory.apply(size);
+        Self self = self();
         for (int i = 0; i < size; i++) {
-            Pair<K, V> pair = readObject(decoder);
+            Pair<K, V> pair = decoder.read(self);
             map.put(pair.key(), pair.value());
         }
         return map;
@@ -701,36 +704,44 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
         return this.readVarInt() / scale;
     }
 
-    private long packPosition(int x, int y, int z) {
+    private static long packPosition(int x, int y, int z) {
         return ((long) (x & 0x3FFFFFF) << 38) |
                 ((long) (z & 0x3FFFFFF) << 12) |
                 ((long) (y & 0xFFF));
     }
 
-    private int[] unpackPosition(long packed) {
-        final int x = (int) (packed >> 38);
-        final int y = (int) (packed << 52 >> 52);
-        final int z = (int) (packed << 26 >> 38);
-
-        return new int[]{x, y, z};
-    }
+    public static int posX(long packed) { return (int) (packed >> 38); }
+    public static int posY(long packed) { return (int) (packed << 52 >> 52); }
+    public static int posZ(long packed) { return (int) (packed << 26 >> 38); }
 
     public Self writePosition(int x, int y, int z) {
         return writeLong(packPosition(x, y, z));
     }
 
+    public long readPackedPosition() {
+        return readLong();
+    }
+
+    /** @deprecated Use {@link #readPackedPosition()} + {@link #posX}/{@link #posY}/{@link #posZ} to avoid int[] allocation. */
+    @Deprecated
     public int[] readPosition() {
-        final long val = readLong();
-        return unpackPosition(val);
+        long val = readLong();
+        return new int[]{posX(val), posY(val), posZ(val)};
     }
 
     public Self writeVarPosition(int x, int y, int z) {
         return writeVarLong(packPosition(x, y, z));
     }
 
+    public long readPackedVarPosition() {
+        return readVarLong();
+    }
+
+    /** @deprecated Use {@link #readPackedVarPosition()} + {@link #posX}/{@link #posY}/{@link #posZ} to avoid int[] allocation. */
+    @Deprecated
     public int[] readVarPosition() {
-        final long val = readVarLong();
-        return unpackPosition(val);
+        long val = readVarLong();
+        return new int[]{posX(val), posY(val), posZ(val)};
     }
 
     public Self writeFixedInt(double value, int fractionBits) {
@@ -774,7 +785,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
         };
     }
 
-    private int readBoundedLength(String label, int max) {
+    protected int readBoundedLength(String label, int max) {
         final int len = readVarInt();
         if (len < 0 || len > max) {
             throw new PacketDecodeException(label + " length out of bounds: " + len).runtime();
@@ -782,7 +793,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
         return len;
     }
 
-    private void requireReadable(long bytes, String label) {
+    protected void requireReadable(long bytes, String label) {
         if (bytes < 0 || bytes > Integer.MAX_VALUE) {
             throw new PacketDecodeException("Invalid byte length for " + label + ": " + bytes).runtime();
         }
