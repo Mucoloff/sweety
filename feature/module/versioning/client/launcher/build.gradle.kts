@@ -13,12 +13,12 @@ dependencies {
 }
 
 application {
-    mainClass.set("dev.sweety.launcher.MainLauncher")
+    mainClass.set("dev.sweety.launcher.adapter.in.cli.LauncherMain")
 }
 
 tasks.named<Jar>("jar") {
     manifest {
-        attributes["Main-Class"] = "dev.sweety.launcher.MainLauncher"
+        attributes["Main-Class"] = "dev.sweety.launcher.adapter.in.cli.LauncherMain"
     }
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
