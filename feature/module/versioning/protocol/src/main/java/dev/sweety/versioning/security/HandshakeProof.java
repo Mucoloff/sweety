@@ -50,7 +50,8 @@ public final class HandshakeProof {
                             buf.writeObject(e.getValue());
                         });
                 buf.writeEnum(channel);
-                byte[] tag = mac.doFinal(buf.readAllBytes());
+                mac.update(buf.asNioBuffer()); // zero-copy ByteBuffer view
+                byte[] tag = mac.doFinal();
                 if (tag.length != LENGTH) {
                     throw new IllegalStateException("unexpected HMAC length: " + tag.length);
                 }
