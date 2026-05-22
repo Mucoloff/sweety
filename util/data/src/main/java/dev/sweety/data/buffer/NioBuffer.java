@@ -4,7 +4,10 @@ import java.lang.foreign.MemorySegment;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.function.Consumer;
+import dev.sweety.math.pool.Pooled;
+import dev.sweety.math.pool.Release;
 
+@Pooled(pool = NioBufferAllocator.class)
 public class NioBuffer extends AbstractBuffer<NioBuffer> {
 
     static final int DEFAULT_CAPACITY = 256;
@@ -62,6 +65,7 @@ public class NioBuffer extends AbstractBuffer<NioBuffer> {
 
     // ===================== LIFECYCLE =====================
 
+    @Release
     @Override
     public boolean release() {
         if (--refCnt == 0) {

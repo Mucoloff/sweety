@@ -29,11 +29,11 @@ public interface ArrayPool<T> {
      * Returns an array whose length is {@code >= minSize}.
      * The returned array may be larger than requested.
      */
+    @Acquire
     T acquire(int minSize);
 
-    /**
-     * Returns {@code arr} to the pool if it is within the acceptable size range.
-     */
+    /** Returns {@code arr} to the pool if it is within the acceptable size range. */
+    @Release
     void release(T arr);
 
     // ========================== TYPED CONVENIENCE FACTORIES ==========================

@@ -6,7 +6,10 @@ import java.lang.foreign.ValueLayout;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.function.Consumer;
+import dev.sweety.math.pool.Pooled;
+import dev.sweety.math.pool.Release;
 
+@Pooled(pool = SegmentBufferAllocator.class)
 public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
 
     static final int DEFAULT_CAPACITY = 256;
@@ -97,6 +100,7 @@ public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
 
     // ===================== MEMORY CONTROL =====================
 
+    @Release
     @Override
     public boolean release() {
         if (!owner) return false;

@@ -10,12 +10,15 @@ import io.netty.buffer.Unpooled;
 import java.nio.ByteBuffer;
 import it.unimi.dsi.fastutil.Pair;
 import org.jetbrains.annotations.Nullable;
+import dev.sweety.math.pool.Pooled;
+import dev.sweety.math.pool.Release;
 
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 
+@Pooled(pool = PacketBufferAllocator.class)
 public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
 
     static final int DEFAULT_CAPACITY = 256;
@@ -177,6 +180,7 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
         return this.nettyBuffer.readUnsignedByte();
     }
 
+    @Release
     @Override
     public boolean release() {
         boolean released = nettyBuffer.release();
