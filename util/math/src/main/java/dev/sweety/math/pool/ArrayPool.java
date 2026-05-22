@@ -3,6 +3,7 @@ package dev.sweety.math.pool;
 import java.util.ArrayDeque;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.function.ToIntFunction;
 
@@ -30,36 +31,64 @@ public interface ArrayPool<T> {
      */
     T acquire(int minSize);
 
-    /** Returns {@code arr} to the pool if it is within the acceptable size range. */
+    /**
+     * Returns {@code arr} to the pool if it is within the acceptable size range.
+     */
     void release(T arr);
 
     // ========================== TYPED CONVENIENCE FACTORIES ==========================
 
-    static ArrayPool<byte[]>  threadLocalBytes(int defaultSize, int maxPerThread) {
+    static ArrayPool<byte[]> threadLocalBytes(int defaultSize, int maxPerThread) {
         return threadLocal(byte[]::new, a -> a.length, defaultSize, maxPerThread);
     }
-    static ArrayPool<int[]>   threadLocalInts(int defaultSize, int maxPerThread) {
+
+    static ArrayPool<int[]> threadLocalInts(int defaultSize, int maxPerThread) {
         return threadLocal(int[]::new, a -> a.length, defaultSize, maxPerThread);
     }
+
+    static ArrayPool<long[]> threadLocalLongs(int defaultSize, int maxPerThread) {
+        return threadLocal(long[]::new, a -> a.length, defaultSize, maxPerThread);
+    }
+
     static ArrayPool<float[]> threadLocalFloats(int defaultSize, int maxPerThread) {
         return threadLocal(float[]::new, a -> a.length, defaultSize, maxPerThread);
     }
 
-    static ArrayPool<byte[]>  sharedBytes(int defaultSize, int maxPoolSize) {
+    static ArrayPool<double[]> threadLocalDoubles(int defaultSize, int maxPerThread) {
+        return threadLocal(double[]::new, a -> a.length, defaultSize, maxPerThread);
+    }
+
+    static ArrayPool<byte[]> sharedBytes(int defaultSize, int maxPoolSize) {
         return shared(byte[]::new, a -> a.length, defaultSize, maxPoolSize);
     }
-    static ArrayPool<int[]>   sharedInts(int defaultSize, int maxPoolSize) {
+
+    static ArrayPool<int[]> sharedInts(int defaultSize, int maxPoolSize) {
         return shared(int[]::new, a -> a.length, defaultSize, maxPoolSize);
     }
+
+    static ArrayPool<long[]> sharedLongs(int defaultSize, int maxPoolSize) {
+        return shared(long[]::new, a -> a.length, defaultSize, maxPoolSize);
+    }
+
     static ArrayPool<float[]> sharedFloats(int defaultSize, int maxPoolSize) {
         return shared(float[]::new, a -> a.length, defaultSize, maxPoolSize);
+    }
+
+    static ArrayPool<double[]> sharedDoubles(int defaultSize, int maxPoolSize) {
+        return shared(double[]::new, a -> a.length, defaultSize, maxPoolSize);
     }
 
     // ========================== GENERIC FACTORIES ==========================
 
     static <T> ArrayPool<T> threadLocal(IntFunction<T> factory, ToIntFunction<T> length,
+                                        int defaultSize, Consumer<T> onDiscard, int maxPerThread) {
+        return new ThreadLocalImpl<>(factory, length, defaultSize, onDiscard, maxPerThread);
+    }
+
+    static <T> ArrayPool<T> threadLocal(IntFunction<T> factory, ToIntFunction<T> length,
                                         int defaultSize, int maxPerThread) {
-        return new ThreadLocalImpl<>(factory, length, defaultSize, maxPerThread);
+        return threadLocal(factory, length, defaultSize, _ -> {
+        }, maxPerThread);
     }
 
     static <T> ArrayPool<T> shared(IntFunction<T> factory, ToIntFunction<T> length,
@@ -74,13 +103,15 @@ public interface ArrayPool<T> {
         private final IntFunction<T> factory;
         private final ToIntFunction<T> length;
         private final int defaultSize;
+        private final Consumer<T> onDiscard;
         private final int maxPerThread;
 
         ThreadLocalImpl(IntFunction<T> factory, ToIntFunction<T> length,
-                        int defaultSize, int maxPerThread) {
+                        int defaultSize, Consumer<T> onDiscard, int maxPerThread) {
             this.factory = factory;
             this.length = length;
             this.defaultSize = defaultSize;
+            this.onDiscard = onDiscard;
             this.maxPerThread = maxPerThread;
         }
 
@@ -89,7 +120,6 @@ public interface ArrayPool<T> {
             ArrayDeque<T> deque = pool.get();
             T arr = deque.poll();
             if (arr != null && length.applyAsInt(arr) >= minSize) return arr;
-            // arr was too small or absent — allocate fresh
             return factory.apply(Math.max(defaultSize, minSize));
         }
 
@@ -97,9 +127,13 @@ public interface ArrayPool<T> {
         public void release(T arr) {
             if (arr == null) return;
             int len = length.applyAsInt(arr);
-            if (len < defaultSize / 2 || len > defaultSize * 2) return;
+            if (len < defaultSize / 2 || len > defaultSize * 2) {
+                onDiscard.accept(arr);
+                return;
+            }
             ArrayDeque<T> deque = pool.get();
             if (deque.size() < maxPerThread) deque.push(arr);
+            else onDiscard.accept(arr);
         }
     }
 
