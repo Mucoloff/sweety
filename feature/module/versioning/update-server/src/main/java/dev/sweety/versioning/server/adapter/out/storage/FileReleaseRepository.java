@@ -4,7 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev.sweety.util.logger.SimpleLogger;
-import dev.sweety.versioning.server.logic.release.ReleaseState;
+import dev.sweety.versioning.server.domain.release.ReleaseState;
 import dev.sweety.versioning.server.port.out.ReleaseRepository;
 import dev.sweety.versioning.util.Utils;
 import dev.sweety.versioning.version.ReleaseInfo;

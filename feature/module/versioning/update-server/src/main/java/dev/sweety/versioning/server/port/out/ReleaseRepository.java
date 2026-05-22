@@ -1,6 +1,6 @@
 package dev.sweety.versioning.server.port.out;
 
-import dev.sweety.versioning.server.logic.release.ReleaseState;
+import dev.sweety.versioning.server.domain.release.ReleaseState;
 import dev.sweety.versioning.version.artifact.Artifact;
 
 import java.io.IOException;

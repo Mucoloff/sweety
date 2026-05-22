@@ -1,11 +1,11 @@
-package dev.sweety.versioning.server.api.http.handler;
+package dev.sweety.versioning.server.adapter.in.http;
 
 import com.google.gson.JsonObject;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import dev.sweety.versioning.protocol.handshake.DownloadType;
 import dev.sweety.versioning.server.Settings;
-import dev.sweety.versioning.server.logic.download.DownloadManager;
+import dev.sweety.versioning.server.port.out.DownloadTokenStore;
 import dev.sweety.versioning.server.util.http.HttpUtils;
 import dev.sweety.data.ObjectUtils;
 import dev.sweety.versioning.util.Utils;
@@ -23,15 +23,15 @@ import java.util.UUID;
 
 /**
  * {@code JSON POST /release/download-token} — mints a one-time {@link dev.sweety.versioning.server.domain.download.Token}
- * for {@link dev.sweety.versioning.server.logic.download.DownloadHandler}. Requires {@link Settings#RELEASE_API_KEY} and header
+ * for {@link DownloadHandler}. Requires {@link Settings#RELEASE_API_KEY} and header
  * {@code X-Sweety-Release-Key}.
  */
 public final class ReleaseDownloadTokenHandler implements HttpHandler {
 
-    private final DownloadManager downloadManager;
+    private final DownloadTokenStore downloadManager;
     private final IReleaseService releases;
 
-    public ReleaseDownloadTokenHandler(DownloadManager downloadManager, IReleaseService releases) {
+    public ReleaseDownloadTokenHandler(DownloadTokenStore downloadManager, IReleaseService releases) {
         this.downloadManager = downloadManager;
         this.releases = releases;
     }

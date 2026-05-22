@@ -3,7 +3,7 @@ package dev.sweety.versioning.server.domain.client;
 import dev.sweety.util.signature.Signature;
 import dev.sweety.util.signature.Watermark;
 import dev.sweety.versioning.server.adapter.out.cache.CacheKey;
-import dev.sweety.versioning.server.logic.patch.PatchDefinition;
+import dev.sweety.versioning.server.application.patch.PatchDefinition;
 import dev.sweety.versioning.util.Utils;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.channel.Channel;
