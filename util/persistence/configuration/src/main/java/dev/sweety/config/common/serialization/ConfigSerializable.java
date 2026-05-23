@@ -6,6 +6,11 @@ import java.util.TreeMap;
 public interface ConfigSerializable {
     Map<String, Object> serialize();
 
+    /** Writes this object into the given sink at the current field path. */
+    default void write(ConfigSink sink) {
+        sink.writeRawMap(serialize());
+    }
+
     default <T> T getAs(Map<String, Object> me, String key) {
         //noinspection unchecked
         return (T) me.get(key);

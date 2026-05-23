@@ -1,5 +1,7 @@
 package dev.sweety.config.common.serialization;
 
+import dev.sweety.serialization.Reader;
+
 import java.lang.reflect.*;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -20,6 +22,16 @@ public class SerializableRegistry {
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Returns a {@link Reader} that deserializes a {@code T} from a {@link ConfigSource}.
+     * The reader calls {@link #construct} with the source's root map, capturing the reflective
+     * constructor or factory lookup once at first use.
+     */
+    public static <T extends ConfigSerializable> Reader<T, ConfigSource> readerFor(Class<T> clazz) {
+        register(clazz);
+        return source -> construct(clazz, source.toMap());
     }
 
     public static <T extends ConfigSerializable> T construct(Class<T> clazz, Map<String, Object> data) {
