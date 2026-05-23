@@ -66,7 +66,7 @@ public final class Messages {
 
     public static Messages forBundle(String baseName, Configuration prototype, Path overrideDir) {
         String key = baseName + "@" + activeLocale().toLanguageTag();
-        return CACHE.computeIfAbsent(key, k -> new Messages(baseName, prototype, overrideDir, activeLocale()));
+        return CACHE.computeIfAbsent(key, _ -> new Messages(baseName, prototype, overrideDir, activeLocale()));
     }
 
     // ── Global locale control ──────────────────────────────────────────────────

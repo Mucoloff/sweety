@@ -61,6 +61,7 @@
             <option value="$PROJECT_DIR$/util/exception" />
             <option value="$PROJECT_DIR$/util/file" />
             <option value="$PROJECT_DIR$/util/filter" />
+            <option value="$PROJECT_DIR$/util/i18n" />
             <option value="$PROJECT_DIR$/util/logger" />
             <option value="$PROJECT_DIR$/util/math" />
             <option value="$PROJECT_DIR$/util/persistence" />
