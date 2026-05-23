@@ -1,0 +1,5 @@
+test:
+  greeting: "Hello, {0}!"
+  farewell: "Goodbye, {0}!"
+  apostrophe: "It''s {0}."
+  en_only: "English only"

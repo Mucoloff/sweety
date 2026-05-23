@@ -1,0 +1,4 @@
+test:
+  greeting: "Ciao, {0}!"
+  farewell: "Arrivederci, {0}!"
+  apostrophe: "È {0}."
