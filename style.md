@@ -324,6 +324,24 @@ Non creare interfacce senza motivo reale (multipla implementazione, test, estens
 
 ---
 
-# 14. Regola finale
+# 14. Reflection vs Annotation Processing
+
+## Reflection
+- Usare solo ai boundary (plugin, integrazione)
+- Evitare nel core business
+- Limitare a casi necessari
+
+## Annotation Processing / KSP
+- Preferire per code generation
+- Usare per eliminare reflection runtime
+- Garantisce type safety e performance
+
+## Regola
+- Se puoi farlo a compile-time → fallo
+- Reflection è ultima scelta, non default
+
+---
+
+# 15. Regola finale
 
 > Codice semplice > codice "smart"
