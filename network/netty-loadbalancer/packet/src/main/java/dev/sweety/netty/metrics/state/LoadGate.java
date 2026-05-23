@@ -11,6 +11,7 @@ public final class LoadGate {
 
     private final int count;
 
+    @Deprecated
     public LoadGate(double min, double max, Limits... limits) {
         if (min >= max) throw new IllegalArgumentException("min must be less than max");
         this.min = min;
@@ -24,6 +25,10 @@ public final class LoadGate {
             this.out[i] = limits[i].out();
             this.weights[i] = limits[i].weight();
         }
+    }
+
+    public static LoadGate of(double min, double max, Limits... limits) {
+        return new LoadGate(min, max, limits);
     }
 
     public synchronized NodeState update(double... metrics) {

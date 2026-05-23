@@ -1,9 +1,11 @@
 package dev.sweety.netty.metrics;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 public final class EMA {
 
     private final double alpha; // 0 < alpha <= 1
-    private volatile double value;
+    private final AtomicReference<Double> value = new AtomicReference<>(0.0);
     private volatile boolean initialized = false;
 
     public EMA(double alpha) {
@@ -12,20 +14,20 @@ public final class EMA {
 
     public synchronized double update(double sample) {
         if (!initialized) {
-            value = sample;
+            value.set(sample);
             initialized = true;
         } else {
-            value = alpha * sample + (1f - alpha) * value;
+            value.updateAndGet(v -> alpha * sample + (1 - alpha) * v);
         }
-        return value;
+        return value.get();
     }
 
     public double get() {
-        return value;
+        return value.get();
     }
 
     public void reset() {
         this.initialized = false;
-        this.value = 0f;
+        this.value.set(0.0);
     }
 }

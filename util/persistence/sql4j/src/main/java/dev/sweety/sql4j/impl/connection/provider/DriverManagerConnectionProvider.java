@@ -17,6 +17,7 @@ public class DriverManagerConnectionProvider implements ConnectionProvider {
     @Nullable private final String password;
     private final DialectType dialectType;
 
+    @Deprecated
     public DriverManagerConnectionProvider(DatabaseConfig config) {
         this.jdbcUrl = config.jdbcUrl();
         this.user = config.user();
@@ -24,6 +25,7 @@ public class DriverManagerConnectionProvider implements ConnectionProvider {
         this.dialectType = config.dialectType();
     }
 
+    @Deprecated
     public DriverManagerConnectionProvider(SQL4JConfig config) {
         this.jdbcUrl = config.jdbcUrl();
         this.user = config.user();
@@ -31,11 +33,25 @@ public class DriverManagerConnectionProvider implements ConnectionProvider {
         this.dialectType = config.dialect();
     }
 
+    @Deprecated
     public DriverManagerConnectionProvider(String jdbcUrl, @Nullable String user, @Nullable String password) {
         this.jdbcUrl = jdbcUrl;
         this.user = user;
         this.password = password;
         this.dialectType = null;
+    }
+
+    public static DriverManagerConnectionProvider of(DatabaseConfig config) {
+        return new DriverManagerConnectionProvider(config);
+    }
+
+    public static DriverManagerConnectionProvider of(SQL4JConfig config) {
+        return new DriverManagerConnectionProvider(config);
+    }
+
+    public static DriverManagerConnectionProvider of(String jdbcUrl, @Nullable String user,
+                                                     @Nullable String password) {
+        return new DriverManagerConnectionProvider(jdbcUrl, user, password);
     }
 
     @Override

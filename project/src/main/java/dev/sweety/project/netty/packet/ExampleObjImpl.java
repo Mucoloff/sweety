@@ -1,13 +1,13 @@
 package dev.sweety.project.netty.packet;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+/**
+ * @deprecated Use {@link DefaultExampleObj} instead.
+ */
+@Deprecated
+public class ExampleObjImpl extends DefaultExampleObj {
 
-@AllArgsConstructor
-@Getter
-public class ExampleObjImpl implements ExampleObj {
-
-    private int value;
-    private String text;
+    public ExampleObjImpl(int value, String text) {
+        super(value, text);
+    }
 
 }

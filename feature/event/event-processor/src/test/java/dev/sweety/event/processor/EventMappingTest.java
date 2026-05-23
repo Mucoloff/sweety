@@ -23,8 +23,8 @@ class EventMappingTest {
     }
 
     // Stub: dispatch just returns the event; everything else throws.
-    static IEventSystem passThroughSystem() {
-        return new IEventSystem() {
+    static EventSystemPort passThroughSystem() {
+        return new EventSystemPort() {
             @Override public <T extends Event<?>> T dispatch(T event) { return event; }
             @Override public <T extends Event<?>> void subscribe(Class<T> t, Listener<T> l, int p, dev.sweety.event.api.info.State s) { throw new UnsupportedOperationException(); }
             @Override public <T extends Event<?>> SubscriptionBuilder<T> on(Class<T> t) { throw new UnsupportedOperationException(); }

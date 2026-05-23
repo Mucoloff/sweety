@@ -7,12 +7,14 @@ import lombok.ToString;
 import java.lang.reflect.Field;
 import java.util.concurrent.*;
 import java.util.function.Function;
+import java.util.logging.Logger;
 
 public final class AsyncScheduler {
 
     private static final char INNER_CLASS_SEPARATOR_CHAR = '$';
     public static int STOP_WATCH_TIME_MILLIS = 1500;
 
+    private static final Logger LOG = Logger.getLogger(AsyncScheduler.class.getName());
     //static final SimpleLogger log = new SimpleLogger(AsyncScheduler.class);
 
     @Getter
@@ -47,7 +49,8 @@ public final class AsyncScheduler {
             if (timer != null) {
                 timer.cancel(true);
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            LOG.warning("Failed to cancel scheduled future: " + e.getMessage());
         }
     }
 

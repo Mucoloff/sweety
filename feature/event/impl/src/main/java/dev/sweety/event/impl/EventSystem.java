@@ -12,7 +12,7 @@ import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 
-public class EventSystem implements IEventSystem {
+public class EventSystem implements EventSystemPort {
 
     private final CallbackRegistry registry;
     private final ExecutionPlanner planner;

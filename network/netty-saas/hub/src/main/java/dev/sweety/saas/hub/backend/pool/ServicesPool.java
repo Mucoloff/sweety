@@ -156,7 +156,7 @@ public class ServicesPool extends DynamicBackendNodePool<ServiceNode> {
             }
         }
 
-        logger.warn("[ServicesPool] No configured node for incoming port " + port + " — accepted as unknown, awaiting self-identification");
+        logger.warn("[ServicesPool] No configured node for incoming port", port, "— accepted as unknown, awaiting self-identification");
         return new ServiceNode(hub, new ServiceNodeConfig(null, address.getHostString(), port, -1, -1)).ctx(ctx);
     }
 

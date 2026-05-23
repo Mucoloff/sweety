@@ -141,8 +141,8 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
         if (!(packet instanceof InternalPacket internal)) {
             if (node != null && node.handled(packet))
                 return;
-            logger.info("(non-internal), Received", packet.name(), "from " + Messenger.address(ctx.channel())
-                    + " (node:" + (node == null ? null : node.typeName()) + ")");
+            logger.info("(non-internal), Received", packet.name(), "from", Messenger.address(ctx.channel()),
+                    "(node:" + (node == null ? null : node.typeName()) + ")");
             return;
         }
 
@@ -188,7 +188,7 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
      */
     public void checkHealth() {
         try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
-            this.logger.info("Starting structured health check for " + backendPool.pool().size() + " nodes...");
+            this.logger.info("Starting structured health check for", backendPool.pool().size(), "nodes...");
             
             for (Node node : backendPool.pool()) {
                 scope.fork(() -> {

@@ -161,12 +161,7 @@ public class MicrosoftLogin {
 
         @Override
         public String toString() {
-            return "LoginData{" +
-                    "accessToken='" + accessToken + '\'' +
-                    ", newRefreshToken='" + newRefreshToken + '\'' +
-                    ", uuid='" + uuid + '\'' +
-                    ", username='" + username + '\'' +
-                    '}';
+            return "LoginData{accessToken='%s', newRefreshToken='%s', uuid='%s', username='%s'}".formatted(accessToken, newRefreshToken, uuid, username);
         }
     }
 

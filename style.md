@@ -76,6 +76,21 @@ require(x != null)
 ## Nota
 Non fare controlli ovunque → solo ai **boundary (API / factory)**
 
+### ❌ Optional anti-pattern
+- `Optional` come **parametro** di metodo → usa overload o `@Nullable`
+- `Optional` come **campo** → non ha senso semantico
+- `Optional` in collezioni (`List<Optional<T>>`) → usa lista filtrata
+- `Optional` solo come **return type** quando assenza è outcome normale
+
+```java
+// ❌
+void process(Optional<String> name) { ... }
+
+// ✔️
+void process(@Nullable String name) { ... }
+void process() { process(null); }
+```
+
 ---
 
 # 3. Strutture dati
@@ -239,6 +254,14 @@ config.set(newConfig);
 ### ❌ Anti-pattern
 - `volatile` su un campo e poi operazioni compound su di esso (race condition)
 - `synchronized` su oggetti pubblici o statici condivisi
+- `volatile double score; score += x;` — race condition, non atomico
+- Due `volatile boolean` per double-checked init → usare `AtomicReference<State>`
+- `volatile T field` con setter pubblico su classe statica = singleton globale mutabile → preferire DI
+
+### Stato globale mutabile
+❌ `private static volatile X instance; public static void setInstance(X x)` — coupling nascosto.
+✔️ Passare la dipendenza via costruttore.
+Se stai costruendo un hook runtime-swappable giustificato, usa `AtomicReference<X>` e documenta perché.
 
 ---
 
@@ -342,6 +365,92 @@ Non creare interfacce senza motivo reale (multipla implementazione, test, estens
 
 ---
 
-# 15. Regola finale
+# 15. Exception Handling
+
+## Regole
+- ❌ Mai swallowone: `catch (Exception ignored) {}` vietato
+- ✔️ Catch su tipo specifico, non bare `Exception` / `Throwable`
+- ✔️ O rethrow (con causa) **o** log con stack completo
+- ❌ `throw new RuntimeException(e.getMessage())` — perde la causa
+- ✔️ Wrap con causa: `throw new MyException("...", e)`
+- ✔️ Ai top-level entry point (executor task, main loop) log + continue accettabile — commentare il perché
+
+### ✔️ Esempio
+```java
+// ❌
+try { x(); } catch (Exception ignored) {}
+
+// ❌ — perde causa
+} catch (IOException e) { throw new RuntimeException(e.getMessage()); }
+
+// ✔️ — wrap con causa
+} catch (IOException e) { throw new MyRuntimeException("load failed", e); }
+
+// ✔️ — entry point, log + continue
+} catch (IOException e) {
+    LOG.error("Cleanup skip", e); // top-level loop, we must continue
+}
+```
+
+---
+
+# 16. Resource Management
+
+## Regole
+- ✔️ Sempre `try-with-resources` per `AutoCloseable` (Stream, Connection, Channel, ClassLoader closeable)
+- ❌ `close()` manuale in blocco `finally` — error-prone
+- ✔️ API che **restituisce** una risorsa deve documentare chi è il proprietario (chi chiude)
+- ✔️ Risorse in catena: dichiarare ognuna su riga separata nell'head del try-with-resources
+
+### ✔️ Esempio
+```java
+// ❌
+InputStream in = Files.newInputStream(path);
+try {
+    parse(in);
+} finally {
+    in.close(); // dimenticabile, nasconde eccezioni
+}
+
+// ✔️
+try (InputStream in = Files.newInputStream(path)) {
+    parse(in);
+}
+
+// ✔️ catena
+try (var conn = ds.getConnection();
+     var stmt = conn.prepareStatement(sql)) {
+    ...
+}
+```
+
+---
+
+# 17. equals / hashCode / toString
+
+## Regole
+- ✔️ Override `equals` → **obbligatorio** override `hashCode`
+- ✔️ Entrambi dipendono dagli **stessi campi**
+- ✔️ Per value types → preferire `record` (li dà gratis)
+- ✔️ `toString()` per value types: usa `String.formatted`, non concatenazione
+- ❌ Mai confrontare `float`/`double` con `==` in `equals` → `Double.compare`
+
+### ✔️ Esempio
+```java
+// ✔️ record — equals/hashCode/toString gratis
+public record Point(double x, double y) {}
+
+// ✔️ classe manuale
+@Override public boolean equals(Object o) {
+    if (!(o instanceof Foo f)) return false;
+    return Double.compare(f.value, value) == 0 && name.equals(f.name);
+}
+@Override public int hashCode() { return Objects.hash(name, value); }
+@Override public String toString() { return "Foo[name=%s, value=%s]".formatted(name, value); }
+```
+
+---
+
+# 18. Regola finale
 
 > Codice semplice > codice "smart"

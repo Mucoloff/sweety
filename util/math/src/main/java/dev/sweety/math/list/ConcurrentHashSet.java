@@ -48,6 +48,7 @@ public class ConcurrentHashSet<K>
      * Constructs a new, empty set; the backing {@code ConcurrentHashMap} instance has
      * default initial capacity (16) and load factor (0.75).
      */
+    @Deprecated
     public ConcurrentHashSet() {
         this.map = new ConcurrentHashMap<>();
     }
@@ -60,6 +61,7 @@ public class ConcurrentHashSet<K>
      * @param c the collection whose elements are to be placed into this set
      * @throws NullPointerException if the specified collection is null
      */
+    @Deprecated
     public ConcurrentHashSet(Collection<? extends K> c) {
         this.map = new ConcurrentHashMap<>(Math.max((int) (c.size() / 0.75f) + 1, 16));
         addAll(c);
@@ -72,6 +74,7 @@ public class ConcurrentHashSet<K>
      * @param initialCapacity the initial capacity of the hash map
      * @throws IllegalArgumentException if the initial capacity is less than zero
      */
+    @Deprecated
     public ConcurrentHashSet(int initialCapacity) {
         this.map = new ConcurrentHashMap<>(initialCapacity);
     }
@@ -84,8 +87,44 @@ public class ConcurrentHashSet<K>
      * @param loadFactor      the load factor of the hash map
      * @throws IllegalArgumentException if the initial capacity is less than zero, or if the load factor is nonpositive
      */
+    @Deprecated
     public ConcurrentHashSet(int initialCapacity, float loadFactor) {
         this.map = new ConcurrentHashMap<>(initialCapacity, loadFactor);
+    }
+
+    /**
+     * Creates a new, empty {@code ConcurrentHashSet} with default initial capacity and load factor.
+     */
+    public static <K> ConcurrentHashSet<K> create() {
+        return new ConcurrentHashSet<>();
+    }
+
+    /**
+     * Creates a new {@code ConcurrentHashSet} containing the elements in the specified collection.
+     *
+     * @param c the collection whose elements are to be placed into this set
+     */
+    public static <K> ConcurrentHashSet<K> of(Collection<? extends K> c) {
+        return new ConcurrentHashSet<>(c);
+    }
+
+    /**
+     * Creates a new, empty {@code ConcurrentHashSet} with the specified initial capacity.
+     *
+     * @param initialCapacity the initial capacity of the backing hash map
+     */
+    public static <K> ConcurrentHashSet<K> of(int initialCapacity) {
+        return new ConcurrentHashSet<>(initialCapacity);
+    }
+
+    /**
+     * Creates a new, empty {@code ConcurrentHashSet} with the specified initial capacity and load factor.
+     *
+     * @param initialCapacity the initial capacity of the backing hash map
+     * @param loadFactor      the load factor of the backing hash map
+     */
+    public static <K> ConcurrentHashSet<K> of(int initialCapacity, float loadFactor) {
+        return new ConcurrentHashSet<>(initialCapacity, loadFactor);
     }
 
     /**

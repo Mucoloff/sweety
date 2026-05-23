@@ -12,10 +12,13 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 public class PatchArchiveReader implements PatchReader {
+
+    private static final Logger LOG = Logger.getLogger(PatchArchiveReader.class.getName());
 
     public static PatchArchiveIndex readIndex(ZipFile zf) throws IOException {
         ZipEntry ze = zf.getEntry(PatchArchiveConstants.INDEX_ENTRY);
@@ -55,7 +58,9 @@ public class PatchArchiveReader implements PatchReader {
             if (tmp != null) {
                 try {
                     Files.deleteIfExists(tmp);
-                } catch (IOException ignored) {}
+                } catch (IOException e) {
+                    LOG.warning("Failed to delete temporary patch archive file '" + tmp + "': " + e.getMessage());
+                }
             }
         }
     }

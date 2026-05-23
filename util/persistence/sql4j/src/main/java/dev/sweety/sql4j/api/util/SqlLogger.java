@@ -43,7 +43,7 @@ public interface SqlLogger {
      * @return a new {@code SqlLogger} writing to stdout
      */
     static SqlLogger stdout(String prefix) {
-        return message -> System.out.println("[" + prefix + "] " + message);
+        return message -> System.out.println("[%s] %s".formatted(prefix, message));
     }
 
     /**

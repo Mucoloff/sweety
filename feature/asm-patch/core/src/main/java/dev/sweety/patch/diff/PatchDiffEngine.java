@@ -159,8 +159,8 @@ public class PatchDiffEngine {
                     }
                     return new ModifyOperation(path, hash, sb.toString().getBytes(StandardCharsets.UTF_8), PatchOperation.Method.TEXT_DIFF);
                 }
-            } catch (Exception ignored) {
-                // Fallback
+            } catch (Exception e) {
+                // text-diff failed — fall through to binary REPLACEMENT below
             }
         }
 

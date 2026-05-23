@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class BackendNode implements IBackend {
 
@@ -47,30 +48,51 @@ public class BackendNode implements IBackend {
 
     public void disconnect() {
         requestMetrics.reset();
-        usageScore = latencyScore = bandwidthScore = currentBandwidthScore = packetTimeScore = totalScore = 0;
-        maxObservedAvgLoad = maxObservedCurrentLoad = maxObservedPacketTime = 1;
+        metrics.set(Snapshot.zero());
         packetTimings.clear();
         inFlight.set(0);
         logger.push("disconnect").info("Backend disconnected!").pop();
     }
 
-    private volatile NodeState state = NodeState.HEALTHY;
-    private volatile double usageScore = 0, latencyScore = 0, bandwidthScore = 0, currentBandwidthScore = 0, packetTimeScore = 0, totalScore = 0;
-    private volatile double avg_packet_time = 0.5;
+    /**
+     * Immutable snapshot of all volatile metric fields. Updated atomically via
+     * {@link #metrics} to prevent torn reads across related fields.
+     */
+    private record Snapshot(
+            NodeState state,
+            double usageScore,
+            double latencyScore,
+            double bandwidthScore,
+            double currentBandwidthScore,
+            double packetTimeScore,
+            double totalScore,
+            double avg_packet_time,
+            double maxObservedPacketTime,
+            double maxObservedAvgLoad,
+            double maxObservedCurrentLoad
+    ) {
+        static Snapshot zero() {
+            return new Snapshot(NodeState.HEALTHY, 0, 0, 0, 0, 0, 0, 0.5, 1, 1, 1);
+        }
+    }
 
-    private volatile double maxObservedPacketTime = 1;
+    private final AtomicReference<Snapshot> metrics = new AtomicReference<>(Snapshot.zero());
+
     private final Map<Integer, Double> packetTimings = new ConcurrentHashMap<>();
 
-    private volatile double maxObservedAvgLoad = 1, maxObservedCurrentLoad = 1;
-
-    synchronized void updateMaxObserved(double avgLoad, double currentLoad, double currentTime) {
-        maxObservedAvgLoad = Math.max(maxObservedAvgLoad, avgLoad);
-        maxObservedCurrentLoad = Math.max(maxObservedCurrentLoad, currentLoad);
-        maxObservedPacketTime = Math.max(maxObservedPacketTime, currentTime);
+    void updateMaxObserved(double avgLoad, double currentLoad, double currentTime) {
+        metrics.updateAndGet(s -> new Snapshot(
+                s.state(), s.usageScore(), s.latencyScore(), s.bandwidthScore(),
+                s.currentBandwidthScore(), s.packetTimeScore(), s.totalScore(),
+                s.avg_packet_time(),
+                Math.max(s.maxObservedPacketTime(), currentTime),
+                Math.max(s.maxObservedAvgLoad(), avgLoad),
+                Math.max(s.maxObservedCurrentLoad(), currentLoad)
+        ));
     }
 
     public final double avgPacketTime(int id) {
-        return packetTimings.getOrDefault(id, avg_packet_time);
+        return packetTimings.getOrDefault(id, metrics.get().avg_packet_time());
     }
 
     public boolean handled(Packet packet) {
@@ -84,9 +106,9 @@ public class BackendNode implements IBackend {
     @Override
     public void onPacketReceive(final ChannelHandlerContext ctx, final Packet packet) {
         this.ctx = ctx;
-        if (packet instanceof MetricsUpdatePacket metrics) {
+        if (packet instanceof MetricsUpdatePacket metricsPacket) {
             //update packet timings
-            packetTimings.putAll(metrics.packetTimings());
+            packetTimings.putAll(metricsPacket.packetTimings());
 
             // update max observed scores
             double avgLoad = requestMetrics.getAverageBandwidthLoad();
@@ -99,33 +121,46 @@ public class BackendNode implements IBackend {
                 count_time++;
             }
             final double current_time = count_time > 0 ? sum_time / count_time : 0.5;
-            this.avg_packet_time = current_time;
             updateMaxObserved(avgLoad, currentLoad, current_time);
 
-            // Update node state first (so penalty applies consistently)
-            final double statePenalty = ((state = metrics.state()) == NodeState.DEGRADED ? 0.7f : 1);
+            // Compute all new metric values and publish atomically as a single Snapshot.
+            metrics.updateAndGet(s -> {
+                // Update node state first (so penalty applies consistently)
+                final NodeState newState = metricsPacket.state();
+                final double statePenalty = (newState == NodeState.DEGRADED ? 0.7f : 1);
 
-            // Resource usage score: weighted blend of process usage + pressure indicators.
-            // (CPU/RAM stay the main driver, the others help detect contention / nearing limits.)
-            usageScore = statePenalty * (
-                    0.32 * metrics.cpu()
-                            + 0.28 * metrics.ram()
-                            + 0.15 * metrics.openFiles()
-                            + 0.15 * metrics.threadPressure()
-                            + 0.10 * metrics.systemLoad()
-            );
+                // Resource usage score: weighted blend of process usage + pressure indicators.
+                // (CPU/RAM stay the main driver, the others help detect contention / nearing limits.)
+                double newUsageScore = statePenalty * (
+                        0.32 * metricsPacket.cpu()
+                                + 0.28 * metricsPacket.ram()
+                                + 0.15 * metricsPacket.openFiles()
+                                + 0.15 * metricsPacket.threadPressure()
+                                + 0.10 * metricsPacket.systemLoad()
+                );
 
-            latencyScore = MathUtils.clamp(requestMetrics.getAverageLatency() / BackendSettings.MAX_EXPECTED_LATENCY());
-            bandwidthScore = avgLoad / maxObservedAvgLoad;
-            currentBandwidthScore = currentLoad / maxObservedCurrentLoad;
-            packetTimeScore = current_time / maxObservedPacketTime;
+                double newLatencyScore = MathUtils.clamp(requestMetrics.getAverageLatency() / BackendSettings.MAX_EXPECTED_LATENCY());
 
-            // Total score: keep previous weights but shift a bit from bandwidth -> usage to reflect new richer usage signal.
-            totalScore = 0.40 * usageScore
-                    + 0.25 * latencyScore
-                    + 0.15 * bandwidthScore
-                    + 0.10 * currentBandwidthScore
-                    + 0.10 * packetTimeScore;
+                // Read the latest max-observed values (already updated above via updateMaxObserved).
+                Snapshot cur = metrics.get();
+                double newBandwidthScore = avgLoad / cur.maxObservedAvgLoad();
+                double newCurrentBandwidthScore = currentLoad / cur.maxObservedCurrentLoad();
+                double newPacketTimeScore = current_time / cur.maxObservedPacketTime();
+
+                // Total score: keep previous weights but shift a bit from bandwidth -> usage to reflect new richer usage signal.
+                double newTotalScore = 0.40 * newUsageScore
+                        + 0.25 * newLatencyScore
+                        + 0.15 * newBandwidthScore
+                        + 0.10 * newCurrentBandwidthScore
+                        + 0.10 * newPacketTimeScore;
+
+                return new Snapshot(
+                        newState, newUsageScore, newLatencyScore, newBandwidthScore,
+                        newCurrentBandwidthScore, newPacketTimeScore, newTotalScore,
+                        current_time,
+                        cur.maxObservedPacketTime(), cur.maxObservedAvgLoad(), cur.maxObservedCurrentLoad()
+                );
+            });
         } else if (loadBalancer != null && packet instanceof InternalPacket internal) {
             internal.get().ifPresent(forward -> {
                 if (forward.senderId() >= 0) {
@@ -237,83 +272,101 @@ public class BackendNode implements IBackend {
     }
 
     public NodeState state() {
-        return state;
+        return metrics.get().state();
     }
 
     public BackendNode setState(NodeState state) {
-        this.state = state;
+        metrics.updateAndGet(s -> new Snapshot(state, s.usageScore(), s.latencyScore(), s.bandwidthScore(),
+                s.currentBandwidthScore(), s.packetTimeScore(), s.totalScore(),
+                s.avg_packet_time(), s.maxObservedPacketTime(), s.maxObservedAvgLoad(), s.maxObservedCurrentLoad()));
         return this;
     }
 
     public double usageScore() {
-        return usageScore;
+        return metrics.get().usageScore();
     }
 
     public BackendNode setUsageScore(double usageScore) {
-        this.usageScore = usageScore;
+        metrics.updateAndGet(s -> new Snapshot(s.state(), usageScore, s.latencyScore(), s.bandwidthScore(),
+                s.currentBandwidthScore(), s.packetTimeScore(), s.totalScore(),
+                s.avg_packet_time(), s.maxObservedPacketTime(), s.maxObservedAvgLoad(), s.maxObservedCurrentLoad()));
         return this;
     }
 
     public double latencyScore() {
-        return latencyScore;
+        return metrics.get().latencyScore();
     }
 
     public BackendNode setLatencyScore(double latencyScore) {
-        this.latencyScore = latencyScore;
+        metrics.updateAndGet(s -> new Snapshot(s.state(), s.usageScore(), latencyScore, s.bandwidthScore(),
+                s.currentBandwidthScore(), s.packetTimeScore(), s.totalScore(),
+                s.avg_packet_time(), s.maxObservedPacketTime(), s.maxObservedAvgLoad(), s.maxObservedCurrentLoad()));
         return this;
     }
 
     public double bandwidthScore() {
-        return bandwidthScore;
+        return metrics.get().bandwidthScore();
     }
 
     public BackendNode setBandwidthScore(double bandwidthScore) {
-        this.bandwidthScore = bandwidthScore;
+        metrics.updateAndGet(s -> new Snapshot(s.state(), s.usageScore(), s.latencyScore(), bandwidthScore,
+                s.currentBandwidthScore(), s.packetTimeScore(), s.totalScore(),
+                s.avg_packet_time(), s.maxObservedPacketTime(), s.maxObservedAvgLoad(), s.maxObservedCurrentLoad()));
         return this;
     }
 
     public double currentBandwidthScore() {
-        return currentBandwidthScore;
+        return metrics.get().currentBandwidthScore();
     }
 
     public BackendNode setCurrentBandwidthScore(double currentBandwidthScore) {
-        this.currentBandwidthScore = currentBandwidthScore;
+        metrics.updateAndGet(s -> new Snapshot(s.state(), s.usageScore(), s.latencyScore(), s.bandwidthScore(),
+                currentBandwidthScore, s.packetTimeScore(), s.totalScore(),
+                s.avg_packet_time(), s.maxObservedPacketTime(), s.maxObservedAvgLoad(), s.maxObservedCurrentLoad()));
         return this;
     }
 
     public double packetTimeScore() {
-        return packetTimeScore;
+        return metrics.get().packetTimeScore();
     }
 
     public BackendNode setPacketTimeScore(double packetTimeScore) {
-        this.packetTimeScore = packetTimeScore;
+        metrics.updateAndGet(s -> new Snapshot(s.state(), s.usageScore(), s.latencyScore(), s.bandwidthScore(),
+                s.currentBandwidthScore(), packetTimeScore, s.totalScore(),
+                s.avg_packet_time(), s.maxObservedPacketTime(), s.maxObservedAvgLoad(), s.maxObservedCurrentLoad()));
         return this;
     }
 
     public double totalScore() {
-        return totalScore;
+        return metrics.get().totalScore();
     }
 
     public BackendNode setTotalScore(double totalScore) {
-        this.totalScore = totalScore;
+        metrics.updateAndGet(s -> new Snapshot(s.state(), s.usageScore(), s.latencyScore(), s.bandwidthScore(),
+                s.currentBandwidthScore(), s.packetTimeScore(), totalScore,
+                s.avg_packet_time(), s.maxObservedPacketTime(), s.maxObservedAvgLoad(), s.maxObservedCurrentLoad()));
         return this;
     }
 
     public double avg_packet_time() {
-        return avg_packet_time;
+        return metrics.get().avg_packet_time();
     }
 
     public BackendNode setAvg_packet_time(double avg_packet_time) {
-        this.avg_packet_time = avg_packet_time;
+        metrics.updateAndGet(s -> new Snapshot(s.state(), s.usageScore(), s.latencyScore(), s.bandwidthScore(),
+                s.currentBandwidthScore(), s.packetTimeScore(), s.totalScore(),
+                avg_packet_time, s.maxObservedPacketTime(), s.maxObservedAvgLoad(), s.maxObservedCurrentLoad()));
         return this;
     }
 
     public double maxObservedPacketTime() {
-        return maxObservedPacketTime;
+        return metrics.get().maxObservedPacketTime();
     }
 
     public BackendNode setMaxObservedPacketTime(double maxObservedPacketTime) {
-        this.maxObservedPacketTime = maxObservedPacketTime;
+        metrics.updateAndGet(s -> new Snapshot(s.state(), s.usageScore(), s.latencyScore(), s.bandwidthScore(),
+                s.currentBandwidthScore(), s.packetTimeScore(), s.totalScore(),
+                s.avg_packet_time(), maxObservedPacketTime, s.maxObservedAvgLoad(), s.maxObservedCurrentLoad()));
         return this;
     }
 
@@ -322,20 +375,24 @@ public class BackendNode implements IBackend {
     }
 
     public double maxObservedAvgLoad() {
-        return maxObservedAvgLoad;
+        return metrics.get().maxObservedAvgLoad();
     }
 
     public BackendNode setMaxObservedAvgLoad(double maxObservedAvgLoad) {
-        this.maxObservedAvgLoad = maxObservedAvgLoad;
+        metrics.updateAndGet(s -> new Snapshot(s.state(), s.usageScore(), s.latencyScore(), s.bandwidthScore(),
+                s.currentBandwidthScore(), s.packetTimeScore(), s.totalScore(),
+                s.avg_packet_time(), s.maxObservedPacketTime(), maxObservedAvgLoad, s.maxObservedCurrentLoad()));
         return this;
     }
 
     public double maxObservedCurrentLoad() {
-        return maxObservedCurrentLoad;
+        return metrics.get().maxObservedCurrentLoad();
     }
 
     public BackendNode setMaxObservedCurrentLoad(double maxObservedCurrentLoad) {
-        this.maxObservedCurrentLoad = maxObservedCurrentLoad;
+        metrics.updateAndGet(s -> new Snapshot(s.state(), s.usageScore(), s.latencyScore(), s.bandwidthScore(),
+                s.currentBandwidthScore(), s.packetTimeScore(), s.totalScore(),
+                s.avg_packet_time(), s.maxObservedPacketTime(), s.maxObservedAvgLoad(), maxObservedCurrentLoad));
         return this;
     }
 

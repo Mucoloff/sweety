@@ -35,7 +35,7 @@ public interface PacketRegistry {
         try {
             return constructPacket(packetId, timestamp, data);
         } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
-            log.error("Error constructing packet with id " + packetId, e);
+            log.error("Error constructing packet with id", packetId, e);
             return null;
         }
     }

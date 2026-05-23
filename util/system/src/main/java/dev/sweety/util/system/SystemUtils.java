@@ -2,8 +2,11 @@ package dev.sweety.util.system;
 
 import java.net.NetworkInterface;
 import java.util.Collections;
+import java.util.logging.Logger;
 
 public final class SystemUtils {
+
+    private static final Logger LOG = Logger.getLogger(SystemUtils.class.getName());
 
     public static String[] getHwid() {
         return new String[]{
@@ -25,7 +28,9 @@ public final class SystemUtils {
 
     private static String getMAC() {
         try {
-            for (NetworkInterface ni : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+            var e = NetworkInterface.getNetworkInterfaces();
+            while (e.hasMoreElements()) {
+                var ni = e.nextElement();
                 byte[] mac = ni.getHardwareAddress();
                 if (mac != null) {
                     StringBuilder sb = new StringBuilder();
@@ -33,7 +38,8 @@ public final class SystemUtils {
                     return sb.toString();
                 }
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            LOG.warning("Failed to read MAC address: " + e.getMessage());
         }
         return "UNKNOWN";
     }

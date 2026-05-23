@@ -164,13 +164,16 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
             if (value instanceof Service s) {
                 try {
                     s.onDisable();
-                } catch (Exception ignored) {
+                } catch (Exception e) {
+                    // best-effort shutdown — log and continue disabling remaining services
+                    System.getLogger(ServiceManager.class.getName()).log(System.Logger.Level.WARNING, "Service onDisable threw", e);
                 }
             }
-            if (value instanceof AutoCloseable) {
+            if (value instanceof AutoCloseable c) {
                 try {
-                    ((AutoCloseable) value).close();
-                } catch (Exception ignored) {
+                    c.close();
+                } catch (Exception e) {
+                    System.getLogger(ServiceManager.class.getName()).log(System.Logger.Level.WARNING, "AutoCloseable.close threw during shutdown", e);
                 }
             }
         });

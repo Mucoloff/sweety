@@ -465,12 +465,12 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
         }));
     }
 
-    public <T> Self writeOptional(final Optional<T> optional, AbstractCallableEncoder<? super T> encoder) {
-        return writeMarkedPayload(optional.isPresent(), optional.orElse(null), encoder);
+    public <T> Self writeOptional(@Nullable T value, AbstractCallableEncoder<? super T> encoder) {
+        return writeMarkedPayload(value != null, value, encoder);
     }
 
-    public <T extends AbstractEncoder> Self writeOptional(final Optional<T> optional) {
-        return writeOptional(optional, (buffer, t) -> t.write(buffer));
+    public <T extends AbstractEncoder> Self writeOptional(@Nullable T value) {
+        return writeOptional(value, (buffer, t) -> t.write(buffer));
     }
 
     public <T extends AbstractEncoder> Self writeObject(T object) {
@@ -821,9 +821,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
 
     @Override
     public String toString() {
-        return getClass().getSimpleName()
-                + "(ridx=" + readerIndex() + ", widx=" + writerIndex()
-                + ", readable=" + readableBytes() + ")";
+        return "%s(ridx=%d, widx=%d, readable=%d)".formatted(getClass().getSimpleName(), readerIndex(), writerIndex(), readableBytes());
     }
 
 }

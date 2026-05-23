@@ -80,6 +80,6 @@ public abstract class Packet {
 
     @Override
     public String toString() {
-        return name() + " (" + _id + ")" + (_timestamp > 0 ? (" [" + TimeUtils.date(_timestamp, "dd-mm-yyyy hh:MM:ss") + "] ") : " ") + "- " + _buffer.readableBytes() + " bytes";
+        return "%s (%d)%s- %d bytes".formatted(name(), _id, _timestamp > 0 ? " [" + TimeUtils.date(_timestamp, "dd-mm-yyyy hh:MM:ss") + "] " : " ", _buffer.readableBytes());
     }
 }

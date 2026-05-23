@@ -19,8 +19,13 @@ public final class Row {
 
     private final Map<String, Object> data;
 
+    @Deprecated
     public Row(Map<String, Object> data) {
         this.data = Collections.unmodifiableMap(new LinkedHashMap<>(data));
+    }
+
+    public static Row of(Map<String, Object> data) {
+        return new Row(data);
     }
 
     // --- Typed accessors ---
@@ -169,7 +174,7 @@ public final class Row {
 
     @Override
     public String toString() {
-        return "Row" + data;
+        return "Row%s".formatted(data);
     }
 
     @Override

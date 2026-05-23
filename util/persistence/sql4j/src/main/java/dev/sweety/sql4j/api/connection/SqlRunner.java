@@ -9,17 +9,20 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Utility class responsible for executing {@link Query} objects against a JDBC {@link Connection}.
  *
- * <p>The static logger is {@code volatile} so that changes via {@link #setLogger(SqlLogger)}
- * are immediately visible across all threads, including executor worker threads.
+ * <p>The static logger and slow-query threshold are held in atomic references so that
+ * changes via {@link #setLogger(SqlLogger)} and {@link #setSlowQueryThresholdMs(long)}
+ * are immediately visible on all threads without the risk of compound-update races.
  */
 public final class SqlRunner {
 
-    private static volatile SqlLogger logger = SqlLogger.nop();
-    private static volatile long slowQueryThresholdMs = 500; // Default 500ms
+    private static final AtomicReference<SqlLogger> logger = new AtomicReference<>(SqlLogger.nop());
+    private static final AtomicLong slowQueryThresholdMs = new AtomicLong(500); // Default 500ms
 
     private SqlRunner() {}
 
@@ -28,7 +31,7 @@ public final class SqlRunner {
      * Defaults to {@link SqlLogger#nop()} (no logging).
      */
     public static void setLogger(SqlLogger newLogger) {
-        logger = newLogger;
+        logger.set(newLogger);
     }
 
     /**
@@ -40,7 +43,7 @@ public final class SqlRunner {
      * @param threshold threshold in milliseconds; {@code 0} disables slow-query warnings
      */
     public static void setSlowQueryThresholdMs(long threshold) {
-        slowQueryThresholdMs = threshold;
+        slowQueryThresholdMs.set(threshold);
     }
 
     /**
@@ -49,7 +52,7 @@ public final class SqlRunner {
      * @return the non-null logger (may be {@link SqlLogger#nop()} if logging is disabled)
      */
     public static SqlLogger getLogger() {
-        return logger;
+        return logger.get();
     }
 
     /**
@@ -86,20 +89,24 @@ public final class SqlRunner {
             interceptor.preExecute(query, con);
         }
 
+        // Snapshot both atomics once so they stay consistent for the lifetime of this execution.
+        final SqlLogger log = logger.get();
+        final long thresholdMs = slowQueryThresholdMs.get();
+
         long start = System.nanoTime();
         try (PreparedStatement ps = query.returnGeneratedKeys()
                 ? con.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)
                 : con.prepareStatement(sql)) {
 
-            logger.log("[Thread-%d] Executing SQL: %s", Thread.currentThread().threadId(), sql);
+            log.log("[Thread-%d] Executing SQL: %s", Thread.currentThread().threadId(), sql);
             query.bind(ps);
             T result = query.execute(ps);
 
             long duration = System.nanoTime() - start;
             double durationMs = duration / 1_000_000.0;
-            logger.log("[Thread-%d] SQL Executed in %.2fms", Thread.currentThread().threadId(), durationMs);
-            if (durationMs > slowQueryThresholdMs) {
-                logger.log("[WARNING] SLOW QUERY DETECTED: %.2fms for SQL: %s", durationMs, sql);
+            log.log("[Thread-%d] SQL Executed in %.2fms", Thread.currentThread().threadId(), durationMs);
+            if (durationMs > thresholdMs) {
+                log.log("[WARNING] SLOW QUERY DETECTED: %.2fms for SQL: %s", durationMs, sql);
             }
 
             for (QueryInterceptor interceptor : interceptors) {

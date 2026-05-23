@@ -31,6 +31,7 @@ public final class RingBufferCore<E> {
      * @param capacity the maximum number of elements the buffer can hold
      * @throws IllegalArgumentException if capacity is not positive
      */
+    @Deprecated
     public RingBufferCore(int capacity) {
         if (capacity <= 0) {
             throw new IllegalArgumentException("Capacity must be positive: " + capacity);
@@ -39,6 +40,16 @@ public final class RingBufferCore<E> {
         //noinspection unchecked
         this.elements = (E[]) new Object[capacity];
         this.mask = isPowerOfTwo(capacity) ? capacity - 1 : -1;
+    }
+
+    /**
+     * Creates a new RingBufferCore with the specified capacity.
+     *
+     * @param capacity the maximum number of elements the buffer can hold
+     * @throws IllegalArgumentException if capacity is not positive
+     */
+    public static <E> RingBufferCore<E> of(int capacity) {
+        return new RingBufferCore<>(capacity);
     }
 
     private static boolean isPowerOfTwo(int n) {

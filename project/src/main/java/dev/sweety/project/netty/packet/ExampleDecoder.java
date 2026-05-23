@@ -7,6 +7,6 @@ public class ExampleDecoder implements CallableDecoder<ExampleObj> {
 
     @Override
     public ExampleObj read(final BufferReader buffer) {
-        return new ExampleObjImpl(buffer.readVarInt(), buffer.readString());
+        return new DefaultExampleObj(buffer.readVarInt(), buffer.readString());
     }
 }

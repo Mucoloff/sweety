@@ -28,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -45,8 +46,8 @@ public class Table<T> {
     private Column<?> softDeleteColumn;
     private TableAccessor<T> accessor;
 
-    private volatile boolean initializing = false;
-    private volatile boolean initialized = false;
+    private enum InitState { UNINIT, INITIALIZING, READY }
+    private final AtomicReference<InitState> state = new AtomicReference<>(InitState.UNINIT);
 
     public Table(Class<T> clazz, String name) {
         this.clazz = clazz;
@@ -127,20 +128,21 @@ public class Table<T> {
                 }
             }
             this.insertableColumns = new InsertableColumns(insertColumns, autoInc);
-            this.initialized = true;
+            state.set(InitState.READY);
         }
     }
 
     public void initialize(TableRegistry registry) {
-        if (initialized) return;
-        synchronized (this) {
-            if (initialized) return;
-            if (initializing) throw new Sql4jMappingException(
+        if (state.get() == InitState.READY) return;
+        if (!state.compareAndSet(InitState.UNINIT, InitState.INITIALIZING)) {
+            if (state.get() == InitState.INITIALIZING) throw new Sql4jMappingException(
                     "Circular initialization detected for table '" + name +
                     "'. Check for circular @ForeignKey references.");
-            initializing = true;
+            // Another thread already set it to READY between the first check and the CAS.
+            return;
+        }
 
-            try {
+        try {
                 // If we have an accessor, we can potentially skip some reflection
                 // (Future: populate columns list directly from accessor constants)
 
@@ -244,11 +246,12 @@ public class Table<T> {
                 }
                 this.insertableColumns = new InsertableColumns(insertColumns, autoInc);
 
-                initialized = true;
-            } finally {
-                initializing = false;
+                state.set(InitState.READY);
+            } catch (Throwable t) {
+                // Revert to UNINIT so the table can be retried (or the error propagates cleanly).
+                state.set(InitState.UNINIT);
+                throw t;
             }
-        }
     }
 
     private Class<?> getGenericType(Field field) {
@@ -291,8 +294,8 @@ public class Table<T> {
             else insertColumns.add(c);
         }
         table.insertableColumns = new InsertableColumns(insertColumns, autoInc);
-        
-        table.initialized = true;
+
+        table.state.set(InitState.READY);
         return table;
     }
 

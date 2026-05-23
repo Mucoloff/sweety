@@ -16,8 +16,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.logging.Logger;
 
 public abstract class Configuration {
+
+    private static final Logger LOG = Logger.getLogger(Configuration.class.getName());
 
     private final Map<String, Object> map = new TreeMap<>();
 
@@ -245,6 +248,7 @@ public abstract class Configuration {
                 try {
                     result.add(Integer.valueOf(s));
                 } catch (Exception ex) {
+                    LOG.fine("Skipping non-integer value in list: '" + s + "': " + ex.getMessage());
                 }
             } else if (object instanceof Character c) {
                 result.add((int) c);
@@ -296,6 +300,7 @@ public abstract class Configuration {
                 try {
                     result.add(Double.valueOf(s));
                 } catch (Exception ex) {
+                    LOG.fine("Skipping non-double value in list: '" + s + "': " + ex.getMessage());
                 }
             } else if (object instanceof Character c) {
                 result.add((double) c);
@@ -323,6 +328,7 @@ public abstract class Configuration {
                 try {
                     result.add(Float.valueOf(f));
                 } catch (Exception ex) {
+                    LOG.fine("Skipping non-float value in list: '" + f + "': " + ex.getMessage());
                 }
             } else if (object instanceof Character c) {
                 result.add((float) c);
@@ -350,6 +356,7 @@ public abstract class Configuration {
                 try {
                     result.add(Long.valueOf(s));
                 } catch (Exception ex) {
+                    LOG.fine("Skipping non-long value in list: '" + s + "': " + ex.getMessage());
                 }
             } else if (object instanceof Character c) {
                 result.add((long) c);
@@ -377,6 +384,7 @@ public abstract class Configuration {
                 try {
                     result.add(Byte.valueOf(s));
                 } catch (Exception ex) {
+                    LOG.fine("Skipping non-byte value in list: '" + s + "': " + ex.getMessage());
                 }
             } else if (object instanceof Character c) {
                 result.add((byte) c.charValue());
@@ -429,6 +437,7 @@ public abstract class Configuration {
                 try {
                     result.add(Short.valueOf(s));
                 } catch (Exception ex) {
+                    LOG.fine("Skipping non-short value in list: '" + s + "': " + ex.getMessage());
                 }
             } else if (object instanceof Character c) {
                 result.add((short) c.charValue());

@@ -6,8 +6,11 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.logging.Logger;
 
 public interface QueryChain<T> {
+
+    Logger LOG = Logger.getLogger(QueryChain.class.getName());
 
     /**
      * Executes all steps using the given raw JDBC {@link Connection}.
@@ -35,7 +38,7 @@ public interface QueryChain<T> {
                     con.commit();
                     return result;
                 } catch (Exception e) {
-                    try { con.rollback(); } catch (SQLException ignored) {}
+                    try { con.rollback(); } catch (SQLException rbEx) { LOG.warning("Rollback failed: " + rbEx.getMessage()); }
                     throw new CompletionException(e);
                 }
             } catch (SQLException e) {

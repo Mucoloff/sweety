@@ -451,10 +451,6 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
     }
 
 
-    public <T> PacketBuffer writeOptional(Optional<T> optional, CallableEncoder<? super T> encoder) {
-        return super.writeOptional(optional, encoder);
-    }
-
     public <T> PacketBuffer writeObject(@Nullable T object, CallableEncoder<? super T> encoder) {
         return super.writeObject(object, encoder);
     }

@@ -36,6 +36,7 @@ public final class SampleList<T> extends AbstractList<T> implements RandomAccess
      *
      * @param capacity the maximum number of elements the list can hold
      */
+    @Deprecated
     public SampleList(int capacity) {
         this(capacity, false);
     }
@@ -46,6 +47,7 @@ public final class SampleList<T> extends AbstractList<T> implements RandomAccess
      * @param capacity          the maximum number of elements the list can hold
      * @param overwriteWhenFull if true, the oldest element is overwritten when full; otherwise, an exception is thrown
      */
+    @Deprecated
     public SampleList(int capacity, boolean overwriteWhenFull) {
         this.core = new RingBufferCore<>(capacity);
         this.overwriteWhenFull = overwriteWhenFull;
@@ -59,6 +61,7 @@ public final class SampleList<T> extends AbstractList<T> implements RandomAccess
      * @param overwriteWhenFull if true, the oldest element is overwritten when full; otherwise, an exception is thrown
      * @throws NullPointerException if initial is null
      */
+    @Deprecated
     public SampleList(T[] initial, boolean overwriteWhenFull) {
         Objects.requireNonNull(initial, "Initial array must not be null");
         this.core = new RingBufferCore<>(initial.length);
@@ -66,6 +69,18 @@ public final class SampleList<T> extends AbstractList<T> implements RandomAccess
         for (T t : initial) {
             core.offer(t, true);
         }
+    }
+
+    public static <T> SampleList<T> of(int capacity) {
+        return new SampleList<>(capacity);
+    }
+
+    public static <T> SampleList<T> of(int capacity, boolean overwriteWhenFull) {
+        return new SampleList<>(capacity, overwriteWhenFull);
+    }
+
+    public static <T> SampleList<T> of(T[] initial, boolean overwriteWhenFull) {
+        return new SampleList<>(initial, overwriteWhenFull);
     }
 
     @Override

@@ -21,6 +21,7 @@ public class CountMinSketch {
      * @param hashFunctions una funzione hash per riga; {@link #hashFunctionCount()}
      *                      coincide con il numero di elementi (ordine dall’iteratore)
      */
+    @Deprecated
     public CountMinSketch(int bucketCount, Collection<? extends HashFunction> hashFunctions) {
         this.bucketCount = bucketCount;
         this.hashers = HashFunctions.copy(hashFunctions);
@@ -29,6 +30,7 @@ public class CountMinSketch {
     }
 
     /** @see #CountMinSketch(int, Collection) */
+    @Deprecated
     public CountMinSketch(int bucketCount, HashFunction... hashers) {
         if (Objects.requireNonNull(hashers, "hashers must not be null").length == 0) {
             throw new IllegalArgumentException("pass at least one HashFunction");
@@ -40,8 +42,21 @@ public class CountMinSketch {
     }
 
     /** Stesse hash di default Murmur degli altri costruttori con collection / varargs. */
+    @Deprecated
     public CountMinSketch(int bucketCount, int hashFunctionCount) {
         this(bucketCount, HashFunctions.murmur3Defaults(hashFunctionCount));
+    }
+
+    public static CountMinSketch of(int bucketCount, Collection<? extends HashFunction> hashFunctions) {
+        return new CountMinSketch(bucketCount, hashFunctions);
+    }
+
+    public static CountMinSketch of(int bucketCount, HashFunction... hashers) {
+        return new CountMinSketch(bucketCount, hashers);
+    }
+
+    public static CountMinSketch of(int bucketCount, int hashFunctionCount) {
+        return new CountMinSketch(bucketCount, hashFunctionCount);
     }
 
     public void add(byte[] data) {

@@ -15,8 +15,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.logging.Logger;
 
 public final class TableRegistry {
+
+    private static final Logger LOG = Logger.getLogger(TableRegistry.class.getName());
 
     private final Map<Class<?>, Table<?>> tableMap = new IdentityHashMap<>();
     private static final TableRegistry DEFAULT = new TableRegistry();
@@ -51,8 +54,9 @@ public final class TableRegistry {
                     if (table != null) {
                         return table;
                     }
-                } catch (Exception ignored) {
+                } catch (Exception e) {
                     // Fallback to reflection if no mirror exists
+                    LOG.fine("No generated mirror for " + clazz.getName() + ", falling back to reflection: " + e.getMessage());
                 }
 
                 Table.Info info = clazz.getAnnotation(Table.Info.class);

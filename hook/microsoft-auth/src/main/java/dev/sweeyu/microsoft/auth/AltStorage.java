@@ -85,13 +85,7 @@ public class AltStorage {
 
     @Override
     public String toString() {
-        return "AltStorage{" +
-                "username='" + username + '\'' +
-                ", uuid=" + uuid +
-                ", accessToken='" + accessToken + '\'' +
-                ", refreshToken='" + refreshToken + '\'' +
-                ", type=" + type +
-                '}';
+        return "AltStorage{username='%s', uuid=%s, accessToken='%s', refreshToken='%s', type=%s}".formatted(username, uuid, accessToken, refreshToken, type);
     }
 
     @Override

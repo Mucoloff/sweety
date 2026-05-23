@@ -95,7 +95,7 @@ public class ExtensionManager<T extends Extension> {
             }
 
             if (this.extensions.putIfAbsent(extension.name(), extension) != null) {
-                try { classLoader.close(); } catch (Exception ignored) {}
+                try { classLoader.close(); } catch (Exception e) { logger.warn("Failed to close duplicate classloader", e); }
                 logger.error(MESSAGES.get("extension.load.concurrentConflict",
                         this.extensionName, info.name()));
                 return null;
@@ -169,7 +169,9 @@ public class ExtensionManager<T extends Extension> {
         for (ExtensionClassLoader<T> cl : new ArrayList<>(this.classLoaders.values())) {
             try {
                 cl.close();
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                logger.warn("Failed to close class loader during shutdown", e);
+            }
         }
         this.classLoaders.clear();
     }

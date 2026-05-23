@@ -129,7 +129,7 @@ class StructuredDefaultsTest {
     void optionalPresentRoundTrip() {
         Optional<String> input = Optional.of("value");
         ListSink s = sink();
-        s.writeOptional(input, (sink, v) -> sink.writeString(v));
+        s.writeOptional(input.orElse(null), (sink, v) -> sink.writeString(v));
 
         Optional<String> output = source(s).readOptional(src -> src.readString());
         assertEquals(input, output);
@@ -138,7 +138,7 @@ class StructuredDefaultsTest {
     @Test
     void optionalEmptyRoundTrip() {
         ListSink s = sink();
-        s.writeOptional(Optional.empty(), (sink, v) -> sink.writeString((String) v));
+        s.writeOptional((String) null, (sink, v) -> sink.writeString(v));
 
         Optional<String> output = source(s).readOptional(src -> src.readString());
         assertTrue(output.isEmpty());

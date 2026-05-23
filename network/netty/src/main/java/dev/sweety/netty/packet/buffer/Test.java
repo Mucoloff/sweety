@@ -54,13 +54,13 @@ public class Test {
         PacketBuffer buff = new PacketBuffer();
         buff.writeString("");
         buff.writeVarInt(0);
-        buff.writeOptional(Optional.of(new Example("text", 10)), (a,b) -> b.write(a));
+        buff.writeOptional(new Example("text", 10), (a,b) -> b.write(a));
     }
 
     private static void test(Supplier<AbstractBuffer<?>> supplier) {
         var buff1 = supplier.get();
         var buff2 = supplier.get();
-        buff1.writeOptional(Optional.of(new Example("text", 10)));
+        buff1.writeOptional(new Example("text", 10));
         read(buff1);
         buff2.writeObject(new Example("text", 10));
         read(buff2);

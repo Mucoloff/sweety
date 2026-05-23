@@ -1,6 +1,7 @@
 package dev.sweety.serialization.format;
 
 import dev.sweety.serialization.Writer;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.Map;
@@ -44,9 +45,14 @@ public interface StructuredSink {
         }
     }
 
+    default <E> void writeOptional(@Nullable E value, Writer<? super E, StructuredSink> w) {
+        writeBool(value != null);
+        if (value != null) w.write(this, value);
+    }
+
+    @Deprecated
     default <E> void writeOptional(Optional<E> o, Writer<? super E, StructuredSink> w) {
-        writeBool(o.isPresent());
-        o.ifPresent(e -> w.write(this, e));
+        writeOptional(o.orElse(null), w);
     }
 
     default <E extends Enum<E>> void writeEnum(E v) {

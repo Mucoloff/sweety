@@ -104,9 +104,19 @@ public interface BufferWriter {
 
     <T> BufferWriter writeObject(@Nullable T object, AbstractCallableEncoder<? super T> encoder);
 
-    <T> BufferWriter writeOptional(Optional<T> optional, AbstractCallableEncoder<? super T> encoder);
+    <T> BufferWriter writeOptional(@Nullable T value, AbstractCallableEncoder<? super T> encoder);
 
-    <T extends AbstractEncoder> BufferWriter writeOptional(Optional<T> optional);
+    @Deprecated
+    default <T> BufferWriter writeOptional(Optional<T> optional, AbstractCallableEncoder<? super T> encoder) {
+        return writeOptional(optional.orElse(null), encoder);
+    }
+
+    <T extends AbstractEncoder> BufferWriter writeOptional(@Nullable T value);
+
+    @Deprecated
+    default <T extends AbstractEncoder> BufferWriter writeOptional(Optional<T> optional) {
+        return writeOptional(optional.orElse(null));
+    }
 
     <T extends AbstractEncoder> BufferWriter writeObject(T object);
 

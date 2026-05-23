@@ -2,6 +2,7 @@ package dev.sweety.filter;
 
 import java.util.Collection;
 import java.util.Objects;
+import java.util.concurrent.atomic.LongAdder;
 
 /**
  * Bloom filter counting scalabile (con ridimensionamento opzionale del vettore di bucket).
@@ -14,21 +15,22 @@ public class FastScalableCountingBloomFilter {
     private byte[] filter;
     private final HashFunction[] hashers;
     private final double growthFactor;
-    private int elements;
+    private final LongAdder elements = new LongAdder();
 
     public int elements() {
-        return elements;
+        return (int) elements.sum();
     }
 
+    @Deprecated
     public FastScalableCountingBloomFilter(int initialBucketCount, double growthFactor,
                                            Collection<? extends HashFunction> hashFunctions) {
         this.growthFactor = growthFactor;
         this.hashers = HashFunctions.copy(hashFunctions);
         this.filter = new byte[initialBucketCount];
-        this.elements = 0;
     }
 
     /** @see #FastScalableCountingBloomFilter(int, double, Collection) */
+    @Deprecated
     public FastScalableCountingBloomFilter(int initialBucketCount, double growthFactor, HashFunction... hashers) {
         if (Objects.requireNonNull(hashers, "hashers must not be null").length == 0) {
             throw new IllegalArgumentException("pass at least one HashFunction");
@@ -36,12 +38,27 @@ public class FastScalableCountingBloomFilter {
         this.growthFactor = growthFactor;
         this.hashers = HashFunctions.copy(hashers);
         this.filter = new byte[initialBucketCount];
-        this.elements = 0;
     }
 
     /** Hash Murmur predefinite; vedi {@link HashFunctions#murmur3Defaults(int)}. */
+    @Deprecated
     public FastScalableCountingBloomFilter(int initialBucketCount, int hashFunctionCount, double growthFactor) {
         this(initialBucketCount, growthFactor, HashFunctions.murmur3Defaults(hashFunctionCount));
+    }
+
+    public static FastScalableCountingBloomFilter of(int initialBucketCount, double growthFactor,
+                                                     Collection<? extends HashFunction> hashFunctions) {
+        return new FastScalableCountingBloomFilter(initialBucketCount, growthFactor, hashFunctions);
+    }
+
+    public static FastScalableCountingBloomFilter of(int initialBucketCount, double growthFactor,
+                                                     HashFunction... hashers) {
+        return new FastScalableCountingBloomFilter(initialBucketCount, growthFactor, hashers);
+    }
+
+    public static FastScalableCountingBloomFilter of(int initialBucketCount, int hashFunctionCount,
+                                                     double growthFactor) {
+        return new FastScalableCountingBloomFilter(initialBucketCount, hashFunctionCount, growthFactor);
     }
 
     public synchronized void add(byte[] data) {
@@ -49,7 +66,7 @@ public class FastScalableCountingBloomFilter {
         for (int h : idx) {
             filter[h]++;
         }
-        elements++;
+        elements.increment();
         if (needsExpansion()) {
             expand();
         }
@@ -72,13 +89,13 @@ public class FastScalableCountingBloomFilter {
                 filter[h]--;
             }
         }
-        elements = Math.max(0, elements - 1);
+        if (elements.sum() > 0) elements.add(-1L);
     }
 
     /** Stima probabilistica di falso positivo (model bloom classico). */
     public double estimatedFalsePositiveProbability() {
         int k = hashers.length;
-        double n = elements;
+        double n = elements.sum();
         double m = filter.length;
         return Math.pow(1 - Math.exp(-k * n / m), k);
     }
@@ -101,7 +118,7 @@ public class FastScalableCountingBloomFilter {
     }
 
     private boolean needsExpansion() {
-        double load = (double) elements / filter.length;
+        double load = (double) elements.sum() / filter.length;
         return load > 0.7;
     }
 
@@ -114,7 +131,6 @@ public class FastScalableCountingBloomFilter {
 
     @Override
     public String toString() {
-        return "FastSCBF{bucketCount=" + filter.length + ", elements=" + elements
-                + ", fpEst=" + estimatedFalsePositiveProbability() + "}";
+        return "FastSCBF{bucketCount=%d, elements=%d, fpEst=%s}".formatted(filter.length, elements.sum(), estimatedFalsePositiveProbability());
     }
 }

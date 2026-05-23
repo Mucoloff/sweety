@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Dynamic IP whitelist filter for the Hub Netty pipeline.
@@ -28,9 +29,11 @@ public class IpWhitelistHandler extends ChannelInboundHandlerAdapter {
 
     private static final SimpleLogger LOG = SimpleLogger.of(IpWhitelistHandler.class);
 
-    private volatile Set<String> allowedIps = Collections.emptySet();
-    private volatile boolean whitelistActive = false;
-    private volatile long lastRefreshMs = 0L;
+    private record Snapshot(Set<String> allowedIps, boolean whitelistActive, long lastRefreshMs) {}
+
+    private final AtomicReference<Snapshot> state =
+            new AtomicReference<>(new Snapshot(Collections.emptySet(), false, 0L));
+
     private final ScheduledExecutorService scheduler =
             Executors.newSingleThreadScheduledExecutor(r -> {
                 Thread t = new Thread(r, "ip-whitelist-refresh");
@@ -60,12 +63,10 @@ public class IpWhitelistHandler extends ChannelInboundHandlerAdapter {
             if (ips != null && !ips.isEmpty()) {
                 Set<String> newSet = ConcurrentHashMap.newKeySet();
                 newSet.addAll(ips);
-                this.allowedIps = newSet;
-                this.whitelistActive = true;
+                state.set(new Snapshot(newSet, true, System.currentTimeMillis()));
             } else {
-                this.whitelistActive = false;
+                state.set(new Snapshot(Collections.emptySet(), false, System.currentTimeMillis()));
             }
-            this.lastRefreshMs = System.currentTimeMillis();
         } catch (Exception e) {
             LOG.error("[IpWhitelist] Failed to refresh: " + e.getMessage());
         }
@@ -73,17 +74,18 @@ public class IpWhitelistHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        if (!whitelistActive) {
+        Snapshot snap = state.get();
+        if (!snap.whitelistActive()) {
             super.channelActive(ctx);
             return;
         }
         final InetSocketAddress remoteAddress = (InetSocketAddress) ctx.channel().remoteAddress();
         final String ip = remoteAddress.getAddress().getHostAddress();
-        if (allowedIps.contains(ip)) {
+        if (snap.allowedIps().contains(ip)) {
             super.channelActive(ctx);
         } else {
             LOG.warn("[IpWhitelist] BLOCKED connection from " + ip
-                    + " (not in whitelist of " + allowedIps.size() + " IPs)");
+                    + " (not in whitelist of " + snap.allowedIps().size() + " IPs)");
             ctx.close();
         }
     }
@@ -93,19 +95,19 @@ public class IpWhitelistHandler extends ChannelInboundHandlerAdapter {
     }
 
     public int whitelistSize() {
-        return allowedIps.size();
+        return state.get().allowedIps().size();
     }
 
     public boolean isActive() {
-        return whitelistActive;
+        return state.get().whitelistActive();
     }
 
     public long lastRefreshMs() {
-        return lastRefreshMs;
+        return state.get().lastRefreshMs();
     }
 
     public Set<String> allowedIps() {
-        return Collections.unmodifiableSet(allowedIps);
+        return Collections.unmodifiableSet(state.get().allowedIps());
     }
 
     @FunctionalInterface

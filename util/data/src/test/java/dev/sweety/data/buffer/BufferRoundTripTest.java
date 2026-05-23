@@ -148,8 +148,8 @@ class BufferRoundTripTest {
     @MethodSource("dev.sweety.data.buffer.BufferFactories#allBuffers")
     void optional(String name, Factory f) {
         var buf = f.create();
-        buf.writeOptional(Optional.of(STR_VAL), (b, s) -> b.writeString(s));
-        buf.writeOptional(Optional.empty(),      (b, s) -> b.writeString((String) s));
+        buf.writeOptional(STR_VAL, (b, s) -> b.writeString(s));
+        buf.writeOptional((String) null, (b, s) -> b.writeString(s));
         assertEquals(Optional.of(STR_VAL), buf.readOptional(b -> b.readString()));
         assertEquals(Optional.empty(),      buf.readOptional(b -> b.readString()));
     }
