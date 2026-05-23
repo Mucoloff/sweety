@@ -33,7 +33,7 @@ public class ExtensionManager<T extends Extension> {
     private final String extensionName;
 
     public ExtensionManager(final Path parent, final Class<T> extensionClass) {
-        this(parent, extensionClass, new SimpleLogger(ExtensionManager.class));
+        this(parent, extensionClass, SimpleLogger.of(ExtensionManager.class));
     }
 
     public ExtensionManager(final Path parent, final Class<T> extensionClass, final SimpleLogger logger) {

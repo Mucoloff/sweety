@@ -25,7 +25,7 @@ public abstract class LocalHandler {
     public LocalHandler(Service service, String handlerName) {
         this.service = service;
         String name = handlerName.isEmpty() ? "" : "/" + handlerName;
-        this.logger = new SimpleLogger(service.type().name() + name);
+        this.logger = SimpleLogger.of(service.type().name() + name);
     }
 
     protected Service service() {

@@ -31,7 +31,7 @@ public class TestCodec {
         List<Packet> packets = new java.util.ArrayList<>();
         decoder.decode(in, packets);
 
-        SimpleLogger logger = new SimpleLogger("TestCodec");
+        SimpleLogger logger = SimpleLogger.of("TestCodec");
 
         final TriFunction<Packet, Integer, Long, byte[]> constructor = (id, ts, data) -> registry.construct(id,ts, data, logger);
 

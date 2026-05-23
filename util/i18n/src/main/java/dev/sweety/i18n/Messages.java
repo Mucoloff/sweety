@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public final class Messages {
 
-    private static final SimpleLogger LOG = new SimpleLogger(Messages.class);
+    private static final SimpleLogger LOG = SimpleLogger.of(Messages.class);
     private static final AtomicReference<Locale> OVERRIDE_LOCALE = new AtomicReference<>(null);
     private static final Map<String, Messages> CACHE = new ConcurrentHashMap<>();
 

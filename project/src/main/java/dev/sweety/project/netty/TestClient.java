@@ -31,7 +31,7 @@ import java.util.function.BiConsumer;
 
 public class TestClient extends Client {
 
-    private final SimpleLogger logger = new SimpleLogger("Client");
+    private final SimpleLogger logger = SimpleLogger.of("Client");
     private final TransactionManager transactionManager = new TransactionManager(this);
     private final EventSystem eventSystem = new EventSystem();
     private final EventMapping eventMapping = new EventMapping(eventSystem);

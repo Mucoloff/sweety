@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @ChannelHandler.Sharable
 public class ConnectionRateLimiter extends ChannelInboundHandlerAdapter {
 
-    private static final SimpleLogger LOG = new SimpleLogger(ConnectionRateLimiter.class);
+    private static final SimpleLogger LOG = SimpleLogger.of(ConnectionRateLimiter.class);
 
     private static final int MAX_CONNECTIONS_PER_WINDOW = Integer
             .parseInt(System.getenv().getOrDefault("HUB_RATE_LIMIT_MAX_CONN", "10"));

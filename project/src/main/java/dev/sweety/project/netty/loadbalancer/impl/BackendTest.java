@@ -12,7 +12,7 @@ import java.util.ArrayList;
 
 public class BackendTest extends Backend {
 
-    private final SimpleLogger logger = new SimpleLogger(BackendTest.class);
+    private final SimpleLogger logger = SimpleLogger.of(BackendTest.class);
 
     public BackendTest(String host, int port, IPacketRegistry packetRegistry, Packet... packets) {
         super(host, port, packetRegistry);

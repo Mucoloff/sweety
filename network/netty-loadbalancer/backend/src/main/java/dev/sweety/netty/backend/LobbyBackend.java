@@ -20,7 +20,7 @@ public abstract class LobbyBackend<T extends Backend> extends Server implements 
     public LobbyBackend(String lobbyHost, int lobbyPort, T backend) {
         super(lobbyHost, lobbyPort, backend.packetRegistry());
         this.backend = backend;
-        this.lobbyLogger = new SimpleLogger("Lobby");
+        this.lobbyLogger = SimpleLogger.of("Lobby");
         this.backendThread = new ProfileThread("backend-" + backend.typeName());
     }
 

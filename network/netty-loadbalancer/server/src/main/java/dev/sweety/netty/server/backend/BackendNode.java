@@ -36,7 +36,7 @@ public class BackendNode implements IBackend {
         this.typeId = type;
         this.port = port;
         final String color = AnsiColor.fromColor(RandomUtils.RANDOM.nextInt() * type * port) + port + AnsiColor.RESET.color();
-        this.logger = new SimpleLogger("Node#" + color).info("Backend connected!");
+        this.logger = SimpleLogger.of("Node#" + color).info("Backend connected!");
     }
 
     public void learnType(int candidate) {

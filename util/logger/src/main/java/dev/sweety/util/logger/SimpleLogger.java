@@ -20,16 +20,16 @@ public class SimpleLogger implements LogHelper {
     private final ThreadLocal<Deque<LogProfile>> profiles = ThreadLocal.withInitial(ArrayDeque::new);
     private final List<LoggerBackend> backends = new CopyOnWriteArrayList<>();
 
-    public SimpleLogger(String name) {
+    private SimpleLogger(String name) {
         this.name = name;
         backends.add(new ConsoleBackend());
     }
 
-    public SimpleLogger(Class<?> clazz) {
+    private SimpleLogger(Class<?> clazz) {
         this(clazz.getSimpleName());
     }
 
-    SimpleLogger(String name, List<LoggerBackend> backends) {
+    private SimpleLogger(String name, List<LoggerBackend> backends) {
         this.name = name;
         this.backends.addAll(backends);
     }

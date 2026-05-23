@@ -31,7 +31,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public class DownloadHandler implements HttpHandler {
-    private static final SimpleLogger LOGGER = new SimpleLogger(DownloadHandler.class);
+    private static final SimpleLogger LOGGER = SimpleLogger.of(DownloadHandler.class);
 
     private final DownloadTokenStore downloadManager;
     private final CacheManager cacheManager;

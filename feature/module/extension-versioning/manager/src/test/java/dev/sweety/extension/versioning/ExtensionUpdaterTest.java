@@ -24,7 +24,7 @@ class ExtensionUpdaterTest {
 
     private static final class TestExtension extends VersionableExtension {
         TestExtension(Path folder) {
-            super("MYEXT", "1.0.0", null, folder, new SimpleLogger(TestExtension.class));
+            super("MYEXT", "1.0.0", null, folder, SimpleLogger.of(TestExtension.class));
         }
 
         @Override

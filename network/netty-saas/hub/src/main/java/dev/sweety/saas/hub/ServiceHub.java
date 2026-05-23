@@ -14,7 +14,7 @@ import io.netty.channel.ChannelPipeline;
 
 public class ServiceHub extends LoadBalancerServer<ServiceNode> {
 
-    private static final SimpleLogger LOG = new SimpleLogger(ServiceHub.class);
+    private static final SimpleLogger LOG = SimpleLogger.of(ServiceHub.class);
 
     private final ServicesConfig config;
     private final HubHealthServer healthServer;

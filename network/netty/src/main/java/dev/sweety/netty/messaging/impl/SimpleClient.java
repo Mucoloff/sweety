@@ -16,7 +16,7 @@ import java.util.function.BiConsumer;
 
 public abstract class SimpleClient extends Client {
 
-    protected final SimpleLogger logger = new SimpleLogger(getClass());
+    protected final SimpleLogger logger = SimpleLogger.of(getClass());
     private final AutoReconnect autoReconnect = new AutoReconnect(2500L, TimeUnit.MILLISECONDS, this::start);
 
     public SimpleClient(String host, int port, IPacketRegistry packetRegistry) {

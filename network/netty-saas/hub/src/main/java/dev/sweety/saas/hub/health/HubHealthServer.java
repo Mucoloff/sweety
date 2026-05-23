@@ -46,7 +46,7 @@ import java.util.Set;
  */
 public final class HubHealthServer {
 
-    private static final SimpleLogger LOG = new SimpleLogger(HubHealthServer.class);
+    private static final SimpleLogger LOG = SimpleLogger.of(HubHealthServer.class);
 
     private final ServicesPool pool;
     private final int port;

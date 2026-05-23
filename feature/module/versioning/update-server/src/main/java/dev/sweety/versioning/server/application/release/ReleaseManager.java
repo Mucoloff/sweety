@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ReleaseManager implements IReleaseService, PublishReleaseUseCase, RollbackReleaseUseCase {
-    private static final SimpleLogger LOGGER = new SimpleLogger(ReleaseManager.class);
+    private static final SimpleLogger LOGGER = SimpleLogger.of(ReleaseManager.class);
 
     private final Map<Artifact, ReleaseState> states = new ConcurrentHashMap<>();
     private final Storage storage;

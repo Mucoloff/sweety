@@ -61,7 +61,7 @@ public abstract class Backend extends Client implements IBackend {
                 Long.parseLong(System.getenv().getOrDefault("BACKEND_REQUEST_TIMEOUT_SECONDS", "45"))
         );
 
-        this.backendLogger = new SimpleLogger("Backend-" + localPort);
+        this.backendLogger = SimpleLogger.of("Backend-" + localPort);
         this.backendLogger.push("<init>", AnsiColor.fromColor(new Color(148, 186, 76))).info("Waiting for loadbalancer...");
         this.constructor = (i, ts, data) -> packetRegistry.construct(i, ts, data, this.backendLogger);
 

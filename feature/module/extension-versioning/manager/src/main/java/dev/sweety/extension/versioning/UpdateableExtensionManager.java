@@ -19,7 +19,7 @@ public class UpdateableExtensionManager<T extends Extension> extends ExtensionMa
     private static final Messages MESSAGES = Messages.forBundle("messages");
 
     private final Map<T, Path> extensionFiles = new ConcurrentHashMap<>();
-    private final SimpleLogger logger = new SimpleLogger(UpdateableExtensionManager.class);
+    private final SimpleLogger logger = SimpleLogger.of(UpdateableExtensionManager.class);
 
     public UpdateableExtensionManager(Path parent, Class<T> extensionClass) {
         super(Objects.requireNonNull(parent, "parent cannot be null"), Objects.requireNonNull(extensionClass, "extensionClass cannot be null"));

@@ -19,7 +19,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 
 public class FileReleaseRepository implements ReleaseRepository {
-    private static final SimpleLogger LOGGER = new SimpleLogger(FileReleaseRepository.class);
+    private static final SimpleLogger LOGGER = SimpleLogger.of(FileReleaseRepository.class);
 
     @Override
     public void load(Artifact artifact, ReleaseState state) throws IOException {

@@ -18,7 +18,7 @@ import java.util.function.Predicate;
 
 public class DynamicBackendNodePool<T extends BackendNode> implements IDynamicBackendNodePool<T> {
 
-    protected final SimpleLogger logger = new SimpleLogger(DynamicBackendNodePool.class);
+    protected final SimpleLogger logger = SimpleLogger.of(DynamicBackendNodePool.class);
 
     protected final Map<ChannelHandlerContext, T> nodes = new ConcurrentHashMap<>();
     protected final Map<T, ChannelHandlerContext> reverseNodes = new ConcurrentHashMap<>();

@@ -33,7 +33,7 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
  */
 public class ApplyUpdateService implements ApplyUpdateUseCase {
 
-    private static final SimpleLogger LOG = new SimpleLogger(ApplyUpdateService.class);
+    private static final SimpleLogger LOG = SimpleLogger.of(ApplyUpdateService.class);
 
     private final Map<Artifact, Path> artifactPathMap;
     private final PatchApplierPort patchApplier;

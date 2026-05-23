@@ -22,7 +22,7 @@ import static dev.sweety.versioning.server.util.http.HttpUtils.sendText;
 import static dev.sweety.versioning.server.util.http.HttpUtils.verifySignature;
 
 public class WebhookHandler implements HttpHandler {
-    private static final SimpleLogger LOGGER = new SimpleLogger(WebhookHandler.class);
+    private static final SimpleLogger LOGGER = SimpleLogger.of(WebhookHandler.class);
 
     private final ArtifactRegistry artifactRegistry;
     private final PublishReleaseUseCase releaseManager;

@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class ExtensionUpdater<T extends VersionableExtension> {
 
-    private static final SimpleLogger LOGGER = new SimpleLogger(ExtensionUpdater.class);
+    private static final SimpleLogger LOGGER = SimpleLogger.of(ExtensionUpdater.class);
     private static final Messages MESSAGES = Messages.forBundle("messages");
     /** Upper bound for waiting on all parallel extension update checks (per {@link #updateAll(Channel)}). */
     private static final long UPDATE_ALL_TIMEOUT_MINUTES = 30L;

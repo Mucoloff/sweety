@@ -9,7 +9,7 @@ import io.netty.channel.ChannelPromise;
 
 public abstract class SimpleServer extends Server {
 
-    protected final SimpleLogger logger = new SimpleLogger(getClass());
+    protected final SimpleLogger logger = SimpleLogger.of(getClass());
 
     public SimpleServer(String host, int port, IPacketRegistry packetRegistry) {
         super(host, port, packetRegistry);

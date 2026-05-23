@@ -46,7 +46,7 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
     private static final int MAX_PENDING_PACKETS = Integer
             .parseInt(System.getenv().getOrDefault("LB_MAX_PENDING", "10000"));
 
-    protected final SimpleLogger logger = new SimpleLogger(LoadBalancerServer.class);
+    protected final SimpleLogger logger = SimpleLogger.of(LoadBalancerServer.class);
 
     protected final IDynamicBackendNodePool<Node> backendPool;
 

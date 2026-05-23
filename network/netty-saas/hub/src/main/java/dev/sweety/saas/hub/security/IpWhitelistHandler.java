@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 @ChannelHandler.Sharable
 public class IpWhitelistHandler extends ChannelInboundHandlerAdapter {
 
-    private static final SimpleLogger LOG = new SimpleLogger(IpWhitelistHandler.class);
+    private static final SimpleLogger LOG = SimpleLogger.of(IpWhitelistHandler.class);
 
     private volatile Set<String> allowedIps = Collections.emptySet();
     private volatile boolean whitelistActive = false;

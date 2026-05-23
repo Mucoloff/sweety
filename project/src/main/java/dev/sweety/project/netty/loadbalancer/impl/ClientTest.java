@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
 
 public class ClientTest extends Client {
 
-    private final SimpleLogger logger = new SimpleLogger(ClientTest.class);
+    private final SimpleLogger logger = SimpleLogger.of(ClientTest.class);
     private final AutoReconnect autoReconnect = new AutoReconnect(2500L, TimeUnit.MILLISECONDS, this::start);
 
     public ClientTest(String host, int port, IPacketRegistry packetRegistry) {

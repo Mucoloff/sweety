@@ -16,7 +16,7 @@ import io.netty.channel.ChannelPromise;
 
 public class TestServer extends Server {
 
-    final SimpleLogger logger = new SimpleLogger("Server");
+    final SimpleLogger logger = SimpleLogger.of("Server");
     final TriFunction<Packet, Integer, Long, byte[]> constructor;
 
     public TestServer(String host, int port, IPacketRegistry packetRegistry) {
