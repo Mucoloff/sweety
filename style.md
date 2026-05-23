@@ -39,6 +39,15 @@ public final class User {
     - `create(...)`
 - Validazione **solo in factory**
 
+### ✔️ Value objects → `record`
+Usare `record` per oggetti immutabili senza logica. `equals`, `hashCode`, `toString` gratis.
+
+```java
+public record Point(int x, int y) {}
+```
+
+❌ Non usare `record` se il tipo ha stato mutabile o logica di business non banale.
+
 ---
 
 # 2. Null Safety
@@ -47,10 +56,16 @@ public final class User {
 - ❌ Vietato passare `null` nelle API pubbliche
 - ✔️ Validare subito (fail-fast)
 - ✔️ `Optional` solo come return type
+- ✔️ Annotare parametri e return types con `@NotNull` / `@Nullable`
 
 ### ✔️ Java
 ```java
-Objects.requireNonNull(x, "x");
+public static Foo of(@NotNull String name) {
+    Objects.requireNonNull(name, "name");
+    return new Foo(name);
+}
+
+public @Nullable String findName() { ... }
 ```
 
 ### ✔️ Kotlin
@@ -66,7 +81,7 @@ Non fare controlli ovunque → solo ai **boundary (API / factory)**
 # 3. Strutture dati
 
 ## Regola generale
-Usa la struttura giusta per il problema, non “map ovunque”.
+Usa la struttura giusta per il problema, non "map ovunque".
 
 | Uso | Struttura |
 |-----|----------|
@@ -74,15 +89,29 @@ Usa la struttura giusta per il problema, non “map ovunque”.
 | ordinamento | `TreeMap` / `TreeSet` |
 | lista sequenziale | `ArrayList` |
 | set senza duplicati | `HashSet` |
+| concorrenza read-heavy | `CopyOnWriteArrayList` |
+| concorrenza write-heavy | `ConcurrentHashMap` |
 
 ## Note importanti
 - `HashMap` → O(1) medio
 - `Tree*` → O(log n)
 - `List` → migliore per iterazione
 
+### Getter di collezioni → sempre difensivo
+Non esporre mai la collezione interna direttamente.
+
+```java
+// ✔️
+public List<String> items() { return List.copyOf(items); }
+
+// ❌
+public List<String> items() { return items; }
+```
+
 ### ❌ Anti-pattern
 - usare `Map` quando serve una lista
 - usare `TreeSet` senza bisogno di ordinamento
+- esporre `List` mutabile come campo interno
 
 ---
 
@@ -150,9 +179,70 @@ if (x <= 0) throw new IllegalArgumentException();
 - preferisci codice semplice
 - usa profiling prima di cambiare design
 
+### String concatenation in hot path
+❌ Vietato `"prefix" + var` dentro loop o metodi chiamati frequentemente.
+✔️ Usare `StringBuilder` o template `String.formatted(...)`.
+
+```java
+// ❌
+String msg = "[" + level + "][" + name + "] " + text;
+
+// ✔️
+String msg = "[%s][%s] %s".formatted(level, name, text);
+```
+
+### Lazy evaluation nei log (e in generale)
+Se un argomento è costoso da costruire, passare un `Supplier` invece del valore.
+
+```java
+// ❌ — always evaluated
+logger.debug("State: " + heavyCompute());
+
+// ✔️ — evaluated only if DEBUG enabled
+logger.debug(() -> "State: " + heavyCompute());
+```
+
+### Pattern matching (`switch` / `instanceof`)
+Preferire `switch` con pattern matching a catene `if-instanceof`.
+
+```java
+// ✔️
+return switch (obj) {
+    case String s  -> s;
+    case Integer i -> i.toString();
+    default        -> obj.toString();
+};
+```
+
 ---
 
-# 9. Java + Kotlin insieme
+# 9. Concorrenza
+
+## Regole
+- `volatile` solo per flag di visibilità (un singolo campo, no compound actions)
+- `AtomicReference` per swap atomico di oggetti
+- `ConcurrentHashMap.computeIfAbsent` per lazy init thread-safe
+- `CopyOnWriteArrayList` per read-heavy, write-rare
+- ❌ `synchronized` solo se davvero necessario — preferire strutture già thread-safe
+
+### ✔️ Volatile corretto
+```java
+private volatile boolean running = true;   // flag semplice
+```
+
+### ✔️ AtomicReference per swap
+```java
+private final AtomicReference<Config> config = new AtomicReference<>(defaultConfig);
+config.set(newConfig);
+```
+
+### ❌ Anti-pattern
+- `volatile` su un campo e poi operazioni compound su di esso (race condition)
+- `synchronized` su oggetti pubblici o statici condivisi
+
+---
+
+# 10. Java + Kotlin insieme
 
 ## Linee guida pratiche
 
@@ -170,16 +260,41 @@ if (x <= 0) throw new IllegalArgumentException();
 
 ---
 
-# 10. Anti-pattern da evitare
+# 11. Anti-pattern da evitare
 
 - Factory ovunque senza motivo
 - Pooling inutile
 - Controlli null duplicati ovunque
 - Uso scorretto delle strutture dati
 - Ottimizzazioni premature
+- Getter che espongono collezioni mutabili interne
+- String concatenation in loop / hot path
+- Lazy evaluation mancante su argomenti costosi
 
 ---
 
-# 11. Regola finale
+# 12. IO Files
 
-> Codice semplice > codice “smart”
+## File I/O
+
+### Scrittura
+- Usare sempre stream (no byte[] per file grandi)
+- Non scrivere mai direttamente sul file finale
+- Usare pattern:
+  1. write temp file
+  2. fsync
+  3. atomic rename
+
+### Lettura
+- Stream per file grandi
+- readAllBytes solo per file piccoli (meglio non farlo mai)
+
+### Note
+- ATOMIC_MOVE richiede stesso filesystem
+- Senza fsync → rischio perdita dati
+
+---
+
+# 13. Regola finale
+
+> Codice semplice > codice "smart"
