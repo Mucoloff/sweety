@@ -14,6 +14,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class UpdateableExtensionManager<T extends Extension> extends ExtensionManager<T> {
 
+    static final String UPDATE_SUFFIX = ".update";
+
     private final Map<T, Path> extensionFiles = new ConcurrentHashMap<>();
     private final SimpleLogger logger = new SimpleLogger(UpdateableExtensionManager.class);
 
@@ -28,7 +30,7 @@ public class UpdateableExtensionManager<T extends Extension> extends ExtensionMa
 
     public Path resolveFile(Path jarFile) {
         Objects.requireNonNull(jarFile, "jarFile cannot be null");
-        Path updateFile = jarFile.resolveSibling(jarFile.getFileName().toString() + ".update");
+        Path updateFile = jarFile.resolveSibling(jarFile.getFileName().toString() + UPDATE_SUFFIX);
         return Files.exists(updateFile) ? updateFile : jarFile;
     }
 

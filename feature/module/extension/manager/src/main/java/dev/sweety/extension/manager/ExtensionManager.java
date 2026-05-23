@@ -6,6 +6,7 @@ import dev.sweety.extension.ExtensionInfo;
 import dev.sweety.extension.manager.loader.DownloadFile;
 import dev.sweety.extension.manager.loader.ExtensionClassLoader;
 
+import java.util.Collections;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -159,10 +160,10 @@ public class ExtensionManager<T extends Extension> {
     }
 
     public Map<String, T> extensions() {
-        return this.extensions;
+        return Collections.unmodifiableMap(this.extensions);
     }
 
     public Map<T, ExtensionInfo> infos() {
-        return this.infos;
+        return Collections.unmodifiableMap(this.infos);
     }
 }

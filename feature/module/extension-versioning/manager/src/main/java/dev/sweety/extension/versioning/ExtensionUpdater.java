@@ -68,7 +68,7 @@ public class ExtensionUpdater<T extends VersionableExtension> {
         }
 
         Path targetPath = currentFile;
-        Path updatePath = targetPath.resolveSibling(targetPath.getFileName() + ".update");
+        Path updatePath = targetPath.resolveSibling(targetPath.getFileName() + UpdateableExtensionManager.UPDATE_SUFFIX);
 
         Files.copy(newJar, updatePath, StandardCopyOption.REPLACE_EXISTING);
         LOGGER.info("Update for " + extension.name() + " downloaded. It will be applied on next restart.");

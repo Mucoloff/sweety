@@ -10,16 +10,16 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class TypedServiceManager<Type> implements ServiceRegistry, AutoCloseable {
+public class TypedServiceManager<T> implements ServiceRegistry, AutoCloseable {
 
     private final ServiceManager internal = new ServiceManager();
-    private final Class<Type> baseType;
+    private final Class<T> baseType;
 
     public ServiceManager internal() {
         return internal;
     }
 
-    public TypedServiceManager(@NotNull Class<Type> baseType) {
+    public TypedServiceManager(@NotNull Class<T> baseType) {
         this.baseType = Objects.requireNonNull(baseType, "baseType cannot be null");
     }
 
@@ -32,9 +32,9 @@ public class TypedServiceManager<Type> implements ServiceRegistry, AutoCloseable
         }
     }
 
-    private <T> Provider<T> checked(Provider<T> provider) {
+    private <S> Provider<S> checked(Provider<S> provider) {
         return () -> {
-            T value = provider.get();
+            S value = provider.get();
             checkType(value);
             return value;
         };
@@ -59,7 +59,7 @@ public class TypedServiceManager<Type> implements ServiceRegistry, AutoCloseable
     }
 
     @NotNull
-    public Collection<Type> values() {
+    public Collection<T> values() {
         return internal.providers().stream()
                 .map(Provider::get)
                 .filter(baseType::isInstance)
@@ -68,45 +68,40 @@ public class TypedServiceManager<Type> implements ServiceRegistry, AutoCloseable
     }
 
     @Override
-    
-    public <T> T getOrNull(@NotNull ServiceKey<T> key) {
+    public <S> S getOrNull(@NotNull ServiceKey<S> key) {
         Objects.requireNonNull(key, "key cannot be null");
         return internal.getOrNull(key);
     }
 
     @Override
-    
-    public <T> T put(@NotNull ServiceKey<T> key, T service) {
+    public <S> S put(@NotNull ServiceKey<S> key, S service) {
         Objects.requireNonNull(key, "key cannot be null");
         checkType(service);
         return internal.put(key, service);
     }
 
     @Override
-    
-    public <T> T put(@NotNull ServiceKey<T> key, Provider<T> service) {
+    public <S> S put(@NotNull ServiceKey<S> key, Provider<S> service) {
         Objects.requireNonNull(key, "key cannot be null");
         Objects.requireNonNull(service, "service provider cannot be null");
         return internal.put(key, checked(service));
     }
 
     @Override
-    public <T> boolean contains(@NotNull ServiceKey<T> key) {
+    public <S> boolean contains(@NotNull ServiceKey<S> key) {
         Objects.requireNonNull(key, "key cannot be null");
         return internal.contains(key);
     }
 
     @Override
-    
-    public <T> T putIfAbsent(@NotNull ServiceKey<T> key, T service) {
+    public <S> S putIfAbsent(@NotNull ServiceKey<S> key, S service) {
         Objects.requireNonNull(key, "key cannot be null");
         checkType(service);
         return internal.putIfAbsent(key, service);
     }
 
     @Override
-    
-    public <T> T putIfAbsent(@NotNull ServiceKey<T> key, Provider<T> service) {
+    public <S> S putIfAbsent(@NotNull ServiceKey<S> key, Provider<S> service) {
         Objects.requireNonNull(key, "key cannot be null");
         Objects.requireNonNull(service, "service provider cannot be null");
         return internal.putIfAbsent(key, checked(service));
@@ -114,16 +109,15 @@ public class TypedServiceManager<Type> implements ServiceRegistry, AutoCloseable
 
     @Override
     @NotNull
-    public <T> T registerByClass(@NotNull Class<T> type) {
+    public <S> S registerByClass(@NotNull Class<S> type) {
         Objects.requireNonNull(type, "type cannot be null");
-        T instance = internal.registerByClass(type);
+        S instance = internal.registerByClass(type);
         checkType(instance);
         return instance;
     }
 
     @Override
-    
-    public <T> T remove(@NotNull ServiceKey<T> key) {
+    public <S> S remove(@NotNull ServiceKey<S> key) {
         Objects.requireNonNull(key, "key cannot be null");
         return internal.remove(key);
     }
@@ -135,65 +129,41 @@ public class TypedServiceManager<Type> implements ServiceRegistry, AutoCloseable
 
     /* ===================== TYPED PUT ===================== */
 
-    public <S extends Type>  S putTyped(
-            @NotNull ServiceKey<S> key,
-            @NotNull S service
-    ) {
+    public <S extends T> S putTyped(@NotNull ServiceKey<S> key, @NotNull S service) {
         return put(key, service);
     }
 
-    public <S extends Type>  S putTyped(
-            @NotNull ServiceKey<S> key,
-            @NotNull Provider<S> service
-    ) {
+    public <S extends T> S putTyped(@NotNull ServiceKey<S> key, @NotNull Provider<S> service) {
         return put(key, service);
     }
 
     /* ===================== TYPED PUT IF ABSENT ===================== */
 
-    public <S extends Type>  S putIfAbsentTyped(
-            @NotNull ServiceKey<S> key,
-            @NotNull S service
-    ) {
+    public <S extends T> S putIfAbsentTyped(@NotNull ServiceKey<S> key, @NotNull S service) {
         return putIfAbsent(key, service);
     }
 
-    public <S extends Type>  S putIfAbsentTyped(
-            @NotNull ServiceKey<S> key,
-            @NotNull Provider<S> service
-    ) {
+    public <S extends T> S putIfAbsentTyped(@NotNull ServiceKey<S> key, @NotNull Provider<S> service) {
         return putIfAbsent(key, service);
     }
 
     /* ===================== TYPED PUT (CLASS) ===================== */
 
-    public <S extends Type>  S putTyped(
-            @NotNull Class<S> type,
-            @NotNull S service
-    ) {
+    public <S extends T> S putTyped(@NotNull Class<S> type, @NotNull S service) {
         return put(type, service);
     }
 
-    public <S extends Type>  S putTyped(
-            @NotNull Class<S> type,
-            @NotNull Provider<S> service
-    ) {
+    public <S extends T> S putTyped(@NotNull Class<S> type, @NotNull Provider<S> service) {
         return put(type, service);
     }
 
     /* ===================== TYPED PUT IF ABSENT (CLASS) ===================== */
 
-    public <S extends Type>  S putIfAbsentTyped(
-            @NotNull Class<S> type,
-            @NotNull S service
-    ) {
+    public <S extends T> S putIfAbsentTyped(@NotNull Class<S> type, @NotNull S service) {
         return putIfAbsent(type, service);
     }
 
-    public <S extends Type>  S putIfAbsentTyped(
-            @NotNull Class<S> type,
-            @NotNull Provider<S> service
-    ) {
+    public <S extends T> S putIfAbsentTyped(@NotNull Class<S> type, @NotNull Provider<S> service) {
         return putIfAbsent(type, service);
     }
 

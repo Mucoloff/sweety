@@ -1,13 +1,8 @@
 package dev.sweety.event.util;
 
-import java.util.function.Function;
-
-@FunctionalInterface
-public interface Operation<R> extends Function<Object[], R> {
-    R call(Object... args);
-
-    @Override
-    default R apply(Object... args){
-        return call(args);
-    }
+/**
+ * @deprecated Use {@link dev.sweety.event.api.function.Operation} instead.
+ */
+@Deprecated
+public interface Operation<R> extends dev.sweety.event.api.function.Operation<R> {
 }

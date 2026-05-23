@@ -4,7 +4,7 @@ import dev.sweety.event.api.*;
 import dev.sweety.event.api.info.State;
 import dev.sweety.event.api.listener.LinkEvent;
 import dev.sweety.event.api.listener.Listener;
-import dev.sweety.event.util.Operation;
+import dev.sweety.event.api.function.Operation;
 import dev.sweety.thread.ThreadManager;
 import dev.sweety.thread.ThreadType;
 import it.unimi.dsi.fastutil.Pair;

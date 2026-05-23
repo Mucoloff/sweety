@@ -2,7 +2,7 @@ package dev.sweety.event.processor;
 
 import dev.sweety.event.api.*;
 import dev.sweety.event.api.listener.Listener;
-import dev.sweety.event.util.Operation;
+import dev.sweety.event.api.function.Operation;
 import it.unimi.dsi.fastutil.Pair;
 import org.junit.jupiter.api.Test;
 
