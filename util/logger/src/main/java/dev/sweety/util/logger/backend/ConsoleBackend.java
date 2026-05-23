@@ -27,17 +27,7 @@ public class ConsoleBackend implements LoggerBackend {
 
     @Override
     public boolean isEnabled(LogLevel level) {
-        return getSeverity(level) >= getSeverity(minLevel);
-    }
-    
-    private int getSeverity(LogLevel level) {
-        return switch (level) {
-            case ERROR -> 50;
-            case WARN -> 40;
-            case INFO -> 30;
-            case DEBUG -> 20;
-            case TRACE -> 10;
-        };
+        return level.severity() >= minLevel.severity();
     }
 
     @Override

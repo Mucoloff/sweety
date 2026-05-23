@@ -21,7 +21,7 @@ public class FileBackend implements LoggerBackend {
         this(Files.newBufferedWriter(file,
                 StandardOpenOption.CREATE,
                 StandardOpenOption.WRITE,
-                StandardOpenOption.TRUNCATE_EXISTING),
+                StandardOpenOption.APPEND),
                 new SimpleLogFormatter());
     }
 
