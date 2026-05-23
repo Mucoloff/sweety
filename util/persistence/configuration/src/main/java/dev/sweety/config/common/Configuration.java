@@ -13,7 +13,9 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
+import java.util.UUID;
 
 public abstract class Configuration {
 
@@ -480,6 +482,67 @@ public abstract class Configuration {
             result.add(SerializableRegistry.construct(clazz, (Map<String, Object>) map));
         }
         return result;
+    }
+
+    // Extended scalar getters (parallel to Buffer's missing features)
+
+    public byte getByte(@NotNull String path) {
+        return getByte(path, (get(path) instanceof Number n) ? n.byteValue() : (byte) 0);
+    }
+
+    public byte getByte(@NotNull String path, byte def) {
+        return (get(path) instanceof Number n) ? n.byteValue() : def;
+    }
+
+    public short getShort(@NotNull String path) {
+        return getShort(path, (get(path) instanceof Number n) ? n.shortValue() : (short) 0);
+    }
+
+    public short getShort(@NotNull String path, short def) {
+        return (get(path) instanceof Number n) ? n.shortValue() : def;
+    }
+
+    public char getChar(@NotNull String path) {
+        return getChar(path, (char) 0);
+    }
+
+    public char getChar(@NotNull String path, char def) {
+        Object val = get(path);
+        if (val instanceof Character c) return c;
+        if (val instanceof Number n) return (char) n.intValue();
+        if (val instanceof String s && !s.isEmpty()) return s.charAt(0);
+        return def;
+    }
+
+    @Nullable
+    public UUID getUUID(@NotNull String path) {
+        Object val = get(path);
+        if (val instanceof UUID u) return u;
+        if (val instanceof String s) {
+            try { return UUID.fromString(s); } catch (IllegalArgumentException ignored) {}
+        }
+        return null;
+    }
+
+    @Nullable
+    public byte[] getBytes(@NotNull String path) {
+        Object val = get(path);
+        return val instanceof byte[] b ? b : null;
+    }
+
+    @NotNull
+    public <E extends Enum<E>> Optional<E> getEnum(@NotNull String path, @NotNull Class<E> clazz) {
+        Object val = get(path);
+        if (val == null) return Optional.empty();
+        String name = val instanceof String s ? s : val.toString();
+        try { return Optional.of(Enum.valueOf(clazz, name)); }
+        catch (IllegalArgumentException ignored) { return Optional.empty(); }
+    }
+
+    @NotNull
+    public <T> Optional<T> getOptional(@NotNull String path, @NotNull Class<T> clazz) {
+        Object val = get(path);
+        return clazz.isInstance(val) ? Optional.of(clazz.cast(val)) : Optional.empty();
     }
 
     // Bukkit
