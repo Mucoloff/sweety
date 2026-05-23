@@ -1,3 +1,3 @@
 dependencies {
-    implementation(project(":util:logger"))
+    api(project(":util:logger"))
 }

@@ -1,5 +1,5 @@
 dependencies {
-    implementation(project(":feature:module:versioning:protocol"))
+    api(project(":feature:module:versioning:protocol"))
     implementation(project(":util:data"))
     implementation(project(":network:netty"))
     implementation("com.google.code.gson:gson:2.11.0")

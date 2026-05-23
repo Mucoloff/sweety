@@ -14,7 +14,7 @@ group = "dev.sweety"
 version = "1.0.0"
 
 subprojects {
-    apply(plugin = "java")
+    apply(plugin = "java-library")
     // Apply Kotlin plugin only to modules that contain .kt sources.
     // KGP 2.x creates a compileKotlin→jar→classes→compileJava→compileKotlin cycle
     // in pure-Java modules, so we apply it selectively.
