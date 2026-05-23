@@ -18,26 +18,26 @@ public interface ConfigSerializable {
 
     default <T, R extends T> R getAs(Map<String, Object> me, String key, Class<T> clazz) {
         Object value = me.get(key);
-        if (value instanceof Number number && Number.class.isAssignableFrom(clazz)) {
+        if (value instanceof Number n && Number.class.isAssignableFrom(clazz)) {
             //noinspection unchecked
-            return (R) switch (clazz.getSimpleName().toLowerCase()) {
-                case "byte" -> number.byteValue();
-                case "short" -> number.shortValue();
-                case "integer" -> number.intValue();
-                case "long" -> number.longValue();
-                case "float" -> number.floatValue();
-                case "double" -> number.doubleValue();
-                default -> clazz.cast(value);
-            };
+            return (R) coerceNumber(n, clazz);
         }
-
         if (Character.class.isAssignableFrom(clazz)) {
             //noinspection unchecked
             return (R) Character.valueOf(value.toString().charAt(0));
         }
-
         //noinspection unchecked
         return (R) clazz.cast(value);
+    }
+
+    private static Number coerceNumber(Number n, Class<?> clazz) {
+        if (clazz == Byte.class)    return n.byteValue();
+        if (clazz == Short.class)   return n.shortValue();
+        if (clazz == Integer.class) return n.intValue();
+        if (clazz == Long.class)    return n.longValue();
+        if (clazz == Float.class)   return n.floatValue();
+        if (clazz == Double.class)  return n.doubleValue();
+        return n;
     }
 
     default Map<String, Object> tree() {
