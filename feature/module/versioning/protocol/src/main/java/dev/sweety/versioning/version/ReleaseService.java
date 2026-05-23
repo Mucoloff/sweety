@@ -32,7 +32,7 @@ public interface ReleaseService {
             @NotNull Channel channel,
             @Nullable Version version,
             @Nullable Float rollout,
-            @Nullable byte[] jar
+            byte @Nullable [] jar
     ) throws IOException;
 
     @NotNull

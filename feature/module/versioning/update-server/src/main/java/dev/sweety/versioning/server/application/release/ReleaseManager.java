@@ -51,7 +51,7 @@ public class ReleaseManager implements ReleaseService, PublishReleaseUseCase, Ro
     }
 
     @Override
-    public ReleaseInfo latest(Artifact artifact, Channel channel) {
+    public ReleaseInfo latest(@NotNull Artifact artifact, @NotNull Channel channel) {
         ReleaseState s = getOrRegister(artifact);
         synchronized (s.lock) {
             return s.latest(channel);
@@ -60,7 +60,7 @@ public class ReleaseManager implements ReleaseService, PublishReleaseUseCase, Ro
 
     @Override
     @NotNull
-    public Collection<ReleaseInfo> history(Artifact artifact, Channel channel) {
+    public Collection<ReleaseInfo> history(@NotNull Artifact artifact, @NotNull Channel channel) {
         ReleaseState s = getOrRegister(artifact);
         synchronized (s.lock) {
             return s.history(channel);
@@ -83,7 +83,7 @@ public class ReleaseManager implements ReleaseService, PublishReleaseUseCase, Ro
 
     @Override
     @NotNull
-    public Path resolveBaseJar(@NotNull Artifact artifact, Channel channel, Version version) throws IOException {
+    public Path resolveBaseJar(@NotNull Artifact artifact, @NotNull Channel channel, @NotNull Version version) throws IOException {
         final ReleaseState s = getOrRegister(artifact);
         synchronized (s.lock) {
             return resolveBaseJar(s, artifact, channel, version);
@@ -91,7 +91,7 @@ public class ReleaseManager implements ReleaseService, PublishReleaseUseCase, Ro
     }
 
     @Override
-    public ReleaseInfo rollback(Artifact artifact, Channel channel) throws IOException {
+    public ReleaseInfo rollback(@NotNull Artifact artifact, @NotNull Channel channel) throws IOException {
         ReleaseState s = getOrRegister(artifact);
         synchronized (s.lock) {
             ReleaseInfo prev = s.history(channel).pollFirst();
@@ -103,7 +103,7 @@ public class ReleaseManager implements ReleaseService, PublishReleaseUseCase, Ro
     }
 
     @Override
-    public ReleaseInfo updateRollout(Artifact artifact, Channel channel, float rollout) throws IOException {
+    public ReleaseInfo updateRollout(@NotNull Artifact artifact, @NotNull Channel channel, float rollout) throws IOException {
         ReleaseState s = getOrRegister(artifact);
         synchronized (s.lock) {
             ReleaseInfo current = s.latest(channel);
