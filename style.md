@@ -451,6 +451,143 @@ public record Point(double x, double y) {}
 
 ---
 
-# 18. Regola finale
+# 18. Architettura applicativa (MVC / MVP / MVVM)
+
+Per moduli **con UI** (desktop, web front-end, IntelliJ plugin). Sistemi headless/server → §19.
+
+## MVC (Model-View-Controller)
+| Strato | Responsabilità |
+|--------|---------------|
+| Model | stato + business rules, zero riferimenti UI |
+| View | rendering passivo, ascolta/osserva Model |
+| Controller | riceve input, traduce in mutazioni Model |
+
+Usare quando: web server-side classico, framework con routing (Spring MVC, Ktor, Javalin).
+
+## MVP (Model-View-Presenter)
+| Strato | Responsabilità |
+|--------|---------------|
+| Model | dominio, come MVC |
+| View | dumb — espone contratto (`setText`, `onClick`), niente logica |
+| Presenter | logica UI, parla con Model via interfaccia View |
+
+Usare quando: View difficile da testare (Swing, SWT, Android pre-Jetpack). Presenter è testabile in isolamento perché View è un'interfaccia.
+
+## MVVM (Model-View-ViewModel)
+| Strato | Responsabilità |
+|--------|---------------|
+| Model | dominio |
+| ViewModel | stato osservabile (Property, StateFlow, ObservableField) — zero ref a View |
+| View | binding dichiarativo a ViewModel |
+
+Usare quando: framework con data-binding nativo (JavaFX Property, Jetpack Compose, WPF).
+
+## Regola di selezione
+- Lascia che il **framework scelga il pattern**: Spring MVC → MVC, Jetpack → MVVM, Swing test-heavy → MVP.
+- Non mescolare pattern diversi nella stessa app.
+- Non applicare MVC/MVP/MVVM a moduli server/headless — usare §19.
+
+---
+
+# 19. Architettura sistemi/SaaS
+
+Per moduli backend, network, SaaS. Tre pillar: esagonale, event-driven, modulare.
+
+## A. Esagonale (Ports & Adapters)
+
+### Layout canon
+
+Struttura canonizzata da `feature/module/versioning/update-server` e `client/launcher`:
+
+```
+<module>/
+├─ domain/                     # entità, value object, regole pure di dominio
+├─ port/
+│  ├─ in/                      # use-case (interfacce *UseCase)
+│  └─ out/                     # SPI (*Repository, *Store, *Publisher)
+├─ application/                # implementazioni use-case (servizi orchestratori)
+├─ adapter/
+│  ├─ in/<transport>/          # http, netty, cli, ws  →  chiama port/in
+│  └─ out/<resource>/          # storage, cache, webhook  →  implementa port/out
+└─ infra/                      # wiring, bootstrap, config
+```
+
+### Regole dipendenze
+- `domain/` → nessuna dipendenza interna (no `adapter/`, no `infra/`)
+- `application/` → solo `domain/` + `port/`
+- `adapter/` → solo `port/` (non `application/` direttamente)
+- `infra/` → tutto (è il punto di wiring)
+
+### Naming
+- Port in: `*UseCase` (es. `PublishReleaseUseCase`)
+- Port out: nome del ruolo (`ReleaseRepository`, `ReleasePublisher`) — no `I*`, no `*Dao`
+- Un servizio `application/` può implementare più `*UseCase` (vedi `ReleaseManager.java:27`)
+
+## B. Event-driven
+
+- Evento = fatto già accaduto → naming al passato (`OrderPlaced`, non `PlaceOrder`)
+- Tipi evento immutabili: `record` o estensione di `Event<E>` in `feature/event/api`
+- Pub/sub via `EventSystemPort` — mai dipendenza diretta su `EventSystem` impl
+- Registrazione listener via `@LinkEvent` + KSP processor (`feature/event/event-processor`) — no reflection runtime
+- Comandi → use-case (`port/in`); eventi → broadcast post-fatto
+- `CancellableEvent` solo per intercept pre-commit; default `Event` altrimenti
+- Separazione: produttore non conosce consumatori; consumatore non chiama produttore
+
+## C. Modulare (Gradle)
+
+- Ogni capability = subproject Gradle separato (`util/*`, `feature/*`, `network/*`, ecc.)
+- Split `api`/`impl` quando: multiple implementazioni possibili, oppure l'API è consumata da altri moduli senza trascinare l'impl
+- Hexagonal split (`port/`, `adapter/`, `application/`, `domain/`) solo se il modulo è abbastanza grande da giustificarlo — non obbligatorio per moduli piccoli
+- Naming: `<area>/<capability>[/{api,impl,…}]`
+- Dipendenze cicliche tra subproject: vietate (Gradle le rifiuta; `api` scope vs `implementation` scope per propagazione)
+
+---
+
+# 20. DI e wiring
+
+## Default: constructor injection
+
+```java
+// ✔️ — plain Java, zero magia
+public class ReleaseManager implements PublishReleaseUseCase {
+    private final ReleaseRepository repo;
+    private final ReleasePublisher publisher;
+
+    public ReleaseManager(ReleaseRepository repo, ReleasePublisher publisher) {
+        this.repo = repo;
+        this.publisher = publisher;
+    }
+}
+```
+
+## Annotation-driven DI
+
+Usare `@ServiceComponent` + `@Inject` + `ServiceManager` (`feature/service`) **solo** per moduli con:
+- plugin discovery dinamico
+- lifecycle automatico (`onEnable`/`onDisable`)
+- dependency graph non triviale
+
+## Anti-pattern
+- ❌ Service locator: `Globals.get(X.class)` — coupling nascosto
+- ❌ Field injection fuori da `feature/service` impl
+- ❌ Static factory globale per dipendenze runtime-swappable (usare `AtomicReference` + DI — vedi §9)
+
+---
+
+# 21. Modello plugin / Extension
+
+Tre modi di estendere il sistema — scegliere uno per dominio:
+
+| Modello | Quando | Moduli chiave |
+|---------|--------|---------------|
+| File-loaded `Extension` | plugin caricati da JAR esterno, lifecycle toggle, class isolation | `feature/module/extension/{api,manager}` |
+| Versioned `UpdateableExtension` | come sopra + auto-update | `feature/module/extension-versioning/{api,manager}` |
+| DI `@ServiceComponent` | componenti interni con DI e lifecycle, no class isolation | `feature/service/{api,impl}` |
+
+Regola: non mescolare modelli nello stesso modulo.
+
+---
+
+# 22. Regola finale
 
 > Codice semplice > codice "smart"
