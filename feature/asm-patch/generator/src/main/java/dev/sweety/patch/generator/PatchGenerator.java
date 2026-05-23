@@ -10,6 +10,7 @@ import dev.sweety.patch.hash.HashFunction;
 import dev.sweety.patch.model.Patch;
 import dev.sweety.patch.model.type.PatchType;
 import dev.sweety.patch.verify.PatchValidator;
+import dev.sweety.patch.verify.Validators;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -34,7 +35,7 @@ public class PatchGenerator {
         this.writer = archiveWriter;
         this.normalizer = normalizer;
         this.diffEngine = new PatchDiffEngine(hashFunction, normalizer);
-        this.validator = new PatchValidator(hashFunction);
+        this.validator = Validators.forHash(hashFunction);
     }
 
     public Path generate(Path input, Path output, Path patchDir, String patch, String fromVersion, String toVersion, PatchFilter filter) throws IOException {
