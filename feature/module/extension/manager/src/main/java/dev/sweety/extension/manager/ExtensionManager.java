@@ -1,3 +1,4 @@
+// TODO(message-config): externalize user-facing log strings once message-config system lands
 package dev.sweety.extension.manager;
 
 import dev.sweety.util.logger.SimpleLogger;

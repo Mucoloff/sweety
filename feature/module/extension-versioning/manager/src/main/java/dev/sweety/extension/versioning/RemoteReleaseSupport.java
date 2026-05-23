@@ -48,21 +48,21 @@ public final class RemoteReleaseSupport {
      * {@link #http} from {@link #ENV_UPDATE_HTTP_BASE} and {@link #ENV_RELEASE_API_KEY}.
      */
     public static IReleaseService fromEnvironment(Path cacheDir) {
-        String base = System.getenv(ENV_UPDATE_HTTP_BASE);
-        if (base == null || base.isBlank()) {
-            throw new IllegalStateException("Set env " + ENV_UPDATE_HTTP_BASE + " (e.g. http://localhost:8080)");
-        }
-        String key = System.getenv(ENV_RELEASE_API_KEY);
-        if (key == null || key.isBlank()) {
-            throw new IllegalStateException("Set env " + ENV_RELEASE_API_KEY + " to match the update-server release API key");
-        }
-        return http(URI.create(base.trim()), key, cacheDir);
+        EnvConfig cfg = parseEnv();
+        return http(cfg.base(), cfg.key(), cacheDir);
     }
 
     /**
      * {@link #httpWithTokenDownload} from env plus an explicit {@code clientId} (must match the identity used for downloads).
      */
     public static IReleaseService fromEnvironmentWithTokenDownload(Path cacheDir, UUID clientId) {
+        EnvConfig cfg = parseEnv();
+        return httpWithTokenDownload(cfg.base(), cfg.key(), clientId, cacheDir);
+    }
+
+    private record EnvConfig(URI base, String key) {}
+
+    private static EnvConfig parseEnv() {
         String base = System.getenv(ENV_UPDATE_HTTP_BASE);
         if (base == null || base.isBlank()) {
             throw new IllegalStateException("Set env " + ENV_UPDATE_HTTP_BASE + " (e.g. http://localhost:8080)");
@@ -71,7 +71,7 @@ public final class RemoteReleaseSupport {
         if (key == null || key.isBlank()) {
             throw new IllegalStateException("Set env " + ENV_RELEASE_API_KEY + " to match the update-server release API key");
         }
-        return httpWithTokenDownload(URI.create(base.trim()), key, clientId, cacheDir);
+        return new EnvConfig(URI.create(base.trim()), key);
     }
 
     static URI normalizeBase(URI base) {

@@ -115,8 +115,8 @@ class ExtensionUpdaterTest {
         manager.track(ext, localJar);
 
         ExtensionUpdater<VersionableExtension> updater = new ExtensionUpdater<>(manager, stub);
-        Boolean ok = updater.updateIfAvailable(ext, Channel.STABLE).get();
-        assertTrue(Boolean.TRUE.equals(ok));
+        UpdateOutcome outcome = updater.updateIfAvailable(ext, Channel.STABLE).get();
+        assertInstanceOf(UpdateOutcome.Updated.class, outcome);
 
         Path updateSidecar = tmp.resolve("MYEXT.jar.update");
         assertTrue(Files.isRegularFile(updateSidecar));
@@ -137,8 +137,8 @@ class ExtensionUpdaterTest {
         stub.remoteJar = localJar;
 
         ExtensionUpdater<VersionableExtension> updater = new ExtensionUpdater<>(manager, stub);
-        Boolean ok = updater.updateIfAvailable(ext, Channel.STABLE).get();
-        assertFalse(Boolean.TRUE.equals(ok));
+        UpdateOutcome outcome = updater.updateIfAvailable(ext, Channel.STABLE).get();
+        assertInstanceOf(UpdateOutcome.UpToDate.class, outcome);
         assertFalse(Files.exists(tmp.resolve("MYEXT.jar.update")));
     }
 }

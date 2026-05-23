@@ -34,22 +34,22 @@ public class ExtensionUpdater<T extends VersionableExtension> {
         this.releaseService = releaseService;
     }
 
-    public CompletableFuture<Boolean> updateIfAvailable(@NotNull T extension, @NotNull Channel channel) {
+    public CompletableFuture<UpdateOutcome> updateIfAvailable(@NotNull T extension, @NotNull Channel channel) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 ReleaseInfo latest = releaseService.latest(extension.artifact(), channel);
-                if (latest == null) return false;
+                if (latest == null) return UpdateOutcome.upToDate();
 
                 Version current = Version.parse(extension.version());
                 if (latest.version().newerThan(current)) {
                     LOGGER.info("Updating " + extension.name() + " from " + current + " to " + latest.version());
-                    return downloadAndPrepareUpdate(extension, latest);
+                    return downloadAndPrepareUpdate(extension, latest) ? UpdateOutcome.updated() : UpdateOutcome.upToDate();
                 }
 
-                return false;
+                return UpdateOutcome.upToDate();
             } catch (Exception e) {
                 LOGGER.error("Failed to check for updates for " + extension.name(), e);
-                return false;
+                return UpdateOutcome.failed(e);
             }
         });
     }
@@ -83,13 +83,13 @@ public class ExtensionUpdater<T extends VersionableExtension> {
     public CompletableFuture<Void> updateAll(@NotNull Channel channel) {
         Objects.requireNonNull(channel, "channel cannot be null");
         @SuppressWarnings("unchecked")
-        CompletableFuture<Boolean>[] futures = manager.extensions().values().stream()
+        CompletableFuture<UpdateOutcome>[] futures = manager.extensions().values().stream()
                 .map(ext -> updateIfAvailable(ext, channel).handle((result, ex) -> {
                     if (ex != null) {
                         LOGGER.error("Update task failed for " + ext.name(), ex);
-                        return false;
+                        return UpdateOutcome.failed(ex);
                     }
-                    return Boolean.TRUE.equals(result);
+                    return result instanceof UpdateOutcome ? result : UpdateOutcome.upToDate();
                 }))
                 .toArray(CompletableFuture[]::new);
         if (futures.length == 0) {
