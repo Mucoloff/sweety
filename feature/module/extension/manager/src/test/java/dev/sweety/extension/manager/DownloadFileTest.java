@@ -2,13 +2,17 @@ package dev.sweety.extension.manager;
 
 import com.sun.net.httpserver.HttpServer;
 import dev.sweety.extension.manager.loader.DownloadFile;
+import dev.sweety.extension.manager.loader.DownloadPolicy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -60,7 +64,7 @@ class DownloadFileTest {
             String url = "http://127.0.0.1:" + port + "/file.bin";
             Path target = tmp.resolve("downloaded.bin");
 
-            CompletableFuture<Path> future = DownloadFile.downloadFromURL(url, target, true);
+            CompletableFuture<Path> future = DownloadFile.downloadFromURL(url, target, true, DownloadPolicy.ALLOW_HTTP);
             Path result = future.get();
 
             assertEquals(target, result, "Returned path should be the target path when saveToDisk=true");
@@ -87,7 +91,7 @@ class DownloadFileTest {
             // targetPath is only used to derive the temp file suffix; it need not exist
             Path nominal = tmp.resolve("data.bin");
 
-            CompletableFuture<Path> future = DownloadFile.downloadFromURL(url, nominal, false);
+            CompletableFuture<Path> future = DownloadFile.downloadFromURL(url, nominal, false, DownloadPolicy.ALLOW_HTTP);
             Path result = future.get();
 
             assertNotNull(result, "Future must complete with a non-null path");
@@ -102,6 +106,94 @@ class DownloadFileTest {
         } finally {
             server.stop(0);
         }
+    }
+
+    // ------------------------------------------------------------------
+    // downloadFromUrl_exceededMaxBytes_throws
+    // ------------------------------------------------------------------
+
+    @Test
+    void downloadFromUrl_exceededMaxBytes_throws(@TempDir Path tmp) throws Exception {
+        byte[] content = "0123456789".getBytes(); // 10 bytes
+
+        HttpServer server = startServer(content);
+        try {
+            int port = server.getAddress().getPort();
+            String url = "http://127.0.0.1:" + port + "/big.bin";
+            Path target = tmp.resolve("big.bin");
+
+            DownloadPolicy tinyPolicy = new DownloadPolicy(
+                    java.time.Duration.ofSeconds(10),
+                    java.time.Duration.ofSeconds(30),
+                    3L, // max 3 bytes — server sends 10
+                    Set.of("http"),
+                    Optional.empty()
+            );
+
+            CompletableFuture<Path> future = DownloadFile.downloadFromURL(url, target, true, tinyPolicy);
+
+            ExecutionException ex = assertThrows(ExecutionException.class, future::get,
+                    "Future must complete exceptionally when payload exceeds maxBytes");
+            Throwable cause = ex.getCause();
+            assertNotNull(cause, "Cause must not be null");
+            assertInstanceOf(RuntimeException.class, cause);
+
+            // Walk the cause chain to find the IOException with our message
+            boolean found = false;
+            Throwable t = cause;
+            while (t != null) {
+                if (t instanceof java.io.IOException && t.getMessage() != null
+                        && t.getMessage().contains("payload exceeds maxBytes")) {
+                    found = true;
+                    break;
+                }
+                t = t.getCause();
+            }
+            assertTrue(found, "Cause chain must contain an IOException with 'payload exceeds maxBytes'");
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // downloadFromUrl_disallowedScheme_throws
+    // ------------------------------------------------------------------
+
+    @Test
+    void downloadFromUrl_disallowedScheme_throws(@TempDir Path tmp) throws Exception {
+        Path target = tmp.resolve("out.bin");
+
+        // Policy that only allows https — we pass a file:// URL
+        DownloadPolicy httpsOnly = new DownloadPolicy(
+                java.time.Duration.ofSeconds(10),
+                java.time.Duration.ofSeconds(30),
+                50 * 1024 * 1024L,
+                Set.of("https"),
+                Optional.empty()
+        );
+
+        // file:// URL pointing to something that exists (doesn't matter — scheme check is first)
+        String fileUrl = tmp.toUri().toString(); // e.g. file:///tmp/...
+
+        CompletableFuture<Path> future = DownloadFile.downloadFromURL(fileUrl, target, true, httpsOnly);
+
+        ExecutionException ex = assertThrows(ExecutionException.class, future::get,
+                "Future must complete exceptionally for disallowed scheme");
+        Throwable cause = ex.getCause();
+        assertNotNull(cause, "Cause must not be null");
+        assertInstanceOf(RuntimeException.class, cause);
+
+        boolean found = false;
+        Throwable t = cause;
+        while (t != null) {
+            if (t instanceof java.io.IOException && t.getMessage() != null
+                    && t.getMessage().contains("Scheme not allowed")) {
+                found = true;
+                break;
+            }
+            t = t.getCause();
+        }
+        assertTrue(found, "Cause chain must contain an IOException with 'Scheme not allowed'");
     }
 
     // ------------------------------------------------------------------
