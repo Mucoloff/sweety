@@ -14,9 +14,11 @@ import org.jetbrains.annotations.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import dev.sweety.sql4j.api.query.UpsertQuery;
@@ -64,11 +66,12 @@ public final class UpsertEntity<T> extends AbstractQuery<MutationResult<T>> impl
             List<String> insertColNames = insertColumns.stream().map(Column::name).collect(Collectors.toList());
             List<Column<?>> pkColumns = table.primaryKeys();
             List<String> pkColNames = pkColumns.stream().map(Column::name).collect(Collectors.toList());
+            Set<String> pkColNameSet = new HashSet<>(pkColNames);
 
             // Columns updated on conflict (everything that is not a PK)
             List<String> updateColNames = insertColumns.stream()
                     .map(Column::name)
-                    .filter(name -> !pkColNames.contains(name))
+                    .filter(name -> !pkColNameSet.contains(name))
                     .collect(Collectors.toList());
 
             if (pkColNames.isEmpty()) {

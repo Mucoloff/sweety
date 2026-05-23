@@ -19,7 +19,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public final class SelectJoin extends AbstractQuery<List<Row>> {
@@ -212,6 +211,7 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
                     Object rootPk = row.get(rootTable.name() + "_" + rootTable.primaryKeys().get(0).name());
                     if (rootPk == null) continue;
 
+                    //noinspection unchecked
                     R root = (R) globalIdentityMap.get(rootTable).computeIfAbsent(rootPk, _ -> row.extractEntity(rootTable, rootTable.name()));
                     identityMap.put(rootPk, root);
 
@@ -266,7 +266,8 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
     }
 
     public static class Builder implements JoinBuilder {
-        private final List<Table<?>> tablesList = new ArrayList<>();
+        private final LinkedHashSet<Table<?>> tablesList = new LinkedHashSet<>();
+        private Table<?> lastTable;
         private final List<JoinInfo> joinsList = new ArrayList<>();
         private final List<String> onClausesList = new ArrayList<>();
         private final TableRegistry registry;
@@ -290,7 +291,7 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
 
         public Builder join(Table<?>... tables) {
             for (Table<?> table : tables) {
-                if (!tablesList.contains(table)) tablesList.add(table);
+                if (tablesList.add(table)) lastTable = table;
             }
             return this;
         }
@@ -307,15 +308,15 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
                     break;
                 }
             }
-            if (sourceTable == null && tablesList.size() >= 1) {
-                sourceTable = tablesList.get(tablesList.size() - 1);
+            if (sourceTable == null && !tablesList.isEmpty()) {
+                sourceTable = lastTable;
             }
 
             if (sourceTable == null) {
                 throw new Sql4jMappingException("Source table for relation '" + rel.field().getName() + "' not found in join builder");
             }
 
-            if (!tablesList.contains(targetTable)) tablesList.add(targetTable);
+            if (tablesList.add(targetTable)) lastTable = targetTable;
             joinsList.add(new JoinInfo(sourceTable, targetTable, rel));
 
             switch (rel.type()) {
@@ -367,7 +368,7 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
         }
 
         public SelectJoin build() {
-            return new SelectJoin(tablesList, joinsList, onClausesList, whereClause, criterion, dialect, includeDeleted, groupByColumns, havingCriterion, -1, -1, null, true, params.toArray());
+            return new SelectJoin(new ArrayList<>(tablesList), joinsList, onClausesList, whereClause, criterion, dialect, includeDeleted, groupByColumns, havingCriterion, -1, -1, null, true, params.toArray());
         }
 
         // ─── JoinBuilder interface bridge methods ──────────────────────────────
@@ -376,7 +377,6 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
 
         /** {@inheritDoc} */
         @Override
-        @SuppressWarnings("unchecked")
         public <R> Query<List<R>> buildTyped(Class<R> rootType) {
             return build().mapToHierarchy(rootType);
         }

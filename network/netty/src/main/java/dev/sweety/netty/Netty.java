@@ -5,7 +5,7 @@ import dev.sweety.netty.messaging.impl.GenericClient;
 import dev.sweety.netty.messaging.impl.GenericServer;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.IPacketRegistry;
-import dev.sweety.netty.packet.registry.SimplePacketRegistry;
+import dev.sweety.netty.packet.registry.OptimizedPacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
@@ -24,7 +24,7 @@ public class Netty {
     public static class ServerBuilder {
         private String host = "127.0.0.1";
         private int port = 8080;
-        private IPacketRegistry registry = new SimplePacketRegistry();
+        private IPacketRegistry registry = new OptimizedPacketRegistry();
         private BiConsumer<ChannelHandlerContext, ChannelPromise> joinHandler;
         private BiConsumer<ChannelHandlerContext, ChannelPromise> quitHandler;
         private BiConsumer<ChannelHandlerContext, Throwable> exceptionHandler;
@@ -86,7 +86,7 @@ public class Netty {
         private String host = "127.0.0.1";
         private int port = 8080;
         private int localPort = -1;
-        private IPacketRegistry registry = new SimplePacketRegistry();
+        private IPacketRegistry registry = new OptimizedPacketRegistry();
         private BiConsumer<ChannelHandlerContext, ChannelPromise> joinHandler;
         private BiConsumer<ChannelHandlerContext, ChannelPromise> quitHandler;
         private BiConsumer<ChannelHandlerContext, Throwable> exceptionHandler;

@@ -99,9 +99,7 @@ public final class Messages {
         }
 
         if (template == null) {
-            if (warned.add(key)) {
-                LOG.warn("Missing message key '" + key + "' for locale " + locale.toLanguageTag());
-            }
+            if (warned.add(key)) LOG.warn("Missing message key '" + key + "' for locale " + locale.toLanguageTag());
             return key;
         }
 

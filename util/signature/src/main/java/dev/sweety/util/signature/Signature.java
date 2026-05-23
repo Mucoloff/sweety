@@ -195,8 +195,8 @@ public class Signature {
         return base + suffix + ext;
     }
 
-    public static Map<String, byte[]> testWatermarkResult(@NotNull Path inputJar, @NotNull List<String> watermarks, int watermarkSignature) throws Exception {
-        final Map<String, byte[]> watermarkResults = new HashMap<>(watermarks.size());
+    public static Map<String, byte[]> testWatermarkResult(@NotNull Path inputJar, @NotNull Set<String> watermarkSet, int watermarkSignature) throws Exception {
+        final Map<String, byte[]> watermarkResults = new HashMap<>(watermarkSet.size());
 
         try (JarFile jar = new JarFile(inputJar.toFile())) {
             Enumeration<JarEntry> entries = jar.entries();
@@ -221,7 +221,7 @@ public class Signature {
                     buffer.get(nameBytes);
                     String name = new String(nameBytes, StandardCharsets.UTF_8);
 
-                    if (!watermarks.contains(name)) continue;
+                    if (!watermarkSet.contains(name)) continue;
 
                     int dataLen = buffer.getInt();
                     if (dataLen <= 0 || dataLen > 512 || dataLen > buffer.remaining()) continue;
