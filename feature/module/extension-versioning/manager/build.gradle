@@ -12,6 +12,7 @@ dependencies {
     implementation project(':feature:module:extension:manager')
     implementation project(':feature:module:extension-versioning:api')
     implementation project(':feature:module:versioning:client')
+    implementation project(':feature:module:versioning:client-http')
 
     // Transitive deps exposed because upstream modules use 'implementation' (not 'api') scope
     implementation project(':util:logger')
