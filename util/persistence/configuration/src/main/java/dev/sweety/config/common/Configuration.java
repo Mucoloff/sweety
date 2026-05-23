@@ -673,4 +673,22 @@ public abstract class Configuration {
     public <T extends ConfigSerializable> T getSerializable(String path, Class<T> clazz) {
         return SerializableRegistry.construct(clazz, getMap(path));
     }
+
+    public Map<String, Object> flatten() {
+        Map<String, Object> out = new TreeMap<>();
+        flattenInto(map, "", out);
+        return out;
+    }
+
+    private static void flattenInto(Map<String, Object> src, String prefix, Map<String, Object> out) {
+        for (Map.Entry<String, Object> e : src.entrySet()) {
+            String key = prefix.isEmpty() ? e.getKey() : prefix + "." + e.getKey();
+            if (e.getValue() instanceof Map<?, ?> m) {
+                //noinspection unchecked
+                flattenInto((Map<String, Object>) m, key, out);
+            } else {
+                out.put(key, e.getValue());
+            }
+        }
+    }
 }

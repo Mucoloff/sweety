@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -36,8 +37,8 @@ public final class Messages {
     private static final AtomicReference<Locale> OVERRIDE_LOCALE = new AtomicReference<>(null);
     private static final Map<String, Messages> CACHE = new ConcurrentHashMap<>();
 
-    /** Ordered highest-priority-first; first non-null result wins. */
-    private final List<Configuration> layers;
+    /** Merged string templates, highest-priority wins. Key = dotted path, value = template. */
+    private final Map<String, String> templates;
     private final Locale locale;
     private final Set<String> warned = ConcurrentHashMap.newKeySet();
 
@@ -51,7 +52,7 @@ public final class Messages {
         this.prototype = prototype;
         this.overrideDir = overrideDir;
         this.locale = locale;
-        this.layers = buildLayers(baseName, prototype, overrideDir, locale);
+        this.templates = buildTemplates(baseName, prototype, overrideDir, locale);
     }
 
     // ── Factories ──────────────────────────────────────────────────────────────
@@ -88,15 +89,11 @@ public final class Messages {
     }
 
     public boolean has(String key) {
-        return layers.stream().anyMatch(cfg -> cfg.getString(key) != null);
+        return templates.containsKey(key);
     }
 
     public String get(String key, Object... args) {
-        String template = null;
-        for (Configuration layer : layers) {
-            template = layer.getString(key);
-            if (template != null) break;
-        }
+        String template = templates.get(key);
 
         if (template == null) {
             if (warned.add(key)) LOG.warn("Missing message key '" + key + "' for locale " + locale.toLanguageTag());
@@ -115,6 +112,20 @@ public final class Messages {
     }
 
     // ── Internal loading ───────────────────────────────────────────────────────
+
+    private static Map<String, String> buildTemplates(
+            String baseName, Configuration prototype, Path overrideDir, Locale locale) {
+
+        List<Configuration> layers = buildLayers(baseName, prototype, overrideDir, locale);
+        Map<String, String> out = new HashMap<>();
+
+        for (int i = layers.size() - 1; i >= 0; i--) {
+            for (Map.Entry<String, Object> e : layers.get(i).flatten().entrySet()) {
+                if (e.getValue() instanceof String s) out.put(e.getKey(), s);
+            }
+        }
+        return out;
+    }
 
     /**
      * Builds the priority-ordered layer list (highest priority first).
