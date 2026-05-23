@@ -273,7 +273,36 @@ config.set(newConfig);
 
 ---
 
-# 12. IO Files
+# 12. API / Implementation Style
+
+## Interfacce
+- Nome semplice e semantico (es. `Event`, `Logger`)
+- Definiscono solo il contratto
+- No prefissi tipo `I`
+
+## Implementazioni
+- Nome descrittivo (`FileLogger`, `AsyncLogger`)
+- Evitare `*Impl`
+
+## Factory
+- Preferire factory statiche nell'interfaccia per casi semplici
+- Per logica complessa → factory esterna
+
+## Gerarchie
+- Usare `sealed` per domini chiusi
+- Usare `abstract class` per logica condivisa
+- Evitare gerarchie profonde
+
+## Organizzazione
+- Piccoli progetti → flat
+- Progetti grandi → `impl` separato
+
+## Regola
+Non creare interfacce senza motivo reale (multipla implementazione, test, estensibilità).
+
+---
+
+# 13. IO Files
 
 ## File I/O
 
@@ -295,6 +324,6 @@ config.set(newConfig);
 
 ---
 
-# 13. Regola finale
+# 14. Regola finale
 
 > Codice semplice > codice "smart"
