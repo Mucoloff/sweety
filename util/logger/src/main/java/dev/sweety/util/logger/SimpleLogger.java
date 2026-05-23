@@ -163,8 +163,7 @@ public class SimpleLogger implements LogHelper {
     }
 
     public ProfileScope withProfile(String profile) {
-        push(profile);
-        return new ProfileScope(this);
+        return new ProfileScope(push(profile));
     }
 
     public String name() {

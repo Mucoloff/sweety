@@ -4,7 +4,7 @@ public class Animation {
 
     private Easing easing;
     // In seconds
-    private float duration;
+    private double duration;
     private long start;
 
     /**
@@ -13,7 +13,7 @@ public class Animation {
      * @param easing   the easing function
      * @param duration the duration in seconds
      */
-    public Animation(Easing easing, float duration) {
+    public Animation(Easing easing, double duration) {
         this.easing = easing;
         this.duration = duration;
     }
@@ -22,15 +22,15 @@ public class Animation {
         this.start = System.nanoTime();
     }
 
-    public float progress() {
+    public double progress() {
         if (completed()) return 1;
 
-        float input = passedSeconds() / this.duration;
+        double input = passedSeconds() / this.duration;
 
         return this.easing.apply(input);
     }
 
-    public float passedSeconds() {
+    public double passedSeconds() {
         return (System.nanoTime() - start) / 1e9f;
     }
 
@@ -47,11 +47,11 @@ public class Animation {
         return this;
     }
 
-    public float duration() {
+    public double duration() {
         return duration;
     }
 
-    public Animation duration(float duration) {
+    public Animation duration(double duration) {
         this.duration = duration;
         return this;
     }

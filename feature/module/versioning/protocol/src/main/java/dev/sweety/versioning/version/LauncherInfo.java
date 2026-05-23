@@ -8,13 +8,15 @@ import dev.sweety.versioning.security.HandshakeProof;
 import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.channel.Channel;
 
+import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-public record LauncherInfo(UUID buildId, UUID clientId, Map<Artifact, Version> versions, Channel channel, byte[] handshakeProof) implements Encoder {
+public record LauncherInfo(UUID buildId, UUID clientId, Map<Artifact, Version> versions, Channel channel,
+                           byte[] handshakeProof) implements Encoder {
 
     public LauncherInfo {
         Objects.requireNonNull(handshakeProof, "handshakeProof");
@@ -42,7 +44,7 @@ public record LauncherInfo(UUID buildId, UUID clientId, Map<Artifact, Version> v
     @Override
     public void write(final BufferWriter buffer) {
         buffer.writeUuid(this.buildId).writeUuid(this.clientId);
-        buffer.writeMap(versions, (b, artifact) -> b.writeString(artifact.name()), (b, version) -> b.writeObject(version));
+        buffer.writeMap(versions, (b, artifact) -> b.writeString(artifact.name()), BufferWriter::writeObject);
         buffer.writeEnum(this.channel);
         buffer.writeBytes(this.handshakeProof);
     }

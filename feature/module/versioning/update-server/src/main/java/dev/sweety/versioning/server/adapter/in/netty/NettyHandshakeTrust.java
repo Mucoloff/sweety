@@ -19,23 +19,14 @@ public final class NettyHandshakeTrust {
     private NettyHandshakeTrust() {}
 
     public static boolean isAcceptable(LauncherInfo info) {
-        if (info == null || info.channel() == null) {
-            return false;
-        }
-        if (info.clientId() == null || NIL_UUID.equals(info.clientId())) {
-            return false;
-        }
-        if (info.buildId() == null || NIL_UUID.equals(info.buildId())) {
-            return false;
-        }
+        if (info == null || info.channel() == null) return false;
+        if (info.clientId() == null || NIL_UUID.equals(info.clientId())) return false;
+        if (info.buildId() == null || NIL_UUID.equals(info.buildId())) return false;
         if (info.versions() == null || info.versions().isEmpty()
-                || info.versions().keySet().stream().anyMatch(a -> a == null || a.name() == null || a.name().isBlank())) {
+                || info.versions().keySet().stream().anyMatch(a -> a == null || a.name() == null || a.name().isBlank()))
             return false;
-        }
         String secret = Settings.NETTY_HANDSHAKE_SECRET;
-        if (secret == null || secret.isEmpty()) {
-            return true;
-        }
+        if (secret == null || secret.isEmpty()) return true;
         byte[] expected = HandshakeProof.compute(secret, info.buildId(), info.clientId(), info.versions(), info.channel());
         return MessageDigest.isEqual(expected, info.handshakeProof());
     }

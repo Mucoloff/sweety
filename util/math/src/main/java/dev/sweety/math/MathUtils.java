@@ -32,17 +32,16 @@ public final class MathUtils {
         return Math.clamp(value, 0f, 1f);
     }
 
+    public static double clamp(double value) {
+        return Math.clamp(value, 0d, 1d);
+    }
+
     public static float sin(float value) {
         return (float) Math.sin(value);
     }
 
     public static float cos(float value) {
         return (float) Math.cos(value);
-    }
-
-
-    public static double clamp(double value) {
-        return Math.clamp(value, 0f, 1d);
     }
 
     public interface Compare<T> {

@@ -1,6 +1,6 @@
 package dev.sweety.animation;
 
-import java.util.function.Function;
+import java.util.function.DoubleUnaryOperator;
 
 public enum Easing {
 
@@ -49,14 +49,14 @@ public enum Easing {
     // Circolar
     EASE_IN_CIRC(x -> 1 - Math.sqrt(1 - Math.pow(x, 2))),
     EASE_OUT_CIRC(x -> Math.sqrt(1 - Math.pow(x - 1, 2))),
-    EASE_IN_OUT_CIRC(x -> x < 0.5 ? (1 - Math.sqrt(1 - Math.pow(2 * x, 2))) * 0.5f : (Math.sqrt(1 - Math.pow(-2 * x + 2, 2)) + 1) * 0.5),
+    EASE_IN_OUT_CIRC(x -> x < 0.5 ? (1 - Math.sqrt(1 - Math.pow(2 * x, 2))) * 0.5 : (Math.sqrt(1 - Math.pow(-2 * x + 2, 2)) + 1) * 0.5),
 
     // Back
     EASE_IN_BACK(x -> x * x * x - x * Math.sin(x * Math.PI)),
     EASE_OUT_BACK(x -> 1 + --x * x * x + x * Math.sin(x * Math.PI)),
     EASE_IN_OUT_BACK(x -> {
         double s = 1.70158;
-        return x < 0.5 ? (Math.pow(2 * x, 2) * ((s + 1) * 2 * x - s)) * 0.5f : (Math.pow(2 * x - 2, 2) * ((s + 1) * (x * 2 - 2) + s) + 2) * 0.5;
+        return x < 0.5 ? (Math.pow(2 * x, 2) * ((s + 1) * 2 * x - s)) * 0.5 : (Math.pow(2 * x - 2, 2) * ((s + 1) * (x * 2 - 2) + s) + 2) * 0.5;
     }),
 
     // Elastic
@@ -94,13 +94,13 @@ public enum Easing {
 
     public static final Easing[] VALUES = values();
 
-    private final Function<Double, Double> function;
+    private final DoubleUnaryOperator easing;
 
-    Easing(Function<Double, Double> function) {
-        this.function = function;
+    Easing(DoubleUnaryOperator easing) {
+        this.easing = easing;
     }
 
-    public float apply(double input) {
-        return function.apply(input).floatValue();
+    public double apply(double input) {
+        return easing.applyAsDouble(input);
     }
 }

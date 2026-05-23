@@ -75,6 +75,7 @@
             <option value="$PROJECT_DIR$/util/processor/intellij-plugin" />
             <option value="$PROJECT_DIR$/util/processor/packet-processor" />
             <option value="$PROJECT_DIR$/util/processor/record-getter-processor" />
+            <option value="$PROJECT_DIR$/util/serialization" />
             <option value="$PROJECT_DIR$/util/signature" />
             <option value="$PROJECT_DIR$/util/system" />
             <option value="$PROJECT_DIR$/util/thread" />

@@ -10,6 +10,10 @@ public class ProfileScope implements AutoCloseable {
         this.logger = logger;
     }
 
+    public SimpleLogger logger() {
+        return logger;
+    }
+
     @Override
     public void close() {
         if (!closed) {
