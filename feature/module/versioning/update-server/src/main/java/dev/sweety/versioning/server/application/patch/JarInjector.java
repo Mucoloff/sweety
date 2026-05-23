@@ -1,6 +1,7 @@
 package dev.sweety.versioning.server.application.patch;
 
 import dev.sweety.util.signature.Signature;
+import dev.sweety.versioning.server.domain.patch.PatchDefinition;
 
 import java.io.IOException;
 import java.nio.file.Files;

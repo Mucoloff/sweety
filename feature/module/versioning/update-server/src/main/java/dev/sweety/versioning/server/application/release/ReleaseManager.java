@@ -2,7 +2,7 @@ package dev.sweety.versioning.server.application.release;
 
 import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.versioning.server.Settings;
-import dev.sweety.versioning.server.adapter.out.storage.Storage;
+import dev.sweety.versioning.server.port.out.storage.StoragePort;
 import dev.sweety.versioning.server.domain.release.ReleaseState;
 import dev.sweety.versioning.server.port.in.PublishReleaseUseCase;
 import dev.sweety.versioning.server.port.in.RollbackReleaseUseCase;
@@ -28,10 +28,10 @@ public class ReleaseManager implements ReleaseService, PublishReleaseUseCase, Ro
     private static final SimpleLogger LOGGER = SimpleLogger.of(ReleaseManager.class);
 
     private final Map<Artifact, ReleaseState> states = new ConcurrentHashMap<>();
-    private final Storage storage;
+    private final StoragePort storage;
     private final ReleaseRepository repository;
 
-    public ReleaseManager(Storage storage, ReleaseRepository repository) throws IOException {
+    public ReleaseManager(StoragePort storage, ReleaseRepository repository) throws IOException {
         this.storage = storage;
         this.repository = repository;
         getOrRegister(Artifact.APP);
@@ -74,7 +74,7 @@ public class ReleaseManager implements ReleaseService, PublishReleaseUseCase, Ro
     }
 
     private Path resolveTempJar(ReleaseState s, @NotNull Artifact artifact, Channel channel, Version version) throws IOException {
-        return Storage.temp(resolveBaseJar(s, artifact, channel, version));
+        return StoragePort.temp(resolveBaseJar(s, artifact, channel, version));
     }
 
     private Path resolveBaseJar(ReleaseState s, @NotNull Artifact artifact, Channel channel, Version version) throws IOException {

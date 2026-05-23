@@ -2,7 +2,7 @@ package dev.sweety.versioning.server.domain.decision;
 
 import dev.sweety.versioning.protocol.handshake.DownloadType;
 import dev.sweety.versioning.server.Settings;
-import dev.sweety.versioning.server.application.patch.PatchManager;
+import dev.sweety.versioning.server.port.in.ResolvePatchPort;
 import dev.sweety.versioning.server.domain.client.ForcedUpdate;
 import dev.sweety.versioning.server.domain.decision.UpdateDecision;
 import dev.sweety.versioning.version.ReleaseService;
@@ -29,7 +29,7 @@ public final class UpdateResolver {
             ReleaseInfo latest,
             float rollout,
             @Nullable ForcedUpdate forcedUpdate,
-            PatchManager patchManager,
+            ResolvePatchPort patchManager,
             ReleaseService releaseManager
     ) {
 
@@ -92,7 +92,7 @@ public final class UpdateResolver {
             Channel releaseChannel,
             Version version,
             Version current,
-            PatchManager patchManager,
+            ResolvePatchPort patchManager,
             ReleaseService releaseManager
     ) {
         if (Version.ZERO.equals(current)) return DownloadType.FULL;

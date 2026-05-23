@@ -29,6 +29,23 @@ public class MicrosoftLogin {
     private static final HttpClient client = HttpClient.newHttpClient();
     private static final Gson gson = GsonUtils.gson();
 
+    /** Obtain a Microsoft refresh token by launching a local OAuth callback server and opening the browser. */
+    public CompletableFuture<String> refreshToken() {
+        CompletableFuture<String> future = new CompletableFuture<>();
+        BiConsumer<HttpServer, String> callback = (server, code) -> {
+            future.complete(code);
+            server.stop(5);
+        };
+        startServer(callback);
+        OperatingSystem.os()
+                .open("https://login.live.com/oauth20_authorize.srf?client_id=" + CLIENT_ID
+                        + "&response_type=code&redirect_uri=http://127.0.0.1:" + PORT
+                        + "&scope=XboxLive.signin%20offline_access&prompt=select_account");
+        return future;
+    }
+
+    /** @deprecated Use {@link #refreshToken()} on an instance instead. */
+    @Deprecated
     public static CompletableFuture<String> getRefreshToken() {
         CompletableFuture<String> future = new CompletableFuture<>();
 

@@ -9,8 +9,9 @@ import dev.sweety.patch.generator.PatchGenerator;
 import dev.sweety.patch.hash.Sha256Hash;
 import dev.sweety.patch.model.type.PatchTypes;
 import dev.sweety.versioning.server.Settings;
-import dev.sweety.versioning.server.adapter.out.cache.CacheKey;
-import dev.sweety.versioning.server.adapter.out.storage.Storage;
+import dev.sweety.versioning.server.domain.cache.CacheKey;
+import dev.sweety.versioning.server.port.in.ResolvePatchPort;
+import dev.sweety.versioning.server.port.out.storage.StoragePort;
 import dev.sweety.versioning.version.ReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
@@ -25,7 +26,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Optional;
 
-public class PatchManager {
+public class PatchManager implements ResolvePatchPort {
 
     private static final String BUILD_INFO = "dev/sweety/build/BuildInfo.class";
 
@@ -43,10 +44,10 @@ public class PatchManager {
 
     private final PatchGenerator generator = new PatchGenerator(new Sha256Hash(), new AsmClassNormalizer(), PatchTypes.PATCH_JAR);
 
-    private final Storage storage;
+    private final StoragePort storage;
     private final ReleaseService releaseManager;
 
-    public PatchManager(Storage storage, ReleaseService releaseManager) {
+    public PatchManager(StoragePort storage, ReleaseService releaseManager) {
         this.storage = storage;
         this.releaseManager = releaseManager;
     }

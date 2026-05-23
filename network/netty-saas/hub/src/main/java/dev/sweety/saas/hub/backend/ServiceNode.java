@@ -40,7 +40,7 @@ public class ServiceNode extends BackendNode implements IService {
     public ServiceNode(ServiceHub hub, ServiceNodeConfig backend) {
         super(hub, backend.getPort(), backend.getType() != null ? backend.getType().id() : -1);
         this.backend = backend;
-        this.handler = HandlerRegistry.INSTANCE.create(this);
+        this.handler = HandlerRegistry.getInstance().create(this);
     }
 
     public ServiceHub hub() {

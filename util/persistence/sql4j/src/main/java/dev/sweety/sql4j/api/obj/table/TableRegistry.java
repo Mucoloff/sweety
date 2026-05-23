@@ -24,6 +24,7 @@ public final class TableRegistry {
     private final Map<Class<?>, Table<?>> tableMap = new IdentityHashMap<>();
     private static final TableRegistry DEFAULT = new TableRegistry();
 
+    // global registry: single source of truth for ORM schema metadata — justified singleton
     public static TableRegistry getDefault() {
         return DEFAULT;
     }

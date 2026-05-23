@@ -3,7 +3,8 @@ package dev.sweety.project.netty;
 import dev.sweety.color.AnsiColor;
 import dev.sweety.logger.SimpleLogger;
 import dev.sweety.event.Event;
-import dev.sweety.event.EventSystem;
+import dev.sweety.event.api.EventSystemPort;
+import dev.sweety.event.impl.EventSystem;
 import dev.sweety.event.interfaces.LinkEvent;
 import dev.sweety.event.interfaces.Listener;
 import dev.sweety.event.processor.EventMapping;
@@ -33,7 +34,7 @@ public class TestClient extends Client {
 
     private final SimpleLogger logger = SimpleLogger.of("Client");
     private final TransactionManager transactionManager = new TransactionManager(this);
-    private final EventSystem eventSystem = new EventSystem();
+    private final EventSystemPort eventSystem = new EventSystem(); // boundary: concrete impl instantiated here only
     private final EventMapping eventMapping = new EventMapping(eventSystem);
 
     private final AutoReconnect autoReconnect = new AutoReconnect(2500L, TimeUnit.MILLISECONDS, this::start);

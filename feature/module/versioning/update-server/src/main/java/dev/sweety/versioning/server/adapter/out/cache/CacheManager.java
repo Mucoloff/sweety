@@ -1,5 +1,6 @@
 package dev.sweety.versioning.server.adapter.out.cache;
 
+import dev.sweety.versioning.server.domain.cache.CacheKey;
 import dev.sweety.versioning.server.adapter.out.storage.Storage;
 
 import java.io.IOException;

@@ -1,4 +1,4 @@
-package dev.sweety.versioning.server.application.patch;
+package dev.sweety.versioning.server.domain.patch;
 
 import dev.sweety.util.signature.Watermark;
 import java.util.List;

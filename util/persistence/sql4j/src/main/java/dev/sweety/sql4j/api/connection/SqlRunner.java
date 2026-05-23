@@ -46,6 +46,7 @@ public final class SqlRunner {
         slowQueryThresholdMs.set(threshold);
     }
 
+    // runtime-swappable logger: AtomicReference ensures visibility — see setLogger()
     /**
      * Returns the currently active global {@link SqlLogger}.
      *

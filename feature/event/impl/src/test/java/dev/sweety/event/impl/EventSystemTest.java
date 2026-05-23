@@ -6,8 +6,8 @@ import dev.sweety.event.api.MutableEvent;
 import dev.sweety.event.api.info.State;
 import dev.sweety.event.api.listener.LinkEvent;
 import dev.sweety.event.api.listener.Listener;
-import dev.sweety.event.test.MutablePlayerJoinEvent;
-import dev.sweety.event.test.PlayerJoinEvent;
+import dev.sweety.event.test.MutablePlayerJoinedEvent;
+import dev.sweety.event.test.PlayerJoinedEvent;
 import it.unimi.dsi.fastutil.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
@@ -136,7 +136,7 @@ class EventSystemTest {
     @Test
     void testEventAPI() {
         // Test static factory methods injected by processor
-        PlayerJoinEvent ev = Event.ofMutable(PlayerJoinEvent.class, "NomeUtente", 42);
+        PlayerJoinedEvent ev = Event.ofMutable(PlayerJoinedEvent.class, "NomeUtente", 42);
 
         TestContainer container = new TestContainer();
         system.subscribe(container);
@@ -144,19 +144,19 @@ class EventSystemTest {
         System.out.println("Original: " + ev);
 
         // Standard listener (Read-Only interface)
-        system.on(PlayerJoinEvent.class).handle(e -> {
+        system.on(PlayerJoinedEvent.class).handle(e -> {
             System.out.println("Read-only view: " + e.username() + ": " + e.getlevel());
         });
 
         // Mutable listener (Mutable interface)
-        system.on(MutablePlayerJoinEvent.class).handle(e -> {
+        system.on(MutablePlayerJoinedEvent.class).handle(e -> {
             e.username(e.username() + "_test");
             e.setlevel(e.getlevel() + 1);
             System.out.println("Mutated name to: " + e.username());
         });
 
         // Verifying changes in another listener
-        system.on(PlayerJoinEvent.class).priority(10).handle(e -> {
+        system.on(PlayerJoinedEvent.class).priority(10).handle(e -> {
             System.out.println("Post-mutation view: " + e.username() + ": " + e.getlevel());
         });
 
@@ -193,6 +193,6 @@ class EventSystemTest {
         public Listener<TestEvent> onTest = e -> called = true;
 
         @LinkEvent
-        public Listener<MutablePlayerJoinEvent> onPlayerJoin = e -> e.username(e.username() + "_linked");
+        public Listener<MutablePlayerJoinedEvent> onPlayerJoin = e -> e.username(e.username() + "_linked");
     }
 }

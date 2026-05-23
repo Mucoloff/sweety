@@ -11,9 +11,14 @@ import java.util.Map;
 
 public class HandlerRegistry {
 
-    public static final HandlerRegistry INSTANCE = new HandlerRegistry();
+    // singleton justified: global handler map for hub pipeline wiring
+    private static final HandlerRegistry INSTANCE = new HandlerRegistry();
 
-    HandlerRegistry() {
+    public static HandlerRegistry getInstance() {
+        return INSTANCE;
+    }
+
+    private HandlerRegistry() {
     }
 
     private final Map<ServiceType, Class<? extends ServiceNodeHandler>> handlers = new HashMap<>();

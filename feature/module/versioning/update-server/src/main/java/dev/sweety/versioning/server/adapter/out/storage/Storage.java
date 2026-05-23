@@ -1,5 +1,6 @@
 package dev.sweety.versioning.server.adapter.out.storage;
 
+import dev.sweety.versioning.server.port.out.storage.StoragePort;
 import dev.sweety.versioning.version.artifact.Artifact;
 
 import java.io.IOException;
@@ -9,7 +10,7 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class Storage {
+public class Storage implements StoragePort {
 
     private final Path root, settings;
     private final Map<Artifact, Path> pathCache = new ConcurrentHashMap<>();

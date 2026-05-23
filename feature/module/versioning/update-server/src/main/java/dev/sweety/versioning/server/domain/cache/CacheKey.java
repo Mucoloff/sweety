@@ -1,4 +1,4 @@
-package dev.sweety.versioning.server.adapter.out.cache;
+package dev.sweety.versioning.server.domain.cache;
 
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
