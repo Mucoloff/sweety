@@ -1,6 +1,6 @@
-// TODO(message-config): externalize user-facing log strings once message-config system lands
 package dev.sweety.extension.manager;
 
+import dev.sweety.i18n.Messages;
 import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.extension.Extension;
 import dev.sweety.extension.ExtensionInfo;
@@ -20,6 +20,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ExtensionManager<T extends Extension> {
+
+    private static final Messages MESSAGES = Messages.forBundle("messages");
 
     protected final Path rootDir;
     private final Map<String, T> extensions = new ConcurrentHashMap<>();
@@ -54,11 +56,11 @@ public class ExtensionManager<T extends Extension> {
         String fileName = url.substring(url.lastIndexOf('/') + 1);
         Path localFile = rootDir.resolve(fileName);
 
-        logger.info("Starting extension download from " + url);
+        logger.info(MESSAGES.get("extension.download.start", url));
 
         return DownloadFile.downloadFromURL(url, localFile, true, DownloadPolicy.DEFAULT)
                 .exceptionally(ex -> {
-                    logger.error("Failed to download extension from " + url, ex);
+                    logger.error(MESSAGES.get("extension.download.failed", url), ex);
                     return null;
                 })
                 .thenApply(path -> path == null ? null : loadExtension(path));
@@ -69,7 +71,8 @@ public class ExtensionManager<T extends Extension> {
             final ExtensionInfo info = ExtensionInfo.of(jarFile, this.extensionName.toLowerCase(Locale.ROOT));
 
             if (extensions.containsKey(info.name())) {
-                logger.error("Cannot load " + this.extensionName + " " + jarFile.getFileName() + ": A " + this.extensionName + " with name '" + info.name() + "' already exists.");
+                logger.error(MESSAGES.get("extension.load.duplicate",
+                        this.extensionName, jarFile.getFileName(), info.name()));
                 return null;
             }
 
@@ -86,24 +89,27 @@ public class ExtensionManager<T extends Extension> {
                         e.addSuppressed(closeEx);
                     }
                 }
-                logger.error("Cannot load " + this.extensionName + " " + jarFile.getFileName() + ": Failed to initialize main class.", e);
+                logger.error(MESSAGES.get("extension.load.initFailed",
+                        this.extensionName, jarFile.getFileName()), e);
                 return null;
             }
 
             if (this.extensions.putIfAbsent(extension.name(), extension) != null) {
                 try { classLoader.close(); } catch (Exception ignored) {}
-                logger.error("Concurrent load conflict: A " + this.extensionName + " with name '" + info.name() + "' was just loaded.");
+                logger.error(MESSAGES.get("extension.load.concurrentConflict",
+                        this.extensionName, info.name()));
                 return null;
             }
 
-            this.logger.info(extension.name() + " v" + info.version() + " is now enabled.");
+            this.logger.info(MESSAGES.get("extension.enabled", extension.name(), info.version()));
             extension.setEnabled(true);
 
             this.infos.put(extension, info);
             this.classLoaders.put(extension, classLoader);
             return extension;
         } catch (Throwable thrown) {
-            logger.error("Cannot enable " + this.extensionName + " " + jarFile.getFileName() + "!", thrown);
+            logger.error(MESSAGES.get("extension.enable.failed",
+                    this.extensionName, jarFile.getFileName()), thrown);
             return null;
         }
     }
@@ -113,26 +119,25 @@ public class ExtensionManager<T extends Extension> {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(rootDir, "*.jar")) {
             List<Path> jars = new ArrayList<>();
             stream.forEach(jars::add);
-            // Load each jar in parallel, isolate failures
             List<CompletableFuture<Void>> futures = new ArrayList<>();
             for (Path jarFile : jars) {
                 futures.add(CompletableFuture.runAsync(() -> {
                     T ext = loadExtension(jarFile);
                     if (ext == null) {
-                        logger.warn("Skipping " + jarFile.getFileName() + ": load returned null");
+                        logger.warn(MESSAGES.get("extension.load.skip", jarFile.getFileName()));
                     }
                 }));
             }
             CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
         } catch (Exception e) {
-            logger.error("Failed to load extensions in parallel", e);
+            logger.error(MESSAGES.get("extension.load.parallelFailed"), e);
         }
     }
 
     public T unloadExtension(final String name) {
         final T extension = this.extensions.remove(name);
         if (extension == null) {
-            this.logger.warn("Could not disable " + this.extensionName + " '" + name + "': Not found.");
+            this.logger.warn(MESSAGES.get("extension.disable.notFound", this.extensionName, name));
             return null;
         }
 
@@ -146,9 +151,11 @@ public class ExtensionManager<T extends Extension> {
                 if (cl instanceof ExtensionClassLoader<?> extensionLoader) extensionLoader.close();
             }
 
-            this.logger.info(extension.name() + " v" + this.infos.get(extension).version() + " is now disabled.");
+            this.logger.info(MESSAGES.get("extension.disabled",
+                    extension.name(), this.infos.get(extension).version()));
         } catch (Exception ex) {
-            this.logger.error("Could not disable " + this.extensionName + " " + extension.name() + "!", ex);
+            this.logger.error(MESSAGES.get("extension.disable.failed",
+                    this.extensionName, extension.name()), ex);
         } finally {
             this.infos.remove(extension);
         }

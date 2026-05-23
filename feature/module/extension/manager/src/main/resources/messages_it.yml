@@ -1,0 +1,17 @@
+extension:
+  download:
+    start:   "Avvio download estensione da {0}"
+    failed:  "Download estensione fallito da {0}"
+  load:
+    duplicate:          "Impossibile caricare {0} {1}: esiste già un {0} con nome ''{2}''."
+    initFailed:         "Impossibile caricare {0} {1}: inizializzazione della classe principale fallita."
+    concurrentConflict: "Conflitto caricamento concorrente: un {0} con nome ''{1}'' è appena stato caricato."
+    skip:               "Salto {0}: il caricamento ha restituito null."
+    parallelFailed:     "Caricamento parallelo delle estensioni fallito"
+  enabled:  "{0} v{1} è ora abilitato."
+  disabled: "{0} v{1} è ora disabilitato."
+  enable:
+    failed: "Impossibile abilitare {0} {1}!"
+  disable:
+    notFound: "Impossibile disabilitare {0} ''{1}'': non trovato."
+    failed:   "Impossibile disabilitare {0} {1}!"

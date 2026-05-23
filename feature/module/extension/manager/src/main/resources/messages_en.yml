@@ -1,0 +1,17 @@
+extension:
+  download:
+    start:   "Starting extension download from {0}"
+    failed:  "Failed to download extension from {0}"
+  load:
+    duplicate:          "Cannot load {0} {1}: a {0} named ''{2}'' already exists."
+    initFailed:         "Cannot load {0} {1}: failed to initialize main class."
+    concurrentConflict: "Concurrent load conflict: a {0} named ''{1}'' was just loaded."
+    skip:               "Skipping {0}: load returned null."
+    parallelFailed:     "Failed to load extensions in parallel"
+  enabled:  "{0} v{1} is now enabled."
+  disabled: "{0} v{1} is now disabled."
+  enable:
+    failed: "Cannot enable {0} {1}!"
+  disable:
+    notFound: "Could not disable {0} ''{1}'': not found."
+    failed:   "Could not disable {0} {1}!"
