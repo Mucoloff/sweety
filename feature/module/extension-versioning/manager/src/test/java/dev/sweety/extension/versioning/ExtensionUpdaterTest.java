@@ -1,7 +1,7 @@
 package dev.sweety.extension.versioning;
 
 import dev.sweety.util.logger.SimpleLogger;
-import dev.sweety.versioning.version.IReleaseService;
+import dev.sweety.versioning.version.ReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
@@ -52,7 +52,7 @@ class ExtensionUpdaterTest {
         }
     }
 
-    private static final class StubRelease implements IReleaseService {
+    private static final class StubRelease implements ReleaseService {
         ReleaseInfo latest;
         Path remoteJar;
 

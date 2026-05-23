@@ -4,7 +4,7 @@ import dev.sweety.logger.SimpleLogger;
 import dev.sweety.netty.loadbalancer.backend.Backend;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import dev.sweety.project.netty.packet.text.TextPacket;
 import io.netty.channel.ChannelHandlerContext;
 
@@ -14,7 +14,7 @@ public class BackendTest extends Backend {
 
     private final SimpleLogger logger = SimpleLogger.of(BackendTest.class);
 
-    public BackendTest(String host, int port, IPacketRegistry packetRegistry, Packet... packets) {
+    public BackendTest(String host, int port, PacketRegistry packetRegistry, Packet... packets) {
         super(host, port, packetRegistry);
 
         onConnect(c -> Messenger.safeRun(c.pipeline().firstContext(), ctx -> sendPacket(packets)));

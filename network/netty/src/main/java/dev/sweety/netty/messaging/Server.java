@@ -2,11 +2,12 @@ package dev.sweety.netty.messaging;
 
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.net.SocketAddress;
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -15,12 +16,12 @@ public abstract class Server extends Messenger<ServerBootstrap> {
 
     private final Map<SocketAddress, ChannelHandlerContext> clients;
 
-    public Server(String host, int port, IPacketRegistry packetRegistry, Map<SocketAddress, ChannelHandlerContext> clients) {
+    public Server(String host, int port, PacketRegistry packetRegistry, Map<SocketAddress, ChannelHandlerContext> clients) {
         super(new ServerBootstrap(), host, port, packetRegistry, -1);
         this.clients = clients;
     }
 
-    public Server(String host, int port, IPacketRegistry packetRegistry) {
+    public Server(String host, int port, PacketRegistry packetRegistry) {
         this(host, port, packetRegistry, new ConcurrentHashMap<>());
     }
 
@@ -44,6 +45,6 @@ public abstract class Server extends Messenger<ServerBootstrap> {
     }
 
     public Map<SocketAddress, ChannelHandlerContext> clients() {
-        return clients;
+        return Collections.unmodifiableMap(clients);
     }
 }

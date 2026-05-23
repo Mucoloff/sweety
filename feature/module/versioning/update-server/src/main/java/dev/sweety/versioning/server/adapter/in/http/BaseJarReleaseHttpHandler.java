@@ -4,7 +4,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.server.util.http.HttpUtils;
-import dev.sweety.versioning.version.IReleaseService;
+import dev.sweety.versioning.version.ReleaseService;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.channel.Channel;
@@ -20,9 +20,9 @@ import java.util.Map;
  */
 public final class BaseJarReleaseHttpHandler implements HttpHandler {
 
-    private final IReleaseService releases;
+    private final ReleaseService releases;
 
-    public BaseJarReleaseHttpHandler(IReleaseService releases) {
+    public BaseJarReleaseHttpHandler(ReleaseService releases) {
         this.releases = releases;
     }
 

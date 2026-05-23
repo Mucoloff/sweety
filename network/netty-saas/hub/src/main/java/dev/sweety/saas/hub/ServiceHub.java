@@ -1,6 +1,6 @@
 package dev.sweety.saas.hub;
 
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import dev.sweety.netty.server.LoadBalancerServer;
 import dev.sweety.saas.hub.backend.ServiceNode;
 import dev.sweety.saas.hub.backend.pool.ServicesPool;
@@ -21,7 +21,7 @@ public class ServiceHub extends LoadBalancerServer<ServiceNode> {
     private volatile IpWhitelistHandler ipWhitelist;
     private final ConnectionRateLimiter rateLimiter = new ConnectionRateLimiter();
 
-    public ServiceHub(ServicesConfig config, IPacketRegistry packetRegistry, ServicesPool servicesPool) {
+    public ServiceHub(ServicesConfig config, PacketRegistry packetRegistry, ServicesPool servicesPool) {
         super(config.hubHost(), config.hubPort(), servicesPool, packetRegistry);
         this.config = config;
         this.healthServer = new HubHealthServer(servicesPool, config.hubHealthPort());

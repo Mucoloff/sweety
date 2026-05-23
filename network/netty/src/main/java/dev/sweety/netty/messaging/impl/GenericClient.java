@@ -2,7 +2,7 @@ package dev.sweety.netty.messaging.impl;
 
 import dev.sweety.math.function.TriConsumer;
 import dev.sweety.netty.packet.model.Packet;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
@@ -15,11 +15,11 @@ public class GenericClient extends SimpleClient {
     private BiConsumer<ChannelHandlerContext, Packet> packetReceiveHandler;
     private TriConsumer<ChannelHandlerContext, Packet, Boolean> packetSendHandler;
 
-    public GenericClient(String host, int port, IPacketRegistry packetRegistry) {
+    public GenericClient(String host, int port, PacketRegistry packetRegistry) {
         this(host, port, packetRegistry, -1);
     }
 
-    public GenericClient(String host, int port, IPacketRegistry packetRegistry, int localPort) {
+    public GenericClient(String host, int port, PacketRegistry packetRegistry, int localPort) {
         super(host, port, packetRegistry, localPort);
     }
 

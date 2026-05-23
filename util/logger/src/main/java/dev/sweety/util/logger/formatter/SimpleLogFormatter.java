@@ -18,7 +18,7 @@ public class SimpleLogFormatter implements LogFormatter {
     public String format(LogLevel level, String loggerName, LogProfile profile, Object[] args) {
         final String time = LocalDateTime.now().format(TIME_FORMATTER);
         final String suffix = (profile != null) ? ("@" + profile.fullPath()) : "";
-        final String prefix = "[" + time + "][" + level + "][" + loggerName + suffix + "]";
+        final String prefix = "[%s][%s][%s%s]".formatted(time, level, loggerName, suffix);
         final String message = parseMessage(args);
         return prefix + " " + message;
     }

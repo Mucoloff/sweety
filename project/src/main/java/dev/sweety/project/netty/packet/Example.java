@@ -35,6 +35,6 @@ public interface Example {
             encoder = ExampleEncoder.class,
             decoder = ExampleDecoder.class
     )
-    IExampleObj obj();
+    ExampleObj obj();
 
 }

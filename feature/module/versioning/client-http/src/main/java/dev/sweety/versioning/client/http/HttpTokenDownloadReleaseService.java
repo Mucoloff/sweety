@@ -2,7 +2,7 @@ package dev.sweety.versioning.client.http;
 
 import com.google.gson.JsonObject;
 import dev.sweety.versioning.util.Utils;
-import dev.sweety.versioning.version.IReleaseService;
+import dev.sweety.versioning.version.ReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
@@ -26,10 +26,10 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Read-only {@link IReleaseService}: {@code latest} via {@link HttpCachingReleaseService};
+ * Read-only {@link ReleaseService}: {@code latest} via {@link HttpCachingReleaseService};
  * {@code resolveBaseJar} reserves a single-use token ({@code POST /release/download-token}) then downloads via {@code GET /download}.
  */
-public final class HttpTokenDownloadReleaseService implements IReleaseService {
+public final class HttpTokenDownloadReleaseService implements ReleaseService {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(30);
 

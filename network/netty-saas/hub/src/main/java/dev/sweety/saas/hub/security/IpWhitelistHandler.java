@@ -105,7 +105,7 @@ public class IpWhitelistHandler extends ChannelInboundHandlerAdapter {
     }
 
     public Set<String> allowedIps() {
-        return allowedIps;
+        return Collections.unmodifiableSet(allowedIps);
     }
 
     @FunctionalInterface

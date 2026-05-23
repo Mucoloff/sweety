@@ -4,7 +4,7 @@ import dev.sweety.netty.messaging.listener.decoder.NettyDecoder;
 import dev.sweety.netty.messaging.listener.encoder.NettyEncoder;
 import dev.sweety.netty.messaging.listener.watcher.NettyWatcher;
 import dev.sweety.netty.packet.model.Packet;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import dev.sweety.time.TimeMode;
 import io.netty.bootstrap.AbstractBootstrap;
 import io.netty.bootstrap.Bootstrap;
@@ -61,13 +61,13 @@ public abstract class Messenger<B extends AbstractBootstrap<B, ? extends Channel
 
     public static TimeMode timeMode = TimeMode.MILLIS;
 
-    private final IPacketRegistry packetRegistry;
+    private final PacketRegistry packetRegistry;
 
-    public IPacketRegistry packetRegistry() {
+    public PacketRegistry packetRegistry() {
         return packetRegistry;
     }
 
-    public Messenger(B bootstrap, String host, int port, IPacketRegistry packetRegistry, int localPort) {
+    public Messenger(B bootstrap, String host, int port, PacketRegistry packetRegistry, int localPort) {
         this.bootstrap = bootstrap;
         this.boss = new NioEventLoopGroup();
         final int worker_threads = Integer.parseInt(

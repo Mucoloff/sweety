@@ -5,7 +5,7 @@ import dev.sweety.versioning.server.Settings;
 import dev.sweety.versioning.server.application.patch.PatchManager;
 import dev.sweety.versioning.server.domain.client.ForcedUpdate;
 import dev.sweety.versioning.server.domain.decision.UpdateDecision;
-import dev.sweety.versioning.version.IReleaseService;
+import dev.sweety.versioning.version.ReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
@@ -30,7 +30,7 @@ public final class UpdateResolver {
             float rollout,
             @Nullable ForcedUpdate forcedUpdate,
             PatchManager patchManager,
-            IReleaseService releaseManager
+            ReleaseService releaseManager
     ) {
 
         // 1. forced override
@@ -93,7 +93,7 @@ public final class UpdateResolver {
             Version version,
             Version current,
             PatchManager patchManager,
-            IReleaseService releaseManager
+            ReleaseService releaseManager
     ) {
         if (Version.ZERO.equals(current)) return DownloadType.FULL;
 

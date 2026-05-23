@@ -9,7 +9,7 @@ import dev.sweety.versioning.server.port.out.DownloadTokenStore;
 import dev.sweety.versioning.server.util.http.HttpUtils;
 import dev.sweety.data.ObjectUtils;
 import dev.sweety.versioning.util.Utils;
-import dev.sweety.versioning.version.IReleaseService;
+import dev.sweety.versioning.version.ReleaseService;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.channel.Channel;
@@ -29,9 +29,9 @@ import java.util.UUID;
 public final class ReleaseDownloadTokenHandler implements HttpHandler {
 
     private final DownloadTokenStore downloadManager;
-    private final IReleaseService releases;
+    private final ReleaseService releases;
 
-    public ReleaseDownloadTokenHandler(DownloadTokenStore downloadManager, IReleaseService releases) {
+    public ReleaseDownloadTokenHandler(DownloadTokenStore downloadManager, ReleaseService releases) {
         this.downloadManager = downloadManager;
         this.releases = releases;
     }

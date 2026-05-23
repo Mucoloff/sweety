@@ -6,7 +6,7 @@ import dev.sweety.math.function.TriFunction;
 import dev.sweety.netty.messaging.Server;
 import dev.sweety.netty.packet.model.BatchPacket;
 import dev.sweety.netty.packet.model.Packet;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import dev.sweety.netty.packet.registry.OptimizedPacketRegistry;
 import dev.sweety.project.netty.packet.file.FilePacket;
 import dev.sweety.project.netty.packet.text.TextPacket;
@@ -19,7 +19,7 @@ public class TestServer extends Server {
     final SimpleLogger logger = SimpleLogger.of("Server");
     final TriFunction<Packet, Integer, Long, byte[]> constructor;
 
-    public TestServer(String host, int port, IPacketRegistry packetRegistry) {
+    public TestServer(String host, int port, PacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
         this.constructor = (id, ts, data) -> packetRegistry.construct(id, ts, data, this.logger);
     }
@@ -84,7 +84,7 @@ public class TestServer extends Server {
 
     public static void main(String[] args) throws Throwable {
 
-        IPacketRegistry packetRegistry = new OptimizedPacketRegistry(TextPacket.class, FilePacket.class, PingTransaction.class, BatchPacket.class);
+        PacketRegistry packetRegistry = new OptimizedPacketRegistry(TextPacket.class, FilePacket.class, PingTransaction.class, BatchPacket.class);
 
         TestServer server = new TestServer("localhost", 8080, packetRegistry);
         server.start();

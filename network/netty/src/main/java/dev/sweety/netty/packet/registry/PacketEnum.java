@@ -32,7 +32,7 @@ public interface PacketEnum {
         UNREGISTERED.add(this);
     }
 
-    default void register(IPacketRegistry registry, PacketEnum[]... arrays) {
+    default void register(PacketRegistry registry, PacketEnum[]... arrays) {
         for (PacketEnum[] array : arrays) {
             if (array.length == 0) continue;
 

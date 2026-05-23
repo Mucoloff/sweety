@@ -62,7 +62,7 @@ public interface ObjectPool<T> {
      */
     static <T> ObjectPool<T> threadLocal(Supplier<T> factory, Consumer<T> reset,
                                          Consumer<T> onDiscard, int maxPerThread) {
-        return new ThreadLocalImpl<>(factory, reset, onDiscard, maxPerThread);
+        return new ThreadLocalPool<>(factory, reset, onDiscard, maxPerThread);
     }
 
     static <T> ObjectPool<T> threadLocal(Supplier<T> factory, Consumer<T> reset, int maxPerThread) {
@@ -84,7 +84,7 @@ public interface ObjectPool<T> {
      */
     static <T> ObjectPool<T> shared(Supplier<T> factory, Consumer<T> reset,
                                     Consumer<T> onDiscard, int maxSize) {
-        return new SharedImpl<>(factory, reset, onDiscard, maxSize);
+        return new SharedPool<>(factory, reset, onDiscard, maxSize);
     }
 
     static <T> ObjectPool<T> shared(Supplier<T> factory, Consumer<T> reset, int maxSize) {
@@ -100,14 +100,14 @@ public interface ObjectPool<T> {
 
     // ========================== IMPLEMENTATIONS ==========================
 
-    final class ThreadLocalImpl<T> implements ObjectPool<T> {
+    final class ThreadLocalPool<T> implements ObjectPool<T> {
         private final ThreadLocal<ArrayDeque<T>> pool = ThreadLocal.withInitial(ArrayDeque::new);
         private final Supplier<T> factory;
         private final Consumer<T> reset;
         private final Consumer<T> onDiscard;
         private final int maxPerThread;
 
-        ThreadLocalImpl(Supplier<T> factory, Consumer<T> reset, Consumer<T> onDiscard, int maxPerThread) {
+        ThreadLocalPool(Supplier<T> factory, Consumer<T> reset, Consumer<T> onDiscard, int maxPerThread) {
             this.factory = factory;
             this.reset = reset;
             this.onDiscard = onDiscard;
@@ -133,7 +133,7 @@ public interface ObjectPool<T> {
         }
     }
 
-    final class SharedImpl<T> implements ObjectPool<T> {
+    final class SharedPool<T> implements ObjectPool<T> {
         private final ConcurrentLinkedDeque<T> pool = new ConcurrentLinkedDeque<>();
         private final AtomicInteger count = new AtomicInteger();
         private final Supplier<T> factory;
@@ -141,7 +141,7 @@ public interface ObjectPool<T> {
         private final Consumer<T> onDiscard;
         private final int maxSize;
 
-        SharedImpl(Supplier<T> factory, Consumer<T> reset, Consumer<T> onDiscard, int maxSize) {
+        SharedPool(Supplier<T> factory, Consumer<T> reset, Consumer<T> onDiscard, int maxSize) {
             this.factory = factory;
             this.reset = reset;
             this.onDiscard = onDiscard;

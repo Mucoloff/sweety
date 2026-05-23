@@ -8,7 +8,7 @@ import dev.sweety.versioning.server.port.in.RollbackReleaseUseCase;
 import dev.sweety.versioning.server.port.out.ReleaseBroadcaster;
 import dev.sweety.versioning.server.util.http.HttpUtils;
 import dev.sweety.versioning.server.util.http.Multipart;
-import dev.sweety.versioning.version.IReleaseService;
+import dev.sweety.versioning.version.ReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.channel.Channel;
@@ -25,7 +25,7 @@ public class RollbackHandler implements HttpHandler {
 
     private final String rollbackToken;
     private final RollbackReleaseUseCase releaseManager;
-    private final IReleaseService releaseQuery;
+    private final ReleaseService releaseQuery;
 
     private ReleaseBroadcaster broadcast;
 
@@ -34,7 +34,7 @@ public class RollbackHandler implements HttpHandler {
         return this;
     }
 
-    public RollbackHandler(String rollbackToken, RollbackReleaseUseCase releaseManager, IReleaseService releaseQuery) {
+    public RollbackHandler(String rollbackToken, RollbackReleaseUseCase releaseManager, ReleaseService releaseQuery) {
         this.rollbackToken = rollbackToken;
         this.releaseManager = releaseManager;
         this.releaseQuery = releaseQuery;

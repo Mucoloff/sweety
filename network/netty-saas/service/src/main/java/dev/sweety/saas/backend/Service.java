@@ -6,7 +6,7 @@ import dev.sweety.netty.packet.internal.InternalPacket;
 import dev.sweety.netty.packet.internal.RoutingContext;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.model.PacketTransaction;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import dev.sweety.saas.backend.monitoring.MetricsReporter;
 import dev.sweety.saas.service.IService;
 import dev.sweety.saas.service.ServiceType;
@@ -35,7 +35,7 @@ public abstract class Service extends Backend implements IService {
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1, Thread.ofVirtual().name("metrics-reporter").factory());
     private final MetricsReporter metrics = new MetricsReporter(this);
 
-    public Service(ServicesConfig config, ServiceType type, int id, IPacketRegistry packetRegistry) {
+    public Service(ServicesConfig config, ServiceType type, int id, PacketRegistry packetRegistry) {
         super(config.hubHost(), config.hubPort(), packetRegistry, config.service(type, id).getPort());
 
         this.type = type;

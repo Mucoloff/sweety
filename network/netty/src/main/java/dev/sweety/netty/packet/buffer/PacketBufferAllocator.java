@@ -28,10 +28,10 @@ public interface PacketBufferAllocator {
     }
 
     PacketBufferAllocator UNPOOLED = PacketBuffer::new;
-    PacketBufferAllocator POOLED   = new PooledImpl();
+    PacketBufferAllocator POOLED   = new Pooled();
     PacketBufferAllocator DEFAULT  = POOLED;
 
-    final class PooledImpl extends PooledBufferAllocator<PacketBuffer> implements PacketBufferAllocator {
+    final class Pooled extends PooledBufferAllocator<PacketBuffer> implements PacketBufferAllocator {
         @Override
         protected PacketBuffer create(int cap, Consumer<PacketBuffer> recycler) {
             return new PacketBuffer(cap, recycler);

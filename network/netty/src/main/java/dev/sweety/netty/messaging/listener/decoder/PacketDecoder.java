@@ -6,7 +6,7 @@ import dev.sweety.exception.PacketDecodeException;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.Packet;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
@@ -24,9 +24,9 @@ public class PacketDecoder {
             (byte) (Messenger.SEED >>> 24), (byte) (Messenger.SEED >>> 16),
             (byte) (Messenger.SEED >>> 8),  (byte)  Messenger.SEED
     }).asReadOnlyBuffer();
-    private final IPacketRegistry packetRegistry;
+    private final PacketRegistry packetRegistry;
 
-    public PacketDecoder(final IPacketRegistry packetRegistry) {
+    public PacketDecoder(final PacketRegistry packetRegistry) {
         this.packetRegistry = packetRegistry;
     }
 
@@ -40,7 +40,7 @@ public class PacketDecoder {
         decode(in, out, this.packetRegistry);
     }
 
-    public static void decode(final PacketBuffer in, final List<Packet> out, final IPacketRegistry packetRegistry) throws PacketDecodeException {
+    public static void decode(final PacketBuffer in, final List<Packet> out, final PacketRegistry packetRegistry) throws PacketDecodeException {
         if (in.readableBytes() - Integer.BYTES < 2) return; // minimal header
         in.markReaderIndex();
 

@@ -11,7 +11,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 import java.util.Set;
 
-public class OptimizedPacketRegistry implements IPacketRegistry {
+public class OptimizedPacketRegistry implements PacketRegistry {
 
     private final Int2ObjectOpenHashMap<RegisteredPacket> idToPacket;
     private final Object2IntOpenHashMap<Class<? extends Packet>> classToId;

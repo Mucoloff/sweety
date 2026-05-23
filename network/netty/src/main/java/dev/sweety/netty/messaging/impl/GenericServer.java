@@ -1,6 +1,6 @@
 package dev.sweety.netty.messaging.impl;
 
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
@@ -13,7 +13,7 @@ public class GenericServer extends SimpleServer {
     private BiConsumer<ChannelHandlerContext, dev.sweety.netty.packet.model.Packet> packetReceiveHandler;
     private dev.sweety.math.function.TriConsumer<ChannelHandlerContext, dev.sweety.netty.packet.model.Packet, Boolean> packetSendHandler;
 
-    public GenericServer(String host, int port, IPacketRegistry packetRegistry) {
+    public GenericServer(String host, int port, PacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
     }
 

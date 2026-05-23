@@ -4,7 +4,7 @@ import dev.sweety.math.list.BlockingDeque;
 import dev.sweety.netty.feature.QueueContext;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -18,7 +18,7 @@ public abstract class Client extends Messenger<Bootstrap> {
 
     protected final int localPort;
 
-    public Client(String host, int port, IPacketRegistry packetRegistry, int localPort) {
+    public Client(String host, int port, PacketRegistry packetRegistry, int localPort) {
         super(new Bootstrap(), host, port, packetRegistry, localPort);
         this.localPort = localPort;
     }

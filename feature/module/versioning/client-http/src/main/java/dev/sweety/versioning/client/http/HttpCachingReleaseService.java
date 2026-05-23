@@ -2,7 +2,7 @@ package dev.sweety.versioning.client.http;
 
 import com.google.gson.JsonObject;
 import dev.sweety.versioning.util.Utils;
-import dev.sweety.versioning.version.IReleaseService;
+import dev.sweety.versioning.version.ReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
@@ -26,12 +26,12 @@ import java.util.Collections;
 import java.util.Objects;
 
 /**
- * Read-only {@link IReleaseService} backed by HTTP endpoints on the update-server
+ * Read-only {@link ReleaseService} backed by HTTP endpoints on the update-server
  * ({@code GET /release/latest}, {@code GET /release/base-jar}). Non-blank {@code apiKey} is required
  * for {@link #resolveBaseJar}; it must match server setting {@code RELEASE_API_KEY} (JSON or env) and is sent
  * as header {@code X-Sweety-Release-Key}.
  */
-public final class HttpCachingReleaseService implements IReleaseService {
+public final class HttpCachingReleaseService implements ReleaseService {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(30);
 

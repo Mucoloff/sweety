@@ -2,7 +2,7 @@ package dev.sweety.extension.versioning;
 
 import dev.sweety.versioning.client.http.HttpCachingReleaseService;
 import dev.sweety.versioning.client.http.HttpTokenDownloadReleaseService;
-import dev.sweety.versioning.version.IReleaseService;
+import dev.sweety.versioning.version.ReleaseService;
 
 import java.net.URI;
 import java.nio.file.Path;
@@ -10,7 +10,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Factory for remote {@link IReleaseService} instances used with {@link ExtensionUpdater}.
+ * Factory for remote {@link ReleaseService} instances used with {@link ExtensionUpdater}.
  * <p>
  * Environment variables for {@link #fromEnvironment(Path)}:
  * <ul>
@@ -28,7 +28,7 @@ public final class RemoteReleaseSupport {
     /**
      * Uses {@code GET /release/base-jar} (static API key). Prefer {@link #httpWithTokenDownload} for parity with {@code /download}.
      */
-    public static IReleaseService http(URI httpBase, String releaseApiKey, Path cacheDir) {
+    public static ReleaseService http(URI httpBase, String releaseApiKey, Path cacheDir) {
         return new HttpCachingReleaseService(normalizeBase(Objects.requireNonNull(httpBase, "httpBase")),
                 releaseApiKey != null ? releaseApiKey : "",
                 Objects.requireNonNull(cacheDir, "cacheDir"));
@@ -37,7 +37,7 @@ public final class RemoteReleaseSupport {
     /**
      * Uses {@code POST /release/download-token} then {@code GET /download} (single-use token), same as the launcher path.
      */
-    public static IReleaseService httpWithTokenDownload(URI httpBase, String releaseApiKey, UUID clientId, Path cacheDir) {
+    public static ReleaseService httpWithTokenDownload(URI httpBase, String releaseApiKey, UUID clientId, Path cacheDir) {
         return new HttpTokenDownloadReleaseService(normalizeBase(Objects.requireNonNull(httpBase, "httpBase")),
                 releaseApiKey != null ? releaseApiKey : "",
                 Objects.requireNonNull(clientId, "clientId"),
@@ -47,7 +47,7 @@ public final class RemoteReleaseSupport {
     /**
      * {@link #http} from {@link #ENV_UPDATE_HTTP_BASE} and {@link #ENV_RELEASE_API_KEY}.
      */
-    public static IReleaseService fromEnvironment(Path cacheDir) {
+    public static ReleaseService fromEnvironment(Path cacheDir) {
         EnvConfig cfg = parseEnv();
         return http(cfg.base(), cfg.key(), cacheDir);
     }
@@ -55,7 +55,7 @@ public final class RemoteReleaseSupport {
     /**
      * {@link #httpWithTokenDownload} from env plus an explicit {@code clientId} (must match the identity used for downloads).
      */
-    public static IReleaseService fromEnvironmentWithTokenDownload(Path cacheDir, UUID clientId) {
+    public static ReleaseService fromEnvironmentWithTokenDownload(Path cacheDir, UUID clientId) {
         EnvConfig cfg = parseEnv();
         return httpWithTokenDownload(cfg.base(), cfg.key(), clientId, cacheDir);
     }

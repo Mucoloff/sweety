@@ -107,7 +107,7 @@ public interface ArrayPool<T> {
 
     static <T> ArrayPool<T> threadLocal(IntFunction<T> factory, ToIntFunction<T> length,
                                         int defaultSize, Consumer<T> onDiscard, int maxPerThread) {
-        return new ThreadLocalImpl<>(factory, length, defaultSize, onDiscard, maxPerThread);
+        return new ThreadLocalPool<>(factory, length, defaultSize, onDiscard, maxPerThread);
     }
 
     static <T> ArrayPool<T> threadLocal(IntFunction<T> factory, ToIntFunction<T> length,
@@ -118,7 +118,7 @@ public interface ArrayPool<T> {
 
     static <T> ArrayPool<T> shared(IntFunction<T> factory, ToIntFunction<T> length,
                                    int defaultSize, Consumer<T> onDiscard, int maxPoolSize) {
-        return new SharedImpl<>(factory, length, defaultSize, onDiscard, maxPoolSize);
+        return new SharedPool<>(factory, length, defaultSize, onDiscard, maxPoolSize);
     }
 
     static <T> ArrayPool<T> shared(IntFunction<T> factory, ToIntFunction<T> length,
@@ -129,7 +129,7 @@ public interface ArrayPool<T> {
 
     // ========================== IMPLEMENTATIONS ==========================
 
-    final class ThreadLocalImpl<T> implements ArrayPool<T> {
+    final class ThreadLocalPool<T> implements ArrayPool<T> {
         private final ThreadLocal<ArrayDeque<T>> pool = ThreadLocal.withInitial(ArrayDeque::new);
         private final IntFunction<T> factory;
         private final ToIntFunction<T> length;
@@ -137,7 +137,7 @@ public interface ArrayPool<T> {
         private final Consumer<T> onDiscard;
         private final int maxPerThread;
 
-        ThreadLocalImpl(IntFunction<T> factory, ToIntFunction<T> length,
+        ThreadLocalPool(IntFunction<T> factory, ToIntFunction<T> length,
                         int defaultSize, Consumer<T> onDiscard, int maxPerThread) {
             this.factory = factory;
             this.length = length;
@@ -178,7 +178,7 @@ public interface ArrayPool<T> {
         }
     }
 
-    final class SharedImpl<T> implements ArrayPool<T> {
+    final class SharedPool<T> implements ArrayPool<T> {
         private final ConcurrentLinkedDeque<T> pool = new ConcurrentLinkedDeque<>();
         private final AtomicInteger count = new AtomicInteger();
         private final IntFunction<T> factory;
@@ -187,7 +187,7 @@ public interface ArrayPool<T> {
         private final int defaultSize;
         private final int maxPoolSize;
 
-        SharedImpl(IntFunction<T> factory, ToIntFunction<T> length,
+        SharedPool(IntFunction<T> factory, ToIntFunction<T> length,
                    int defaultSize, Consumer<T> onDiscard, int maxPoolSize) {
             this.factory = factory;
             this.length = length;

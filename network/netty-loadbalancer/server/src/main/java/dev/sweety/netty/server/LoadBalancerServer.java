@@ -20,7 +20,7 @@ import dev.sweety.netty.server.pool.IDynamicBackendNodePool;
 import dev.sweety.netty.messaging.Server;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
@@ -66,7 +66,7 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
     private final TriFunction<Packet, Integer, Long, byte[]> constructor;
 
     public <T extends IDynamicBackendNodePool<Node>> LoadBalancerServer(String host, int port, T backendPool,
-                                                                        IPacketRegistry packetRegistry) {
+                                                                        PacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
         this.backendPool = backendPool;
         this.constructor = (id, ts, data) -> packetRegistry.construct(id, ts, data, this.logger);

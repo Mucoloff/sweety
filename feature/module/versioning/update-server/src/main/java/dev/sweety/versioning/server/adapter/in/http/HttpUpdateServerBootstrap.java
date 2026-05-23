@@ -12,7 +12,7 @@ import dev.sweety.versioning.server.adapter.out.webhook.WebhookRateLimiter;
 import dev.sweety.versioning.server.port.in.PublishReleaseUseCase;
 import dev.sweety.versioning.server.port.in.RollbackReleaseUseCase;
 import dev.sweety.versioning.server.port.out.DownloadTokenStore;
-import dev.sweety.versioning.version.IReleaseService;
+import dev.sweety.versioning.version.ReleaseService;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -28,7 +28,7 @@ public class HttpUpdateServerBootstrap {
                                      final ArtifactRegistry artifactRegistry,
                                      PublishReleaseUseCase publishUseCase,
                                      RollbackReleaseUseCase rollbackUseCase,
-                                     IReleaseService releaseQuery,
+                                     ReleaseService releaseQuery,
                                      PatchManager patchManager,
                                      DownloadTokenStore downloadTokenStore,
                                      CacheManager cacheManager,

@@ -4,7 +4,7 @@ import com.google.gson.JsonObject;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import dev.sweety.versioning.util.Utils;
-import dev.sweety.versioning.version.IReleaseService;
+import dev.sweety.versioning.version.ReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
@@ -17,9 +17,9 @@ import java.util.Map;
 /** {@code GET /release/latest?artifact=APP&channel=STABLE} — public metadata. */
 public final class LatestReleaseHttpHandler implements HttpHandler {
 
-    private final IReleaseService releases;
+    private final ReleaseService releases;
 
-    public LatestReleaseHttpHandler(IReleaseService releases) {
+    public LatestReleaseHttpHandler(ReleaseService releases) {
         this.releases = releases;
     }
 

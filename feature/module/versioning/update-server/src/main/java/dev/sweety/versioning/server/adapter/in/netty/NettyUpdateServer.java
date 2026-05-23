@@ -2,7 +2,7 @@ package dev.sweety.versioning.server.adapter.in.netty;
 
 import dev.sweety.netty.messaging.impl.SimpleServer;
 import dev.sweety.netty.packet.model.Packet;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import dev.sweety.versioning.protocol.handshake.*;
 import dev.sweety.versioning.protocol.update.ReleaseBroadcastType;
 import dev.sweety.versioning.server.adapter.out.broadcast.BroadcastChannelGroup;
@@ -12,7 +12,7 @@ import dev.sweety.versioning.server.domain.decision.UpdateDecision;
 import dev.sweety.versioning.server.domain.decision.UpdateResolver;
 import dev.sweety.versioning.server.port.out.DownloadTokenStore;
 import dev.sweety.versioning.server.port.out.ReleaseBroadcaster;
-import dev.sweety.versioning.version.IReleaseService;
+import dev.sweety.versioning.version.ReleaseService;
 import dev.sweety.versioning.version.LauncherInfo;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
@@ -29,12 +29,12 @@ import java.util.UUID;
 public class NettyUpdateServer extends SimpleServer implements ReleaseBroadcaster {
 
     private final DownloadTokenStore downloadTokenStore;
-    private final IReleaseService releaseManager;
+    private final ReleaseService releaseManager;
     private final PatchManager patchManager;
     private final Runnable stop;
     private final BroadcastChannelGroup channelGroup;
 
-    public NettyUpdateServer(String host, int port, IPacketRegistry packetRegistry, DownloadTokenStore downloadTokenStore, IReleaseService releaseManager, PatchManager patchManager, Runnable stop) {
+    public NettyUpdateServer(String host, int port, PacketRegistry packetRegistry, DownloadTokenStore downloadTokenStore, ReleaseService releaseManager, PatchManager patchManager, Runnable stop) {
         super(host, port, packetRegistry);
         this.downloadTokenStore = downloadTokenStore;
         this.releaseManager = releaseManager;

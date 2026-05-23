@@ -2,7 +2,7 @@ package dev.sweety.project.netty.loadbalancer.main;
 
 import dev.sweety.netty.packet.internal.InternalPacket;
 import dev.sweety.netty.messaging.exception.PacketRegistrationException;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import dev.sweety.netty.packet.registry.OptimizedPacketRegistry;
 import dev.sweety.project.netty.packet.text.TextPacket;
 import lombok.experimental.UtilityClass;
@@ -13,7 +13,7 @@ public class LBSettings {
     public final String LB_HOST, BK1_HOST, BK2_HOST;
     public final int LB_PORT, BK1_PORT, BK2_PORT;
 
-    public final IPacketRegistry registry;
+    public final PacketRegistry registry;
 
     static {
         LB_HOST = BK1_HOST = BK2_HOST = "127.0.0.1";

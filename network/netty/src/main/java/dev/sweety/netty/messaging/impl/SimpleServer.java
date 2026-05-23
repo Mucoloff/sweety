@@ -3,7 +3,7 @@ package dev.sweety.netty.messaging.impl;
 import dev.sweety.color.AnsiColor;
 import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.netty.messaging.Server;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
@@ -11,7 +11,7 @@ public abstract class SimpleServer extends Server {
 
     protected final SimpleLogger logger = SimpleLogger.of(getClass());
 
-    public SimpleServer(String host, int port, IPacketRegistry packetRegistry) {
+    public SimpleServer(String host, int port, PacketRegistry packetRegistry) {
         super(host, port, packetRegistry);
     }
 

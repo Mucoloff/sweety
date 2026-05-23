@@ -2,7 +2,7 @@ package dev.sweety.extension.versioning;
 
 import dev.sweety.i18n.Messages;
 import dev.sweety.util.logger.SimpleLogger;
-import dev.sweety.versioning.version.IReleaseService;
+import dev.sweety.versioning.version.ReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.channel.Channel;
@@ -17,7 +17,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Checks extensions against a remote or local {@link IReleaseService} and stages {@code .update} files
+ * Checks extensions against a remote or local {@link ReleaseService} and stages {@code .update} files
  * next to loaded JARs. For HTTP, use {@link RemoteReleaseSupport#http}, {@link RemoteReleaseSupport#httpWithTokenDownload},
  * or {@link RemoteReleaseSupport#fromEnvironment}.
  */
@@ -29,9 +29,9 @@ public class ExtensionUpdater<T extends VersionableExtension> {
     private static final long UPDATE_ALL_TIMEOUT_MINUTES = 30L;
 
     private final UpdateableExtensionManager<T> manager;
-    private final IReleaseService releaseService;
+    private final ReleaseService releaseService;
 
-    public ExtensionUpdater(UpdateableExtensionManager<T> manager, IReleaseService releaseService) {
+    public ExtensionUpdater(UpdateableExtensionManager<T> manager, ReleaseService releaseService) {
         this.manager = manager;
         this.releaseService = releaseService;
     }

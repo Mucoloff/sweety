@@ -2,7 +2,7 @@ package dev.sweety.netty.messaging.listener.encoder;
 
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.Packet;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
@@ -11,7 +11,7 @@ public class NettyEncoder extends MessageToByteEncoder<Packet> {
 
     private final PacketEncoder packetEncoder;
 
-    public NettyEncoder(IPacketRegistry packetRegistry) {
+    public NettyEncoder(PacketRegistry packetRegistry) {
         packetEncoder = new PacketEncoder(packetRegistry);
     }
 

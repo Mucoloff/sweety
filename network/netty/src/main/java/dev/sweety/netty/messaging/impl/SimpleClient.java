@@ -5,7 +5,7 @@ import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.netty.feature.AutoReconnect;
 import dev.sweety.netty.messaging.Client;
 import dev.sweety.netty.messaging.model.Messenger;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
@@ -19,11 +19,11 @@ public abstract class SimpleClient extends Client {
     protected final SimpleLogger logger = SimpleLogger.of(getClass());
     private final AutoReconnect autoReconnect = new AutoReconnect(2500L, TimeUnit.MILLISECONDS, this::start);
 
-    public SimpleClient(String host, int port, IPacketRegistry packetRegistry) {
+    public SimpleClient(String host, int port, PacketRegistry packetRegistry) {
         this(host,port,packetRegistry, -1);
     }
 
-    public SimpleClient(String host, int port, IPacketRegistry packetRegistry, int localPort) {
+    public SimpleClient(String host, int port, PacketRegistry packetRegistry, int localPort) {
         super(host, port, packetRegistry, localPort);
     }
 

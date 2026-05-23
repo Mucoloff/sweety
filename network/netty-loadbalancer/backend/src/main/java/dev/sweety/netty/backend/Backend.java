@@ -17,7 +17,7 @@ import dev.sweety.netty.feature.AutoReconnect;
 import dev.sweety.netty.messaging.Client;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
@@ -51,11 +51,11 @@ public abstract class Backend extends Client implements IBackend {
         return transactions;
     }
 
-    public Backend(final String hubHost, final int hubPort, final IPacketRegistry packetRegistry) {
+    public Backend(final String hubHost, final int hubPort, final PacketRegistry packetRegistry) {
         this(hubHost, hubPort, packetRegistry, -1);
     }
 
-    public Backend(final String hubHost, final int hubPort, final IPacketRegistry packetRegistry, final int localPort) {
+    public Backend(final String hubHost, final int hubPort, final PacketRegistry packetRegistry, final int localPort) {
         super(hubHost, hubPort, packetRegistry, localPort);
         BackendSettings.REQUEST_TIMEOUT_SECONDS(
                 Long.parseLong(System.getenv().getOrDefault("BACKEND_REQUEST_TIMEOUT_SECONDS", "45"))

@@ -6,7 +6,7 @@ import dev.sweety.exception.PacketDecodeException;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.Packet;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
@@ -19,11 +19,11 @@ public class NettyDecoder extends ByteToMessageDecoder {
     private final PacketDecoder packetDecoder;
     private final Messenger<?> messenger;
 
-    public NettyDecoder(IPacketRegistry packetRegistry) {
+    public NettyDecoder(PacketRegistry packetRegistry) {
         this(packetRegistry, null);
     }
 
-    public NettyDecoder(IPacketRegistry packetRegistry, Messenger<?> messenger) {
+    public NettyDecoder(PacketRegistry packetRegistry, Messenger<?> messenger) {
         this.packetDecoder = new PacketDecoder(packetRegistry);
         this.messenger = messenger;
     }

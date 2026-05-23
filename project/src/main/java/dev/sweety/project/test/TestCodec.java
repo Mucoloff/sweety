@@ -7,7 +7,7 @@ import dev.sweety.netty.messaging.listener.encoder.PacketEncoder;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.BatchPacket;
 import dev.sweety.netty.packet.model.Packet;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import dev.sweety.netty.packet.registry.OptimizedPacketRegistry;
 import dev.sweety.project.netty.packet.text.TextPacket;
 
@@ -18,7 +18,7 @@ public class TestCodec {
 
     public static void main(String[] args) throws Throwable {
 
-        final IPacketRegistry registry = new OptimizedPacketRegistry(TextPacket.class, BatchPacket.class);
+        final PacketRegistry registry = new OptimizedPacketRegistry(TextPacket.class, BatchPacket.class);
 
         final PacketEncoder encoder = new PacketEncoder(registry);
         final PacketDecoder decoder = new PacketDecoder(registry);

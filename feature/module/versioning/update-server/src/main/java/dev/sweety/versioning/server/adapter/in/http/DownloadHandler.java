@@ -17,7 +17,7 @@ import dev.sweety.versioning.server.domain.download.Token;
 import dev.sweety.versioning.server.port.out.DownloadTokenStore;
 import dev.sweety.versioning.server.util.http.HttpUtils;
 import dev.sweety.data.ObjectUtils;
-import dev.sweety.versioning.version.IReleaseService;
+import dev.sweety.versioning.version.ReleaseService;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.channel.Channel;
@@ -36,11 +36,11 @@ public class DownloadHandler implements HttpHandler {
     private final DownloadTokenStore downloadManager;
     private final CacheManager cacheManager;
     private final ClientRegistry clientRegistry;
-    private final IReleaseService releaseManager;
+    private final ReleaseService releaseManager;
     private final PatchManager patchManager;
     private final RateLimiter globalRateLimiter;
 
-    public DownloadHandler(DownloadTokenStore downloadManager, CacheManager cacheManager, ClientRegistry clientRegistry, IReleaseService releaseManager, PatchManager patchManager) {
+    public DownloadHandler(DownloadTokenStore downloadManager, CacheManager cacheManager, ClientRegistry clientRegistry, ReleaseService releaseManager, PatchManager patchManager) {
         this.downloadManager = downloadManager;
         this.cacheManager = cacheManager;
         this.clientRegistry = clientRegistry;

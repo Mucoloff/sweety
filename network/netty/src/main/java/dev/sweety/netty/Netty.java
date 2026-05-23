@@ -4,7 +4,7 @@ import dev.sweety.math.function.TriConsumer;
 import dev.sweety.netty.messaging.impl.GenericClient;
 import dev.sweety.netty.messaging.impl.GenericServer;
 import dev.sweety.netty.packet.model.Packet;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import dev.sweety.netty.packet.registry.OptimizedPacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
@@ -24,7 +24,7 @@ public class Netty {
     public static class ServerBuilder {
         private String host = "127.0.0.1";
         private int port = 8080;
-        private IPacketRegistry registry = new OptimizedPacketRegistry();
+        private PacketRegistry registry = new OptimizedPacketRegistry();
         private BiConsumer<ChannelHandlerContext, ChannelPromise> joinHandler;
         private BiConsumer<ChannelHandlerContext, ChannelPromise> quitHandler;
         private BiConsumer<ChannelHandlerContext, Throwable> exceptionHandler;
@@ -41,7 +41,7 @@ public class Netty {
             return this;
         }
 
-        public ServerBuilder registry(IPacketRegistry registry) {
+        public ServerBuilder registry(PacketRegistry registry) {
             this.registry = registry;
             return this;
         }
@@ -86,7 +86,7 @@ public class Netty {
         private String host = "127.0.0.1";
         private int port = 8080;
         private int localPort = -1;
-        private IPacketRegistry registry = new OptimizedPacketRegistry();
+        private PacketRegistry registry = new OptimizedPacketRegistry();
         private BiConsumer<ChannelHandlerContext, ChannelPromise> joinHandler;
         private BiConsumer<ChannelHandlerContext, ChannelPromise> quitHandler;
         private BiConsumer<ChannelHandlerContext, Throwable> exceptionHandler;
@@ -108,7 +108,7 @@ public class Netty {
             return this;
         }
 
-        public ClientBuilder registry(IPacketRegistry registry) {
+        public ClientBuilder registry(PacketRegistry registry) {
             this.registry = registry;
             return this;
         }

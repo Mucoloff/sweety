@@ -5,7 +5,7 @@ import dev.sweety.launcher.infra.LauncherConfig;
 import dev.sweety.launcher.port.in.ApplyUpdateUseCase;
 import dev.sweety.netty.messaging.impl.SimpleClient;
 import dev.sweety.netty.packet.model.Packet;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import dev.sweety.versioning.protocol.handshake.*;
 import dev.sweety.versioning.protocol.update.ReleaseBroadcastType;
 import dev.sweety.versioning.protocol.update.ReleasePacket;
@@ -31,11 +31,11 @@ public class NettyUpdaterClient extends SimpleClient {
     private final BiConsumer<ChannelHandlerContext, LauncherInfo> requestDownload = (ctx, info) ->
             sendPacket(ctx, new HandshakeTransaction(new HandshakeRequest(info)));
 
-    public NettyUpdaterClient(AtomicReference<LauncherConfig> config, IPacketRegistry packetRegistry, ApplyUpdateUseCase applyUpdate, Runnable stop) {
+    public NettyUpdaterClient(AtomicReference<LauncherConfig> config, PacketRegistry packetRegistry, ApplyUpdateUseCase applyUpdate, Runnable stop) {
         this(config, packetRegistry, -1, applyUpdate, stop);
     }
 
-    public NettyUpdaterClient(AtomicReference<LauncherConfig> config, IPacketRegistry packetRegistry, int localPort, ApplyUpdateUseCase applyUpdate, Runnable stop) {
+    public NettyUpdaterClient(AtomicReference<LauncherConfig> config, PacketRegistry packetRegistry, int localPort, ApplyUpdateUseCase applyUpdate, Runnable stop) {
         super(config.get().host(), config.get().port(), packetRegistry, localPort);
         this.config = config;
         this.applyUpdate = applyUpdate;

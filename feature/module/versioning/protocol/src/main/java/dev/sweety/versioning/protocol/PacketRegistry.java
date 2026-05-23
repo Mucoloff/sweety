@@ -1,7 +1,6 @@
 package dev.sweety.versioning.protocol;
 
 import dev.sweety.netty.packet.model.Packet;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
 import dev.sweety.netty.packet.registry.OptimizedPacketRegistry;
 import dev.sweety.netty.packet.registry.PacketEnum;
 import dev.sweety.versioning.protocol.handshake.HandshakeTransaction;
@@ -30,7 +29,7 @@ public enum PacketRegistry implements PacketEnum {
         this.packetClass = packetClass;
     }
 
-    public static final IPacketRegistry REGISTRY = new OptimizedPacketRegistry(values().length - 1);
+    public static final dev.sweety.netty.packet.registry.PacketRegistry REGISTRY = new OptimizedPacketRegistry(values().length - 1);
 
     static {
         NONE.register(REGISTRY, values());

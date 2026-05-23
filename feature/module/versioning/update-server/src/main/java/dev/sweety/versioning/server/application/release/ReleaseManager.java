@@ -7,7 +7,7 @@ import dev.sweety.versioning.server.domain.release.ReleaseState;
 import dev.sweety.versioning.server.port.in.PublishReleaseUseCase;
 import dev.sweety.versioning.server.port.in.RollbackReleaseUseCase;
 import dev.sweety.versioning.server.port.out.ReleaseRepository;
-import dev.sweety.versioning.version.IReleaseService;
+import dev.sweety.versioning.version.ReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
@@ -24,7 +24,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class ReleaseManager implements IReleaseService, PublishReleaseUseCase, RollbackReleaseUseCase {
+public class ReleaseManager implements ReleaseService, PublishReleaseUseCase, RollbackReleaseUseCase {
     private static final SimpleLogger LOGGER = SimpleLogger.of(ReleaseManager.class);
 
     private final Map<Artifact, ReleaseState> states = new ConcurrentHashMap<>();

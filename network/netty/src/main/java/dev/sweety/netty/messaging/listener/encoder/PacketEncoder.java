@@ -7,7 +7,7 @@ import dev.sweety.netty.messaging.exception.PacketEncodeException;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.Packet;
-import dev.sweety.netty.packet.registry.IPacketRegistry;
+import dev.sweety.netty.packet.registry.PacketRegistry;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
@@ -22,9 +22,9 @@ public class PacketEncoder {
             (byte) (Messenger.SEED >>> 24), (byte) (Messenger.SEED >>> 16),
             (byte) (Messenger.SEED >>> 8),  (byte)  Messenger.SEED
     }).asReadOnlyBuffer();
-    final IPacketRegistry packetRegistry;
+    final PacketRegistry packetRegistry;
 
-    public PacketEncoder(final IPacketRegistry packetRegistry) {
+    public PacketEncoder(final PacketRegistry packetRegistry) {
         this.packetRegistry = packetRegistry;
     }
 
@@ -32,7 +32,7 @@ public class PacketEncoder {
         encode(packet, out, this.packetRegistry);
     }
 
-    public static void encode(final Packet packet, final PacketBuffer out, final IPacketRegistry packetRegistry) throws PacketEncodeException {
+    public static void encode(final Packet packet, final PacketBuffer out, final PacketRegistry packetRegistry) throws PacketEncodeException {
         int packetId = packetRegistry.getPacketId(packet.getClass());
         if (packetId == -1)
             throw new PacketEncodeException("Returned PacketId by registry is invalid (-1)");

@@ -51,7 +51,7 @@ public class EventSystem implements IEventSystem {
     @Override
     public <T extends Event<?>> SubscriptionBuilder<T> on(@NotNull Class<T> eventType) {
         Objects.requireNonNull(eventType, "eventType cannot be null");
-        return new SubscriptionBuilderImpl<>(this, eventType);
+        return new DefaultSubscriptionBuilder<>(this, eventType);
     }
 
     @Override
