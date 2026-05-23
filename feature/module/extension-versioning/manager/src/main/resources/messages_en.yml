@@ -1,0 +1,9 @@
+update:
+  applied:          "Applied update for {0}"
+  applyFailed:      "Failed to apply update for {0}"
+  checking:         "Updating {0} from {1} to {2}"
+  checkFailed:      "Failed to check for updates for {0}"
+  remoteJarMissing: "Latest jar not found on server for artifact={0}"
+  localUnresolved:  "Could not resolve local file for extension {0}"
+  downloaded:       "Update for {0} downloaded. It will be applied on next restart."
+  taskFailed:       "Update task failed for {0}"

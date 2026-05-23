@@ -1,5 +1,6 @@
 package dev.sweety.extension.versioning;
 
+import dev.sweety.i18n.Messages;
 import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.versioning.version.IReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;
@@ -23,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 public class ExtensionUpdater<T extends VersionableExtension> {
 
     private static final SimpleLogger LOGGER = new SimpleLogger(ExtensionUpdater.class);
+    private static final Messages MESSAGES = Messages.forBundle("messages");
     /** Upper bound for waiting on all parallel extension update checks (per {@link #updateAll(Channel)}). */
     private static final long UPDATE_ALL_TIMEOUT_MINUTES = 30L;
 
@@ -42,13 +44,13 @@ public class ExtensionUpdater<T extends VersionableExtension> {
 
                 Version current = Version.parse(extension.version());
                 if (latest.version().newerThan(current)) {
-                    LOGGER.info("Updating " + extension.name() + " from " + current + " to " + latest.version());
+                    LOGGER.info(MESSAGES.get("update.checking", extension.name(), current, latest.version()));
                     return downloadAndPrepareUpdate(extension, latest) ? UpdateOutcome.updated() : UpdateOutcome.upToDate();
                 }
 
                 return UpdateOutcome.upToDate();
             } catch (Exception e) {
-                LOGGER.error("Failed to check for updates for " + extension.name(), e);
+                LOGGER.error(MESSAGES.get("update.checkFailed", extension.name()), e);
                 return UpdateOutcome.failed(e);
             }
         });
@@ -57,13 +59,13 @@ public class ExtensionUpdater<T extends VersionableExtension> {
     private boolean downloadAndPrepareUpdate(T extension, ReleaseInfo release) throws IOException {
         Path newJar = releaseService.resolveBaseJar(extension.artifact(), release.channel(), release.version());
         if (!Files.exists(newJar)) {
-            LOGGER.error("Latest jar not found on server for artifact=" + extension.artifact().name());
+            LOGGER.error(MESSAGES.get("update.remoteJarMissing", extension.artifact().name()));
             return false;
         }
 
         Path currentFile = manager.jarPath(extension);
         if (currentFile == null) {
-            LOGGER.error("Could not resolve local file for extension " + extension.name());
+            LOGGER.error(MESSAGES.get("update.localUnresolved", extension.name()));
             return false;
         }
 
@@ -71,7 +73,7 @@ public class ExtensionUpdater<T extends VersionableExtension> {
         Path updatePath = targetPath.resolveSibling(targetPath.getFileName() + UpdateableExtensionManager.UPDATE_SUFFIX);
 
         Files.copy(newJar, updatePath, StandardCopyOption.REPLACE_EXISTING);
-        LOGGER.info("Update for " + extension.name() + " downloaded. It will be applied on next restart.");
+        LOGGER.info(MESSAGES.get("update.downloaded", extension.name()));
         return true;
     }
 
@@ -86,7 +88,7 @@ public class ExtensionUpdater<T extends VersionableExtension> {
         CompletableFuture<UpdateOutcome>[] futures = manager.extensions().values().stream()
                 .map(ext -> updateIfAvailable(ext, channel).handle((result, ex) -> {
                     if (ex != null) {
-                        LOGGER.error("Update task failed for " + ext.name(), ex);
+                        LOGGER.error(MESSAGES.get("update.taskFailed", ext.name()), ex);
                         return UpdateOutcome.failed(ex);
                     }
                     return result instanceof UpdateOutcome ? result : UpdateOutcome.upToDate();

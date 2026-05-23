@@ -2,6 +2,7 @@ package dev.sweety.extension.versioning;
 
 import dev.sweety.extension.Extension;
 import dev.sweety.extension.manager.ExtensionManager;
+import dev.sweety.i18n.Messages;
 import dev.sweety.util.logger.SimpleLogger;
 
 import java.io.IOException;
@@ -15,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class UpdateableExtensionManager<T extends Extension> extends ExtensionManager<T> {
 
     static final String UPDATE_SUFFIX = ".update";
+    private static final Messages MESSAGES = Messages.forBundle("messages");
 
     private final Map<T, Path> extensionFiles = new ConcurrentHashMap<>();
     private final SimpleLogger logger = new SimpleLogger(UpdateableExtensionManager.class);
@@ -42,9 +44,9 @@ public class UpdateableExtensionManager<T extends Extension> extends ExtensionMa
         if (!resolved.equals(jarFile) && Files.exists(resolved)) {
             try {
                 Files.move(resolved, jarFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-                logger.info("Applied update for " + jarFile.getFileName());
+                logger.info(MESSAGES.get("update.applied", jarFile.getFileName()));
             } catch (IOException e) {
-                logger.error("Failed to apply update for " + jarFile.getFileName(), e);
+                logger.error(MESSAGES.get("update.applyFailed", jarFile.getFileName()), e);
             }
         }
 

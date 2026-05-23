@@ -1,0 +1,9 @@
+update:
+  applied:          "Aggiornamento applicato per {0}"
+  applyFailed:      "Applicazione aggiornamento fallita per {0}"
+  checking:         "Aggiornamento {0} da {1} a {2}"
+  checkFailed:      "Verifica aggiornamenti fallita per {0}"
+  remoteJarMissing: "Jar più recente non trovato sul server per artifact={0}"
+  localUnresolved:  "Impossibile risolvere il file locale per l''estensione {0}"
+  downloaded:       "Aggiornamento per {0} scaricato. Verrà applicato al prossimo riavvio."
+  taskFailed:       "Task di aggiornamento fallito per {0}"
