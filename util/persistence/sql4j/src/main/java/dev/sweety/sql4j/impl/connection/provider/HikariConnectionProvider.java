@@ -20,18 +20,7 @@ public class HikariConnectionProvider implements ConnectionProvider {
         hikariConfig.setJdbcUrl(config.jdbcUrl());
         hikariConfig.setUsername(config.user());
         hikariConfig.setPassword(config.password());
-
-        // Default settings
-        if (config.dialectType() == DialectType.MYSQL || config.dialectType() == DialectType.MARIADB) {
-            hikariConfig.addDataSourceProperty("cachePrepStmts", "true");
-            hikariConfig.addDataSourceProperty("prepStmtCacheSize", "250");
-            hikariConfig.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
-        }
-
-        if (config.dialectType() == DialectType.SQLITE) {
-            hikariConfig.setConnectionInitSql("PRAGMA foreign_keys = ON");
-        }
-
+        applyDialectTuning(hikariConfig, config.dialectType());
         this.dataSource = new HikariDataSource(hikariConfig);
     }
 
@@ -58,16 +47,7 @@ public class HikariConnectionProvider implements ConnectionProvider {
             hikariConfig.setMaxLifetime(tuning.maxLifetime().toMillis());
         }
 
-        if (config.dialect() == DialectType.MYSQL || config.dialect() == DialectType.MARIADB) {
-            hikariConfig.addDataSourceProperty("cachePrepStmts", "true");
-            hikariConfig.addDataSourceProperty("prepStmtCacheSize", "250");
-            hikariConfig.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
-        }
-
-        if (config.dialect() == DialectType.SQLITE) {
-            hikariConfig.setConnectionInitSql("PRAGMA foreign_keys = ON");
-        }
-
+        applyDialectTuning(hikariConfig, config.dialect());
         this.dataSource = new HikariDataSource(hikariConfig);
     }
 
@@ -80,6 +60,26 @@ public class HikariConnectionProvider implements ConnectionProvider {
     public void close() {
         if (dataSource != null && !dataSource.isClosed()) {
             dataSource.close();
+        }
+    }
+
+    private static void applyDialectTuning(HikariConfig cfg, DialectType dialect) {
+        switch (dialect) {
+            case MYSQL, MARIADB -> {
+                cfg.addDataSourceProperty("cachePrepStmts", "true");
+                cfg.addDataSourceProperty("prepStmtCacheSize", "250");
+                cfg.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+                cfg.addDataSourceProperty("useServerPrepStmts", "true");
+            }
+            case POSTGRESQL -> {
+                // PgJDBC: server-side PS from first execution (default is 5).
+                // Dramatically reduces parse/plan overhead for repeated queries.
+                cfg.addDataSourceProperty("prepareThreshold", "1");
+                cfg.addDataSourceProperty("preparedStatementCacheQueries", "250");
+                cfg.addDataSourceProperty("preparedStatementCacheSizeMiB", "5");
+            }
+            case SQLITE -> cfg.setConnectionInitSql("PRAGMA foreign_keys = ON");
+            default -> {}
         }
     }
 }
