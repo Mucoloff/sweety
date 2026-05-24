@@ -168,6 +168,51 @@ public final class Batch implements Codec {
         this.decoded = true;
     }
 
+    /**
+     * Write batch directly into target buffer without creating a Batch object.
+     * Avoids intermediate Batch allocation + byte[] copy on the hot write path.
+     */
+    public static void writeDirect(
+            final BufferWriter target,
+            final Function<Class<? extends Packet>, Integer> idMap,
+            final Predicate<Packet> exclusion,
+            final Packet... packets) {
+        if (packets == null || packets.length == 0) {
+            target.writeVarInt(0);
+            return;
+        }
+        // Fast path for single packet (most common — FPP wraps one packet)
+        if (packets.length == 1) {
+            final Packet p = packets[0];
+            if (p == null || exclusion.test(p)) { target.writeVarInt(0); return; }
+            final Integer mid = idMap.apply(p.getClass());
+            if (mid == null || mid < 0) { target.writeVarInt(0); return; }
+            target.writeVarInt(1);
+            target.writeVarInt(mid);
+            target.writeVarLong(p.timestamp());
+            target.writeByteArray(p.buffer().getBytes());
+            return;
+        }
+        // Multi-packet: pass 1 resolve IDs, pass 2 write
+        int count = 0;
+        final int[] ids = new int[packets.length];
+        for (int i = 0; i < packets.length; i++) {
+            final Packet p = packets[i];
+            if (p == null || exclusion.test(p)) { ids[i] = -1; continue; }
+            final Integer mid = idMap.apply(p.getClass());
+            if (mid == null || mid < 0) { ids[i] = -1; continue; }
+            ids[i] = mid;
+            count++;
+        }
+        target.writeVarInt(count);
+        for (int i = 0; i < packets.length; i++) {
+            if (ids[i] < 0) continue;
+            target.writeVarInt(ids[i]);
+            target.writeVarLong(packets[i].timestamp());
+            target.writeByteArray(packets[i].buffer().getBytes());
+        }
+    }
+
     private byte[] serializePayload() {
         try (PacketBuffer payload = PacketBufferAllocator.DEFAULT.buffer()) {
             payload.writeVarInt(this.packetCount);

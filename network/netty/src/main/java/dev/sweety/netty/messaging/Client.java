@@ -64,9 +64,11 @@ public abstract class Client extends Messenger<Bootstrap> {
      */
     public void dispatchWrite(Packet packet) {
         final ChannelHandlerContext ctx = channelContext();
-        if (ctx == null || !ctx.channel().isActive()) return;
-        if (!ctx.channel().isWritable()) return;
-        ctx.channel().write(packet);
+        if (ctx != null && ctx.channel().isWritable()) {
+            ctx.channel().write(packet).addListener(f -> packet.tryRecycle());
+        } else {
+            packet.tryRecycle();
+        }
     }
 
     /**

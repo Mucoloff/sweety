@@ -74,6 +74,14 @@ public abstract class Packet {
         }
     }
 
+    /**
+     * Release this packet's buffer and, if pooled, return it to the object pool.
+     * Non-pooled packets just call release(). Override in pooled subclasses.
+     */
+    public void tryRecycle() {
+        this.release();
+    }
+
     public boolean hasTimestamp() {
         return this._timestamp > 0;
     }

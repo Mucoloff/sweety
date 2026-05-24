@@ -55,7 +55,7 @@ public class NettyDecoder extends ByteToMessageDecoder {
                 try {
                     this.messenger.onPacketReceive(ctx, packet);
                 } finally {
-                    packet.release();
+                    packet.tryRecycle();
                 }
             }
             return;
