@@ -6,12 +6,9 @@ import org.jetbrains.annotations.NotNull;
 
 public abstract class Packet {
 
-    private final int _id;
-    private final long _timestamp;
-    // Not pooled: _buffer lifetime equals packet lifetime, not a bounded scope.
-    // Pooling would require rewriting every packet subclass in the dependent project.
-    private @NotNull
-    final PacketBuffer _buffer;
+    private int _id;
+    private long _timestamp;
+    private @NotNull PacketBuffer _buffer;
 
     public Packet() {
         this(-1L);
@@ -30,6 +27,21 @@ public abstract class Packet {
         this._id = _id;
         this._timestamp = _timestamp;
         this._buffer = new PacketBuffer(_data);
+        this._readerIndex = this._buffer.readerIndex();
+    }
+
+    /**
+     * Reinitialize pooled packet with new data. Releases the previous buffer.
+     * Called by obtain() factory methods on recycled instances.
+     * Pooled subclasses MUST override tryRecycle() to delegate to Pooled.super.tryRecycle().
+     */
+    protected void reinitPacket(final int id, final long timestamp, final byte[] data) {
+        if (this._buffer != null && this._buffer.refCnt() > 0) {
+            this._buffer.release();
+        }
+        this._id = id;
+        this._timestamp = timestamp;
+        this._buffer = new PacketBuffer(data);
         this._readerIndex = this._buffer.readerIndex();
     }
 
@@ -76,7 +88,8 @@ public abstract class Packet {
 
     /**
      * Release this packet's buffer and, if pooled, return it to the object pool.
-     * Non-pooled packets just call release(). Override in pooled subclasses.
+     * Non-pooled packets just call release(). Pooled subclasses override to delegate
+     * to Pooled.super.tryRecycle() so the interface default fires correctly.
      */
     public void tryRecycle() {
         this.release();
