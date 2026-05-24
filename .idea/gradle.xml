@@ -37,6 +37,7 @@
             <option value="$PROJECT_DIR$/feature/service" />
             <option value="$PROJECT_DIR$/feature/service/api" />
             <option value="$PROJECT_DIR$/feature/service/impl" />
+            <option value="$PROJECT_DIR$/feature/transform" />
             <option value="$PROJECT_DIR$/hook" />
             <option value="$PROJECT_DIR$/hook/microsoft-auth" />
             <option value="$PROJECT_DIR$/hook/spotify" />
