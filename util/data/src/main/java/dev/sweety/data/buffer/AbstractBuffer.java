@@ -643,11 +643,6 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
         if (writeNullCheck(set)) return self();
         E[] universe = type.getEnumConstants();
         int words = (universe.length + 63) >>> 6;
-        if (words == 1) {
-            long bits = 0L;
-            for (E e : set) bits |= 1L << e.ordinal();
-            return writeVarLong(bits);
-        }
         long[] bits = new long[words];
         for (E e : set) {
             int ord = e.ordinal();
@@ -662,13 +657,6 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
         E[] universe = type.getEnumConstants();
         EnumSet<E> set = EnumSet.noneOf(type);
         int words = (universe.length + 63) >>> 6;
-        if (words == 1) {
-            long bits = readVarLong();
-            for (E e : universe) {
-                if ((bits & (1L << e.ordinal())) != 0) set.add(e);
-            }
-            return set;
-        }
         long[] bits = new long[words];
         for (int i = 0; i < words; i++) bits[i] = readVarLong();
         for (E e : universe) {
