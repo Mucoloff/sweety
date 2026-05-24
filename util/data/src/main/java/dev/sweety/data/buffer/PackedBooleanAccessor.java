@@ -72,7 +72,7 @@ public interface PackedBooleanAccessor<Self extends BufferReader & BufferWriter>
 
         if (readMaskIndex % 8 == 0) {
             if (!self.isReadable()) {
-                throw new PacketDecodeException("Unable to read boolean", new EOFException()).runtime();
+                throw PacketDecodeException.of("Unable to read boolean", new EOFException()).runtime();
             }
             readMask = self.readByte();
             readMask(readMask);

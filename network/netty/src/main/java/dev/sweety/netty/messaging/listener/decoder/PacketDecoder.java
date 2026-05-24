@@ -91,7 +91,7 @@ public class PacketDecoder {
                         try {
                             CompressUtils.inflate(srcView, ByteBuffer.wrap(decompressed), inflater);
                         } catch (DataFormatException e) {
-                            throw new PacketDecodeException("Failed to inflate payload", e);
+                            throw PacketDecodeException.of("Failed to inflate payload", e);
                         }
                         payloadBuf = Unpooled.wrappedBuffer(decompressed); // zero-copy wrap
                     } finally {
@@ -124,7 +124,7 @@ public class PacketDecoder {
             final int check = (int) crc32.getValue();
             if (check != checksum) {
                 if (payloadBuf != Unpooled.EMPTY_BUFFER) payloadBuf.release();
-                throw new PacketDecodeException("Invalid checksum for packetId " + id);
+                throw PacketDecodeException.of("Invalid checksum for packetId " + id);
             }
 
             final Packet packet;
@@ -138,7 +138,7 @@ public class PacketDecoder {
                 }
                 packet = packetRegistry.constructPacket(id, timestamp, bytes);
             } catch (Exception e) {
-                throw new PacketDecodeException("Failed to decode packet (" + id + ")", e);
+                throw PacketDecodeException.of("Failed to decode packet (" + id + ")", e);
             } finally {
                 if (payloadBuf != Unpooled.EMPTY_BUFFER) payloadBuf.release();
             }

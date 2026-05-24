@@ -2,18 +2,15 @@ package dev.sweety.exception;
 
 public class PacketDecodeException extends Except {
 
-    @Deprecated
-    public PacketDecodeException(String message, Throwable e) {
+    PacketDecodeException(String message, Throwable e) {
         super(message, e);
     }
 
-    @Deprecated
-    public PacketDecodeException(String message) {
+    PacketDecodeException(String message) {
         super(message);
     }
 
-    @Deprecated
-    public PacketDecodeException(Throwable cause) {
+    PacketDecodeException(Throwable cause) {
         super(cause);
     }
 

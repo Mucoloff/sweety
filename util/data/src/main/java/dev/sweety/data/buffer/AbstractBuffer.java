@@ -26,7 +26,9 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
 
     public abstract void clear();
 
-    /** Reset state for pool reuse. Called by the allocator after reclaiming from the pool. */
+    /**
+     * Reset state for pool reuse. Called by the allocator after reclaiming from the pool.
+     */
     protected abstract void poolReset();
 
     public abstract Self discardReadBytes();
@@ -68,7 +70,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
             result |= value << (7 * numRead);
 
             numRead++;
-            if (numRead > maxBytes) throw new PacketDecodeException("VarInt/VarLong too big").runtime();
+            if (numRead > maxBytes) throw PacketDecodeException.of("VarInt/VarLong too big").runtime();
         } while ((read & 0x80) != 0);
 
         return result;
@@ -91,7 +93,7 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
             read = readByte();
             result |= (read & 0x7F) << (7 * numRead);
             numRead++;
-            if (numRead > 5) throw new PacketDecodeException("VarInt too big").runtime();
+            if (numRead > 5) throw PacketDecodeException.of("VarInt too big").runtime();
         } while ((read & 0x80) != 0);
         return result;
     }
@@ -131,20 +133,55 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
         return PackedBooleanAccessor.super.readBoolean();
     }
 
-    @Override public byte writeMask() { return writeMask; }
-    @Override public void writeMask(byte writeMask) { this.writeMask = writeMask; }
+    @Override
+    public byte writeMask() {
+        return writeMask;
+    }
 
-    @Override public byte writeMaskIndex() { return writeMaskIndex; }
-    @Override public void writeMaskIndex(byte writeMaskIndex) { this.writeMaskIndex = writeMaskIndex; }
+    @Override
+    public void writeMask(byte writeMask) {
+        this.writeMask = writeMask;
+    }
 
-    @Override public int writePosIndex() { return writePosIndex; }
-    @Override public void writePosIndex(int writePosIndex) { this.writePosIndex = writePosIndex; }
+    @Override
+    public byte writeMaskIndex() {
+        return writeMaskIndex;
+    }
 
-    @Override public byte readMask() { return readMask; }
-    @Override public void readMask(byte readMask) { this.readMask = readMask; }
+    @Override
+    public void writeMaskIndex(byte writeMaskIndex) {
+        this.writeMaskIndex = writeMaskIndex;
+    }
 
-    @Override public byte readMaskIndex() { return readMaskIndex; }
-    @Override public void readMaskIndex(byte readMaskIndex) { this.readMaskIndex = readMaskIndex; }
+    @Override
+    public int writePosIndex() {
+        return writePosIndex;
+    }
+
+    @Override
+    public void writePosIndex(int writePosIndex) {
+        this.writePosIndex = writePosIndex;
+    }
+
+    @Override
+    public byte readMask() {
+        return readMask;
+    }
+
+    @Override
+    public void readMask(byte readMask) {
+        this.readMask = readMask;
+    }
+
+    @Override
+    public byte readMaskIndex() {
+        return readMaskIndex;
+    }
+
+    @Override
+    public void readMaskIndex(byte readMaskIndex) {
+        this.readMaskIndex = readMaskIndex;
+    }
 
     public abstract Self setByte(int index, byte value);
 
@@ -255,13 +292,13 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
             //noinspection unchecked
             T result = (T) ENUM_ID_CACHE.get(clazz).get(val);
             if (result == null)
-                throw new PacketDecodeException("Invalid enum id: " + val).runtime();
+                throw PacketDecodeException.of("Invalid enum id: " + val).runtime();
             return result;
         }
 
         T[] constants = clazz.getEnumConstants();
         if (val >= 0 && val < constants.length) return constants[val];
-        throw new PacketDecodeException("Invalid enum ordinal: " + val).runtime();
+        throw PacketDecodeException.of("Invalid enum ordinal: " + val).runtime();
     }
 
     public <T extends Enum<T>, S> Self writeEnum(T value, Function<T, S> stateMapper, AbstractCallableEncoder<? super S> stateEncoder) {
@@ -536,7 +573,9 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
         return readList(buffer -> buffer.readObject(factory));
     }
 
-    /** @deprecated Use {@link #writeMap(Map, AbstractCallableEncoder, AbstractCallableEncoder)} to avoid per-entry Pair allocation. */
+    /**
+     * @deprecated Use {@link #writeMap(Map, AbstractCallableEncoder, AbstractCallableEncoder)} to avoid per-entry Pair allocation.
+     */
     @Deprecated
     public <K, V> Self writeMap(Map<K, V> map, AbstractCallableEncoder<Pair<K, V>> encoder) {
         if (writeNullCheck(map)) return self();
@@ -546,7 +585,9 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
         return self;
     }
 
-    /** @deprecated Use {@link #readMap(AbstractCallableDecoder, AbstractCallableDecoder, IntFunction)} to avoid per-entry Pair allocation. */
+    /**
+     * @deprecated Use {@link #readMap(AbstractCallableDecoder, AbstractCallableDecoder, IntFunction)} to avoid per-entry Pair allocation.
+     */
     @Deprecated
     public <K, V> Map<K, V> readMap(AbstractCallableDecoder<Pair<K, V>> decoder, IntFunction<Map<K, V>> mapFactory) {
         if (!readPresence()) return null;
@@ -601,13 +642,18 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
     public <E extends Enum<E>> Self writeEnumSet(EnumSet<E> set, Class<E> type) {
         if (writeNullCheck(set)) return self();
         E[] universe = type.getEnumConstants();
-        if (universe.length <= 64) {
-            long bits = 0;
+        int words = (universe.length + 63) >>> 6;
+        if (words == 1) {
+            long bits = 0L;
             for (E e : set) bits |= 1L << e.ordinal();
             return writeVarLong(bits);
         }
-        writeVarInt(set.size());
-        for (E e : set) writeEnum(e);
+        long[] bits = new long[words];
+        for (E e : set) {
+            int ord = e.ordinal();
+            bits[ord >>> 6] |= 1L << (ord & 63);
+        }
+        for (long w : bits) writeVarLong(w);
         return self();
     }
 
@@ -615,23 +661,28 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
         if (!readPresence()) return null;
         E[] universe = type.getEnumConstants();
         EnumSet<E> set = EnumSet.noneOf(type);
-        if (universe.length <= 64) {
+        int words = (universe.length + 63) >>> 6;
+        if (words == 1) {
             long bits = readVarLong();
             for (E e : universe) {
                 if ((bits & (1L << e.ordinal())) != 0) set.add(e);
             }
             return set;
         }
-        int size = readBoundedLength("enumSet", MAX_ARRAY_SIZE);
-        for (int i = 0; i < size; i++) {
-            set.add(readEnum(type));
+        long[] bits = new long[words];
+        for (int i = 0; i < words; i++) bits[i] = readVarLong();
+        for (E e : universe) {
+            int ord = e.ordinal();
+            if ((bits[ord >>> 6] & (1L << (ord & 63))) != 0) set.add(e);
         }
         return set;
     }
 
     public abstract boolean release();
 
-    /** Delegates to {@link #release()} for try-with-resources support. */
+    /**
+     * Delegates to {@link #release()} for try-with-resources support.
+     */
     @Release
     @Override
     public void close() {
@@ -718,9 +769,17 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
                 ((long) (y & 0xFFF));
     }
 
-    public static int posX(long packed) { return (int) (packed >> 38); }
-    public static int posY(long packed) { return (int) (packed << 52 >> 52); }
-    public static int posZ(long packed) { return (int) (packed << 26 >> 38); }
+    public static int posX(long packed) {
+        return (int) (packed >> 38);
+    }
+
+    public static int posY(long packed) {
+        return (int) (packed << 52 >> 52);
+    }
+
+    public static int posZ(long packed) {
+        return (int) (packed << 26 >> 38);
+    }
 
     public Self writePosition(int x, int y, int z) {
         return writeLong(packPosition(x, y, z));
@@ -730,7 +789,9 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
         return readLong();
     }
 
-    /** @deprecated Use {@link #readPackedPosition()} + {@link #posX}/{@link #posY}/{@link #posZ} to avoid int[] allocation. */
+    /**
+     * @deprecated Use {@link #readPackedPosition()} + {@link #posX}/{@link #posY}/{@link #posZ} to avoid int[] allocation.
+     */
     @Deprecated
     public int[] readPosition() {
         long val = readLong();
@@ -745,7 +806,9 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
         return readVarLong();
     }
 
-    /** @deprecated Use {@link #readPackedVarPosition()} + {@link #posX}/{@link #posY}/{@link #posZ} to avoid int[] allocation. */
+    /**
+     * @deprecated Use {@link #readPackedVarPosition()} + {@link #posX}/{@link #posY}/{@link #posZ} to avoid int[] allocation.
+     */
     @Deprecated
     public int[] readVarPosition() {
         long val = readVarLong();
@@ -796,17 +859,17 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
     protected int readBoundedLength(String label, int max) {
         final int len = readVarInt();
         if (len < 0 || len > max) {
-            throw new PacketDecodeException(label + " length out of bounds: " + len).runtime();
+            throw PacketDecodeException.of(label + " length out of bounds: " + len).runtime();
         }
         return len;
     }
 
     protected void requireReadable(long bytes, String label) {
         if (bytes < 0 || bytes > Integer.MAX_VALUE) {
-            throw new PacketDecodeException("Invalid byte length for " + label + ": " + bytes).runtime();
+            throw PacketDecodeException.of("Invalid byte length for " + label + ": " + bytes).runtime();
         }
         if (this.readableBytes() < (int) bytes) {
-            throw new PacketDecodeException("Not enough bytes for " + label + ": requested=" + bytes
+            throw PacketDecodeException.of("Not enough bytes for " + label + ": requested=" + bytes
                     + ", available=" + this.readableBytes()).runtime();
         }
     }
