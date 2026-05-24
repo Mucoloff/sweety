@@ -17,6 +17,8 @@ include 'feature:module:extension-versioning'
 include 'feature:module:extension-versioning:api'
 include 'feature:module:extension-versioning:manager'
 
+include 'feature:transform'
+
 include 'feature:asm-patch'
 include 'feature:asm-patch:asm-patch-core'
 project(':feature:asm-patch:asm-patch-core').projectDir = file('feature/asm-patch/core')
