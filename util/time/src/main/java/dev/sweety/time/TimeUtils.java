@@ -34,14 +34,14 @@ public final class TimeUtils {
     public static void sleep(long ms) {
         try {
             Thread.sleep(ms);
-        } catch (InterruptedException ignored) {
+        } catch (InterruptedException _) {
         }
     }
 
     public static void sleep(long time, TimeUnit timeUnit) {
         try {
             timeUnit.sleep(time);
-        } catch (InterruptedException ignored) {
+        } catch (InterruptedException _) {
         }
     }
 }

@@ -1,6 +1,6 @@
 plugins {
     id("io.freefair.lombok") version "9.0.0" apply false
-    kotlin("jvm") version "2.3.20-RC2" apply false
+    kotlin("jvm") version "2.3.20" apply false
 }
 
 subprojects {
