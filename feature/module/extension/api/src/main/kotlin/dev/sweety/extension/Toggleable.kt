@@ -6,4 +6,6 @@ interface Toggleable {
     fun enable()
 
     fun disable()
+
+    fun enabled(): Boolean
 }

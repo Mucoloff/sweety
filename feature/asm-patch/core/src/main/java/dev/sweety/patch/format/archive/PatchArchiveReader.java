@@ -3,15 +3,20 @@ package dev.sweety.patch.format.archive;
 import dev.sweety.patch.exception.PatchFormatException;
 import dev.sweety.patch.format.Header;
 import dev.sweety.patch.format.PatchReader;
-import dev.sweety.patch.model.*;
+import dev.sweety.patch.model.AddOperation;
+import dev.sweety.patch.model.DeleteOperation;
+import dev.sweety.patch.model.ModifyOperation;
+import dev.sweety.patch.model.MoveOperation;
+import dev.sweety.patch.model.Patch;
+import dev.sweety.patch.model.PatchOperation;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -22,15 +27,12 @@ public class PatchArchiveReader implements PatchReader {
 
     public static PatchArchiveIndex readIndex(ZipFile zf) throws IOException {
         ZipEntry ze = zf.getEntry(PatchArchiveConstants.INDEX_ENTRY);
-        if (ze == null) {
-            throw new PatchFormatException("Patch archive missing " + PatchArchiveConstants.INDEX_ENTRY);
-        }
+        if (ze == null) throw new PatchFormatException("Patch archive missing " + PatchArchiveConstants.INDEX_ENTRY);
         try (InputStream in = zf.getInputStream(ze)) {
             String json = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             PatchArchiveIndex index = Header.GSON.fromJson(json, PatchArchiveIndex.class);
-            if (index == null || index.operations == null) {
+            if (index == null || index.operations == null)
                 throw new PatchFormatException("Invalid patch archive index");
-            }
             return index;
         }
     }
@@ -43,9 +45,8 @@ public class PatchArchiveReader implements PatchReader {
             Files.copy(in, tmp, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             try (ZipFile zf = new ZipFile(tmp.toFile())) {
                 PatchArchiveIndex index = readIndex(zf);
-                if (!PatchArchiveConstants.HEADER.equals(index.header)) {
+                if (!PatchArchiveConstants.HEADER.equals(index.header))
                     throw new PatchFormatException("Invalid patch archive header");
-                }
                 List<PatchOperation> ops = new ArrayList<>(index.operations.size());
                 for (PatchArchiveOpEntry e : index.operations) {
                     ops.add(materializeOperation(zf, e));
@@ -66,10 +67,8 @@ public class PatchArchiveReader implements PatchReader {
     }
 
     private static PatchOperation materializeOperation(ZipFile zf, PatchArchiveOpEntry e) throws IOException {
-        PatchOperation.Type type = PatchOperation.Type.valueOf(e.type.toUpperCase(Locale.ROOT));
-        PatchOperation.Method method = "text_diff".equalsIgnoreCase(e.method)
-                ? PatchOperation.Method.TEXT_DIFF
-                : PatchOperation.Method.REPLACEMENT;
+        PatchOperation.Type type = e.type;
+        PatchOperation.Method method = e.method;
         return switch (type) {
             case ADD -> {
                 byte[] data = readPayload(zf, e);
@@ -80,6 +79,12 @@ public class PatchArchiveReader implements PatchReader {
                 yield new ModifyOperation(e.path, e.hash, data, method);
             }
             case DELETE -> new DeleteOperation(e.path, e.hash);
+            case MOVE -> {
+                if (e.oldPath == null || e.oldPath.isEmpty())
+                    throw new PatchFormatException("Missing oldPath for MOVE " + e.path);
+                yield new MoveOperation(e.oldPath, e.path, e.hash);
+            }
+            case null, default -> throw new UnsupportedOperationException("Invalid patch operation type: " + type);
         };
     }
 

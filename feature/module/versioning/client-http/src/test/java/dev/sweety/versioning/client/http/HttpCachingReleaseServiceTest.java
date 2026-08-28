@@ -45,7 +45,7 @@ class HttpCachingReleaseServiceTest {
                 ex.close();
                 return;
             }
-            String key = ex.getRequestHeaders().getFirst("X-Sweety-Release-Key");
+            String key = ex.getRequestHeaders().getFirst("X-Luce-Release-Key");
             if (!"k".equals(key)) {
                 ex.sendResponseHeaders(403, -1);
                 ex.close();

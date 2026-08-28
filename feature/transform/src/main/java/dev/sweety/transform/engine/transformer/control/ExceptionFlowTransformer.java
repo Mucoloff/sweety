@@ -1,10 +1,24 @@
 package dev.sweety.transform.engine.transformer.control;
 
-import dev.sweety.transform.engine.*;
-import org.objectweb.asm.*;
-import org.objectweb.asm.tree.*;
-
-import java.util.*;
+import dev.sweety.transform.engine.MethodSelector;
+import dev.sweety.transform.engine.TransformContext;
+import dev.sweety.transform.engine.Transformer;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FrameNode;
+import org.objectweb.asm.tree.InnerClassNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.JumpInsnNode;
+import org.objectweb.asm.tree.LabelNode;
+import org.objectweb.asm.tree.LineNumberNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.TryCatchBlockNode;
+import org.objectweb.asm.tree.TypeInsnNode;
 
 /**
  * Exception-Based Control Flow Transformation.
@@ -116,7 +130,7 @@ public final class ExceptionFlowTransformer extends Transformer {
         insns.add(catchInsns);
 
         // Add exception table entry
-        mn.tryCatchBlocks.add(0, new TryCatchBlockNode(tryStart, tryEnd, catchStart, sentinelInternal));
+        mn.tryCatchBlocks.addFirst(new TryCatchBlockNode(tryStart, tryEnd, catchStart, sentinelInternal));
     }
 
     /**
@@ -144,6 +158,7 @@ public final class ExceptionFlowTransformer extends Transformer {
         if (op >= Opcodes.IRETURN && op <= Opcodes.RETURN) return false;
         if (op == Opcodes.ATHROW) return false;
         if (node instanceof JumpInsnNode) return false;
+        
         return true;
     }
 
@@ -165,7 +180,7 @@ public final class ExceptionFlowTransformer extends Transformer {
 
         // Note: the actual inner class bytes need to be written separately.
         // We store the ClassNode in the context metadata so the pipeline can emit it.
-        // (TransformCLI handles this by calling buildSentinelClass.)
+        // (The pipeline driver handles this by calling buildSentinelClass.)
     }
 
     /**

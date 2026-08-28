@@ -12,5 +12,5 @@ public interface QueryExecutor<T> {
     T execute(PreparedStatement ps) throws SQLException;
 
     /** A no-op executor that returns null. */
-    QueryExecutor<?> EMPTY = _ -> null;
+    QueryExecutor<?> EMPTY = ignored -> null;
 }

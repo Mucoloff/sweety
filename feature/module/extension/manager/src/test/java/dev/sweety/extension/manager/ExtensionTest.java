@@ -11,7 +11,10 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Extension Lifecycle Tests")
 public class ExtensionTest {
@@ -23,7 +26,7 @@ public class ExtensionTest {
     @BeforeEach
     void setUp() {
         testFolder = Paths.get(System.getProperty("java.io.tmpdir"), "test-extension-" + System.nanoTime());
-        logger = new SimpleLogger(ExtensionTest.class);
+        logger = SimpleLogger.of(ExtensionTest.class);
         extension = new TestExtension("TestExtension", "1.0", "desc", testFolder, logger);
     }
 

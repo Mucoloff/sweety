@@ -51,10 +51,18 @@ public final class MethodSelector {
         return mn.instructions != null && mn.instructions.size() != 0;
     }
 
-    /** True if the method is safe to virtualize (no JSR, no synchronized). */
+    /**
+     * True if the method is safe to virtualize (no JSR, no synchronized, no exception handlers).
+     * VMInterpreter has no handler-table dispatch — a thrown exception during VM execution always
+     * propagates straight out of the interpreter loop (see ObjectOps.executeThrow), never routing into
+     * a compiled catch/finally block. Compiling a method with a non-empty exception table anyway would
+     * silently miscompile (the handler range would just be treated as ordinary unreachable-by-fallthrough
+     * code), so reject it outright rather than produce a corrupt method.
+     */
     public static boolean isVirtualizable(MethodNode mn) {
         if (!isEligible(mn)) return false;
         if ((mn.access & Opcodes.ACC_SYNCHRONIZED) != 0) return false;
+        if (mn.tryCatchBlocks != null && !mn.tryCatchBlocks.isEmpty()) return false;
         // JSR/RET check
         for (var insn : mn.instructions) {
             if (insn.getOpcode() == Opcodes.JSR || insn.getOpcode() == Opcodes.RET) return false;

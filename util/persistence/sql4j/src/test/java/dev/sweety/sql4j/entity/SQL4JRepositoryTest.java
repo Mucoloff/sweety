@@ -3,11 +3,9 @@ package dev.sweety.sql4j.entity;
 import dev.sweety.sql4j.api.annotation.Sql4jRepository;
 import dev.sweety.sql4j.api.connection.SqlConnection;
 import dev.sweety.sql4j.api.query.Query;
-import dev.sweety.sql4j.api.query.chain.QueryChain;
 import dev.sweety.sql4j.api.repository.Repository;
 import dev.sweety.sql4j.impl.Database;
 import dev.sweety.sql4j.impl.connection.ConnectionType;
-import dev.sweety.sql4j.entity.Role;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +15,9 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Executors;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static dev.sweety.sql4j.api.query.Query.Info;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class SQL4JRepositoryTest {
 
@@ -28,10 +28,10 @@ public class SQL4JRepositoryTest {
 
     @Sql4jRepository(entity = User.class)
     public interface UserRepository extends Repository<User> {
-        @dev.sweety.sql4j.api.annotation.Query("SELECT * FROM full_users WHERE age > ?")
+        @Info("SELECT * FROM full_users WHERE age > ?")
         Query<List<User>> findOlderThan(int age);
         
-        @dev.sweety.sql4j.api.annotation.Query("SELECT * FROM full_users WHERE name = ?")
+        @Info("SELECT * FROM full_users WHERE name = ?")
         Query<List<User>> findByName(String name);
     }
 

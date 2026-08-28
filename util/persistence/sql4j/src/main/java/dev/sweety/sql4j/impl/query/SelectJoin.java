@@ -17,7 +17,17 @@ import dev.sweety.sql4j.api.connection.SqlConnection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -207,12 +217,17 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
                 Map<Table<?>, Map<Object, Object>> globalIdentityMap = new HashMap<>();
                 for (Table<?> t : tables) globalIdentityMap.put(t, new HashMap<>());
 
+                // (relation, sourcePk) -> already-attached target PKs. Was a linear scan over the
+                // live collection per row (O(m) per row, O(n*m) total across a relation) — this
+                // makes the ONE_TO_MANY/MANY_TO_MANY dedup check O(1) per row instead.
+                Map<Table.Relation, Map<Object, Set<Object>>> seenTargetsByRelation = new HashMap<>();
+
                 for (Row row : rows) {
                     Object rootPk = row.get(rootTable.name() + "_" + rootTable.primaryKeys().get(0).name());
                     if (rootPk == null) continue;
 
                     //noinspection unchecked
-                    R root = (R) globalIdentityMap.get(rootTable).computeIfAbsent(rootPk, _ -> row.extractEntity(rootTable, rootTable.name()));
+                    R root = (R) globalIdentityMap.get(rootTable).computeIfAbsent(rootPk, ignored -> row.extractEntity(rootTable, rootTable.name()));
                     identityMap.put(rootPk, root);
 
                     for (JoinInfo join : joins) {
@@ -224,15 +239,16 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
                         Object sourceEntity = globalIdentityMap.get(join.sourceTable).get(sourcePk);
                         if (sourceEntity == null) continue; // Should not happen if join list is ordered correctly
 
-                        Object targetEntity = globalIdentityMap.get(join.targetTable).computeIfAbsent(targetPk, _ -> row.extractEntity(join.targetTable, join.targetTable.name()));
-                        
-                        populateRelation(sourceEntity, join.relation, join.targetTable, targetEntity, targetPk);
+                        Object targetEntity = globalIdentityMap.get(join.targetTable).computeIfAbsent(targetPk, ignored -> row.extractEntity(join.targetTable, join.targetTable.name()));
+
+                        populateRelation(sourceEntity, sourcePk, join.relation, targetEntity, targetPk, seenTargetsByRelation);
                     }
                 }
                 return new ArrayList<>(identityMap.values());
             }
 
-            private void populateRelation(Object source, Table.Relation rel, Table<?> targetTable, Object targetEntity, Object targetPk) {
+            private void populateRelation(Object source, Object sourcePk, Table.Relation rel, Object targetEntity, Object targetPk,
+                                           Map<Table.Relation, Map<Object, Set<Object>>> seenTargetsByRelation) {
                 try {
                     rel.field().setAccessible(true);
                     switch (rel.type()) {
@@ -243,14 +259,10 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
                                 collection = (rel.field().getType() == Set.class) ? new HashSet<>() : new ArrayList<>();
                                 rel.field().set(source, collection);
                             }
-                            boolean exists = false;
-                            for (Object existing : collection) {
-                                if (Objects.equals(targetTable.primaryKeys().get(0).get(existing), targetPk)) {
-                                    exists = true;
-                                    break;
-                                }
-                            }
-                            if (!exists) collection.add(targetEntity);
+                            Set<Object> seenTargets = seenTargetsByRelation
+                                    .computeIfAbsent(rel, ignored -> new HashMap<>())
+                                    .computeIfAbsent(sourcePk, ignored -> new HashSet<>());
+                            if (seenTargets.add(targetPk)) collection.add(targetEntity);
                         }
                         case MANY_TO_ONE -> {
                             if (rel.field().get(source) == null) rel.field().set(source, targetEntity);

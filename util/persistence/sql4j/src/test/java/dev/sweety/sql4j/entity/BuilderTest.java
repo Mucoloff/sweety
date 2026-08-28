@@ -2,7 +2,7 @@ package dev.sweety.sql4j.entity;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class BuilderTest {
 

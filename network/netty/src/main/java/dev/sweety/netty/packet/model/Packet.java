@@ -1,98 +1,30 @@
 package dev.sweety.netty.packet.model;
 
+import dev.sweety.netty.packet.buffer.io.Codec;
 import dev.sweety.time.TimeUtils;
-import dev.sweety.netty.packet.buffer.PacketBuffer;
-import org.jetbrains.annotations.NotNull;
 
-public abstract class Packet {
+public abstract class Packet implements Codec {
 
-    private int _id;
     private long _timestamp;
-    private @NotNull PacketBuffer _buffer;
 
     public Packet() {
-        this(-1L);
+        this._timestamp = -1L;
     }
 
     public Packet(final long timestamp) {
-        this._id = -1;
         this._timestamp = timestamp;
-        this._buffer = new PacketBuffer();
     }
 
-    // (decoder)
-    private int _readerIndex;
-
-    public Packet(final int _id, final long _timestamp, final byte[] _data) {
-        this._id = _id;
-        this._timestamp = _timestamp;
-        this._buffer = new PacketBuffer(_data);
-        this._readerIndex = this._buffer.readerIndex();
-    }
-
-    /**
-     * Reinitialize pooled packet with new data. Releases the previous buffer.
-     * Called by obtain() factory methods on recycled instances.
-     * Pooled subclasses MUST override tryRecycle() to delegate to Pooled.super.tryRecycle().
-     */
-    protected void reinitPacket(final int id, final long timestamp, final byte[] data) {
-        if (this._buffer != null && this._buffer.refCnt() > 0) {
-            this._buffer.release();
-        }
-        this._id = id;
+    public void assignTimestamp(final long timestamp) {
         this._timestamp = timestamp;
-        this._buffer = new PacketBuffer(data);
-        this._readerIndex = this._buffer.readerIndex();
-    }
-
-    public Packet rewind() {
-        this._buffer.readerIndex(_readerIndex);
-        return this;
     }
 
     public String name() {
         return this.getClass().getSimpleName();
     }
 
-    public int id() {
-        return this._id;
-    }
-
     public long timestamp() {
         return this._timestamp;
-    }
-
-    public PacketBuffer buffer() {
-        return this._buffer;
-    }
-
-    public Packet retain() {
-        this._buffer.retain();
-        return this;
-    }
-
-    public Packet retain(int increment) {
-        this._buffer.retain(increment);
-        return this;
-    }
-
-    public boolean release() {
-        try {
-            // Avoid double-free: only release if refCnt > 0
-            if (this._buffer.refCnt() > 0) return this._buffer.release();
-            return false;
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
-
-    /**
-     * Release this packet's buffer and, if pooled, return it to the object pool.
-     * Non-pooled packets just call release(). Pooled subclasses override to delegate
-     * to Pooled.super.tryRecycle() so the interface default fires correctly.
-     */
-    public void tryRecycle() {
-        this.release();
     }
 
     public boolean hasTimestamp() {
@@ -101,6 +33,6 @@ public abstract class Packet {
 
     @Override
     public String toString() {
-        return "%s (%d)%s- %d bytes".formatted(name(), _id, _timestamp > 0 ? " [" + TimeUtils.date(_timestamp, "dd-mm-yyyy hh:MM:ss") + "] " : " ", _buffer.readableBytes());
+        return "%s%s".formatted(name(), _timestamp > 0 ? " [" + TimeUtils.date(_timestamp, "dd-mm-yyyy hh:MM:ss") + "]" : "");
     }
 }

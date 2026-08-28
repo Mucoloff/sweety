@@ -24,7 +24,7 @@ class MutVec3d(
         (me["z"] as? Number)?.toDouble() ?: 0.0
     )
 
-    fun set(x: Double, y: Double, z: Double) {
+    fun set(x: Double, y: Double, z: Double) = apply {
         this.x = x
         this.y = y
         this.z = z
@@ -40,7 +40,7 @@ class MutVec3d(
     }
 
     fun selfSub(other: Vector3d) = selfSub(other.x(), other.y(), other.z())
-    fun selfSub(x: Double, y: Double, z: Double) {
+    fun selfSub(x: Double, y: Double, z: Double) = apply {
         this.x -= x
         this.y -= y
         this.z -= z
@@ -82,4 +82,5 @@ class MutVec3d(
     override fun toMutable() = this
 
     override fun toString(): String = "MutVec3d(x=$x, y=$y, z=$z)"
+
 }

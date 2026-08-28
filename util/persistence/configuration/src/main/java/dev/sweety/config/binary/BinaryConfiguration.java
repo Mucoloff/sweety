@@ -2,28 +2,40 @@ package dev.sweety.config.binary;
 
 import dev.sweety.config.common.Configuration;
 
-import java.io.*;
-import java.util.*;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
 public class BinaryConfiguration extends Configuration {
 
-    private static final String MAGIC = "CFG1";
-    private static final byte VERSION = 1;
+    private final String magic;
+    private final byte version;
 
     public BinaryConfiguration() {
-        super("bin");
+        this("bin", "CFG1",  1);
     }
 
-    public BinaryConfiguration(String extension) {
+    public BinaryConfiguration(String extension, String magic, int version) {
         super(extension);
+        this.magic = magic;
+        this.version = (byte) version;
     }
 
     @Override
     protected void dumpToStream(Map<String, Object> map, OutputStream out) throws IOException {
         DataOutputStream data = new DataOutputStream(out);
 
-        data.writeBytes(MAGIC);
-        data.writeByte(VERSION);
+        data.writeBytes(magic);
+        data.writeByte(version);
 
         writeObject(data, map, Collections.newSetFromMap(new IdentityHashMap<>()));
     }
@@ -35,10 +47,10 @@ public class BinaryConfiguration extends Configuration {
         byte[] magic = new byte[4];
         data.readFully(magic);
 
-        if (!MAGIC.equals(new String(magic))) throw new IllegalStateException("Invalid binary config format");
+        if (!this.magic.equals(new String(magic))) throw new IllegalStateException("Invalid binary config format");
 
         byte version = data.readByte();
-        if (version != VERSION) throw new IllegalStateException("Unsupported version: " + version);
+        if (version != this.version) throw new IllegalStateException("Unsupported version: " + version);
 
         if (!(readObject(data) instanceof Map<?, ?> map)) throw new IllegalStateException("Root must be a Map");
 

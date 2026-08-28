@@ -1,6 +1,12 @@
 package dev.sweety.config.common;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Reader;
+import java.io.Writer;
 import java.util.Map;
 
 public abstract class TextConfiguration extends Configuration {

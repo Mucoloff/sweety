@@ -1,9 +1,12 @@
 package dev.sweety.patch.format;
 
 import com.google.gson.Gson;
-import lombok.SneakyThrows;
 
-import java.io.*;
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
@@ -64,14 +67,20 @@ public enum Header {
         throw new IOException("ZIP contains no file entries");
     }
 
-    @SneakyThrows
     public static byte[] zipBytes(byte[] data, String entryName) {
-        return zipByteArray(data, entryName);
+        try {
+            return zipByteArray(data, entryName);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    @SneakyThrows
     public static byte[] unzipBytes(byte[] zipData) {
-        return unzipFirstFileFromZip(zipData);
+        try {
+            return unzipFirstFileFromZip(zipData);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }

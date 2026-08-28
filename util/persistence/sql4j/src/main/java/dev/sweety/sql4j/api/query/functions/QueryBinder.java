@@ -8,5 +8,5 @@ public interface QueryBinder {
     void bind(PreparedStatement ps) throws SQLException;
 
     /** A no-op binder that does nothing. */
-    QueryBinder EMPTY = _ -> {};
+    QueryBinder EMPTY = ignored -> {};
 }

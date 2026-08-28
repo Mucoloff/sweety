@@ -2,7 +2,14 @@ package dev.sweety.filter;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * MurmurHasher e {@link HashFunctions#murmur3Defaults}.
@@ -56,7 +63,7 @@ class MurmurHasherAndDefaultsTest {
     @Test
     void copyCollection() {
         HashFunction[] d = HashFunctions.murmur3Defaults(3);
-        HashFunction[] copy = HashFunctions.copy(java.util.Arrays.asList(d));
+        HashFunction[] copy = HashFunctions.copy(Arrays.asList(d));
         assertEquals(3, copy.length);
     }
 
@@ -65,12 +72,12 @@ class MurmurHasherAndDefaultsTest {
         HashFunction[] defaults = HashFunctions.murmur3Defaults(4);
         byte[] key = "k".getBytes();
 
-        CountMinSketch sketch = new CountMinSketch(100, java.util.Arrays.asList(defaults));
+        CountMinSketch sketch = new CountMinSketch(100, Arrays.asList(defaults));
         sketch.add(key);
         assertTrue(sketch.estimate(key) >= 1);
         assertEquals(4, sketch.hashFunctionCount());
 
-        FastScalableCountingBloomFilter bloom = new FastScalableCountingBloomFilter(200, 1.25, java.util.Arrays.asList(defaults));
+        FastScalableCountingBloomFilter bloom = new FastScalableCountingBloomFilter(200, 1.25, Arrays.asList(defaults));
         bloom.add(key);
         assertTrue(bloom.contains(key));
         assertEquals(4, bloom.hashFunctionCount());
@@ -79,9 +86,9 @@ class MurmurHasherAndDefaultsTest {
     @Test
     void copyCollectionRejectsNullOrEmpty() {
         assertThrows(IllegalArgumentException.class,
-                () -> HashFunctions.copy((java.util.Collection<HashFunction>) null));
+                () -> HashFunctions.copy((Collection<HashFunction>) null));
         assertThrows(IllegalArgumentException.class,
-                () -> HashFunctions.copy(java.util.Collections.emptyList()));
+                () -> HashFunctions.copy(Collections.emptyList()));
     }
 
     @Test

@@ -19,13 +19,15 @@ public class SQL4JProcessorTest {
     // ── Helper: common imports shared by every source snippet ─────────────────
 
     private static final String IMPORTS =
-            "import dev.sweety.sql4j.api.obj.Table;\n" +
-            "import dev.sweety.sql4j.api.obj.Column;\n" +
-            "import dev.sweety.sql4j.api.annotation.Sql4jRepository;\n" +
-            "import dev.sweety.sql4j.api.annotation.Query;\n" +
-            "import dev.sweety.sql4j.api.repository.Repository;\n" +
-            "import java.util.List;\n" +
-            "import java.util.concurrent.CompletableFuture;\n";
+            """
+                    import dev.sweety.sql4j.api.obj.Table;
+                    import dev.sweety.sql4j.api.obj.Column;
+                    import dev.sweety.sql4j.api.annotation.Sql4jRepository;
+                    import dev.sweety.sql4j.api.query.Query;
+                    import dev.sweety.sql4j.api.repository.Repository;
+                    import java.util.List;
+                    import java.util.concurrent.CompletableFuture;
+                    """;
 
     // ── B2-T1 ─────────────────────────────────────────────────────────────────
 
@@ -204,8 +206,8 @@ public class SQL4JProcessorTest {
                 "package com.example;\n" + IMPORTS +
                 "@Sql4jRepository(entity = UserEntity.class)\n" +
                 "public interface UserRepository extends Repository<UserEntity> {\n" +
-                "    @Query(\"SELECT * FROM users WHERE id = :id\")\n" +
-                "    dev.sweety.sql4j.api.query.Query<List<UserEntity>> findById(long id);\n" +
+                "    @Query.Info(\"SELECT * FROM users WHERE id = :id\")\n" +
+                "    Query<List<UserEntity>> findById(long id);\n" +
                 "}\n";
 
         Compilation compilation = javac()
@@ -245,21 +247,23 @@ public class SQL4JProcessorTest {
                 "}\n";
 
         String repoSource =
-                "package com.example;\n" +
-                "import dev.sweety.sql4j.api.obj.Table;\n" +
-                "import dev.sweety.sql4j.api.obj.Column;\n" +
-                "import dev.sweety.sql4j.api.annotation.Sql4jRepository;\n" +
-                "import dev.sweety.sql4j.api.annotation.Query;\n" +
-                "import dev.sweety.sql4j.api.annotation.CacheEvict;\n" +
-                "import dev.sweety.sql4j.api.repository.Repository;\n" +
-                "import java.util.List;\n" +
-                "import java.util.concurrent.CompletableFuture;\n" +
-                "@Sql4jRepository(entity = OrderEntity.class)\n" +
-                "public interface OrderRepository extends Repository<OrderEntity> {\n" +
-                "    @Query(\"UPDATE orders SET status = 'cancelled' WHERE status = 'pending'\")\n" +
-                "    @CacheEvict\n" +
-                "    dev.sweety.sql4j.api.query.Query<List<OrderEntity>> cancelAllPending();\n" +
-                "}\n";
+                """
+                        package com.example;
+                        import dev.sweety.sql4j.api.obj.Table;
+                        import dev.sweety.sql4j.api.obj.Column;
+                        import dev.sweety.sql4j.api.annotation.Sql4jRepository;
+                        import dev.sweety.sql4j.api.query.Query;
+                        import dev.sweety.sql4j.api.annotation.CacheEvict;
+                        import dev.sweety.sql4j.api.repository.Repository;
+                        import java.util.List;
+                        import java.util.concurrent.CompletableFuture;
+                        @Sql4jRepository(entity = OrderEntity.class)
+                        public interface OrderRepository extends Repository<OrderEntity> {
+                            @Query.Info("UPDATE orders SET status = 'cancelled' WHERE status = 'pending'")
+                            @CacheEvict
+                            Query<List<OrderEntity>> cancelAllPending();
+                        }
+                        """;
 
         Compilation compilation = javac()
                 .withProcessors(new SQL4JProcessor())

@@ -1,6 +1,5 @@
 package dev.sweety.netty.messaging.listener.decoder;
 
-import dev.sweety.util.logger.level.LogLevel;
 import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.exception.PacketDecodeException;
 import dev.sweety.netty.messaging.model.Messenger;
@@ -16,47 +15,45 @@ import java.util.List;
 
 public class NettyDecoder extends ByteToMessageDecoder {
 
+    private static final SimpleLogger LOGGER = SimpleLogger.of("netty-decoder");
+
+    /** Thread-local wrapper reused across decode calls — avoids one allocation per packet received. */
+    private static final ThreadLocal<PacketBuffer> DECODE_WRAPPER =
+            ThreadLocal.withInitial(PacketBuffer::wrapper);
+
+    /** Thread-local list reused across decode calls — avoids one ArrayList alloc per packet received. */
+    private static final ThreadLocal<ArrayList<Packet>> DECODE_LIST =
+            ThreadLocal.withInitial(() -> new ArrayList<>(4));
+
     private final PacketDecoder packetDecoder;
-    private final Messenger<?> messenger;
+    private final Messenger messenger;
 
     public NettyDecoder(PacketRegistry packetRegistry) {
         this(packetRegistry, null);
     }
 
-    public NettyDecoder(PacketRegistry packetRegistry, Messenger<?> messenger) {
+    public NettyDecoder(PacketRegistry packetRegistry, Messenger messenger) {
         this.packetDecoder = new PacketDecoder(packetRegistry);
         this.messenger = messenger;
     }
 
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        super.channelInactive(ctx);
-    }
-
-    @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
-        final List<Packet> packets = new ArrayList<>(1);
+        final ArrayList<Packet> packets = DECODE_LIST.get();
+        packets.clear();
         try {
-            PacketBuffer buf = new PacketBuffer(in).retain();
-            this.packetDecoder.decode(buf, packets);
-            buf.release();
+            this.packetDecoder.decode(DECODE_WRAPPER.get().wrapExternal(in), packets);
         } catch (PacketDecodeException e) {
-            SimpleLogger.log(LogLevel.WARN, "netty-decoder",
-                    "decode exception from " + ctx.channel().remoteAddress() + " ->", e);
+            LOGGER.warn("decode exception from {} ->", ctx.channel().remoteAddress(), e);
             throw new RuntimeException(e);
         }
-        // Removed: per-packet INFO log — fires for EVERY packet across ALL services.
-        // At 40K pkt/s this single line caused massive CPU waste (string concat + I/O).
-        // Fast-path dispatch: deliver packets directly to messenger.
-        // This avoids dependency on downstream channelRead propagation in watcher.
-        if (this.messenger != null && !packets.isEmpty()) {
-            for (Packet packet : packets) {
+        if (packets.isEmpty()) return;
+        // Fast-path: deliver directly to messenger (avoids downstream channelRead propagation).
+        if (this.messenger != null) {
+            for (int i = 0, n = packets.size(); i < n; i++) {
+                Packet packet = packets.get(i);
                 if (packet == null) continue;
-                try {
-                    this.messenger.onPacketReceive(ctx, packet);
-                } finally {
-                    packet.tryRecycle();
-                }
+                this.messenger.onPacketReceive(ctx, packet);
             }
             return;
         }

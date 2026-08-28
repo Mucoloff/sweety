@@ -4,16 +4,18 @@ import com.google.gson.JsonObject;
 import com.sun.net.httpserver.HttpServer;
 import dev.sweety.versioning.client.http.HttpTokenDownloadReleaseService;
 import dev.sweety.versioning.server.Settings;
-import dev.sweety.versioning.server.adapter.out.cache.CacheManager;
-import dev.sweety.versioning.server.domain.client.ClientRegistry;
-import dev.sweety.versioning.server.adapter.in.http.DownloadHandler;
-import dev.sweety.versioning.server.adapter.in.http.LatestReleaseHttpHandler;
-import dev.sweety.versioning.server.adapter.in.http.ReleaseDownloadTokenHandler;
-import dev.sweety.versioning.server.adapter.out.token.InMemoryDownloadTokenStore;
-import dev.sweety.versioning.server.application.patch.PatchManager;
-import dev.sweety.versioning.server.adapter.out.storage.FileReleaseRepository;
-import dev.sweety.versioning.server.application.release.ReleaseManager;
-import dev.sweety.versioning.server.adapter.out.storage.Storage;
+import dev.sweety.versioning.server.store.CacheManager;
+import dev.sweety.versioning.server.data.ClientRegistry;
+import dev.sweety.versioning.server.net.http.DownloadHandler;
+import dev.sweety.versioning.server.net.http.LatestReleaseHttpHandler;
+import dev.sweety.versioning.server.net.http.ReleaseDownloadTokenHandler;
+import dev.sweety.versioning.server.store.DownloadSessionRegistry;
+import dev.sweety.versioning.server.store.InMemoryDownloadTokenStore;
+import dev.sweety.versioning.server.security.ArtifactSigner;
+import dev.sweety.versioning.server.service.PatchManager;
+import dev.sweety.versioning.server.store.FileReleaseRepository;
+import dev.sweety.versioning.server.service.ReleaseManager;
+import dev.sweety.versioning.server.store.Storage;
 import dev.sweety.versioning.util.Utils;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
@@ -33,7 +35,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReleaseDownloadTokenHandlerIntegrationTest {
 
@@ -65,7 +69,8 @@ class ReleaseDownloadTokenHandlerIntegrationTest {
 
         HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/release/download-token", new ReleaseDownloadTokenHandler(dm, rm));
-        server.createContext("/download", new DownloadHandler(dm, cache, clients, rm, patches));
+        ArtifactSigner signer = ArtifactSigner.of("", "");
+        server.createContext("/download", new DownloadHandler(dm, cache, clients, rm, patches, signer, new DownloadSessionRegistry(signer)));
         server.start();
         try {
             int port = server.getAddress().getPort();
@@ -81,7 +86,7 @@ class ReleaseDownloadTokenHandlerIntegrationTest {
             HttpClient http = HttpClient.newHttpClient();
             HttpRequest post = HttpRequest.newBuilder(base.resolve("/release/download-token"))
                     .header("Content-Type", "application/json")
-                    .header("X-Sweety-Release-Key", "tok-key")
+                    .header("X-Luce-Release-Key", "tok-key")
                     .POST(HttpRequest.BodyPublishers.ofString(Utils.gson().toJson(in), StandardCharsets.UTF_8))
                     .build();
             HttpResponse<String> res = http.send(post, HttpResponse.BodyHandlers.ofString());
@@ -116,7 +121,8 @@ class ReleaseDownloadTokenHandlerIntegrationTest {
         HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/release/latest", new LatestReleaseHttpHandler(rm));
         server.createContext("/release/download-token", new ReleaseDownloadTokenHandler(dm, rm));
-        server.createContext("/download", new DownloadHandler(dm, cache, clients, rm, patches));
+        ArtifactSigner signer = ArtifactSigner.of("", "");
+        server.createContext("/download", new DownloadHandler(dm, cache, clients, rm, patches, signer, new DownloadSessionRegistry(signer)));
         server.start();
         try {
             URI base = URI.create("http://127.0.0.1:" + server.getAddress().getPort());

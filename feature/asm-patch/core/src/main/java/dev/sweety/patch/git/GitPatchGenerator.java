@@ -4,7 +4,9 @@ import com.github.difflib.DiffUtils;
 import com.github.difflib.UnifiedDiffUtils;
 import com.github.difflib.patch.Patch;
 
-import java.nio.file.*;
+import java.io.BufferedWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 public class GitPatchGenerator {
@@ -22,6 +24,12 @@ public class GitPatchGenerator {
                 context
         );
 
-        return Files.write(patchPath, unifiedDiff);
+        try (BufferedWriter writer = Files.newBufferedWriter(patchPath)) {
+            for (String line : unifiedDiff) {
+                writer.write(line);
+                writer.newLine();
+            }
+        }
+        return patchPath;
     }
 }

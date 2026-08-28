@@ -3,11 +3,11 @@ package dev.sweety.versioning.server.api.http.handler;
 import com.sun.net.httpserver.HttpServer;
 import dev.sweety.versioning.client.http.HttpCachingReleaseService;
 import dev.sweety.versioning.server.Settings;
-import dev.sweety.versioning.server.adapter.in.http.BaseJarReleaseHttpHandler;
-import dev.sweety.versioning.server.adapter.in.http.LatestReleaseHttpHandler;
-import dev.sweety.versioning.server.adapter.out.storage.FileReleaseRepository;
-import dev.sweety.versioning.server.application.release.ReleaseManager;
-import dev.sweety.versioning.server.adapter.out.storage.Storage;
+import dev.sweety.versioning.server.net.http.BaseJarReleaseHttpHandler;
+import dev.sweety.versioning.server.net.http.LatestReleaseHttpHandler;
+import dev.sweety.versioning.server.store.FileReleaseRepository;
+import dev.sweety.versioning.server.service.ReleaseManager;
+import dev.sweety.versioning.server.store.Storage;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
@@ -25,7 +25,9 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class ReleaseHttpHandlersIntegrationTest {
 
@@ -72,7 +74,7 @@ class ReleaseHttpHandlersIntegrationTest {
             assertEquals(new Version(3, 1, 0), parsed.version());
 
             HttpRequest jarReq = HttpRequest.newBuilder(base.resolve("/release/base-jar?artifact=PLUG&channel=stable&version=3.1.0"))
-                    .header("X-Sweety-Release-Key", "integration-key")
+                    .header("X-Luce-Release-Key", "integration-key")
                     .GET()
                     .build();
             HttpResponse<Path> jarRes = client.send(jarReq, HttpResponse.BodyHandlers.ofFile(tmp.resolve("dl.jar")));
@@ -99,7 +101,7 @@ class ReleaseHttpHandlersIntegrationTest {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest jarReq = HttpRequest.newBuilder(
                             base.resolve("/release/base-jar?artifact=P2&channel=stable&version=1.0.0"))
-                    .header("X-Sweety-Release-Key", "x")
+                    .header("X-Luce-Release-Key", "x")
                     .GET()
                     .build();
             HttpResponse<String> res = client.send(jarReq, HttpResponse.BodyHandlers.ofString());

@@ -1,10 +1,10 @@
 package dev.sweety.netty.messaging.impl;
 
-import dev.sweety.color.AnsiColor;
 import dev.sweety.util.logger.SimpleLogger;
 import dev.sweety.netty.feature.AutoReconnect;
 import dev.sweety.netty.messaging.Client;
 import dev.sweety.netty.messaging.model.Messenger;
+import dev.sweety.netty.messaging.transport.Transport;
 import dev.sweety.netty.packet.registry.PacketRegistry;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -27,6 +27,11 @@ public abstract class SimpleClient extends Client {
         super(host, port, packetRegistry, localPort);
     }
 
+    /** For a non-TCP transport (e.g. {@code UdpTransport.raw()}) — see {@code Client}'s overload. */
+    protected SimpleClient(Transport transport, String host, int port, PacketRegistry packetRegistry, int localPort) {
+        super(transport, host, port, packetRegistry, localPort);
+    }
+
     public void onConnect(BiConsumer<Channel, ChannelHandlerContext> onConnect) {
         onConnect(c -> {
             ChannelHandlerContext ctx = c.pipeline().firstContext();
@@ -37,10 +42,10 @@ public abstract class SimpleClient extends Client {
     @Override
     public CompletableFuture<Channel> connect() {
         return super.connect().exceptionally((t) -> {
-            this.autoReconnect.onException(t);
+            if (connectionOriented()) this.autoReconnect.onException(t);
             return null;
         }).whenComplete((c, t) -> {
-            if (c != null) this.autoReconnect.complete();
+            if (c != null && connectionOriented()) this.autoReconnect.complete();
         });
     }
 
@@ -53,20 +58,20 @@ public abstract class SimpleClient extends Client {
     @Override
     public void exception(ChannelHandlerContext ctx, Throwable throwable) {
         logger.error("Errore nel client: ", throwable);
-        autoReconnect.onException(throwable);
+        if (connectionOriented()) autoReconnect.onException(throwable);
     }
 
     @Override
     public void join(ChannelHandlerContext ctx, ChannelPromise promise) {
-        logger.push("connect", AnsiColor.GREEN_BRIGHT).info(ctx.channel().remoteAddress()).pop();
+        logger.profile("connect").info(ctx.channel().remoteAddress());
         promise.setSuccess();
     }
 
     @Override
     public void quit(ChannelHandlerContext ctx, ChannelPromise promise) {
-        logger.push("disconnect", AnsiColor.RED_BRIGHT).info(ctx.channel().remoteAddress()).pop();
+        logger.profile("disconnect").info(ctx.channel().remoteAddress());
         promise.setSuccess();
-        autoReconnect.onQuit();
+        if (connectionOriented()) autoReconnect.onQuit();
     }
 
 }

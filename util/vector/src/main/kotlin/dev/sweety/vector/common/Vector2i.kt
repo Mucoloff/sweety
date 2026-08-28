@@ -30,12 +30,16 @@ interface Vector2i : Vector<Int, Vector2i> {
     override fun length(): Double = sqrt(lengthSquared())
     override fun lengthSquared(): Double = (x() * x() + y() * y()).toDouble()
 
-    override fun distance(other: Vector2i): Double = sqrt(distanceSquared(other))
-    override fun distanceSquared(other: Vector2i): Double {
-        val dx = (x() - other.x()).toDouble()
-        val dy = (y() - other.y()).toDouble()
+    fun distanceSquared(x: Int, y: Int): Double {
+        val dx = (x() - x).toDouble()
+        val dy = y() - y
         return dx * dx + dy * dy
     }
+
+    fun distance(x: Int, y: Int) = sqrt(distanceSquared(x, y))
+    override fun distanceSquared(other: Vector2i) = distanceSquared(other.x(), other.y())
+
+    override fun distance(other: Vector2i) = sqrt(distanceSquared(other))
 
     override fun normalize(): Vector2i {
         val l = length()

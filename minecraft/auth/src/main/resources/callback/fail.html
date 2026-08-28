@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autenticazione fallita · Luce</title>
+    <style>
+        :root {
+            --bg-0: #0f0708;
+            --bg-1: #1a0e12;
+            --card: rgba(34, 20, 24, 0.72);
+            --stroke: rgba(255, 255, 255, 0.08);
+            --accent: #ff5468;
+            --accent-2: #ff8a3d;
+            --text: #faf2f3;
+            --muted: #c39aa1;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body { height: 100%; margin: 0; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+            color: var(--text);
+            background: radial-gradient(1200px 600px at 50% -10%, #3a1420 0%, var(--bg-1) 45%, var(--bg-0) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        body::before, body::after {
+            content: "";
+            position: fixed;
+            width: 520px; height: 520px;
+            border-radius: 50%;
+            filter: blur(90px);
+            opacity: 0.32;
+            z-index: 0;
+            animation: drift 16s ease-in-out infinite alternate;
+        }
+        body::before { background: var(--accent);   top: -180px; left: -160px; }
+        body::after  { background: var(--accent-2); bottom: -200px; right: -160px; animation-delay: -8s; }
+
+        @keyframes drift {
+            from { transform: translate(0, 0) scale(1); }
+            to   { transform: translate(60px, 40px) scale(1.15); }
+        }
+
+        .card {
+            position: relative;
+            z-index: 1;
+            width: min(92vw, 420px);
+            background: var(--card);
+            backdrop-filter: blur(18px) saturate(140%);
+            -webkit-backdrop-filter: blur(18px) saturate(140%);
+            border: 1px solid var(--stroke);
+            border-radius: 22px;
+            padding: 40px 36px 32px;
+            text-align: center;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            animation: rise 0.6s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+        }
+
+        @keyframes rise {
+            from { opacity: 0; transform: translateY(18px) scale(0.98); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .badge { width: 84px; height: 84px; margin: 0 auto 22px; animation: shake 0.5s ease 0.5s 1; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-6px); }
+            40% { transform: translateX(6px); }
+            60% { transform: translateX(-4px); }
+            80% { transform: translateX(4px); }
+        }
+        .ring {
+            fill: none;
+            stroke: var(--accent);
+            stroke-width: 5;
+            stroke-linecap: round;
+            stroke-dasharray: 252;
+            stroke-dashoffset: 252;
+            animation: draw 0.7s ease-out 0.15s forwards;
+            filter: drop-shadow(0 0 8px rgba(255, 84, 104, 0.55));
+        }
+        .x {
+            fill: none;
+            stroke: var(--accent);
+            stroke-width: 6;
+            stroke-linecap: round;
+            stroke-dasharray: 30;
+            stroke-dashoffset: 30;
+            animation: draw 0.35s ease-out forwards;
+        }
+        .x.a { animation-delay: 0.7s; }
+        .x.b { animation-delay: 0.9s; }
+        @keyframes draw { to { stroke-dashoffset: 0; } }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 18px;
+            font-size: 12px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+        .ms-logo { display: grid; grid-template-columns: 7px 7px; grid-gap: 2px; }
+        .ms-logo i { width: 7px; height: 7px; display: block; }
+        .ms-logo i:nth-child(1) { background: #f25022; }
+        .ms-logo i:nth-child(2) { background: #7fba00; }
+        .ms-logo i:nth-child(3) { background: #00a4ef; }
+        .ms-logo i:nth-child(4) { background: #ffb900; }
+
+        h1 {
+            margin: 0 0 10px;
+            font-size: 23px;
+            font-weight: 650;
+            letter-spacing: -0.01em;
+        }
+
+        p {
+            margin: 0 0 26px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .back {
+            display: inline-block;
+            padding: 12px 26px;
+            border-radius: 12px;
+            color: #1a0708;
+            font-weight: 650;
+            font-size: 14px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            box-shadow: 0 10px 26px rgba(255, 84, 104, 0.25);
+        }
+
+        .hint { margin-top: 16px; font-size: 12px; color: var(--muted); opacity: 0.8; }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <svg class="badge" viewBox="0 0 100 100" aria-hidden="true">
+            <circle class="ring" cx="50" cy="50" r="40" />
+            <line class="x a" x1="36" y1="36" x2="64" y2="64" />
+            <line class="x b" x1="64" y1="36" x2="36" y2="64" />
+        </svg>
+
+        <div class="brand">
+            <span class="ms-logo"><i></i><i></i><i></i><i></i></span>
+            Luce · Microsoft
+        </div>
+
+        <h1>Autenticazione fallita</h1>
+        <p>Non è stato possibile completare l'accesso a Minecraft.<br>Riprova, o contatta il supporto se persiste.</p>
+
+        <div class="back">↩ Torna al gioco e riprova</div>
+        <div class="hint">Puoi chiudere questa scheda.</div>
+    </div>
+</body>
+
+</html>

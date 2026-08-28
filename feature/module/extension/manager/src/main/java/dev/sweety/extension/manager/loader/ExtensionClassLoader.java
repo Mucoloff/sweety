@@ -34,27 +34,45 @@ public class ExtensionClassLoader<T extends Extension> extends URLClassLoader {
     private final T extension;
 
     public ExtensionClassLoader(final Path jarFile, final ExtensionInfo info, final Class<T> parent, Path rootDir) throws Exception {
-        super(new URL[]{jarFile.toUri().toURL()}, parent.getClassLoader());
+        this(jarFile, info, parent, rootDir, parent.getClassLoader());
+    }
+
+    /**
+     * @param parentLoader parent classloader for delegation — pass the game/MC classloader so the
+     *                     extension can resolve Minecraft + host types. Does NOT enable dynamic
+     *                     mixins (this loader defines the extension classes itself); for that use
+     *                     {@code ExtensionManager.mount(jar, gameLoader)}.
+     */
+    public ExtensionClassLoader(final Path jarFile, final ExtensionInfo info, final Class<T> parent, Path rootDir,
+                                final ClassLoader parentLoader) throws Exception {
+        super(new URL[]{jarFile.toUri().toURL()}, parentLoader);
         this.jar = new JarFile(jarFile.toFile());
-        this.manifest = this.jar.getManifest();
-        this.url = jarFile.toUri().toURL();
-
-        final Class<?> mainClass;
+        // Anything past the open JarFile must close it on failure, else the fd leaks (the manager
+        // only owns this loader once the constructor returns successfully).
         try {
-            mainClass = Class.forName(info.main(), true, this);
-        } catch (ClassNotFoundException e) {
-            throw new InvalidExtensionException(info.main() + ".class not found", e);
+            this.manifest = this.jar.getManifest();
+            this.url = jarFile.toUri().toURL();
+
+            final Class<?> mainClass;
+            try {
+                mainClass = Class.forName(info.main(), true, this);
+            } catch (ClassNotFoundException e) {
+                throw new InvalidExtensionException(info.main() + ".class not found", e);
+            }
+
+            if (!parent.isAssignableFrom(mainClass)) {
+                throw new InvalidExtensionException(mainClass, "does not extend", parent);
+            }
+
+            final Constructor<? extends T> declaredConstructor = mainClass.asSubclass(parent)
+                    .getDeclaredConstructor(String.class, String.class, String.class, Path.class, SimpleLogger.class);
+            declaredConstructor.setAccessible(true);
+
+            this.extension = declaredConstructor.newInstance(info.name(), info.version(), info.description(), rootDir, SimpleLogger.of(mainClass));
+        } catch (Throwable t) {
+            try { this.jar.close(); } catch (IOException closeEx) { t.addSuppressed(closeEx); }
+            throw t;
         }
-
-        if (!parent.isAssignableFrom(mainClass)) {
-            throw new InvalidExtensionException(mainClass, "does not extend", parent);
-        }
-
-        final Constructor<? extends T> declaredConstructor = mainClass.asSubclass(parent).getDeclaredConstructor(String.class, String.class, String.class, Path.class, SimpleLogger.class);
-
-        declaredConstructor.setAccessible(true);
-
-        this.extension = declaredConstructor.newInstance(info.name(), info.version(), info.description(), rootDir, SimpleLogger.of(mainClass));
     }
 
     protected Class<?> findClass(final String name) throws ClassNotFoundException {

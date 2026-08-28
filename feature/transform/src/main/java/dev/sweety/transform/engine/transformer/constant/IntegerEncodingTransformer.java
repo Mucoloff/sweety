@@ -1,8 +1,15 @@
 package dev.sweety.transform.engine.transformer.constant;
 
-import dev.sweety.transform.engine.*;
-import org.objectweb.asm.*;
-import org.objectweb.asm.tree.*;
+import dev.sweety.transform.engine.MethodSelector;
+import dev.sweety.transform.engine.TransformContext;
+import dev.sweety.transform.engine.Transformer;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.IntInsnNode;
+import org.objectweb.asm.tree.LdcInsnNode;
+import org.objectweb.asm.tree.MethodNode;
 
 import java.util.Random;
 
@@ -26,7 +33,10 @@ import java.util.Random;
  */
 public final class IntegerEncodingTransformer extends Transformer {
 
-    private static final Random RNG = new Random(0xEC51AC);
+    // Per-instance, fixed seed: the delivery wires a FRESH pipeline (→ fresh transformer → fresh RNG)
+    // per class, so output is deterministic per class regardless of order or concurrent requests. The
+    // two independent patchJar calls (hash compute + actual delivery) therefore produce identical bytes.
+    private final Random RNG = new Random(0xEC51AC);
 
     @Override public String name() { return "IntegerEncoding"; }
 
@@ -54,7 +64,7 @@ public final class IntegerEncodingTransformer extends Transformer {
 
     // ── Encoding ──────────────────────────────────────────────────────────────
 
-    private static InsnList encode(int c) {
+    private InsnList encode(int c) {
         int scheme = RNG.nextInt(3);
         return switch (scheme) {
             case 0 -> additiveScheme(c);
@@ -64,7 +74,7 @@ public final class IntegerEncodingTransformer extends Transformer {
     }
 
     /** C → A + (C - A)  where A is a random int */
-    private static InsnList additiveScheme(int c) {
+    private InsnList additiveScheme(int c) {
         int a = RNG.nextInt();
         int b = c - a; // b = C - A, so A + b = C
         InsnList list = new InsnList();
@@ -75,7 +85,7 @@ public final class IntegerEncodingTransformer extends Transformer {
     }
 
     /** C → K ^ (C ^ K)  — XOR is its own inverse */
-    private static InsnList xorScheme(int c) {
+    private InsnList xorScheme(int c) {
         int k = RNG.nextInt();
         int v = c ^ k;
         InsnList list = new InsnList();
@@ -89,7 +99,7 @@ public final class IntegerEncodingTransformer extends Transformer {
      * C → (M * D) + R  — find M, D, R such that M*D + R == C.
      * Use small M to keep constants in integer range.
      */
-    private static InsnList multiplyAddScheme(int c) {
+    private InsnList multiplyAddScheme(int c) {
         int m = (RNG.nextInt(254) + 2); // 2..255
         int d = c / m;
         int r = c - m * d;
@@ -105,7 +115,7 @@ public final class IntegerEncodingTransformer extends Transformer {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     /** Push any int via the most compact opcode. */
-    static AbstractInsnNode pushInt(int v) {
+    public static AbstractInsnNode pushInt(int v) {
         return switch (v) {
             case -1 -> new InsnNode(Opcodes.ICONST_M1);
             case  0 -> new InsnNode(Opcodes.ICONST_0);

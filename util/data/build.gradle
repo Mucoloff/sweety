@@ -1,5 +1,0 @@
-dependencies {
-    api(project(":util:serialization"))
-    implementation(project(":util:exception"))
-    implementation(project(":util:math"))
-}

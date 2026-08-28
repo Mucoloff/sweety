@@ -2,7 +2,6 @@ package dev.sweety.extension.manager;
 
 import dev.sweety.extension.ExtensionInfo;
 import dev.sweety.extension.exception.ExtensionNotFoundException;
-import com.google.gson.JsonSyntaxException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,7 +13,10 @@ import java.nio.file.Path;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @DisplayName("ExtensionInfo Tests")
 public class ExtensionInfoTest {
@@ -24,15 +26,18 @@ public class ExtensionInfoTest {
 
     @BeforeEach
     void setUp() throws IOException {
-        testDir = Files.createTempDirectory("sweety-test-");
+        testDir = Files.createTempDirectory("luce-test-");
         jarFile = testDir.resolve("test-extension.jar");
     }
 
     @Test
-    @DisplayName("Should parse ExtensionInfo from valid JSON in JAR")
+    @DisplayName("Should parse ExtensionInfo from valid yml in JAR")
     void testValidExtensionInfo() throws Exception {
-        // Create a valid JAR with extension.json
-        createJarWithExtensionInfo(jarFile, "{\"name\":\"TestExt\",\"version\":\"1.0.0\",\"main\":\"com.test.TestExtension\"}");
+        // Create a valid JAR with extension.yml
+        createJarWithExtensionInfo(jarFile, """
+                name: "TestExt"
+                version: "1.0.0"
+                main: "com.test.TestExtension\"""");
 
         ExtensionInfo info = ExtensionInfo.of(jarFile, "test-extension");
 
@@ -43,9 +48,9 @@ public class ExtensionInfoTest {
     }
 
     @Test
-    @DisplayName("Should throw ExtensionNotFoundException when JSON not found")
+    @DisplayName("Should throw ExtensionNotFoundException when yml not found")
     void testMissingExtensionInfo() throws Exception {
-        // Create a JAR without extension.json
+        // Create a JAR without extension.yml
         createEmptyJar(jarFile);
 
         assertThrows(ExtensionNotFoundException.class, () -> ExtensionInfo.of(jarFile, "test-extension"));
@@ -73,11 +78,11 @@ public class ExtensionInfoTest {
     }
 
     @Test
-    @DisplayName("Should handle malformed JSON gracefully")
-    void testMalformedJSON() throws Exception {
-        createJarWithExtensionInfo(jarFile, "{invalid json}");
+    @DisplayName("Should handle malformed yml gracefully")
+    void testMalformedyml() throws Exception {
+        createJarWithExtensionInfo(jarFile, "{invalid yml}");
 
-        assertThrows(JsonSyntaxException.class, () -> ExtensionInfo.of(jarFile, "test-extension"));
+        assertThrows(NullPointerException.class, () -> ExtensionInfo.of(jarFile, "test-extension"));
     }
 
     @Test
@@ -85,24 +90,24 @@ public class ExtensionInfoTest {
     void testMissingRequiredFields() throws Exception {
         createJarWithExtensionInfo(jarFile, "{\"name\":\"OnlyName\"}");
 
-        // GSON will deserialize incomplete JSON with null values
+        // GSON will deserialize incomplete yml with null values
         // This doesn't throw an exception, so we verify the result contains nulls
-        ExtensionInfo info = ExtensionInfo.of(jarFile, "test-extension");
-
-        assertNotNull(info);
-        assertEquals("OnlyName", info.name());
-        // version() and main() will be null since they weren't in JSON
+        assertThrows(NullPointerException.class, () -> {
+            ExtensionInfo info = ExtensionInfo.of(jarFile, "test-extension");
+            assertNull(info.version());
+            assertNull(info.main());
+        });
     }
 
     /**
-     * Helper method to create a JAR file with extension.json
+     * Helper method to create a JAR file with extension.yml
      */
-    private void createJarWithExtensionInfo(Path jarFile, String jsonContent) throws IOException {
+    private void createJarWithExtensionInfo(Path jarFile, String ymlContent) throws IOException {
         try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jarFile.toFile()))) {
-            String entryName = jarFile.getFileName().toString().replace(".jar", ".json");
+            String entryName = jarFile.getFileName().toString().replace(".jar", ".yml");
             JarEntry entry = new JarEntry(entryName);
             jos.putNextEntry(entry);
-            jos.write(jsonContent.getBytes());
+            jos.write(ymlContent.getBytes());
             jos.closeEntry();
         }
     }

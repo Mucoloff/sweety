@@ -10,12 +10,15 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ExtensionClassLoaderTest {
 
     /** The descriptor entry name matches the extensionName expected by ExtensionInfo.of(). */
-    private static final String EXTENSION_JSON = "extension.json";
+    private static final String EXTENSION_YML = "extension.yml";
 
     // ------------------------------------------------------------------
     // loadsExtensionFromJar
@@ -24,7 +27,7 @@ class ExtensionClassLoaderTest {
     @Test
     void loadsExtensionFromJar(@TempDir Path tmp) throws Exception {
         Path jar = tmp.resolve("test.jar");
-        TestJarBuilder.buildJar(jar, "test", "1.0.0", TestExtension.class, EXTENSION_JSON);
+        TestJarBuilder.buildJar(jar, "test", "1.0.0", TestExtension.class, EXTENSION_YML);
 
         ExtensionInfo info = ExtensionInfo.of(jar, "extension");
 
@@ -46,9 +49,9 @@ class ExtensionClassLoaderTest {
     @Test
     void throwsOnMissingMainClass(@TempDir Path tmp) throws Exception {
         Path jar = tmp.resolve("bad.jar");
-        // Jar contains a JSON that references a class that does not exist inside the jar
+        // Jar contains a YML that references a class that does not exist inside the jar
         TestJarBuilder.buildJarWithFakeMain(
-                jar, "bad", "0.0.1", "dev.sweety.extension.manager.NonExistentClass", EXTENSION_JSON);
+                jar, "bad", "0.0.1", "dev.sweety.extension.manager.NonExistentClass", EXTENSION_YML);
 
         ExtensionInfo info = ExtensionInfo.of(jar, "extension");
 
@@ -64,7 +67,7 @@ class ExtensionClassLoaderTest {
     @Test
     void closeReleasesHandle(@TempDir Path tmp) throws Exception {
         Path jar = tmp.resolve("closable.jar");
-        TestJarBuilder.buildJar(jar, "closable", "2.0.0", TestExtension.class, EXTENSION_JSON);
+        TestJarBuilder.buildJar(jar, "closable", "2.0.0", TestExtension.class, EXTENSION_YML);
 
         ExtensionInfo info = ExtensionInfo.of(jar, "extension");
 

@@ -9,6 +9,10 @@ import io.netty.handler.codec.MessageToByteEncoder;
 
 public class NettyEncoder extends MessageToByteEncoder<Packet> {
 
+    /** Thread-local wrapper reused across encode calls — avoids one allocation per packet sent. */
+    private static final ThreadLocal<PacketBuffer> ENCODE_WRAPPER =
+            ThreadLocal.withInitial(PacketBuffer::wrapper);
+
     private final PacketEncoder packetEncoder;
 
     public NettyEncoder(PacketRegistry packetRegistry) {
@@ -17,12 +21,7 @@ public class NettyEncoder extends MessageToByteEncoder<Packet> {
 
     @Override
     protected void encode(ChannelHandlerContext ctx, Packet packet, ByteBuf out) throws Exception {
-        final PacketBuffer buffer = new PacketBuffer(out).retain();
-        try {
-            packetEncoder.encode(packet, buffer);
-        } finally {
-            buffer.release();
-            packet.release();
-        }
+        // Wrap the netty-owned output buffer; netty manages its lifecycle, no retain/release here.
+        packetEncoder.encode(packet, ENCODE_WRAPPER.get().wrapExternal(out));
     }
 }

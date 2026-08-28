@@ -1,6 +1,7 @@
-dependencies {
-    implementation(project(":feature:asm-patch:asm-patch-core"))
-    implementation("io.github.java-diff-utils:java-diff-utils:4.15")
+plugins { id("sweety.java-conventions") }
 
+dependencies {
+    implementation(project(":feature:asm-patch:core"))
+    implementation("io.github.java-diff-utils:java-diff-utils:4.15")
     testImplementation(project(":feature:asm-patch:applier"))
 }

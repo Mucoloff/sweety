@@ -1,13 +1,6 @@
-plugins {
-    kotlin("jvm") version "2.3.20"
-    id("io.freefair.lombok") version "9.0.0"
-}
-
-kotlin {
-    jvmToolchain(25)
-}
+plugins { id("sweety.kotlin-conventions") }
 
 dependencies {
-    implementation(kotlin("stdlib"))
-    testImplementation(kotlin("test"))
+    api(project(":util:serialization"))
+    implementation(project(":util:exception"))
 }

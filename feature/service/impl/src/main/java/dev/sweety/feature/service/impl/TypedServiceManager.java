@@ -1,13 +1,15 @@
 package dev.sweety.feature.service.impl;
 
-import dev.sweety.feature.service.api.*;
+import dev.sweety.feature.service.api.Provider;
+import dev.sweety.feature.service.api.ServiceKey;
+import dev.sweety.feature.service.api.ServiceRegistry;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class TypedServiceManager<T> implements ServiceRegistry, AutoCloseable {
@@ -120,6 +122,12 @@ public class TypedServiceManager<T> implements ServiceRegistry, AutoCloseable {
     public <S> S remove(@NotNull ServiceKey<S> key) {
         Objects.requireNonNull(key, "key cannot be null");
         return internal.remove(key);
+    }
+
+    @Override
+    @NotNull
+    public ServiceRegistry child(@NotNull Predicate<ServiceKey<?>> selector) {
+        return new ChildServiceRegistry(this, selector);
     }
 
     @Override

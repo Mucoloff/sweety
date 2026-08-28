@@ -14,7 +14,12 @@ import java.nio.file.Path;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Extension System Integration Tests")
 public class IntegrationTest {
@@ -24,7 +29,7 @@ public class IntegrationTest {
 
     @BeforeEach
     void setUp() throws IOException {
-        testDir = Files.createTempDirectory("sweety-integration-test-");
+        testDir = Files.createTempDirectory("luce-integration-test-");
         manager = new ExtensionManager<>(testDir, TestIntegrationExtension.class);
     }
 
@@ -223,15 +228,15 @@ public class IntegrationTest {
 
         Path jarFile = extensionsDir.resolve(name + "-" + version + ".jar");
 
-        String jsonContent = String.format(
+        String ymlContent = String.format(
             "{\"name\":\"%s\",\"version\":\"%s\",\"main\":\"%s\"}",
             name, version, TestIntegrationExtension.class.getName()
         );
 
         try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jarFile.toFile()))) {
-            JarEntry entry = new JarEntry("testintegrationextension.json");
+            JarEntry entry = new JarEntry("testintegrationextension.yml");
             jos.putNextEntry(entry);
-            jos.write(jsonContent.getBytes());
+            jos.write(ymlContent.getBytes());
             jos.closeEntry();
         }
 

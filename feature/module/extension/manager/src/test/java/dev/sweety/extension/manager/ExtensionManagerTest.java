@@ -16,7 +16,12 @@ import java.nio.file.Path;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("ExtensionManager Tests")
 public class ExtensionManagerTest {
@@ -27,7 +32,7 @@ public class ExtensionManagerTest {
 
     @BeforeEach
     void setUp() throws IOException {
-        testDir = Files.createTempDirectory("sweety-manager-test-");
+        testDir = Files.createTempDirectory("luce-manager-test-");
         manager = new ExtensionManager<>(testDir, TestModuleExtension.class);
         extensionsDir = testDir.resolve("testmoduleextensions");
     }
@@ -104,7 +109,7 @@ public class ExtensionManagerTest {
     @Test
     @DisplayName("Should return null when getting info for non-existent extension")
     void testGetInfoNonExistent() {
-        TestModuleExtension fakeExt = new TestModuleExtension("Fake", "1.0", null, testDir, new SimpleLogger(ExtensionManagerTest.class));
+        TestModuleExtension fakeExt = new TestModuleExtension("Fake", "1.0", null, testDir, SimpleLogger.of(ExtensionManagerTest.class));
         ExtensionInfo info = manager.get(fakeExt);
         assertNull(info);
     }
@@ -194,16 +199,16 @@ public class ExtensionManagerTest {
     private Path createTestExtensionJar(String name, String version, String mainClass) throws IOException {
         Path jarFile = extensionsDir.resolve(name + "-" + version + ".jar");
 
-        String jsonContent = String.format(
+        String ymlContent = String.format(
             "{\"name\":\"%s\",\"version\":\"%s\",\"main\":\"%s\"}",
             name, version, mainClass
         );
 
         try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(jarFile.toFile()))) {
-            // Add extension.json
-            JarEntry entry = new JarEntry("testmoduleextension.json");
+            // Add extension.yml
+            JarEntry entry = new JarEntry("testmoduleextension.yml");
             jos.putNextEntry(entry);
-            jos.write(jsonContent.getBytes());
+            jos.write(ymlContent.getBytes());
             jos.closeEntry();
 
             // Add a dummy class file

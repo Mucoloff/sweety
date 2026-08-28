@@ -1,7 +1,6 @@
 package dev.sweety.util.system;
 
 import java.net.NetworkInterface;
-import java.util.Collections;
 import java.util.logging.Logger;
 
 public final class SystemUtils {

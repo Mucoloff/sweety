@@ -18,11 +18,15 @@ public class FileBackend implements LoggerBackend {
     private final LogFormatter formatter;
 
     public FileBackend(Path file) throws IOException {
+        this(file, new SimpleLogFormatter());
+    }
+
+    public FileBackend(Path file, LogFormatter formatter) throws IOException {
         this(Files.newBufferedWriter(file,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.WRITE,
-                StandardOpenOption.APPEND),
-                new SimpleLogFormatter());
+                        StandardOpenOption.CREATE,
+                        StandardOpenOption.WRITE,
+                        StandardOpenOption.APPEND),
+                formatter);
     }
 
     public FileBackend(Writer fileWriter, LogFormatter formatter) {
@@ -38,7 +42,7 @@ public class FileBackend implements LoggerBackend {
     @Override
     public void log(LogEvent event) {
         try {
-            String formattedLine = formatter.format(event.level(), event.loggerName(), event.profile(), event.rawArgs());
+            String formattedLine = formatter.format(event.level(), event.loggerName(), event.rawArgs());
             fileWriter.append(AnsiColor.clear(formattedLine)).append('\n');
             fileWriter.flush();
         } catch (IOException e) {

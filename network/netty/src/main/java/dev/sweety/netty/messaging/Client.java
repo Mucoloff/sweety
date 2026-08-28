@@ -3,23 +3,29 @@ package dev.sweety.netty.messaging;
 import dev.sweety.math.list.BlockingDeque;
 import dev.sweety.netty.feature.QueueContext;
 import dev.sweety.netty.messaging.model.Messenger;
+import dev.sweety.netty.messaging.transport.Transport;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.PacketRegistry;
-import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CompletableFuture;
 
-public abstract class Client extends Messenger<Bootstrap> {
+public abstract class Client extends Messenger {
 
     private final BlockingDeque<QueueContext<?>> pendingPackets = new BlockingDeque<>();
 
     protected final int localPort;
 
     public Client(String host, int port, PacketRegistry packetRegistry, int localPort) {
-        super(new Bootstrap(), host, port, packetRegistry, localPort);
+        super(false, host, port, packetRegistry, localPort);
+        this.localPort = localPort;
+    }
+
+    /** For a non-TCP transport (e.g. {@code UdpTransport.raw()}/{@code packets()}) — see {@code SimpleClient}'s overload. */
+    protected Client(Transport transport, String host, int port, PacketRegistry packetRegistry, int localPort) {
+        super(transport, false, host, port, packetRegistry, localPort);
         this.localPort = localPort;
     }
 
@@ -65,9 +71,7 @@ public abstract class Client extends Messenger<Bootstrap> {
     public void dispatchWrite(Packet packet) {
         final ChannelHandlerContext ctx = channelContext();
         if (ctx != null && ctx.channel().isWritable()) {
-            ctx.channel().write(packet).addListener(f -> packet.tryRecycle());
-        } else {
-            packet.tryRecycle();
+            ctx.channel().write(packet);
         }
     }
 
@@ -80,7 +84,7 @@ public abstract class Client extends Messenger<Bootstrap> {
     public void submitEventLoopBatch(Runnable task) {
         final ChannelHandlerContext ctx = channelContext();
         if (ctx == null || !ctx.channel().isActive()) return;
-        Messenger.safeRun(ctx, _ -> task.run());
+        Messenger.safeRun(ctx, ignored -> task.run());
     }
 
     public ChannelHandlerContext channelContextDirect() {

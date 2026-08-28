@@ -7,10 +7,10 @@ import dev.sweety.sql4j.api.exception.Sql4jConnectionException;
 import dev.sweety.sql4j.impl.connection.dialect.DialectType;
 import dev.sweety.sql4j.impl.connection.provider.DriverManagerConnectionProvider;
 import dev.sweety.sql4j.impl.connection.provider.HikariConnectionProvider;
+import dev.sweety.thread.ThreadUtil;
 
 import java.util.Objects;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 public enum ConnectionType {
     SQLITE(DialectType.SQLITE),
@@ -64,7 +64,7 @@ public enum ConnectionType {
     public SqlConnection create(final DatabaseConfig config, final boolean useHikari) {
         // Automatically create a cached thread pool and mark ownsExecutor = true
         // so that SqlConnection will shut it down on close().
-        return create(config, Executors.newCachedThreadPool(), useHikari, true);
+        return create(config, ThreadUtil.cachedThreadPool("sql4j-connection"), useHikari, true);
     }
 
     public SqlConnection create(final DatabaseConfig config) {

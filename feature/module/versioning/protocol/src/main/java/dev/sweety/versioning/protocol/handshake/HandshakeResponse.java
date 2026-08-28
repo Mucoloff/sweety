@@ -1,7 +1,7 @@
 package dev.sweety.versioning.protocol.handshake;
 
-import dev.sweety.data.buffer.*;
-import dev.sweety.netty.packet.buffer.PacketBuffer;
+import dev.sweety.data.buffer.BufferReader;
+import dev.sweety.data.buffer.BufferWriter;
 import dev.sweety.netty.packet.model.PacketTransaction;
 import dev.sweety.versioning.version.artifact.Artifact;
 

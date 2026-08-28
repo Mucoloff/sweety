@@ -5,7 +5,7 @@ public class Animation {
     private Easing easing;
     // In seconds
     private double duration;
-    private long start;
+    private long start = -1;
 
     /**
      * Creates an animation instance.
@@ -23,19 +23,22 @@ public class Animation {
     }
 
     public double progress() {
+        if (start == -1) return 0;
         if (completed()) return 1;
 
-        double input = passedSeconds() / this.duration;
-
-        return this.easing.apply(input);
+        return this.easing.apply(passedSeconds() / this.duration);
     }
 
     public double passedSeconds() {
-        return (System.nanoTime() - start) / 1e9f;
+        return (System.nanoTime() - start) * 1.e-9;
     }
 
     public boolean completed() {
-        return passedSeconds() >= this.duration;
+        return start != -1 && passedSeconds() >= this.duration;
+    }
+
+    public void forceEnd() {
+        this.start = System.nanoTime() - (long) (duration * 1e9) - 1;
     }
 
     public Easing easing() {

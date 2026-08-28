@@ -6,23 +6,34 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.TreeMap;
-import java.util.UUID;
-import java.util.logging.Logger;
 
-public abstract class Configuration {
+public abstract class Configuration implements ConfigurationSection {
 
-    private static final Logger LOG = Logger.getLogger(Configuration.class.getName());
+    private static final Object NOT_CACHED = new Object();
+    private static final Object MISS = new Object();
 
-    private final Map<String, Object> map = new TreeMap<>();
+    private final ConfigNode root = new ConfigNode();
+    private final Map<String, Object> cache = new HashMap<>();
+    private final Map<String, ConfigNode> nodeCache = new HashMap<>();
 
     private final String extension;
 
@@ -38,9 +49,14 @@ public abstract class Configuration {
 
     protected abstract Map<String, Object> loadFromStream(InputStream in) throws IOException;
 
+    @Override
+    public String path() {
+        return "";
+    }
+
     public void save(OutputStream out) {
         try {
-            dumpToStream(map, out);
+            dumpToStream(toMap(root), out);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -48,27 +64,48 @@ public abstract class Configuration {
 
     public void load(InputStream in) {
         try {
-            map.clear();
-            map.putAll(loadFromStream(in));
+            root.children.clear();
+            cache.clear();
+            nodeCache.clear();
+            fromMap(root, loadFromStream(in));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
+    /**
+     * Writes to a sibling temp file, then atomically renames it over {@code path} — a crash/kill mid-write
+     * leaves the temp file torn, never the real config, so the next {@link #load(Path)} always sees either
+     * the old file intact or the fully-written new one, never a partial write.
+     */
     public void save(Path path) {
-        try (OutputStream out = Files.newOutputStream(path,
+        Path tmp = path.resolveSibling(path.getFileName() + ".tmp");
+        try (OutputStream out = new BufferedOutputStream(Files.newOutputStream(tmp,
                 StandardOpenOption.CREATE,
                 StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.WRITE)) {
+                StandardOpenOption.WRITE))) {
             save(out);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        try {
+            try {
+                Files.move(tmp, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                        java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+            } catch (java.nio.file.AtomicMoveNotSupportedException e) {
+                // some filesystems (network mounts, certain Windows setups) can't do an atomic rename
+                // across the two files even on the same directory — fall back to a plain (non-atomic)
+                // replace rather than losing the write entirely.
+                Files.move(tmp, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     public void load(Path path) {
-        try (InputStream in = Files.newInputStream(path,
-                StandardOpenOption.READ)) {
+        try (InputStream in = new BufferedInputStream(Files.newInputStream(path,
+                StandardOpenOption.READ))) {
             load(in);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -79,7 +116,7 @@ public abstract class Configuration {
     public void save(Writer writer) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             save(baos);
-            writer.write(baos.toString());
+            writer.write(baos.toString(StandardCharsets.UTF_8));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -87,533 +124,83 @@ public abstract class Configuration {
 
     public void load(Reader reader) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            reader.transferTo(new OutputStreamWriter(baos));
+            reader.transferTo(new OutputStreamWriter(baos, StandardCharsets.UTF_8));
             load(new ByteArrayInputStream(baos.toByteArray()));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-
     /* =======================
-       GETTERS
+       SETTERS / INTERNAL WRITE
        ======================= */
 
-
-    @Nullable
-    public String getString(@NotNull String path) {
-        Object def = get(path);
-        return getString(path, (def != null) ? (def instanceof String s ? s : def.toString()) : null);
-    }
-
-
-    @Contract("_, !null -> !null")
-    @Nullable
-    public String getString(@NotNull String path, @Nullable String def) {
-        Object val = get(path);
-        return (val != null) ? (val instanceof String s ? s : val.toString()) : def;
-    }
-
-
-    public boolean isString(@NotNull String path) {
-        return get(path) instanceof String;
-    }
-
-
-    public int getInt(@NotNull String path) {
-        return getInt(path, (get(path) instanceof Number n) ? n.intValue() : 0);
-    }
-
-
-    public int getInt(@NotNull String path, int def) {
-        return (get(path) instanceof Number n) ? n.intValue() : def;
-    }
-
-
-    public boolean isInt(@NotNull String path) {
-        return get(path) instanceof Integer;
-    }
-
-
-    public boolean getBoolean(@NotNull String path) {
-        return getBoolean(path, (get(path) instanceof Boolean b) ? b : false);
-    }
-
-
-    public boolean getBoolean(@NotNull String path, boolean def) {
-        return (get(path) instanceof Boolean b) ? b : def;
-    }
-
-
-    public boolean isBoolean(@NotNull String path) {
-        return get(path) instanceof Boolean;
-    }
-
-
-    public double getDouble(@NotNull String path) {
-        return getDouble(path, (get(path) instanceof Number n) ? n.doubleValue() : 0);
-    }
-
-
-    public double getDouble(@NotNull String path, double def) {
-        return (get(path) instanceof Number n) ? n.doubleValue() : def;
-    }
-
-
-    public boolean isDouble(@NotNull String path) {
-        return get(path) instanceof Double;
-    }
-
-    public float getFloat(@NotNull String path) {
-        return getFloat(path, (get(path) instanceof Number n) ? n.floatValue() : 0);
-    }
-
-
-    public float getFloat(@NotNull String path, float def) {
-        return (get(path) instanceof Number n) ? n.floatValue() : def;
-    }
-
-
-    public boolean isFloat(@NotNull String path) {
-        return get(path) instanceof Float;
-    }
-
-
-    public long getLong(@NotNull String path) {
-        return getLong(path, (get(path) instanceof Number n) ? n.longValue() : 0);
-    }
-
-
-    public long getLong(@NotNull String path, long def) {
-        return (get(path) instanceof Number n) ? n.longValue() : def;
-    }
-
-
-    public boolean isLong(@NotNull String path) {
-        return get(path) instanceof Long;
-    }
-
-    // Java
-
-    @Nullable
-    public List<?> getList(@NotNull String path) {
-        return getList(path, (get(path) instanceof List<?> l) ? l : null);
-    }
-
-
-    @Contract("_, !null -> !null")
-    @Nullable
-    public List<?> getList(@NotNull String path, @Nullable List<?> def) {
-        return (get(path) instanceof List<?> l) ? l : def;
-    }
-
-
-    public boolean isList(@NotNull String path) {
-        return get(path) instanceof List;
-    }
-
-
-    @NotNull
-    public List<String> getStringList(@NotNull String path) {
-        List<?> list = getList(path);
-
-        if (list == null) return new ArrayList<>(0);
-
-        List<String> result = new ArrayList<>(list.size());
-
-        for (Object object : list) {
-            if (object instanceof String s) {
-                result.add(s);
-            } else if (isPrimitiveWrapper(object)) {
-                result.add(String.valueOf(object));
-            }
-        }
-
-        return result;
-    }
-
-
-    @NotNull
-    public List<Integer> getIntegerList(@NotNull String path) {
-        List<?> list = getList(path);
-
-        if (list == null) return new ArrayList<>(0);
-
-        List<Integer> result = new ArrayList<>(list.size());
-
-        for (Object object : list) {
-            if (object instanceof Integer i) {
-                result.add(i);
-            } else if (object instanceof String s) {
-                try {
-                    result.add(Integer.valueOf(s));
-                } catch (Exception ex) {
-                    LOG.fine("Skipping non-integer value in list: '" + s + "': " + ex.getMessage());
-                }
-            } else if (object instanceof Character c) {
-                result.add((int) c);
-            } else if (object instanceof Number n) {
-                result.add(n.intValue());
-            }
-        }
-
-        return result;
-    }
-
-
-    @NotNull
-    public List<Boolean> getBooleanList(@NotNull String path) {
-        List<?> list = getList(path);
-
-        if (list == null) return new ArrayList<>(0);
-
-        List<Boolean> result = new ArrayList<>(list.size());
-
-        for (Object object : list) {
-            if (object instanceof Boolean b) {
-                result.add(b);
-            } else if (object instanceof String s) {
-                if (Boolean.TRUE.toString().equals(s)) {
-                    result.add(true);
-                } else if (Boolean.FALSE.toString().equals(s)) {
-                    result.add(false);
-                }
-            }
-        }
-
-        return result;
-    }
-
-
-    @NotNull
-    public List<Double> getDoubleList(@NotNull String path) {
-        List<?> list = getList(path);
-
-        if (list == null) return new ArrayList<>(0);
-
-        List<Double> result = new ArrayList<>(list.size());
-
-        for (Object object : list) {
-            if (object instanceof Double d) {
-                result.add(d);
-            } else if (object instanceof String s) {
-                try {
-                    result.add(Double.valueOf(s));
-                } catch (Exception ex) {
-                    LOG.fine("Skipping non-double value in list: '" + s + "': " + ex.getMessage());
-                }
-            } else if (object instanceof Character c) {
-                result.add((double) c);
-            } else if (object instanceof Number n) {
-                result.add(n.doubleValue());
-            }
-        }
-
-        return result;
-    }
-
-
-    @NotNull
-    public List<Float> getFloatList(@NotNull String path) {
-        List<?> list = getList(path);
-
-        if (list == null) return new ArrayList<>(0);
-
-        List<Float> result = new ArrayList<>(list.size());
-
-        for (Object object : list) {
-            if (object instanceof Float f) {
-                result.add(f);
-            } else if (object instanceof String f) {
-                try {
-                    result.add(Float.valueOf(f));
-                } catch (Exception ex) {
-                    LOG.fine("Skipping non-float value in list: '" + f + "': " + ex.getMessage());
-                }
-            } else if (object instanceof Character c) {
-                result.add((float) c);
-            } else if (object instanceof Number n) {
-                result.add(n.floatValue());
-            }
-        }
-
-        return result;
-    }
-
-
-    @NotNull
-    public List<Long> getLongList(@NotNull String path) {
-        List<?> list = getList(path);
-
-        if (list == null) return new ArrayList<>(0);
-
-        List<Long> result = new ArrayList<>(list.size());
-
-        for (Object object : list) {
-            if (object instanceof Long l) {
-                result.add(l);
-            } else if (object instanceof String s) {
-                try {
-                    result.add(Long.valueOf(s));
-                } catch (Exception ex) {
-                    LOG.fine("Skipping non-long value in list: '" + s + "': " + ex.getMessage());
-                }
-            } else if (object instanceof Character c) {
-                result.add((long) c);
-            } else if (object instanceof Number n) {
-                result.add(n.longValue());
-            }
-        }
-
-        return result;
-    }
-
-
-    @NotNull
-    public List<Byte> getByteList(@NotNull String path) {
-        List<?> list = getList(path);
-
-        if (list == null) return new ArrayList<>(0);
-
-        List<Byte> result = new ArrayList<>(list.size());
-
-        for (Object object : list) {
-            if (object instanceof Byte b) {
-                result.add(b);
-            } else if (object instanceof String s) {
-                try {
-                    result.add(Byte.valueOf(s));
-                } catch (Exception ex) {
-                    LOG.fine("Skipping non-byte value in list: '" + s + "': " + ex.getMessage());
-                }
-            } else if (object instanceof Character c) {
-                result.add((byte) c.charValue());
-            } else if (object instanceof Number n) {
-                result.add(n.byteValue());
-            }
-        }
-
-        return result;
-    }
-
-
-    @NotNull
-    public List<Character> getCharacterList(@NotNull String path) {
-        List<?> list = getList(path);
-
-        if (list == null) return new ArrayList<>(0);
-
-        List<Character> result = new ArrayList<>(list.size());
-
-        for (Object object : list) {
-            if (object instanceof Character c) {
-                result.add(c);
-            } else if (object instanceof String str) {
-
-                if (str.length() == 1) {
-                    result.add(str.charAt(0));
-                }
-            } else if (object instanceof Number n) {
-                result.add((char) n.intValue());
-            }
-        }
-
-        return result;
-    }
-
-
-    @NotNull
-    public List<Short> getShortList(@NotNull String path) {
-        List<?> list = getList(path);
-
-        if (list == null) return new ArrayList<>(0);
-
-        List<Short> result = new ArrayList<>(list.size());
-
-        for (Object object : list) {
-            if (object instanceof Short s) {
-                result.add(s);
-            } else if (object instanceof String s) {
-                try {
-                    result.add(Short.valueOf(s));
-                } catch (Exception ex) {
-                    LOG.fine("Skipping non-short value in list: '" + s + "': " + ex.getMessage());
-                }
-            } else if (object instanceof Character c) {
-                result.add((short) c.charValue());
-            } else if (object instanceof Number n) {
-                result.add(n.shortValue());
-            }
-        }
-
-        return result;
-    }
-
-
-    @NotNull
-    public List<Map<?, ?>> getMapList(@NotNull String path) {
-        final List<?> list = getList(path);
-        if (list == null) return new ArrayList<>(0);
-
-        List<Map<?, ?>> result = new ArrayList<>(list.size());
-        for (Object object : list) {
-            if (object instanceof Map<?, ?> m) {
-                result.add(m);
-            }
-        }
-
-        return result;
-    }
-
-    @NotNull
-    public <T extends ConfigSerializable> Map<String, T> getSerializableMap(@NotNull String path, @NotNull Class<T> clazz) {
-        final Map<String, Object> map = getMap(path);
-        if (map == null) return new TreeMap<>();
-
-        final Map<String, T> result = new TreeMap<>();
-
-        for (Map.Entry<String, Object> entry : map.entrySet()) {
-            //noinspection unchecked
-            result.put(entry.getKey(), SerializableRegistry.construct(clazz, (Map<String, Object>) entry.getValue()));
-        }
-
-        return result;
-    }
-
-    @NotNull
-    public <T extends ConfigSerializable> List<T> getSerializableList(@NotNull String path, @NotNull Class<T> clazz) {
-        final List<Map<?, ?>> list = getMapList(path);
-        if (list.isEmpty()) return new ArrayList<>(0);
-
-        final List<T> result = new ArrayList<>(list.size());
-        for (Map<?, ?> map : list) {
-            //noinspection unchecked
-            result.add(SerializableRegistry.construct(clazz, (Map<String, Object>) map));
-        }
-        return result;
-    }
-
-    // Extended scalar getters (parallel to Buffer's missing features)
-
-    public byte getByte(@NotNull String path) {
-        return getByte(path, (get(path) instanceof Number n) ? n.byteValue() : (byte) 0);
-    }
-
-    public byte getByte(@NotNull String path, byte def) {
-        return (get(path) instanceof Number n) ? n.byteValue() : def;
-    }
-
-    public short getShort(@NotNull String path) {
-        return getShort(path, (get(path) instanceof Number n) ? n.shortValue() : (short) 0);
-    }
-
-    public short getShort(@NotNull String path, short def) {
-        return (get(path) instanceof Number n) ? n.shortValue() : def;
-    }
-
-    public char getChar(@NotNull String path) {
-        return getChar(path, (char) 0);
-    }
-
-    public char getChar(@NotNull String path, char def) {
-        Object val = get(path);
-        if (val instanceof Character c) return c;
-        if (val instanceof Number n) return (char) n.intValue();
-        if (val instanceof String s && !s.isEmpty()) return s.charAt(0);
-        return def;
-    }
-
-    @Nullable
-    public UUID getUUID(@NotNull String path) {
-        Object val = get(path);
-        if (val instanceof UUID u) return u;
-        if (val instanceof String s) {
-            try { return UUID.fromString(s); } catch (IllegalArgumentException ignored) {}
-        }
-        return null;
-    }
-
-    @Nullable
-    public byte[] getBytes(@NotNull String path) {
-        Object val = get(path);
-        return val instanceof byte[] b ? b : null;
-    }
-
-    @NotNull
-    public <E extends Enum<E>> Optional<E> getEnum(@NotNull String path, @NotNull Class<E> clazz) {
-        Object val = get(path);
-        if (val == null) return Optional.empty();
-        String name = val instanceof String s ? s : val.toString();
-        try { return Optional.of(Enum.valueOf(clazz, name)); }
-        catch (IllegalArgumentException ignored) { return Optional.empty(); }
-    }
-
-    @NotNull
-    public <T> Optional<T> getOptional(@NotNull String path, @NotNull Class<T> clazz) {
-        Object val = get(path);
-        return clazz.isInstance(val) ? Optional.of(clazz.cast(val)) : Optional.empty();
-    }
-
-    // Bukkit
-    @Nullable
-    public <T> T getObject(@NotNull String path, @NotNull Class<T> clazz) {
-        Object def = get(path);
-        return getObject(path, clazz, (clazz.isInstance(def)) ? clazz.cast(def) : null);
-    }
-
-    @Contract("_, _, !null -> !null")
-    @Nullable
-
-    public <T> T getObject(@NotNull String path, @NotNull Class<T> clazz, @Nullable T def) {
-        Object val = get(path);
-        return (clazz.isInstance(val)) ? clazz.cast(val) : def;
-    }
-
-    public boolean contains(String path) {
-        return get(path) != null;
-    }
-
-    /* =======================
-       SETTERS
-       ======================= */
-
+    @Override
     public void set(String path, Object value) {
-        final String[] parts = path.split("\\.");
-        Map<String, Object> current = map;
-
-        for (int i = 0; i < parts.length - 1; i++) {
-            final Object next = current.get(parts[i]);
-
-            if (next instanceof Map<?, ?> m) {
-                //noinspection unchecked
-                current = (Map<String, Object>) m;
-            } else {
-                final Map<String, Object> newSection = new TreeMap<>();
-                current.put(parts[i], newSection);
-                current = newSection;
+        String pathDot = path + ".";
+        cache.entrySet().removeIf(e -> e.getKey().equals(path) || e.getKey().startsWith(pathDot));
+        nodeCache.entrySet().removeIf(e -> {
+            String k = e.getKey();
+            return k.equals(path) || k.startsWith(pathDot) || (e.getValue() == null && path.startsWith(k + "."));
+        });
+        if (value instanceof ConfigSerializable s) {
+            ConfigNode node = traverseToNode(path);
+            if (node != null) {
+                node.children.clear();
+                node.value = null;
             }
+            ConfigurationSection section = getSection(path);
+            if (section == null) {
+                section = new MemoryConfigurationSection(this, path);
+            }
+            s.serialize(section);
+            return;
         }
+        ConfigNode node = root;
+        int start = 0;
+        while (true) {
+            int dot = path.indexOf('.', start);
+            String segment = dot < 0 ? path.substring(start) : path.substring(start, dot);
+            if (dot < 0) {
+                ConfigNode leaf = node.children.computeIfAbsent(segment, k -> new ConfigNode());
+                Object val = serializeValue(value);
+                if (val instanceof Map<?, ?> m) {
+                    leaf.children.clear();
+                    leaf.value = null;
+                    fromMap(leaf, m);
+                } else {
+                    leaf.value = val;
+                }
+                break;
+            }
+            node = node.children.computeIfAbsent(segment, k -> new ConfigNode());
+            start = dot + 1;
+        }
+    }
 
-        final Object val = switch (value) {
-            case ConfigSerializable serializable -> {
-                SerializableRegistry.register(serializable.getClass());
-                yield serializable.serialize();
+    private Map<String, Object> serializeSerializable(ConfigSerializable s) {
+        Map<String, Object> map = new TreeMap<>();
+        s.serialize(new MapConfigurationSection(map));
+        return map;
+    }
+
+    private Object serializeValue(Object value) {
+        return switch (value) {
+            case ConfigSerializable s -> {
+                yield serializeSerializable(s);
             }
             case List<?> l -> serializeList(l);
             case Map<?, ?> m -> serializeMap(m);
             case null, default -> value;
         };
-
-        current.put(parts[parts.length - 1], val);
     }
 
     private List<?> serializeList(List<?> list) {
         List<Object> result = new ArrayList<>(list.size());
         for (Object item : list) {
             switch (item) {
-                case ConfigSerializable serializable -> {
-                    SerializableRegistry.register(serializable.getClass());
-                    result.add(serializable.serialize());
+                case ConfigSerializable s -> {
+                    result.add(serializeSerializable(s));
                 }
                 case List<?> l -> result.add(serializeList(l));
                 case Map<?, ?> m -> result.add(serializeMap(m));
@@ -626,78 +213,187 @@ public abstract class Configuration {
     private Map<String, Object> serializeMap(Map<?, ?> map) {
         Map<String, Object> result = new TreeMap<>();
         for (Map.Entry<?, ?> entry : map.entrySet()) {
-            Object value = entry.getValue();
-            Object serializedValue;
-
-            switch (value) {
-                case ConfigSerializable serializable -> {
-                    SerializableRegistry.register(serializable.getClass());
-                    serializedValue = serializable.serialize();
-                }
-                case List<?> l -> serializedValue = serializeList(l);
-                case Map<?, ?> m -> serializedValue = serializeMap(m);
-                case null, default -> serializedValue = value;
-            }
-
-            result.put(entry.getKey().toString(), serializedValue);
+            result.put(entry.getKey().toString(), serializeValue(entry.getValue()));
         }
         return result;
     }
 
-    protected boolean isPrimitiveWrapper(@Nullable Object input) {
-        return input instanceof Integer || input instanceof Boolean
-                || input instanceof Character || input instanceof Byte
-                || input instanceof Short || input instanceof Double
-                || input instanceof Long || input instanceof Float;
-    }
-
     /* =======================
-       INTERNAL
+       INTERNAL READ
        ======================= */
 
+    @Override
     public Object get(String path) {
-        String[] parts = path.split("\\.");
-        Map<String, Object> current = map;
+        Object cached = cache.getOrDefault(path, NOT_CACHED);
+        if (cached != NOT_CACHED) return cached == MISS ? null : cached;
+        ConfigNode node = traverseToNode(path);
+        Object result = (node != null && node.hasValue()) ? node.value : null;
+        cache.put(path, result != null ? result : MISS);
+        return result;
+    }
 
-        for (int i = 0; i < parts.length; i++) {
-            Object value = current.get(parts[i]);
+    /**
+     * Navigates the tree following dot-separated segments; returns the final node or null if absent.
+     * Caches each intermediate node so sibling/descendant lookups skip already-visited segments.
+     */
+    private ConfigNode traverseToNode(String path) {
+        if (path.isEmpty()) return root;
+        if (nodeCache.containsKey(path)) return nodeCache.get(path);
+        ConfigNode node = root;
+        int start = 0;
+        while (true) {
+            int dot = path.indexOf('.', start);
+            String subPath = dot < 0 ? path : path.substring(0, dot);
+            String segment = dot < 0 ? path.substring(start) : path.substring(start, dot);
 
-            if (value == null) return null;
-            if (i == parts.length - 1) return value;
+            if (nodeCache.containsKey(subPath)) {
+                node = nodeCache.get(subPath);
+                if (node == null) {
+                    nodeCache.put(path, null);
+                    return null;
+                }
+            } else {
+                node = node.children.get(segment);
+                if (node == null) {
+                    nodeCache.put(path, null);
+                    return null;
+                }
+                nodeCache.put(subPath, node);
+            }
 
-            if (!(value instanceof Map)) return null;
-
-            //noinspection unchecked
-            current = (Map<String, Object>) value;
+            if (dot < 0) return node;
+            start = dot + 1;
         }
-        return null;
     }
 
+    @Override
+    @Nullable
+    public ConfigurationSection getSection(@NotNull String path) {
+        return contains(path) ? new MemoryConfigurationSection(this, path) : null;
+    }
+
+    @Contract("_, !null -> !null")
+    @Nullable
+    public ConfigurationSection getSection(@NotNull String path, @Nullable ConfigurationSection def) {
+        ConfigurationSection section = getSection(path);
+        return section != null ? section : def;
+    }
+
+    public static final class MemoryConfigurationSection implements ConfigurationSection {
+        private final Configuration root;
+        private final String prefix;
+
+        MemoryConfigurationSection(Configuration root, String prefix) {
+            this.root = root;
+            this.prefix = prefix;
+        }
+
+        @Override
+        public String path() {
+            return prefix;
+        }
+
+        @Override
+        public String path(String path) {
+            return prefix + "." + path;
+        }
+
+        @Override
+        public Object get(String path) {
+            return root.get(path(path));
+        }
+
+        @Override
+        public boolean contains(String path) {
+            return root.contains(path(path));
+        }
+
+        @Override
+        public void set(String path, Object value) {
+            root.set(path(path), value);
+        }
+
+        @Override
+        @Nullable
+        public Map<String, Object> getMap(String path) {
+            return root.getMap(path(path));
+        }
+
+        @Override
+        @Nullable
+        public ConfigurationSection getSection(String path) {
+            return root.getSection(path(path));
+        }
+    }
+
+    @Override
+    public boolean contains(String path) {
+        ConfigNode node = traverseToNode(path);
+        return node != null && (node.hasValue() || node.hasChildren());
+    }
+
+    @Override
     public Map<String, Object> getMap(String path) {
-        final Object val = get(path);
-        //noinspection unchecked
-        return (val instanceof Map<?, ?> m) ? (Map<String, Object>) m : null;
-    }
-
-    public <T extends ConfigSerializable> T getSerializable(String path, Class<T> clazz) {
-        return SerializableRegistry.construct(clazz, getMap(path));
+        ConfigNode node = traverseToNode(path);
+        return (node != null && node.hasChildren()) ? toMap(node) : null;
     }
 
     public Map<String, Object> flatten() {
         Map<String, Object> out = new TreeMap<>();
-        flattenInto(map, "", out);
+        flattenInto(root, "", out);
         return out;
     }
 
-    private static void flattenInto(Map<String, Object> src, String prefix, Map<String, Object> out) {
-        for (Map.Entry<String, Object> e : src.entrySet()) {
-            String key = prefix.isEmpty() ? e.getKey() : prefix + "." + e.getKey();
+    /**
+     * Populates {@code node} from a nested map loaded by {@link #loadFromStream}.
+     */
+    private static void fromMap(ConfigNode node, Map<?, ?> src) {
+        if (src == null) return;   // empty document → loadFromStream returns null
+        for (Map.Entry<?, ?> e : src.entrySet()) {
+            String key = e.getKey().toString();
+            ConfigNode child = node.children.computeIfAbsent(key, k -> new ConfigNode());
             if (e.getValue() instanceof Map<?, ?> m) {
-                //noinspection unchecked
-                flattenInto((Map<String, Object>) m, key, out);
+                fromMap(child, m);
             } else {
-                out.put(key, e.getValue());
+                child.value = e.getValue();
             }
+        }
+    }
+
+    /**
+     * Converts the tree rooted at {@code node} back to a nested TreeMap for serialization.
+     */
+    private static Map<String, Object> toMap(ConfigNode node) {
+        Map<String, Object> result = new TreeMap<>();
+        for (Map.Entry<String, ConfigNode> e : node.children.entrySet()) {
+            ConfigNode child = e.getValue();
+            result.put(e.getKey(), child.hasChildren() ? toMap(child) : child.value);
+        }
+        return result;
+    }
+
+    private static void flattenInto(ConfigNode node, String prefix, Map<String, Object> out) {
+        for (Map.Entry<String, ConfigNode> e : node.children.entrySet()) {
+            String key = prefix.isEmpty() ? e.getKey() : prefix + "." + e.getKey();
+            ConfigNode child = e.getValue();
+            if (child.hasValue()) out.put(key, child.value);
+            if (child.hasChildren()) flattenInto(child, key, out);
+        }
+    }
+
+    /**
+     * One node per path segment. Leaf nodes carry a value; section nodes carry children.
+     */
+    private static final class ConfigNode {
+        final HashMap<String, ConfigNode> children = new HashMap<>();
+        Object value;
+
+        boolean hasValue() {
+            return value != null;
+        }
+
+        boolean hasChildren() {
+            return !children.isEmpty();
         }
     }
 }

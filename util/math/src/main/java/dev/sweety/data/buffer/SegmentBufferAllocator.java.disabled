@@ -1,0 +1,64 @@
+package dev.luce.data.buffer;
+
+import dev.luce.math.pool.Acquire;
+
+import java.lang.foreign.Arena;
+import java.util.function.Consumer;
+
+/**
+ * Factory for {@link SegmentBuffer} allocation.
+ *
+ * <p>Well-known instances:
+ * <ul>
+ *   <li>{@link #POOLED}   — thread-local pool of confined buffers; best for Netty I/O threads (same contract as {@code PooledByteBufAllocator}). Release must happen on the same thread as allocate.</li>
+ *   <li>{@link #CONFINED} — unpooled confined arena; lowest overhead for one-shot allocations on a single thread.</li>
+ *   <li>{@link #SHARED}   — unpooled shared arena; safe for cross-thread buffer ownership.</li>
+ *   <li>{@link #AUTO}     — GC-managed; no explicit release required.</li>
+ * </ul>
+ */
+public interface SegmentBufferAllocator {
+
+    @Acquire
+    SegmentBuffer buffer(int initialCapacity);
+
+    @Acquire
+    default SegmentBuffer buffer() {
+        return buffer(SegmentBuffer.DEFAULT_CAPACITY);
+    }
+
+    /** Unpooled confined arena. */
+    SegmentBufferAllocator CONFINED = SegmentBuffer::confined;
+
+    /** Unpooled shared arena — thread-safe. */
+    SegmentBufferAllocator SHARED = SegmentBuffer::shared;
+
+    /** GC-managed — no {@code release()} required. */
+    SegmentBufferAllocator AUTO = SegmentBuffer::automatic;
+
+    /**
+     * Thread-local pool of confined buffers.
+     *
+     * <p>Matches Netty's {@code PooledByteBufAllocator} semantics: buffer memory is off-heap,
+     * zero GC pressure for the buffer body, and zero lock overhead (confined arena).
+     * <strong>Release must happen on the allocating thread.</strong>
+     *
+     * <p>Pool size per thread: up to {@code 32} buffers. Surplus buffers have their arena closed
+     * immediately on recycle.
+     */
+    SegmentBufferAllocator POOLED = new PooledAllocator();
+
+    /** Default allocator — pooled confined, mirrors Netty's default. */
+    SegmentBufferAllocator DEFAULT = POOLED;
+
+    final class PooledAllocator extends PooledBufferAllocator<SegmentBuffer> implements SegmentBufferAllocator {
+        @Override
+        protected SegmentBuffer create(int cap, Consumer<SegmentBuffer> recycler) {
+            return new SegmentBuffer(Arena.ofConfined(), cap, true, recycler);
+        }
+
+        @Override
+        protected void onDiscard(SegmentBuffer buf) {
+            buf.closeArena();
+        }
+    }
+}

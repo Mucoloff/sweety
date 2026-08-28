@@ -58,7 +58,7 @@ public final class UpsertEntity<T> extends AbstractQuery<MutationResult<T>> impl
         this.instance = Objects.requireNonNull(instance);
 
         String cacheKey = "upsert:meta2:" + table.name() + ":" + table.clazz().getName() + ":" + dialect.name();
-        this.metadata = cache.getMetadata(cacheKey, _ -> {
+        this.metadata = cache.getMetadata(cacheKey, ignored -> {
             InsertableColumns cols = table.insertableColumns();
             List<Column<?>> insertColumns = cols.columns();
             Column<?> generatedColumn = cols.autoIncrementColumn();

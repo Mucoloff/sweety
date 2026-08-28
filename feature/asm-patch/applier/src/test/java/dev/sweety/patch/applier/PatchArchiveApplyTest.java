@@ -6,7 +6,10 @@ import dev.sweety.patch.format.archive.PatchArchiveConstants;
 import dev.sweety.patch.format.archive.PatchArchiveIndex;
 import dev.sweety.patch.format.archive.PatchArchiveOpEntry;
 import dev.sweety.patch.hash.Sha256Hash;
-import dev.sweety.patch.model.*;
+import dev.sweety.patch.model.DeleteOperation;
+import dev.sweety.patch.model.ModifyOperation;
+import dev.sweety.patch.model.Patch;
+import dev.sweety.patch.model.PatchOperation;
 import dev.sweety.patch.model.type.PatchTypes;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -101,12 +104,10 @@ class PatchArchiveApplyTest {
         idx.header = PatchArchiveConstants.HEADER;
         idx.fromVersion = "1";
         idx.toVersion = "2";
-        PatchArchiveOpEntry op = new PatchArchiveOpEntry();
-        op.type = "modify";
-        op.path = "a.txt";
-        op.hash = h;
-        op.method = "replacement";
-        op.payloadEntry = "../" + PatchArchiveConstants.PAYLOAD_PREFIX + "0";
+        PatchArchiveOpEntry op = new PatchArchiveOpEntry(PatchOperation.Type.MODIFY, "a.txt", h, PatchOperation.Method.REPLACEMENT);
+        op.hash = (h);
+        op.method = (PatchOperation.Method.REPLACEMENT);
+        op.payloadEntry = ("../" + PatchArchiveConstants.PAYLOAD_PREFIX + "0");
         idx.operations = new ArrayList<>(List.of(op));
 
         Path badPatch = dir.resolve("bad.patch.jar");
@@ -140,12 +141,8 @@ class PatchArchiveApplyTest {
         idx.header = PatchArchiveConstants.HEADER;
         idx.fromVersion = "1";
         idx.toVersion = "2";
-        PatchArchiveOpEntry op = new PatchArchiveOpEntry();
-        op.type = "modify";
-        op.path = "a.txt";
-        op.hash = new Sha256Hash().calculateHash("x".getBytes(StandardCharsets.UTF_8));
-        op.method = "replacement";
-        op.payloadEntry = PatchArchiveConstants.PAYLOAD_PREFIX + "0";
+        PatchArchiveOpEntry op = new PatchArchiveOpEntry(PatchOperation.Type.MODIFY, "a.txt", new Sha256Hash().calculateHash("x".getBytes(StandardCharsets.UTF_8)), PatchOperation.Method.REPLACEMENT);
+        op.payloadEntry = (PatchArchiveConstants.PAYLOAD_PREFIX + "0");
         idx.operations = new ArrayList<>(List.of(op));
 
         Path badPatch = dir.resolve("missing-payload.patch.jar");

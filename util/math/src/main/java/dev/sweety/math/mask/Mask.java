@@ -25,7 +25,40 @@ public interface Mask {
     }
 
     default void reset() {
-        Arrays.fill(masks(), (byte) 0x0);
+        Arrays.fill(masks(), (byte) 0);
+    }
+
+    byte[] INDEXES = {
+            0b0001,
+            0b0010,
+            0b0100,
+            0b1000,
+            0b10000,
+            0b100000,
+            0b1000000,
+            (byte) 0b10000000
+    };
+
+    static byte index(int index) { return (byte) (1 << (index & 7)); }
+
+    static boolean isPresent(byte _mask, byte index) {
+        return (_mask & index) == index;
+    }
+
+    static boolean isEmpty(byte _mask, byte index) {
+        return (_mask & index) != index;
+    }
+
+    static byte set(byte _mask, byte index) {
+        return (byte) (_mask | index);
+    }
+
+    static byte clear(byte _mask, byte index) {
+        return (byte) (_mask & ~index);
+    }
+
+    static byte setState(byte _mask, byte index, boolean state) {
+        return state ? set(_mask, index) : clear(_mask, index);
     }
 
 }

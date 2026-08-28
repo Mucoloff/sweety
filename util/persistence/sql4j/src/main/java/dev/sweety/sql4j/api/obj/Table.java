@@ -33,6 +33,13 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class Table<T> {
+
+    // Table.initialize() debug prints ran unconditionally on every table init (once per
+    // process, but noisy on every app boot regardless of need). Gated behind a system property
+    // instead of a normal log level so it stays off by default with zero config either way.
+    private static final boolean DEBUG = Boolean.getBoolean("sql4j.debug");
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(Table.class);
+
     private final String name;
     private final Class<T> clazz;
 
@@ -234,15 +241,15 @@ public class Table<T> {
                 List<Column<?>> insertColumns = new ArrayList<>();
                 for (Column<?> c : columnsList) {
                     if (c.isAutoIncrement()) {
-                        System.err.println("[DEBUG] TABLE " + name + " found AutoInc column: " + c.name());
+                        if (DEBUG) LOGGER.debug("TABLE {} found AutoInc column: {}", name, c.name());
                         autoInc = c;
                     } else {
                         insertColumns.add(c);
                         if (!c.isPrimaryKey()) updatableColumns.add(c);
                     }
                 }
-                if (autoInc == null) {
-                    System.err.println("[DEBUG] TABLE " + name + " NO AutoInc column found.");
+                if (autoInc == null && DEBUG) {
+                    LOGGER.debug("TABLE {} NO AutoInc column found.", name);
                 }
                 this.insertableColumns = new InsertableColumns(insertColumns, autoInc);
 

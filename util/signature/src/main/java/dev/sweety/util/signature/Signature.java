@@ -2,14 +2,32 @@ package dev.sweety.util.signature;
 
 import org.jetbrains.annotations.NotNull;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
-import java.util.*;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.function.Consumer;
-import java.util.jar.*;
+import java.util.jar.Attributes;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import java.util.jar.JarInputStream;
+import java.util.jar.JarOutputStream;
+import java.util.jar.Manifest;
 import java.util.zip.CRC32C;
 
 public class Signature {
@@ -28,7 +46,9 @@ public class Signature {
     public static void applySignature(Path inputJar, String targetClass, Consumer<Manifest> editManifest, Map<String, Object> fields, List<Watermark> watermarks, int watermarkSignature) throws IOException {
         byte[] inputBytes = Files.readAllBytes(inputJar);
         byte[] patchedBytes = applySignatureInMemory(inputBytes, targetClass, editManifest, fields, watermarks, watermarkSignature);
-        Files.write(inputJar, patchedBytes, StandardOpenOption.TRUNCATE_EXISTING);
+        try (OutputStream os = Files.newOutputStream(inputJar, StandardOpenOption.TRUNCATE_EXISTING)) {
+            os.write(patchedBytes);
+        }
     }
 
     public static byte[] applySignatureInMemory(byte[] inputJar,
@@ -257,7 +277,9 @@ public class Signature {
             Files.createDirectories(metaInf);
         }
         Path wm = zfs.getPath("META-INF/" + name);
-        Files.write(wm, data, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+        try (OutputStream os = Files.newOutputStream(wm, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
+            os.write(data);
+        }
     }
 
 }

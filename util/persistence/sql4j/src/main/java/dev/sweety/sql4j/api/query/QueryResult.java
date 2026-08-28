@@ -1,6 +1,7 @@
 package dev.sweety.sql4j.api.query;
 
 import dev.sweety.sql4j.api.obj.Row;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -15,7 +16,7 @@ import java.util.List;
  * For DML queries (INSERT, UPDATE, DELETE), {@link #affectedRows()} is the row-count and
  * {@link #result()} is empty.
  */
-public record QueryResult(byte info, int affectedRows, List<Integer> generatedKeys, List<Row> result) {
+public record QueryResult(byte info, int affectedRows, IntArrayList generatedKeys, List<Row> result) {
 
     /**
      * Executes the statement and constructs a {@code QueryResult} from its outcome.
@@ -24,7 +25,7 @@ public record QueryResult(byte info, int affectedRows, List<Integer> generatedKe
         boolean hasResultSet = pst.execute();
         List<Row> resultList;
         int affectedRows;
-        List<Integer> generatedKeysList = new ArrayList<>();
+        IntArrayList generatedKeysList = new IntArrayList();
         byte info = 0;
 
         if (hasResultSet) {

@@ -31,14 +31,17 @@ interface Vector3f : Vector<Float, Vector3f> {
     override fun length(): Double = sqrt(lengthSquared())
     override fun lengthSquared(): Double = (x() * x() + y() * y() + z() * z()).toDouble()
 
-    override fun distance(other: Vector3f): Double = sqrt(distanceSquared(other))
-
-    override fun distanceSquared(other: Vector3f): Double {
-        val dx = (x() - other.x()).toDouble()
-        val dy = (y() - other.y()).toDouble()
-        val dz = (z() - other.z()).toDouble()
+    fun distanceSquared(x: Float, y: Float, z: Float): Double {
+        val dx = (x() - x).toDouble()
+        val dy = y() - y
+        val dz = z() - z
         return dx * dx + dy * dy + dz * dz
     }
+
+    fun distance(x: Float, y: Float, z: Float) = sqrt(distanceSquared(x, y, z))
+    override fun distanceSquared(other: Vector3f) = distanceSquared(other.x(), other.y(), other.z())
+
+    override fun distance(other: Vector3f) = sqrt(distanceSquared(other))
 
     override fun normalize(): Vector3f {
         val l = length().toFloat()

@@ -46,28 +46,43 @@ public final class Messages {
     private final String baseName;
     private final Configuration prototype;
     private final Path overrideDir;
+    private final ClassLoader loader;
 
-    private Messages(String baseName, Configuration prototype, Path overrideDir, Locale locale) {
+    private Messages(String baseName, Configuration prototype, Path overrideDir, Locale locale, ClassLoader loader) {
         this.baseName = baseName;
         this.prototype = prototype;
         this.overrideDir = overrideDir;
         this.locale = locale;
-        this.templates = buildTemplates(baseName, prototype, overrideDir, locale);
+        this.loader = loader;
+        this.templates = buildTemplates(baseName, prototype, overrideDir, locale, loader);
     }
 
     // ── Factories ──────────────────────────────────────────────────────────────
 
     public static Messages forBundle(String baseName) {
-        return forBundle(baseName, new YamlConfiguration(), null);
+        return forBundle(baseName, new YamlConfiguration(), null, Messages.class.getClassLoader());
+    }
+
+    /**
+     * Load with an explicit class loader — REQUIRED when the bundle's {@code <baseName>_<lang>.yml}
+     * lives in a different module/jar than this i18n library (e.g. the runtime jar on NeoForge's
+     * module layers, where {@code Messages.class}'s loader can't see the runtime resources).
+     */
+    public static Messages forBundle(String baseName, ClassLoader loader) {
+        return forBundle(baseName, new YamlConfiguration(), null, loader);
     }
 
     public static Messages forBundle(String baseName, Configuration prototype) {
-        return forBundle(baseName, prototype, null);
+        return forBundle(baseName, prototype, null, Messages.class.getClassLoader());
     }
 
     public static Messages forBundle(String baseName, Configuration prototype, Path overrideDir) {
-        String key = baseName + "@" + activeLocale().toLanguageTag();
-        return CACHE.computeIfAbsent(key, _ -> new Messages(baseName, prototype, overrideDir, activeLocale()));
+        return forBundle(baseName, prototype, overrideDir, Messages.class.getClassLoader());
+    }
+
+    public static Messages forBundle(String baseName, Configuration prototype, Path overrideDir, ClassLoader loader) {
+        String key = baseName + "@" + activeLocale().toLanguageTag() + "@" + System.identityHashCode(loader);
+        return CACHE.computeIfAbsent(key, ignored -> new Messages(baseName, prototype, overrideDir, activeLocale(), loader));
     }
 
     // ── Global locale control ──────────────────────────────────────────────────
@@ -106,7 +121,7 @@ public final class Messages {
 
     public Messages reload() {
         String cacheKey = baseName + "@" + locale.toLanguageTag();
-        Messages fresh = new Messages(baseName, prototype, overrideDir, locale);
+        Messages fresh = new Messages(baseName, prototype, overrideDir, locale, loader);
         CACHE.put(cacheKey, fresh);
         return fresh;
     }
@@ -114,9 +129,9 @@ public final class Messages {
     // ── Internal loading ───────────────────────────────────────────────────────
 
     private static Map<String, String> buildTemplates(
-            String baseName, Configuration prototype, Path overrideDir, Locale locale) {
+            String baseName, Configuration prototype, Path overrideDir, Locale locale, ClassLoader loader) {
 
-        List<Configuration> layers = buildLayers(baseName, prototype, overrideDir, locale);
+        List<Configuration> layers = buildLayers(baseName, prototype, overrideDir, locale, loader);
         Map<String, String> out = new HashMap<>();
 
         for (int i = layers.size() - 1; i >= 0; i--) {
@@ -132,7 +147,7 @@ public final class Messages {
      * Skips any resource that doesn't exist; list may be shorter than the candidate count.
      */
     private static List<Configuration> buildLayers(
-            String baseName, Configuration prototype, Path overrideDir, Locale locale) {
+            String baseName, Configuration prototype, Path overrideDir, Locale locale, ClassLoader loader) {
 
         List<String> candidates = buildCandidates(baseName, prototype.extension(), locale);
         List<Configuration> result = new ArrayList<>();
@@ -152,7 +167,9 @@ public final class Messages {
         // Lower priority: classpath (reversed so high-specificity is first)
         for (int i = candidates.size() - 1; i >= 0; i--) {
             String name = candidates.get(i);
-            InputStream stream = Messages.class.getClassLoader().getResourceAsStream(name);
+            ClassLoader cl = loader != null ? loader : Messages.class.getClassLoader();
+            InputStream stream = cl.getResourceAsStream(name);
+            if (stream == null) stream = Messages.class.getClassLoader().getResourceAsStream(name);
             if (stream != null) {
                 Configuration cfg = tryLoad(prototype, stream, name);
                 if (cfg != null) result.add(cfg);
@@ -168,18 +185,18 @@ public final class Messages {
      */
     private static List<String> buildCandidates(String baseName, String ext, Locale locale) {
         List<String> list = new ArrayList<>();
-        list.add("messages_en." + ext);
+        list.add(baseName + "_en." + ext);
 
         String lang = locale.getLanguage().toLowerCase(Locale.ROOT);
         String country = locale.getCountry().toUpperCase(Locale.ROOT);
 
         if (!lang.isEmpty() && !lang.equals("en")) {
-            list.add("messages_" + lang + "." + ext);
+            list.add(baseName + "_" + lang + "." + ext);
             if (!country.isEmpty()) {
-                list.add("messages_" + lang + "_" + country + "." + ext);
+                list.add(baseName + "_" + lang + "_" + country + "." + ext);
             }
         } else if (!country.isEmpty()) {
-            list.add("messages_en_" + country + "." + ext);
+            list.add(baseName + "_en_" + country + "." + ext);
         }
 
         return list;

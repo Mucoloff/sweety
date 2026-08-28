@@ -1,19 +1,17 @@
 package dev.sweety.patch.format.archive;
 
 import dev.sweety.patch.exception.PatchException;
-import dev.sweety.patch.format.Header;
 import dev.sweety.patch.format.PatchWriter;
+import dev.sweety.patch.model.MoveOperation;
 import dev.sweety.patch.model.Patch;
 import dev.sweety.patch.model.PatchOperation;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -40,31 +38,25 @@ public class PatchArchiveWriter implements PatchWriter {
             List<PatchArchiveOpEntry> entries = new ArrayList<>();
             while (operations.hasNext()) {
                 PatchOperation op = operations.next();
-                PatchArchiveOpEntry e = new PatchArchiveOpEntry();
-                e.type = op.type().name().toLowerCase(Locale.ROOT);
-                e.path = op.path();
-                e.hash = op.hash();
-                e.method = op.method() == PatchOperation.Method.TEXT_DIFF ? "text_diff" : "replacement";
+                PatchArchiveOpEntry e = op.type() == PatchOperation.Type.MOVE
+                        ? new PatchArchiveOpEntry(op.type(), op.path(), op.hash())
+                        : new PatchArchiveOpEntry(op.type(), op.path(), op.hash(), op.method());
 
-                if (op.type() != PatchOperation.Type.DELETE) {
+                if (op.type() == PatchOperation.Type.MOVE) {
+                    e.oldPath = ((MoveOperation) op).oldPath();
+                } else if (op.type() != PatchOperation.Type.DELETE) {
                     byte[] data = op.data();
                     if (data == null) {
                         throw new PatchException("Patch operation has no data for " + op.type() + ": " + op.path());
                     }
-                    e.payloadEntry = PatchArchiveConstants.PAYLOAD_PREFIX + payloadSeq++;
-                    PatchArchiveEntryNames.requireValidPayloadRef(e.payloadEntry);
-                    putPayload(zos, e.payloadEntry, data);
+                    String payloadEntry = PatchArchiveConstants.PAYLOAD_PREFIX + payloadSeq++;
+                    e.payloadEntry = payloadEntry;
+                    PatchArchiveEntryNames.requireValidPayloadRef(payloadEntry);
+                    putPayload(zos, payloadEntry, data);
                 }
                 entries.add(e);
             }
-            index.operations = entries;
-
-            byte[] indexJson = Header.GSON.toJson(index).getBytes(StandardCharsets.UTF_8);
-            ZipEntry indexEntry = new ZipEntry(PatchArchiveConstants.INDEX_ENTRY);
-            indexEntry.setTime(0);
-            zos.putNextEntry(indexEntry);
-            zos.write(indexJson);
-            zos.closeEntry();
+            PatchArchiveMerger.writeIndex(zos, entries, index);
         } catch (IOException e) {
             throw new PatchException("Failed to write patch archive", e);
         }

@@ -1,7 +1,7 @@
 package dev.sweety.versioning.version;
 
+import dev.sweety.data.buffer.BufferReader;
 import dev.sweety.data.buffer.BufferWriter;
-import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.buffer.io.Encoder;
 import dev.sweety.netty.packet.buffer.io.callable.CallableDecoder;
 import org.jetbrains.annotations.NotNull;
@@ -12,10 +12,13 @@ import java.util.regex.Pattern;
 
 public record Version(int major, int minor, int patch) implements Encoder {
 
+    private Version(BufferReader buffer) {
+        this(buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt());
+    }
+
     public static final Version ZERO = new Version(0, 0, 0);
 
-    public static final CallableDecoder<Version> DECODER =
-            buffer -> new Version(buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt());
+    public static final CallableDecoder<Version> DECODER = Version::new;
 
     @Override
     public void write(final BufferWriter buffer) {

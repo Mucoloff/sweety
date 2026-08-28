@@ -15,6 +15,10 @@ public record ReleaseInfo(
         float rollout, Instant updatedAt
 ) implements Encoder {
 
+    public ReleaseInfo {
+        rollout = MathUtils.clamp(rollout);
+    }
+
     public ReleaseInfo(Version version, Channel channel, float rollout) {
         this(version, channel, rollout, Instant.now());
     }
@@ -31,11 +35,6 @@ public record ReleaseInfo(
 
     public static ReleaseInfo of(Version version, Channel channel, @Nullable Float rollout) {
         return new ReleaseInfo(version, channel, rollout != null ? rollout : 1f);
-    }
-
-    @Override
-    public float rollout() {
-        return MathUtils.clamp(this.rollout);
     }
 
     @Override

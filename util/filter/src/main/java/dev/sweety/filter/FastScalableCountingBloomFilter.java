@@ -24,6 +24,7 @@ public class FastScalableCountingBloomFilter {
     @Deprecated
     public FastScalableCountingBloomFilter(int initialBucketCount, double growthFactor,
                                            Collection<? extends HashFunction> hashFunctions) {
+        requireValid(initialBucketCount, growthFactor);
         this.growthFactor = growthFactor;
         this.hashers = HashFunctions.copy(hashFunctions);
         this.filter = new byte[initialBucketCount];
@@ -32,12 +33,18 @@ public class FastScalableCountingBloomFilter {
     /** @see #FastScalableCountingBloomFilter(int, double, Collection) */
     @Deprecated
     public FastScalableCountingBloomFilter(int initialBucketCount, double growthFactor, HashFunction... hashers) {
+        requireValid(initialBucketCount, growthFactor);
         if (Objects.requireNonNull(hashers, "hashers must not be null").length == 0) {
             throw new IllegalArgumentException("pass at least one HashFunction");
         }
         this.growthFactor = growthFactor;
         this.hashers = HashFunctions.copy(hashers);
         this.filter = new byte[initialBucketCount];
+    }
+
+    private static void requireValid(int initialBucketCount, double growthFactor) {
+        if (initialBucketCount <= 0) throw new IllegalArgumentException("initialBucketCount must be positive: " + initialBucketCount);
+        if (growthFactor <= 1.0) throw new IllegalArgumentException("growthFactor must be > 1: " + growthFactor);
     }
 
     /** Hash Murmur predefinite; vedi {@link HashFunctions#murmur3Defaults(int)}. */

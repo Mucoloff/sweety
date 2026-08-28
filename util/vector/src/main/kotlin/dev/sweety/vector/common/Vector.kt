@@ -17,6 +17,8 @@ interface Vector<N : Number, Self : Vector<N, Self>> : ConfigSerializable {
 
     fun dot(other: Self): N
 
+    fun scale(scale: N) : Self = mul(scale)
+
     fun length(): Double
     fun lengthSquared(): Double
     fun distance(other: Self): Double

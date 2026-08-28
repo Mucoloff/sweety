@@ -5,11 +5,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import dev.sweety.config.yml.YamlConfiguration;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MessagesTest {
 
@@ -80,7 +84,7 @@ class MessagesTest {
         Files.writeString(tmp.resolve("messages_en.yml"), override);
 
         Messages.setDefaultLocale(Locale.ENGLISH);
-        Messages m = Messages.forBundle("messages", new dev.sweety.config.yml.YamlConfiguration(), tmp);
+        Messages m = Messages.forBundle("messages", new YamlConfiguration(), tmp);
         assertEquals("Override World!", m.get("test.greeting", "World"));
     }
 

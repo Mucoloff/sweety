@@ -1,5 +1,6 @@
 package dev.sweety.sql4j.impl.connection.provider;
 
+import dev.sweety.sql4j.api.connection.SqlRunner;
 import dev.sweety.sql4j.api.connection.provider.ConnectionProvider;
 
 import java.sql.Connection;
@@ -17,9 +18,13 @@ public final class ScopedConnectionProvider implements ConnectionProvider {
     private final NonClosingConnection wrapper;
     private volatile boolean released = false;
 
-    public ScopedConnectionProvider(Connection connection) {
+    private ScopedConnectionProvider(Connection connection) {
         this.connection = connection;
         this.wrapper = new NonClosingConnection(connection);
+    }
+
+    public static ScopedConnectionProvider of(Connection connection) {
+        return new ScopedConnectionProvider(connection);
     }
 
     @Override
@@ -31,7 +36,13 @@ public final class ScopedConnectionProvider implements ConnectionProvider {
     public void release() {
         if (!released) {
             released = true;
-            try { connection.close(); } catch (SQLException ignored) {}
+            try {
+                connection.close();
+            } catch (SQLException e) {
+                // release() must be idempotent and safe on any code path (including finally
+                // blocks), so a failed close is logged rather than propagated.
+                SqlRunner.getLogger().log("Failed to close scoped connection: %s", e.getMessage());
+            }
         }
     }
 

@@ -1,24 +1,30 @@
 package dev.sweety.math;
 
-import lombok.experimental.UtilityClass;
-
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.SecureRandom;
-import java.util.*;
+import java.util.Base64;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
-@UtilityClass
+
 public class RandomUtils {
 
-    public final ThreadLocalRandom RANDOM = ThreadLocalRandom.current();
-    private final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private RandomUtils() {
+        throw new IllegalStateException("Utility class");
+    }
+
+    public static final ThreadLocalRandom RANDOM = ThreadLocalRandom.current();
+    private static  final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     // --- Base ---
 
-    public <E> E randomElement(Collection<? extends E> collection) {
+    public  static <E> E randomElement(Collection<? extends E> collection) {
         if (collection == null || collection.isEmpty()) return null;
         int index = RANDOM.nextInt(collection.size());
         if (collection instanceof List<? extends E> list)
@@ -28,24 +34,24 @@ public class RandomUtils {
         return iter.next();
     }
 
-    public int range(int min, int max) {
+    public  static int range(int min, int max) {
         return RANDOM.nextInt(min, max + 1);
     }
 
     // --- Secure Random ---
 
-    public byte[] secureBytes(int length) {
+    public static  byte[] secureBytes(int length) {
         byte[] bytes = new byte[length];
         SECURE_RANDOM.nextBytes(bytes);
         return bytes;
     }
 
-    public String secureToken(int length) {
+    public static  String secureToken(int length) {
         byte[] bytes = secureBytes(length);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
-    public UUID secureUUID() {
+    public static  UUID secureUUID() {
         byte[] r = secureBytes(16);
         long msb = 0, lsb = 0;
         for (int i = 0; i < 8; i++) msb = (msb << 8) | (r[i] & 0xff);
@@ -57,7 +63,7 @@ public class RandomUtils {
         return new UUID(msb, lsb);
     }
 
-    public SecretKey generateAESKey(int bits) {
+    public  static SecretKey generateAESKey(int bits) {
         try {
             KeyGenerator kg = KeyGenerator.getInstance("AES");
             kg.init(bits, SECURE_RANDOM);
@@ -67,7 +73,7 @@ public class RandomUtils {
         }
     }
 
-    public KeyPair generateRSAKeyPair(int bits) {
+    public static  KeyPair generateRSAKeyPair(int bits) {
         try {
             KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
             kpg.initialize(bits, SECURE_RANDOM);
@@ -79,15 +85,15 @@ public class RandomUtils {
 
     // --- Utils ---
 
-    public int secureInt(int bound) {
+    public static  int secureInt(int bound) {
         return SECURE_RANDOM.nextInt(bound);
     }
 
-    public long secureLong() {
+    public  static long secureLong() {
         return SECURE_RANDOM.nextLong();
     }
 
-    public boolean secureBoolean() {
+    public static  boolean secureBoolean() {
         return SECURE_RANDOM.nextBoolean();
     }
 }

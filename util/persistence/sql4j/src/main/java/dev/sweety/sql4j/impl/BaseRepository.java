@@ -8,11 +8,34 @@ import dev.sweety.sql4j.api.obj.Row;
 import dev.sweety.sql4j.api.obj.Table;
 import dev.sweety.sql4j.api.obj.annotation.FetchType;
 import dev.sweety.sql4j.api.obj.table.TableRegistry;
-import dev.sweety.sql4j.api.query.*;
+import dev.sweety.sql4j.api.query.AbstractQuery;
+import dev.sweety.sql4j.api.query.BatchQuery;
+import dev.sweety.sql4j.api.query.ConditionalDeleteQuery;
+import dev.sweety.sql4j.api.query.ConditionalUpdateQuery;
+import dev.sweety.sql4j.api.query.Criterion;
+import dev.sweety.sql4j.api.query.DeleteQuery;
+import dev.sweety.sql4j.api.query.InsertQuery;
+import dev.sweety.sql4j.api.query.JoinBuilder;
+import dev.sweety.sql4j.api.query.PkContext;
+import dev.sweety.sql4j.api.query.Query;
+import dev.sweety.sql4j.api.query.QueryResult;
+import dev.sweety.sql4j.api.query.SelectQuery;
+import dev.sweety.sql4j.api.query.SelectRawQuery;
+import dev.sweety.sql4j.api.query.UpdateQuery;
+import dev.sweety.sql4j.api.query.UpsertQuery;
 import dev.sweety.sql4j.api.repository.Repository;
 import dev.sweety.sql4j.impl.query.SelectJoin;
 import dev.sweety.sql4j.impl.query.QueryCache;
-import dev.sweety.sql4j.impl.query.entity.*;
+import dev.sweety.sql4j.impl.query.entity.DeleteEntity;
+import dev.sweety.sql4j.impl.query.entity.DeleteWhere;
+import dev.sweety.sql4j.impl.query.entity.InsertBatch;
+import dev.sweety.sql4j.impl.query.entity.InsertEntity;
+import dev.sweety.sql4j.impl.query.entity.SelectEntity;
+import dev.sweety.sql4j.impl.query.entity.SelectRaw;
+import dev.sweety.sql4j.impl.query.entity.UpdateBatch;
+import dev.sweety.sql4j.impl.query.entity.UpdateEntity;
+import dev.sweety.sql4j.impl.query.entity.UpdateWhere;
+import dev.sweety.sql4j.impl.query.entity.UpsertEntity;
 import dev.sweety.sql4j.impl.cache.EntityCache;
 import dev.sweety.sql4j.impl.connection.dialect.DialectType;
 import dev.sweety.sql4j.impl.query.table.CreateTable;
@@ -41,6 +64,8 @@ import java.util.function.Supplier;
 
 
 public class BaseRepository<Entity> implements Repository<Entity> {
+
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(BaseRepository.class);
 
     private final Table<Entity> table;
     private final Dialect dialect;
@@ -85,7 +110,7 @@ public class BaseRepository<Entity> implements Repository<Entity> {
 
     public @NotNull InsertQuery<Entity> insert(@NotNull Entity entity) {
         InsertQuery<Entity> query = cache.getQuery("insertPrototype:" + table.name(),
-                _ -> new InsertEntity<>(table, dialect, entity, cache)).copy(entity);
+                ignored -> new InsertEntity<>(table, dialect, entity, cache)).copy(entity);
         if (entityCache == null || !entityCache.isCacheable(table.clazz())) return query;
 
         return new InsertQueryWrapper<>(query, () -> {
@@ -100,13 +125,13 @@ public class BaseRepository<Entity> implements Repository<Entity> {
 
     public @NotNull UpsertQuery<Entity> upsert(@NotNull Entity entity) {
         return cache.getQuery("upsertPrototype:" + table.name(),
-                _ -> new
+                ignored -> new
                         UpsertEntity<>(table, dialect, entity, cache)).copy(entity);
     }
 
     public @NotNull UpdateQuery<Entity> update(@NotNull Entity entity) {
         UpdateQuery<Entity> query = cache.getQuery("updatePrototype:" + table.name(),
-                _ -> new UpdateEntity<>(table, dialect, entity, cache)).copy(entity);
+                ignored -> new UpdateEntity<>(table, dialect, entity, cache)).copy(entity);
         if (entityCache == null || !entityCache.isCacheable(table.clazz())) return query;
 
         return new UpdateQueryWrapper<>(query, () -> {
@@ -130,7 +155,7 @@ public class BaseRepository<Entity> implements Repository<Entity> {
     public final DeleteQuery<Entity> delete(Entity... instances) {
         int count = instances != null ? instances.length : 0;
         DeleteQuery<Entity> query = cache.getQuery("deletePrototype:" + table.name() + ":" + count,
-                _ -> new DeleteEntity<>(table, dialect, cache, instances)).copy(instances);
+                ignored -> new DeleteEntity<>(table, dialect, cache, instances)).copy(instances);
         
         if (entityCache == null || !entityCache.isCacheable(table.clazz())) return query;
 
@@ -261,7 +286,7 @@ public class BaseRepository<Entity> implements Repository<Entity> {
      */
     public SelectQuery<Entity> select() {
         SelectEntity<Entity> query = cache.getQuery("selectAllPrototype:" + table.name(),
-                _ -> withEagerRelations(new SelectEntity<>(table, cache, dialect, registry)));
+                ignored -> withEagerRelations(new SelectEntity<>(table, cache, dialect, registry)));
         return query.withCache(entityCache); // We need to add withCache to SelectEntity
     }
 
@@ -320,7 +345,7 @@ public class BaseRepository<Entity> implements Repository<Entity> {
      */
     public SelectRawQuery selectRawAll() {
         return cache.getQuery("selectRawAllPrototype:" + table.name(),
-                _ -> new SelectRaw(table, cache, dialect));
+                ignored -> new SelectRaw(table, cache, dialect));
     }
 
     /**
@@ -378,15 +403,23 @@ public class BaseRepository<Entity> implements Repository<Entity> {
             for (Column<?> c : table.columns()) {
                 if (!existingColumns.contains(c.name().toLowerCase(Locale.ENGLISH))) {
                     String colDef = c.name() + " " + dialect.sqlType(c.type());
-                    // Skip NOT NULL for ADD COLUMN to avoid constraint errors on existing rows, 
-                    // unless it's an advanced dialect/setup. For safety, we just add the column.
+                    // DEFAULT must be applied here too (not just in CreateTable) — without it, existing
+                    // rows get NULL for the new column, which a primitive-typed field (e.g. `boolean`,
+                    // not `Boolean`) can't represent, silently coercing/NPEing on read. Most dialects
+                    // backfill existing rows with DEFAULT on ADD COLUMN, so this alone fixes it.
+                    // Still skip NOT NULL for ADD COLUMN to avoid constraint errors on existing rows
+                    // in dialects that don't backfill before enforcing it.
+                    if (c.defaultValue() != null && !c.defaultValue().isEmpty()) {
+                        colDef += " DEFAULT " + c.defaultValue();
+                    }
                     String sql = dialect.addColumnSyntax(table.name(), colDef);
                     
                     try (Statement stmt = raw.createStatement()) {
                         stmt.execute(sql);
                     } catch (SQLException e) {
-                        // Log or ignore if the column couldn't be added (e.g. SQLite strictness)
-                        System.err.println("[SQL4J] Failed to add column " + c.name() + " to " + table.name() + ": " + e.getMessage());
+                        // Log-and-continue: some dialects (e.g. SQLite strictness) reject certain
+                        // ADD COLUMN forms — the migration proceeds without this one column.
+                        LOGGER.warn("[SQL4J] Failed to add column {} to {}: {}", c.name(), table.name(), e.getMessage());
                     }
                 }
             }

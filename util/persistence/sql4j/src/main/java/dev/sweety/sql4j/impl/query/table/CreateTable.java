@@ -18,11 +18,13 @@ import java.util.stream.Collectors;
 public final class CreateTable extends AbstractQuery<Void> implements CreateTableQuery {
 
     private final String sql;
+    private final boolean ifNotExists;
 
     public CreateTable(Table<?> table, Dialect dialect, boolean ifNotExists) {
         Objects.requireNonNull(table, "table cannot be null");
         Objects.requireNonNull(dialect, "dialect cannot be null");
         this.sql = build(table, dialect, ifNotExists);
+        this.ifNotExists = ifNotExists;
     }
 
     @Override
@@ -44,7 +46,20 @@ public final class CreateTable extends AbstractQuery<Void> implements CreateTabl
 
     @Override
     public Void execute(PreparedStatement ps) throws SQLException {
-        ps.execute();
+        try {
+            ps.execute();
+        } catch (SQLException e) {
+            // PostgreSQL's IF NOT EXISTS is not race-safe against a genuinely concurrent CREATE
+            // TABLE for the SAME table from another process/connection (the existence check and the
+            // catalog insert aren't atomic) — two services booting at once (e.g. auth + core in
+            // Docker Compose, both provisioning their own repositories against a shared fresh DB) can
+            // both pass the "doesn't exist yet" check and then race on inserting the table's row type
+            // into pg_type, so the loser gets a unique-constraint violation despite IF NOT EXISTS.
+            // Safe to swallow ONLY when we asked for IF NOT EXISTS and the failure is exactly that
+            // catalog race (SQLState 23505 = unique_violation) — the table exists either way.
+            if (ifNotExists && "23505".equals(e.getSQLState())) return null;
+            throw e;
+        }
         return null;
     }
 

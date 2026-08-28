@@ -2,7 +2,7 @@ package dev.sweety.versioning.server.api.netty;
 
 import dev.sweety.versioning.security.HandshakeProof;
 import dev.sweety.versioning.server.Settings;
-import dev.sweety.versioning.server.adapter.in.netty.NettyHandshakeTrust;
+import dev.sweety.versioning.server.net.netty.NettyHandshakeTrust;
 import dev.sweety.versioning.version.LauncherInfo;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
@@ -14,7 +14,8 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NettyHandshakeTrustTest {
 

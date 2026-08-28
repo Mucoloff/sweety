@@ -1,10 +1,16 @@
 package dev.sweety.transform.engine.transformer.control;
 
-import dev.sweety.transform.engine.*;
+import dev.sweety.transform.engine.MethodSelector;
+import dev.sweety.transform.engine.TransformContext;
+import dev.sweety.transform.engine.Transformer;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.*;
-
-import java.util.*;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.JumpInsnNode;
+import org.objectweb.asm.tree.LabelNode;
+import org.objectweb.asm.tree.LineNumberNode;
+import org.objectweb.asm.tree.MethodNode;
 
 /**
  * GOTO Normalization &amp; Opaque Jump Rewriter.
@@ -75,7 +81,7 @@ public final class GotoNormalizationTransformer extends Transformer {
      *   ICONST_1       ← always 1
      *   IFNE L         ← always taken (1 != 0)
      *   // dead block: ICONST_0; IFEQ L; GOTO L (unreachable)
-     *
+     * <p>
      * Decompilers see a conditional branch and cannot reliably determine it's unconditional.
      */
     private void insertOpaqueJumps(MethodNode mn) {

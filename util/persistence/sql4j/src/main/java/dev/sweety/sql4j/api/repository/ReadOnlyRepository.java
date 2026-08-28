@@ -2,7 +2,11 @@ package dev.sweety.sql4j.api.repository;
 
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
-import dev.sweety.sql4j.api.query.*;
+import dev.sweety.sql4j.api.query.JoinBuilder;
+import dev.sweety.sql4j.api.query.PkContext;
+import dev.sweety.sql4j.api.query.Query;
+import dev.sweety.sql4j.api.query.SelectQuery;
+import dev.sweety.sql4j.api.query.SelectRawQuery;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Supplier;

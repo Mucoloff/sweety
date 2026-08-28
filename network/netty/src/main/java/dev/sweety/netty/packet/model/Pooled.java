@@ -13,11 +13,8 @@ public interface Pooled<T extends Pooled<T>> extends Decoder {
         final Recycler.Handle<T> h = handle();
         if (h != null) {
             reset();
-            if (this instanceof Packet p) p.release();
             //noinspection unchecked
             h.recycle((T) this);
-        } else if (this instanceof Packet p) {
-            p.release();
         }
     }
 }

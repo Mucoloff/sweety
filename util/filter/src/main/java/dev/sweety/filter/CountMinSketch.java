@@ -23,6 +23,7 @@ public class CountMinSketch {
      */
     @Deprecated
     public CountMinSketch(int bucketCount, Collection<? extends HashFunction> hashFunctions) {
+        requirePositive(bucketCount);
         this.bucketCount = bucketCount;
         this.hashers = HashFunctions.copy(hashFunctions);
         this.table = new int[this.hashers.length][bucketCount];
@@ -32,6 +33,7 @@ public class CountMinSketch {
     /** @see #CountMinSketch(int, Collection) */
     @Deprecated
     public CountMinSketch(int bucketCount, HashFunction... hashers) {
+        requirePositive(bucketCount);
         if (Objects.requireNonNull(hashers, "hashers must not be null").length == 0) {
             throw new IllegalArgumentException("pass at least one HashFunction");
         }
@@ -39,6 +41,10 @@ public class CountMinSketch {
         this.hashers = HashFunctions.copy(hashers);
         this.table = new int[this.hashers.length][bucketCount];
         this.elements = 0;
+    }
+
+    private static void requirePositive(int bucketCount) {
+        if (bucketCount <= 0) throw new IllegalArgumentException("bucketCount must be positive: " + bucketCount);
     }
 
     /** Stesse hash di default Murmur degli altri costruttori con collection / varargs. */

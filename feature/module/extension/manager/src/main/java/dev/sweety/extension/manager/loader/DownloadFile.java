@@ -10,7 +10,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
-import java.time.Duration;
 import java.util.HexFormat;
 import java.util.concurrent.CompletableFuture;
 
@@ -93,14 +92,15 @@ public final class DownloadFile {
                 }
 
                 return file;
-            } catch (IOException e) {
-                if (file != null && !saveToDisk) {
-                    try { Files.deleteIfExists(file); } catch (IOException ignored) {}
-                }
-                throw new RuntimeException("Download failed", e);
             } catch (Exception e) {
                 if (file != null && !saveToDisk) {
-                    try { Files.deleteIfExists(file); } catch (IOException ignored) {}
+                    try {
+                        Files.deleteIfExists(file);
+                    } catch (IOException cleanup) {
+                        // The download failure is the real error being rethrown; keep the
+                        // cleanup failure attached to it instead of dropping it.
+                        e.addSuppressed(cleanup);
+                    }
                 }
                 throw new RuntimeException("Download failed", e);
             }

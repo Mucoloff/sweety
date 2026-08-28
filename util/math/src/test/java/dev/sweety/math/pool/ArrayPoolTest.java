@@ -8,7 +8,12 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ArrayPoolTest {
 
@@ -16,7 +21,10 @@ class ArrayPoolTest {
 
     @Test
     void threadLocal_acquire_creates_when_empty() {
-        ArrayPool<byte[]> pool = ArrayPool.threadLocalBytes(64, 8);
+        ArrayPool<byte[]> pool = new ArrayPool.Builder<>(byte[]::new, arr -> arr.length)
+                .defaultSize(64)
+                .maxSize(8)
+                .build();
         byte[] arr = pool.acquire(64);
         assertNotNull(arr);
         assertTrue(arr.length >= 64);
@@ -24,7 +32,10 @@ class ArrayPoolTest {
 
     @Test
     void threadLocal_release_and_reacquire_same_instance() {
-        ArrayPool<byte[]> pool = ArrayPool.threadLocalBytes(64, 8);
+        ArrayPool<byte[]> pool = new ArrayPool.Builder<>(byte[]::new, arr -> arr.length)
+                .defaultSize(64)
+                .maxSize(8)
+                .build();
         byte[] a = pool.acquire(64);
         pool.release(a);
         assertSame(a, pool.acquire(64));
@@ -32,7 +43,10 @@ class ArrayPoolTest {
 
     @Test
     void threadLocal_too_small_in_pool_allocates_fresh() {
-        ArrayPool<byte[]> pool = ArrayPool.threadLocalBytes(128, 8);
+        ArrayPool<byte[]> pool = new ArrayPool.Builder<>(byte[]::new, arr -> arr.length)
+                .defaultSize(128)
+                .maxSize(8)
+                .build();
         byte[] small = new byte[32]; // too small: < defaultSize/2=64
         pool.release(small); // rejected: out of [64, 256] range — not pooled
 
@@ -43,7 +57,10 @@ class ArrayPoolTest {
 
     @Test
     void threadLocal_request_larger_than_pooled_allocates_fresh() {
-        ArrayPool<byte[]> pool = ArrayPool.threadLocalBytes(64, 8);
+        ArrayPool<byte[]> pool = new ArrayPool.Builder<>(byte[]::new, arr -> arr.length)
+                .defaultSize(64)
+                .maxSize(8)
+                .build();
         byte[] a = pool.acquire(64);
         pool.release(a);
 
@@ -56,8 +73,11 @@ class ArrayPoolTest {
     void threadLocal_caps_at_maxPerThread() {
         int max = 3;
         AtomicInteger discards = new AtomicInteger();
-        ArrayPool<byte[]> pool = ArrayPool.threadLocal(
-                byte[]::new, a -> a.length, 64, arr -> discards.incrementAndGet(), max);
+        ArrayPool<byte[]> pool = new ArrayPool.Builder<>(byte[]::new, arr -> arr.length)
+                .defaultSize(64)
+                .onDiscard(arr -> discards.incrementAndGet())
+                .maxSize(max)
+                .build();
 
         List<byte[]> held = new ArrayList<>();
         for (int i = 0; i < max + 2; i++) held.add(pool.acquire(64));
@@ -69,8 +89,11 @@ class ArrayPoolTest {
     @Test
     void threadLocal_onDiscard_called_for_out_of_range() {
         AtomicInteger discards = new AtomicInteger();
-        ArrayPool<byte[]> pool = ArrayPool.threadLocal(
-                byte[]::new, a -> a.length, 64, arr -> discards.incrementAndGet(), 8);
+        ArrayPool<byte[]> pool = new ArrayPool.Builder<>(byte[]::new, arr -> arr.length)
+                .defaultSize(64)
+                .onDiscard(arr -> discards.incrementAndGet())
+                .maxSize(8)
+                .build();
 
         pool.release(new byte[4]);   // too small
         pool.release(new byte[512]); // too large (> 64*2)
@@ -79,7 +102,10 @@ class ArrayPoolTest {
 
     @Test
     void threadLocal_thread_isolation() throws InterruptedException {
-        ArrayPool<byte[]> pool = ArrayPool.threadLocalBytes(64, 8);
+        ArrayPool<byte[]> pool = new ArrayPool.Builder<>(byte[]::new, arr -> arr.length)
+                .defaultSize(64)
+                .maxSize(8)
+                .build();
         byte[] mainArr = pool.acquire(64);
         pool.release(mainArr);
 
@@ -98,17 +124,37 @@ class ArrayPoolTest {
 
     @Test
     void threadLocal_typed_factories() {
-        assertNotNull(ArrayPool.threadLocalInts(16, 4).acquire(16));
-        assertNotNull(ArrayPool.threadLocalLongs(16, 4).acquire(16));
-        assertNotNull(ArrayPool.threadLocalFloats(16, 4).acquire(16));
-        assertNotNull(ArrayPool.threadLocalDoubles(16, 4).acquire(16));
+        assertNotNull(new ArrayPool.Builder<>(int[]::new, arr -> arr.length)
+                .defaultSize(16)
+                .maxSize(4)
+                .build()
+                .acquire(16));
+        assertNotNull(new ArrayPool.Builder<>(long[]::new, arr -> arr.length)
+                .defaultSize(16)
+                .maxSize(4)
+                .build()
+                .acquire(16));
+        assertNotNull(new ArrayPool.Builder<>(float[]::new, arr -> arr.length)
+                .defaultSize(16)
+                .maxSize(4)
+                .build()
+                .acquire(16));
+        assertNotNull(new ArrayPool.Builder<>(double[]::new, arr -> arr.length)
+                .defaultSize(16)
+                .maxSize(4)
+                .build()
+                .acquire(16));
     }
 
     // ========================= SHARED =========================
 
     @Test
     void shared_acquire_creates_when_empty() {
-        ArrayPool<byte[]> pool = ArrayPool.sharedBytes(64, 8);
+        ArrayPool<byte[]> pool = new ArrayPool.Builder<>(byte[]::new, arr -> arr.length)
+                .strategy(ArrayPool.Strategy.SHARED)
+                .defaultSize(64)
+                .maxSize(8)
+                .build();
         byte[] arr = pool.acquire(64);
         assertNotNull(arr);
         assertTrue(arr.length >= 64);
@@ -116,7 +162,11 @@ class ArrayPoolTest {
 
     @Test
     void shared_release_and_reacquire() {
-        ArrayPool<byte[]> pool = ArrayPool.sharedBytes(64, 8);
+        ArrayPool<byte[]> pool = new ArrayPool.Builder<>(byte[]::new, arr -> arr.length)
+                .strategy(ArrayPool.Strategy.SHARED)
+                .defaultSize(64)
+                .maxSize(8)
+                .build();
         byte[] a = pool.acquire(64);
         pool.release(a);
         assertSame(a, pool.acquire(64));
@@ -125,7 +175,11 @@ class ArrayPoolTest {
     @Test
     void shared_no_toctou_undersized() {
         // SharedImpl uses pollFirst without peek — verify it never returns undersized
-        ArrayPool<byte[]> pool = ArrayPool.sharedBytes(64, 32);
+        ArrayPool<byte[]> pool = new ArrayPool.Builder<>(byte[]::new, arr -> arr.length)
+                .strategy(ArrayPool.Strategy.SHARED)
+                .defaultSize(64)
+                .maxSize(32)
+                .build();
         for (int i = 0; i < 100; i++) {
             byte[] arr = pool.acquire(64);
             assertTrue(arr.length >= 64, "acquired array must meet minSize");
@@ -135,7 +189,11 @@ class ArrayPoolTest {
 
     @Test
     void shared_cross_thread_recycle() throws InterruptedException {
-        ArrayPool<byte[]> pool = ArrayPool.sharedBytes(64, 8);
+        ArrayPool<byte[]> pool = new ArrayPool.Builder<>(byte[]::new, arr -> arr.length)
+                .strategy(ArrayPool.Strategy.SHARED)
+                .defaultSize(64)
+                .maxSize(8)
+                .build();
         byte[] arr = pool.acquire(64);
 
         CountDownLatch latch = new CountDownLatch(1);
@@ -147,15 +205,39 @@ class ArrayPoolTest {
 
     @Test
     void shared_null_release_ignored() {
-        ArrayPool<byte[]> pool = ArrayPool.sharedBytes(64, 8);
+        ArrayPool<byte[]> pool = new ArrayPool.Builder<>(byte[]::new, arr -> arr.length)
+                .strategy(ArrayPool.Strategy.SHARED)
+                .defaultSize(64)
+                .maxSize(8)
+                .build();
         assertDoesNotThrow(() -> pool.release(null));
     }
 
     @Test
     void shared_typed_factories() {
-        assertNotNull(ArrayPool.sharedInts(16, 4).acquire(16));
-        assertNotNull(ArrayPool.sharedLongs(16, 4).acquire(16));
-        assertNotNull(ArrayPool.sharedFloats(16, 4).acquire(16));
-        assertNotNull(ArrayPool.sharedDoubles(16, 4).acquire(16));
+        assertNotNull(new ArrayPool.Builder<>(int[]::new, arr -> arr.length)
+                .strategy(ArrayPool.Strategy.SHARED)
+                .defaultSize(16)
+                .maxSize(4)
+                .build()
+                .acquire(16));
+        assertNotNull(new ArrayPool.Builder<>(long[]::new, arr -> arr.length)
+                .strategy(ArrayPool.Strategy.SHARED)
+                .defaultSize(16)
+                .maxSize(4)
+                .build()
+                .acquire(16));
+        assertNotNull(new ArrayPool.Builder<>(float[]::new, arr -> arr.length)
+                .strategy(ArrayPool.Strategy.SHARED)
+                .defaultSize(16)
+                .maxSize(4)
+                .build()
+                .acquire(16));
+        assertNotNull(new ArrayPool.Builder<>(double[]::new, arr -> arr.length)
+                .strategy(ArrayPool.Strategy.SHARED)
+                .defaultSize(16)
+                .maxSize(4)
+                .build()
+                .acquire(16));
     }
 }

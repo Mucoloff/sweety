@@ -7,13 +7,27 @@ import dev.sweety.netty.packet.buffer.io.callable.CallableEncoder;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
+
 import java.nio.ByteBuffer;
+
 import it.unimi.dsi.fastutil.Pair;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import org.jetbrains.annotations.Nullable;
 import dev.sweety.math.pool.Pooled;
 import dev.sweety.math.pool.Release;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntFunction;
@@ -43,7 +57,23 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
         this(Unpooled.wrappedBuffer(bytes));
     }
 
-    /** Pool ctor — used by {@link PacketBufferAllocator}. */
+    /** Marker for the no-alloc wrapper ctor. */
+    private enum Wrapper { INSTANCE }
+
+    /** No-alloc ctor: empty view, no underlying buffer. Use only with {@link #wrapExternal(ByteBuf)}. */
+    private PacketBuffer(Wrapper ignored) {
+        this.nettyBuffer = null;
+        this.recycler = null;
+    }
+
+    /** Creates a wrapper with no backing buffer; must be repointed via {@link #wrapExternal(ByteBuf)} before use. */
+    public static PacketBuffer wrapper() {
+        return new PacketBuffer(Wrapper.INSTANCE);
+    }
+
+    /**
+     * Pool ctor — used by {@link PacketBufferAllocator}.
+     */
     PacketBuffer(int capacity, Consumer<PacketBuffer> recycler) {
         this.nettyBuffer = PooledByteBufAllocator.DEFAULT.buffer(capacity);
         this.recycler = recycler;
@@ -60,6 +90,18 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
         resetPackedBooleanWriteState();
     }
 
+    /**
+     * Repoints this wrapper to an externally-owned {@link ByteBuf} without acquiring a new
+     * underlying buffer. Intended for thread-local wrapper reuse: the caller retains ownership of
+     * {@code buf} and must manage its lifecycle; this object is only a view for the call duration.
+     */
+    public PacketBuffer wrapExternal(ByteBuf buf) {
+        this.nettyBuffer = buf;
+        resetPackedBooleanReadState();
+        resetPackedBooleanWriteState();
+        return this;
+    }
+
     @Override
     public void clear() {
         this.nettyBuffer.clear();
@@ -71,6 +113,10 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
     public PacketBuffer discardReadBytes() {
         this.nettyBuffer.discardReadBytes();
         resetPackedBooleanReadState();
+        // Content shifts left here — any in-progress write mask byte's absolute writePosIndex
+        // goes stale, so a pending partial group would corrupt whatever now sits at that offset.
+        // Force the next writeBoolean() to start a fresh group, matching writerIndex(int)/resetWriterIndex().
+        resetPackedBooleanWriteState();
         return this;
     }
 
@@ -442,7 +488,8 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
 
 
     public <T extends Enum<T>, S> PacketBuffer writeEnum(T value, Function<T, S> stateMapper, CallableEncoder<? super S> stateEncoder) {
-        return super.writeEnum(value, stateMapper, stateEncoder);
+        super.writeEnum(value, stateMapper, stateEncoder);
+        return this;
     }
 
 
@@ -452,7 +499,8 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
 
 
     public <T> PacketBuffer writeObject(@Nullable T object, CallableEncoder<? super T> encoder) {
-        return super.writeObject(object, encoder);
+        super.writeObject(object, encoder);
+        return this;
     }
 
 
@@ -467,12 +515,14 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
 
 
     public <T> PacketBuffer writeIterable(Iterable<T> iterable, int size, CallableEncoder<? super T> encoder) {
-        return super.writeIterable(iterable, size, encoder);
+        super.writeIterable(iterable, size, encoder);
+        return this;
     }
 
 
     public <T> PacketBuffer writeCollection(Collection<T> collection, CallableEncoder<? super T> encoder) {
-        return super.writeCollection(collection, encoder);
+        super.writeCollection(collection, encoder);
+        return this;
     }
 
 
@@ -491,7 +541,8 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
     }
 
     public <K, V> PacketBuffer writeMap(Map<K, V> map, CallableEncoder<Pair<K, V>> encoder) {
-        return super.writeMap(map, encoder);
+        super.writeMap(map, encoder);
+        return this;
     }
 
 
@@ -500,7 +551,8 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
     }
 
     public <K, V> PacketBuffer writeMap(Map<K, V> map, CallableEncoder<? super K> kEncoder, CallableEncoder<? super V> vEncoder) {
-        return super.writeMap(map, kEncoder, vEncoder);
+        super.writeMap(map, kEncoder, vEncoder);
+        return this;
     }
 
     public <K, V> Map<K, V> readMap(CallableDecoder<K> kDecoder, CallableDecoder<V> vDecoder, IntFunction<Map<K, V>> mapFactory) {
@@ -511,8 +563,49 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
         return super.readEnumMap(keyClass, vDecoder);
     }
 
+    public <K extends Enum<K>, V> EnumMap<K, V> readMap(Class<K> keyClass, CallableDecoder<V> vDecoder) {
+        return super.readMap(keyClass, vDecoder);
+    }
+
+    public <E extends Enum<E>> java.util.EnumSet<E> readCollection(Class<E> type) {
+        return super.readCollection(type);
+    }
+
     public <K extends Enum<K>, V> PacketBuffer writeEnumMap(EnumMap<K, V> map, CallableEncoder<? super V> vEncoder) {
-        return super.writeEnumMap(map, vEncoder);
+        super.writeEnumMap(map, vEncoder);
+        return this;
+    }
+
+    public <V> Int2ObjectOpenHashMap<V> readInt2ObjectMap(CallableDecoder<V> vDecoder) {
+        return super.readInt2ObjectMap(vDecoder);
+    }
+
+    public <V> Long2ObjectOpenHashMap<V> readLong2ObjectMap(CallableDecoder<V> vDecoder) {
+        return super.readLong2ObjectMap(vDecoder);
+    }
+
+    public <K> Object2IntOpenHashMap<K> readObject2IntMap(CallableDecoder<K> kDecoder) {
+        return super.readObject2IntMap(kDecoder);
+    }
+
+    public <K> Object2LongOpenHashMap<K> readObject2LongMap(CallableDecoder<K> kDecoder) {
+        return super.readObject2LongMap(kDecoder);
+    }
+
+    public IntOpenHashSet readIntSet() {
+        return super.readIntSet();
+    }
+
+    public IntArrayList readIntList() {
+        return super.readIntList();
+    }
+
+    public LongOpenHashSet readLongSet() {
+        return super.readLongSet();
+    }
+
+    public LongArrayList readLongList() {
+        return super.readLongList();
     }
 
 }

@@ -1,0 +1,50 @@
+plugins {
+    id("sweety.java-conventions")
+}
+
+dependencies {
+    testImplementation(project(":util:persistence:sql4j"))
+
+    // Testcontainers
+    testImplementation(platform("org.testcontainers:testcontainers-bom:1.20.4"))
+    testImplementation("org.testcontainers:junit-jupiter")
+    testImplementation("org.testcontainers:postgresql")
+    testImplementation("org.testcontainers:mysql")
+    testImplementation("org.testcontainers:mariadb")
+
+    // JDBC drivers
+    testImplementation("com.h2database:h2:2.3.232")
+    testRuntimeOnly("org.postgresql:postgresql:42.7.5")
+    testRuntimeOnly("com.mysql:mysql-connector-j:9.4.0")
+    testRuntimeOnly("org.mariadb.jdbc:mariadb-java-client:3.5.1")
+
+    // JUnit 5
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.4")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.11.4")
+
+    // Processor (generates table mirrors for the IT entity at compile time)
+    testAnnotationProcessor(project(":util:persistence:sql4j-processor"))
+}
+
+// Task that runs only H2 (no containers — fast, CI-friendly)
+tasks.test {
+    useJUnitPlatform {
+        excludeTags("integration")
+    }
+    description = "Runs unit-style integration tests (H2 in-memory only)."
+}
+
+// Task that runs the full containerised suite
+tasks.register<Test>("integrationTest") {
+    useJUnitPlatform {
+        includeTags("integration")
+    }
+    description = "Runs all integration tests including containerised databases."
+    group = "verification"
+
+    testLogging {
+        events("passed", "skipped", "failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showStandardStreams = false
+    }
+}

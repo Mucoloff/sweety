@@ -63,7 +63,7 @@ public interface SqlLogger {
      * @return a shared no-op {@code SqlLogger}
      */
     static SqlLogger nop() {
-        return _ -> {};
+        return ignored -> {};
     }
 
     /**

@@ -32,7 +32,7 @@ public class ConsoleBackend implements LoggerBackend {
 
     @Override
     public void log(LogEvent event) {
-        String formatted = formatter.format(event.level(), event.loggerName(), event.profile(), event.rawArgs());
+        String formatted = formatter.format(event.level(), event.loggerName(), event.rawArgs());
         String color = getColor(event.level());
         
         // Add color: Color + Message + Reset

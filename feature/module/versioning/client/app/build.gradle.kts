@@ -1,5 +1,15 @@
 plugins {
+    id("sweety.java-conventions")
     application
+}
+
+application {
+    mainClass.set("dev.sweety.app.AppMain")
+    applicationDefaultJvmArgs = listOf("--enable-preview")
+}
+
+distributions.all {
+    contents { duplicatesStrategy = org.gradle.api.file.DuplicatesStrategy.EXCLUDE }
 }
 
 dependencies {
@@ -7,16 +17,5 @@ dependencies {
     implementation(project(":feature:module:extension-versioning:api"))
     implementation(project(":feature:module:extension-versioning:manager"))
     implementation(project(":feature:module:versioning:protocol"))
-    implementation(project(":util:data"))
+    implementation(project(":util:math"))
 }
-
-application {
-    mainClass.set("dev.sweety.app.AppMain")
-}
-
-tasks.named<Jar>("jar") {
-    manifest {
-        attributes["Main-Class"] = "dev.sweety.app.AppMain"
-    }
-}
-

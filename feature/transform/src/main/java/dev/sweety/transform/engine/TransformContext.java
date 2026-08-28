@@ -3,7 +3,10 @@ package dev.sweety.transform.engine;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodNode;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Carries a single class through the transformer pipeline.
@@ -22,7 +25,7 @@ public final class TransformContext {
     /**
      * Internal names of classes (or interfaces) whose @Transform annotation
      * should be inherited by subclasses.  Populated by TransformPipeline from
-     * the first-pass scan done by TransformCLI.
+     * the first-pass scan of the pipeline driver.
      */
     private Set<String> superTransformClasses = Set.of();
 

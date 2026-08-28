@@ -1,5 +1,7 @@
 package dev.sweety.versioning.protocol.update;
 
+import dev.sweety.data.buffer.BufferReader;
+import dev.sweety.data.buffer.BufferWriter;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.versioning.version.artifact.Artifact;
 import dev.sweety.versioning.version.ReleaseInfo;
@@ -10,17 +12,26 @@ public class ReleasePacket extends Packet {
     private ReleaseInfo info;
     private ReleaseBroadcastType type;
 
+    public ReleasePacket() {}
+
     public ReleasePacket(Artifact artifact, ReleaseInfo info, ReleaseBroadcastType type) {
-        this.buffer().writeString(artifact.name());
-        this.buffer().writeObject(info);
-        this.buffer().writeEnum(type);
+        this.artifact = artifact;
+        this.info = info;
+        this.type = type;
     }
 
-    public ReleasePacket(int _id, long _timestamp, byte[] _data) {
-        super(_id, _timestamp, _data);
-        this.artifact = new Artifact(this.buffer().readString());
-        this.info = this.buffer().readObject(ReleaseInfo.DECODER);
-        this.type = this.buffer().readEnum(ReleaseBroadcastType.class);
+    @Override
+    public void write(final BufferWriter buffer) {
+        buffer.writeString(artifact.name());
+        buffer.writeObject(info);
+        buffer.writeEnum(type);
+    }
+
+    @Override
+    public void read(final BufferReader buffer) {
+        this.artifact = new Artifact(buffer.readString());
+        this.info = buffer.readObject(ReleaseInfo.DECODER);
+        this.type = buffer.readEnum(ReleaseBroadcastType.class);
     }
 
     public Artifact artifact() {

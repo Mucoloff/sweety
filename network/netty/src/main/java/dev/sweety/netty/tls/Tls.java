@@ -1,9 +1,15 @@
 package dev.sweety.netty.tls;
 
 import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslProvider;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import io.netty.handler.ssl.util.SelfSignedCertificate;
+
+import dev.sweety.util.logger.SimpleLogger;
 
 import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.SSLException;
 import java.io.File;
@@ -14,43 +20,43 @@ import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
+import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Base64;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Centralized TLS configuration for sweety Netty connections.
+ * Centralized TLS configuration for luce Netty connections.
  *
  * Server side: loads cert + key from files (mounted via Docker or configured via env/prop).
  * Client side: loads pinned CA cert from classpath resource.
  *
  * Env vars:
- *   SWEETY_TLS_ENABLED         — "true" to enable TLS (default: false)
- *   SWEETY_TLS_CERT            — path to server certificate PEM (server only)
- *   SWEETY_TLS_KEY             — path to server private key PEM (server only)
- *   SWEETY_TLS_ALLOW_PLAINTEXT — "true" only on closed dev networks
+ *   LUCE_TLS_ENABLED         — "true" to enable TLS (default: false)
+ *   LUCE_TLS_CERT            — path to server certificate PEM (server only)
+ *   LUCE_TLS_KEY             — path to server private key PEM (server only)
+ *   LUCE_TLS_ALLOW_PLAINTEXT — "true" only on closed dev networks
  */
 public final class Tls {
 
-    private static final String CA_RESOURCE = "tls/sweety-ca.crt";
+    private static final SimpleLogger logger = SimpleLogger.of(Tls.class);
+
+    private static final String CA_RESOURCE = "tls/luce-ca.crt";
 
     private static final AtomicBoolean PLAINTEXT_WARN_EMITTED = new AtomicBoolean(false);
 
     private Tls() {}
 
+    /** TLS is mandatory — always on, never config/env toggleable (matches {@code SessionSettings.TLS_ENABLED}). */
     public static boolean isEnabled() {
-        final String prop = System.getProperty("sweety.tls.enabled");
-        if (prop != null) return Boolean.parseBoolean(prop);
-        final String env = System.getenv("SWEETY_TLS_ENABLED");
-        if (env != null) return Boolean.parseBoolean(env);
-        return Tls.class.getClassLoader().getResource(CA_RESOURCE) != null;
+        return true;
     }
 
     public static boolean isPlaintextExplicitlyAllowed() {
-        final String prop = System.getProperty("sweety.tls.allow.plaintext");
+        final String prop = System.getProperty("luce.tls.allow.plaintext");
         if (prop != null) return Boolean.parseBoolean(prop);
-        return Boolean.parseBoolean(System.getenv().getOrDefault("SWEETY_TLS_ALLOW_PLAINTEXT", "false"));
+        return Boolean.parseBoolean(System.getenv().getOrDefault("LUCE_TLS_ALLOW_PLAINTEXT", "false"));
     }
 
     public static void enforceTlsPolicy(final String componentLabel) {
@@ -67,26 +73,30 @@ public final class Tls {
     private static void plaintextWarnOnce(final String componentLabel) {
         if (!PLAINTEXT_WARN_EMITTED.compareAndSet(false, true)) return;
         final String bar = "=".repeat(80);
-        System.err.println(bar);
-        System.err.println("  SWEETY SECURITY WARNING — TLS DISABLED (" + componentLabel + ")");
-        System.err.println("  SWEETY_TLS_ALLOW_PLAINTEXT=true and Tls.isEnabled()=false.");
-        System.err.println("  All peers must use the same mode. Do not use outside a trusted dev network.");
-        System.err.println(bar);
+        logger.profile("policy").warn(String.join("\n", bar,
+                "  LUCE SECURITY WARNING — TLS DISABLED (" + componentLabel + ")",
+                "  LUCE_TLS_ALLOW_PLAINTEXT=true and Tls.isEnabled()=false.",
+                "  All peers must use the same mode. Do not use outside a trusted dev network.",
+                bar));
     }
 
     private static void fatalBanner(final String componentLabel) {
         final String bar = "=".repeat(80);
-        System.err.println(bar);
-        System.err.println("  SWEETY WILL NOT START — TLS IS REQUIRED");
-        System.err.println("  Component: " + componentLabel);
-        System.err.println("  Fix: set SWEETY_TLS_ENABLED=true and mount cert/key, OR set");
-        System.err.println("       SWEETY_TLS_ALLOW_PLAINTEXT=true on every mesh process for dev only.");
-        System.err.println(bar);
+        logger.profile("policy").error(String.join("\n", bar,
+                "  LUCE WILL NOT START — TLS IS REQUIRED",
+                "  Component: " + componentLabel,
+                "  Fix: set LUCE_TLS_ENABLED=true and mount cert/key, OR set",
+                "       LUCE_TLS_ALLOW_PLAINTEXT=true on every mesh process for dev only.",
+                bar));
     }
 
     public static SslContext serverContext() throws SSLException {
-        final String certPath = resolve("sweety.tls.cert", "SWEETY_TLS_CERT", "/app/certs/server.crt");
-        final String keyPath  = resolve("sweety.tls.key",  "SWEETY_TLS_KEY",  "/app/certs/server.key");
+        return serverContext(
+                resolve("luce.tls.cert", "LUCE_TLS_CERT", "/app/certs/server.crt"),
+                resolve("luce.tls.key",  "LUCE_TLS_KEY",  "/app/certs/server.key"));
+    }
+
+    public static SslContext serverContext(String certPath, String keyPath) throws SSLException {
 
         final File certFile = new File(certPath);
         final File keyFile  = new File(keyPath);
@@ -115,7 +125,16 @@ public final class Tls {
             cert = (X509Certificate) cf.generateCertificate(certStream);
         }
 
-        final String keyPem = Files.readString(keyFile.toPath());
+        final String keyPem;
+        try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                new java.io.InputStreamReader(Files.newInputStream(keyFile.toPath()), java.nio.charset.StandardCharsets.UTF_8))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line).append('\n');
+            }
+            keyPem = sb.toString();
+        }
         final String keyBase64 = keyPem
                 .replace("-----BEGIN PRIVATE KEY-----", "")
                 .replace("-----END PRIVATE KEY-----", "")
@@ -139,6 +158,49 @@ public final class Tls {
         return kmf;
     }
 
+    /**
+     * Builds a JDK {@link SSLContext} for the built-in {@code com.sun.net.httpserver.HttpsServer},
+     * reusing the same cert/key PEMs as the Netty server context. Lets the HTTP download/webhook
+     * endpoints run over TLS with one cert source.
+     */
+    public static SSLContext httpsServerContext() throws SSLException {
+        return httpsServerContext(
+                resolve("luce.tls.cert", "LUCE_TLS_CERT", "/app/certs/server.crt"),
+                resolve("luce.tls.key",  "LUCE_TLS_KEY",  "/app/certs/server.key"));
+    }
+
+    public static SSLContext httpsServerContext(String certPath, String keyPath) throws SSLException {
+        final File certFile = new File(certPath);
+        final File keyFile  = new File(keyPath);
+        if (!certFile.exists()) throw new SSLException("TLS cert not found: " + certPath);
+        if (!keyFile.exists())  throw new SSLException("TLS key not found: " + keyPath);
+        try {
+            final KeyManagerFactory kmf = buildKeyManagerFactory(certFile, keyFile);
+            final SSLContext ctx = SSLContext.getInstance("TLS");
+            ctx.init(kmf.getKeyManagers(), null, null);
+            return ctx;
+        } catch (SSLException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new SSLException("Failed to build HTTPS server context", e);
+        }
+    }
+
+    /** Dev-only HTTPS context backed by a self-signed cert. NEVER use in production. */
+    public static SSLContext devHttpsServerContext() throws SSLException {
+        try {
+            final SelfSignedCertificate ssc = new SelfSignedCertificate();
+            final KeyManagerFactory kmf = buildKeyManagerFactory(ssc.certificate(), ssc.privateKey());
+            final SSLContext ctx = SSLContext.getInstance("TLS");
+            ctx.init(kmf.getKeyManagers(), null, null);
+            return ctx;
+        } catch (SSLException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new SSLException("Failed to build dev HTTPS context", e);
+        }
+    }
+
     public static SslContext clientContext() throws SSLException {
         try (InputStream caStream = Tls.class.getClassLoader().getResourceAsStream(CA_RESOURCE)) {
             if (caStream == null)
@@ -149,7 +211,7 @@ public final class Tls {
 
             final KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
             trustStore.load(null, null);
-            trustStore.setCertificateEntry("sweety-ca", caCert);
+            trustStore.setCertificateEntry("luce-ca", caCert);
 
             final TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
             tmf.init(trustStore);
@@ -163,6 +225,31 @@ public final class Tls {
         } catch (Exception e) {
             throw new SSLException("Failed to build client TLS context from embedded CA", e);
         }
+    }
+
+    /**
+     * Dev TLS mode: use a self-signed cert (server) + trust-all (client) instead of real cert
+     * files / pinned CA. Best-effort for local testing only — NEVER enable in production.
+     */
+    public static boolean devMode() {
+        final String prop = System.getProperty("luce.tls.dev");
+        if (prop != null) return Boolean.parseBoolean(prop);
+        return Boolean.parseBoolean(System.getenv().getOrDefault("LUCE_TLS_DEV", "false"));
+    }
+
+    public static SslContext devServerContext() throws SSLException {
+        try {
+            final SelfSignedCertificate ssc = new SelfSignedCertificate();
+            return SslContextBuilder.forServer(ssc.certificate(), ssc.privateKey()).build();
+        } catch (CertificateException e) {
+            throw new SSLException("Failed to generate self-signed certificate", e);
+        }
+    }
+
+    public static SslContext devClientContext() throws SSLException {
+        return SslContextBuilder.forClient()
+                .trustManager(InsecureTrustManagerFactory.INSTANCE)
+                .build();
     }
 
     private static String resolve(String propKey, String envKey, String fallback) {

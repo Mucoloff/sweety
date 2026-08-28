@@ -2,7 +2,15 @@ package dev.sweety.sql4j.api.repository;
 
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
-import dev.sweety.sql4j.api.query.*;
+import dev.sweety.sql4j.api.query.BatchQuery;
+import dev.sweety.sql4j.api.query.ConditionalDeleteQuery;
+import dev.sweety.sql4j.api.query.ConditionalUpdateQuery;
+import dev.sweety.sql4j.api.query.Criterion;
+import dev.sweety.sql4j.api.query.DeleteQuery;
+import dev.sweety.sql4j.api.query.InsertQuery;
+import dev.sweety.sql4j.api.query.Query;
+import dev.sweety.sql4j.api.query.UpdateQuery;
+import dev.sweety.sql4j.api.query.UpsertQuery;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;

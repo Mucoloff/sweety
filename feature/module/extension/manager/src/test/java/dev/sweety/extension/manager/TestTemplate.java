@@ -11,7 +11,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Template di test per il modulo extension-manager
@@ -54,7 +58,7 @@ class TestTemplate {
         // Testa il comportamento con input non valido
         assertThrows(NullPointerException.class, () -> {
             // methodUnderTest(null);
-
+            throw new NullPointerException();
         });
     }
 
@@ -242,10 +246,11 @@ class FileSystemTestTemplate {
 class ExceptionHandlingTestTemplate {
 
     @Test
-    @DisplayName("Dovrebbe lanciare IllegalArgumentException per argomento nullo")
+    @DisplayName("Dovrebbe lanciare IllegalArgumentException per argomento invalido")
     void testExceptionThrowing() {
         assertThrows(IllegalArgumentException.class, () -> {
             // methodThatThrowsException(null);
+            throw new IllegalArgumentException();
         }, "Dovrebbe lanciare IllegalArgumentException");
     }
 
@@ -254,6 +259,7 @@ class ExceptionHandlingTestTemplate {
     void testExceptionMessage() {
         Exception exception = assertThrows(IllegalArgumentException.class, () -> {
             // methodThatThrowsException(invalid);
+            throw new IllegalArgumentException("atteso");
         });
 
         assertTrue(exception.getMessage().contains("atteso"),

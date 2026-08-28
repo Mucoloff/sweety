@@ -3,10 +3,13 @@ package dev.sweety.feature.service.api;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public interface ServiceRegistry {
 
@@ -89,6 +92,33 @@ public interface ServiceRegistry {
     
     default <T> T remove(@NotNull Class<T> type) {
         return remove(ServiceKey.key(type));
+    }
+
+    /**
+     * Returns a live child view of this registry with layered semantics:
+     * <ul>
+     *   <li>Keys that match {@code selector} are <em>inherited</em>: reads delegate to
+     *       this parent (live, not a snapshot); writes throw {@link IllegalStateException}.</li>
+     *   <li>All other keys go into the child's own local layer and are invisible to the parent.</li>
+     * </ul>
+     */
+    @NotNull
+    ServiceRegistry child(@NotNull Predicate<ServiceKey<?>> selector);
+
+    /** Convenience overload: inherit the given explicit keys. */
+    @NotNull
+    default ServiceRegistry child(@NotNull ServiceKey<?>... keys) {
+        Set<ServiceKey<?>> set = Set.of(keys);
+        return child(set::contains);
+    }
+
+    /** Convenience overload: inherit services registered under the given types (unnamed keys only). */
+    @NotNull
+    default ServiceRegistry child(@NotNull Class<?>... types) {
+        Set<ServiceKey<?>> set = Arrays.stream(types)
+                .map(ServiceKey::key)
+                .collect(Collectors.toUnmodifiableSet());
+        return child(set::contains);
     }
 
     class RegistrationBuilder<T> {

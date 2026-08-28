@@ -3,7 +3,14 @@ package dev.sweety.minecraft.version;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public enum MinecraftVersion implements Version<MinecraftVersion> {
@@ -27,14 +34,17 @@ public enum MinecraftVersion implements Version<MinecraftVersion> {
     V_1_20_5(766), V_1_20_6(766),
     V_1_21(767), V_1_21_1(767), V_1_21_2(768), V_1_21_3(768),
     V_1_21_4(769), V_1_21_5(770), V_1_21_6(771),
-    V_1_21_7(772), V_1_21_8(772), V_1_21_9(773), V_1_21_10(773), V_1_21_11(774),
+        V_1_21_7(772), V_1_21_8(772), V_1_21_9(773), V_1_21_10(773), V_1_21_11(774),
+    V_26_1(775), V_26_1_1(775), V_26_1_2(775),
+    V_26_2(776),
 
     ERROR(-1, true);
 
     private static final MinecraftVersion[] VALUES = values();
 
-    /* SortedMap for Protocol-based range/exact lookups */
-    private static final SortedMap<Integer, List<MinecraftVersion>> BY_PROTOCOL = new TreeMap<>();
+    /* Protocol -> versions sharing it. Only exact-key get/getOrDefault are used (no sorted ops),
+       so a primitive-keyed hash map avoids boxing the protocol id on every lookup. */
+    private static final Int2ObjectOpenHashMap<List<MinecraftVersion>> BY_PROTOCOL = new Int2ObjectOpenHashMap<>();
 
     /* LinkedHashMap for Name-based lookups to maintain order */
     private static final Map<String, MinecraftVersion> BY_NAME = new LinkedHashMap<>();

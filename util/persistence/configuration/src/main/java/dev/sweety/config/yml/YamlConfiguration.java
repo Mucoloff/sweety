@@ -2,7 +2,7 @@ package dev.sweety.config.yml;
 
 import dev.sweety.config.common.TextConfiguration;
 
-import java.io.*;
+import java.io.Reader;
 import java.util.Map;
 import java.util.TreeMap;
 

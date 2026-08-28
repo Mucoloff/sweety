@@ -1,9 +1,13 @@
 package dev.sweety.transform.engine;
 
-import org.objectweb.asm.*;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import java.util.logging.Logger;
 
 /**
@@ -80,6 +84,19 @@ public final class TransformPipeline {
             @Override
             protected ClassLoader getClassLoader() {
                 return TransformPipeline.class.getClassLoader();
+            }
+
+            // Delivery runs on the server, which has neither Minecraft nor the client classes on its
+            // classpath. COMPUTE_FRAMES would otherwise classload every referenced type to find common
+            // supers and throw. Fall back to Object for any unresolvable pair — Object is the safe
+            // common super and yields verifiable frames for our transformed (gate-shaped) methods.
+            @Override
+            protected String getCommonSuperClass(String type1, String type2) {
+                try {
+                    return super.getCommonSuperClass(type1, type2);
+                } catch (Throwable t) {
+                    return "java/lang/Object";
+                }
             }
         };
 

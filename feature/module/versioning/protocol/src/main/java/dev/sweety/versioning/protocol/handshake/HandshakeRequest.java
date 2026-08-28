@@ -1,6 +1,7 @@
 package dev.sweety.versioning.protocol.handshake;
 
-import dev.sweety.data.buffer.*;
+import dev.sweety.data.buffer.BufferReader;
+import dev.sweety.data.buffer.BufferWriter;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.model.PacketTransaction;
 import dev.sweety.versioning.version.LauncherInfo;
@@ -51,8 +52,6 @@ public class HandshakeRequest extends PacketTransaction.Transaction {
 
     @Override
     public String toString() {
-        return "HandshakeRequest{" +
-                "info=" + info +
-                '}';
+        return "HandshakeRequest{info=%s}".formatted(info);
     }
 }

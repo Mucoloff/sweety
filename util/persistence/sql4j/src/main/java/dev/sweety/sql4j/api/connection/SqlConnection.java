@@ -8,8 +8,8 @@ import dev.sweety.sql4j.api.interceptor.QueryInterceptor;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -36,7 +36,10 @@ public class SqlConnection implements AutoCloseable {
     private final ConnectionProvider connectionProvider;
     private final Executor executor;
     private final boolean ownsExecutor;
-    private final List<QueryInterceptor> interceptors = new ArrayList<>();
+    // CopyOnWriteArrayList: read on every query execution (SqlRunner.execute) from any
+    // thread borrowing this connection, while addInterceptor() can be called concurrently —
+    // a plain ArrayList here is a real unsynchronized-mutation-during-iteration hazard.
+    private final List<QueryInterceptor> interceptors = new CopyOnWriteArrayList<>();
 
     /**
      * Creates a {@code SqlConnection} where the caller owns the executor lifecycle.

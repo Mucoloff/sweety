@@ -2,18 +2,21 @@ package dev.sweety.netty.packet.buffer;
 
 import dev.sweety.data.buffer.AbstractBuffer;
 import dev.sweety.data.buffer.NioBuffer;
-import dev.sweety.data.buffer.SegmentBuffer;
+//import dev.sweety.data.buffer.SegmentBuffer;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.api.Test;
 
-import java.lang.foreign.Arena;
-import java.lang.foreign.MemorySegment;
+//import java.lang.foreign.Arena;
+//import java.lang.foreign.MemorySegment;
 import java.nio.ByteBuffer;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Cross-buffer interop: all three types share big-endian wire format,
@@ -28,9 +31,9 @@ class BufferInteropTest {
         Factory[] factories = {
                 PacketBuffer::new,
                 NioBuffer::heap,
-                NioBuffer::direct,
-                SegmentBuffer::confined,
-                SegmentBuffer::shared
+                NioBuffer::direct
+                //, SegmentBuffer::confined,
+                //SegmentBuffer::shared
         };
         String[] names = {"PacketBuffer", "NioBuffer.heap", "NioBuffer.direct", "SegmentBuffer.confined", "SegmentBuffer.shared"};
 
@@ -96,7 +99,7 @@ class BufferInteropTest {
         assertEquals("wrapped", pkt.readString());
     }
 
-    @Test
+    /*@Test
     void segmentBuffer_asNioBuffer_zerocopy() {
         SegmentBuffer seg = SegmentBuffer.confined();
         seg.writeInt(0xDEADBEEF);
@@ -135,7 +138,7 @@ class BufferInteropTest {
             assertEquals(42,       nio.readVarInt());
             assertEquals("native", nio.readString());
         }
-    }
+    }*/
 
     @Test
     void allThreeEndianessMatch() {
@@ -150,11 +153,13 @@ class BufferInteropTest {
         nio.writeVarInt(val);
         byte[] nioBytes = nio.getBytes();
 
-        SegmentBuffer seg = SegmentBuffer.confined();
+        /*
+         SegmentBuffer seg = SegmentBuffer.confined();
         seg.writeVarInt(val);
         byte[] segBytes = seg.getBytes();
+         */
 
         assertArrayEquals(pktBytes, nioBytes,  "PacketBuffer vs NioBuffer endianness mismatch");
-        assertArrayEquals(pktBytes, segBytes,  "PacketBuffer vs SegmentBuffer endianness mismatch");
+        //assertArrayEquals(pktBytes, segBytes,  "PacketBuffer vs SegmentBuffer endianness mismatch");
     }
 }

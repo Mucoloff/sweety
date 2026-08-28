@@ -5,6 +5,7 @@ import org.junit.platform.suite.api.Suite;
 
 @Suite
 @SelectClasses({
+    ChildServiceRegistryTest.class,
     DependencyInjectorTest.class,
     ServiceManagerTest.class
 })

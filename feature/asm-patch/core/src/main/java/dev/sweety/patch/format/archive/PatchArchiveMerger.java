@@ -3,6 +3,7 @@ package dev.sweety.patch.format.archive;
 import dev.sweety.patch.exception.PatchException;
 import dev.sweety.patch.exception.PatchFormatException;
 import dev.sweety.patch.format.Header;
+import dev.sweety.patch.model.PatchOperation;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -12,7 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -29,7 +29,8 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
  */
 public final class PatchArchiveMerger {
 
-    private PatchArchiveMerger() {}
+    private PatchArchiveMerger() {
+    }
 
     /**
      * Writes {@code output} as a single patch archive containing all operations from {@code segment} followed by {@code tail}.
@@ -76,15 +77,19 @@ public final class PatchArchiveMerger {
             merged.header = PatchArchiveConstants.HEADER;
             merged.fromVersion = idxSeg.fromVersion;
             merged.toVersion = idxSeg.toVersion;
-            merged.operations = outOps;
-
-            byte[] indexJson = Header.GSON.toJson(merged).getBytes(StandardCharsets.UTF_8);
-            ZipEntry indexEntry = new ZipEntry(PatchArchiveConstants.INDEX_ENTRY);
-            indexEntry.setTime(0);
-            zos.putNextEntry(indexEntry);
-            zos.write(indexJson);
-            zos.closeEntry();
+            writeIndex(zos, outOps, merged);
         }
+    }
+
+    static void writeIndex(ZipOutputStream zos, List<PatchArchiveOpEntry> outOps, PatchArchiveIndex merged) throws IOException {
+        merged.operations = outOps;
+
+        byte[] indexJson = Header.GSON.toJson(merged).getBytes(StandardCharsets.UTF_8);
+        ZipEntry indexEntry = new ZipEntry(PatchArchiveConstants.INDEX_ENTRY);
+        indexEntry.setTime(0);
+        zos.putNextEntry(indexEntry);
+        zos.write(indexJson);
+        zos.closeEntry();
     }
 
     private static int appendOperations(
@@ -94,11 +99,10 @@ public final class PatchArchiveMerger {
             int payloadSeq,
             List<PatchArchiveOpEntry> outOps) throws IOException {
         for (PatchArchiveOpEntry e : ops) {
-            PatchArchiveOpEntry c = copyEntry(e);
-            if (!"delete".equalsIgnoreCase(e.type)) {
-                if (e.payloadEntry == null || e.payloadEntry.isBlank()) {
+            PatchArchiveOpEntry c = e.copy();
+            if (!PatchOperation.Type.DELETE.equals(e.type)) {
+                if (e.payloadEntry == null || e.payloadEntry.isBlank())
                     throw new PatchFormatException("Missing payload for " + e.type + ": " + e.path);
-                }
                 byte[] bytes = readPayload(source, e.payloadEntry);
                 c.payloadEntry = PatchArchiveConstants.PAYLOAD_PREFIX + payloadSeq;
                 PatchArchiveEntryNames.requireValidPayloadRef(c.payloadEntry);
@@ -108,16 +112,6 @@ public final class PatchArchiveMerger {
             outOps.add(c);
         }
         return payloadSeq;
-    }
-
-    private static PatchArchiveOpEntry copyEntry(PatchArchiveOpEntry e) {
-        PatchArchiveOpEntry c = new PatchArchiveOpEntry();
-        c.type = e.type != null ? e.type.toLowerCase(Locale.ROOT) : null;
-        c.path = e.path;
-        c.hash = e.hash;
-        c.method = e.method;
-        c.payloadEntry = "delete".equalsIgnoreCase(e.type) ? null : e.payloadEntry;
-        return c;
     }
 
     private static byte[] readPayload(ZipFile zf, String payloadEntry) throws IOException {

@@ -2,7 +2,10 @@ package dev.sweety.sql4j.entity;
 
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
-import dev.sweety.sql4j.api.obj.annotation.*;
+import dev.sweety.sql4j.api.obj.annotation.Index;
+import dev.sweety.sql4j.api.obj.annotation.OneToMany;
+import dev.sweety.sql4j.api.obj.annotation.SoftDelete;
+import dev.sweety.sql4j.api.obj.annotation.Unique;
 import dev.sweety.sql4j.api.annotation.Cacheable;
 
 import java.util.ArrayList;

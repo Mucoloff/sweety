@@ -8,7 +8,13 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ObjectPoolTest {
 
@@ -16,13 +22,17 @@ class ObjectPoolTest {
 
     @Test
     void threadLocal_acquire_creates_when_empty() {
-        ObjectPool<StringBuilder> pool = ObjectPool.threadLocal(StringBuilder::new, 8);
+        ObjectPool<StringBuilder> pool = new ObjectPool.Builder<>(StringBuilder::new, ObjectPool.Strategy.THREAD_LOCAL)
+                .maxSize(8)
+                .build();
         assertNotNull(pool.acquire());
     }
 
     @Test
     void threadLocal_release_and_reacquire_same_instance() {
-        ObjectPool<StringBuilder> pool = ObjectPool.threadLocal(StringBuilder::new, 8);
+        ObjectPool<StringBuilder> pool = new ObjectPool.Builder<>(StringBuilder::new, ObjectPool.Strategy.THREAD_LOCAL)
+                .maxSize(8)
+                .build();
         StringBuilder a = pool.acquire();
         pool.release(a);
         assertSame(a, pool.acquire(), "same-thread recycle must return same instance");
@@ -31,8 +41,10 @@ class ObjectPoolTest {
     @Test
     void threadLocal_reset_called_on_release() {
         AtomicInteger resets = new AtomicInteger();
-        ObjectPool<StringBuilder> pool = ObjectPool.threadLocal(
-                StringBuilder::new, sb -> { sb.setLength(0); resets.incrementAndGet(); }, 8);
+        ObjectPool<StringBuilder> pool = new ObjectPool.Builder<>(StringBuilder::new, ObjectPool.Strategy.THREAD_LOCAL)
+                .reset(sb -> { sb.setLength(0); resets.incrementAndGet(); })
+                .maxSize(8)
+                .build();
 
         StringBuilder sb = pool.acquire();
         sb.append("data");
@@ -47,8 +59,11 @@ class ObjectPoolTest {
     void threadLocal_caps_at_maxPerThread() {
         int max = 4;
         AtomicInteger discards = new AtomicInteger();
-        ObjectPool<StringBuilder> pool = ObjectPool.threadLocal(
-                StringBuilder::new, sb -> {}, sb -> discards.incrementAndGet(), max);
+        ObjectPool<StringBuilder> pool = new ObjectPool.Builder<>(StringBuilder::new, ObjectPool.Strategy.THREAD_LOCAL)
+                .reset(sb -> {})
+                .onDiscard(sb -> discards.incrementAndGet())
+                .maxSize(max)
+                .build();
 
         List<StringBuilder> held = new ArrayList<>();
         for (int i = 0; i < max + 3; i++) held.add(pool.acquire());
@@ -60,8 +75,11 @@ class ObjectPoolTest {
     @Test
     void threadLocal_onDiscard_called_when_pool_full() {
         AtomicInteger discards = new AtomicInteger();
-        ObjectPool<int[]> pool = ObjectPool.threadLocal(
-                () -> new int[1], arr -> {}, arr -> discards.incrementAndGet(), 2);
+        ObjectPool<int[]> pool = new ObjectPool.Builder<>(() -> new int[1], ObjectPool.Strategy.THREAD_LOCAL)
+                .reset(arr -> {})
+                .onDiscard(arr -> discards.incrementAndGet())
+                .maxSize(2)
+                .build();
 
         int[] a = pool.acquire();
         int[] b = pool.acquire();
@@ -75,7 +93,9 @@ class ObjectPoolTest {
 
     @Test
     void threadLocal_thread_isolation() throws InterruptedException {
-        ObjectPool<StringBuilder> pool = ObjectPool.threadLocal(StringBuilder::new, 8);
+        ObjectPool<StringBuilder> pool = new ObjectPool.Builder<>(StringBuilder::new, ObjectPool.Strategy.THREAD_LOCAL)
+                .maxSize(8)
+                .build();
         StringBuilder mainSb = pool.acquire();
         pool.release(mainSb);
 
@@ -94,7 +114,9 @@ class ObjectPoolTest {
 
     @Test
     void threadLocal_use_releases_on_exception() {
-        ObjectPool<StringBuilder> pool = ObjectPool.threadLocal(StringBuilder::new, 8);
+        ObjectPool<StringBuilder> pool = new ObjectPool.Builder<>(StringBuilder::new, ObjectPool.Strategy.THREAD_LOCAL)
+                .maxSize(8)
+                .build();
         StringBuilder acquired = pool.acquire();
         pool.release(acquired);
 
@@ -109,13 +131,17 @@ class ObjectPoolTest {
 
     @Test
     void shared_acquire_creates_when_empty() {
-        ObjectPool<StringBuilder> pool = ObjectPool.shared(StringBuilder::new, 8);
+        ObjectPool<StringBuilder> pool = new ObjectPool.Builder<>(StringBuilder::new, ObjectPool.Strategy.SHARED)
+                .maxSize(8)
+                .build();
         assertNotNull(pool.acquire());
     }
 
     @Test
     void shared_release_and_reacquire() {
-        ObjectPool<StringBuilder> pool = ObjectPool.shared(StringBuilder::new, 8);
+        ObjectPool<StringBuilder> pool = new ObjectPool.Builder<>(StringBuilder::new, ObjectPool.Strategy.SHARED)
+                .maxSize(8)
+                .build();
         StringBuilder a = pool.acquire();
         pool.release(a);
         assertSame(a, pool.acquire());
@@ -124,8 +150,10 @@ class ObjectPoolTest {
     @Test
     void shared_reset_called_on_release() {
         AtomicInteger resets = new AtomicInteger();
-        ObjectPool<StringBuilder> pool = ObjectPool.shared(
-                StringBuilder::new, sb -> { sb.setLength(0); resets.incrementAndGet(); }, 8);
+        ObjectPool<StringBuilder> pool = new ObjectPool.Builder<>(StringBuilder::new, ObjectPool.Strategy.SHARED)
+                .reset(sb -> { sb.setLength(0); resets.incrementAndGet(); })
+                .maxSize(8)
+                .build();
 
         StringBuilder sb = pool.acquire();
         sb.append("hello");
@@ -138,7 +166,9 @@ class ObjectPoolTest {
     @Test
     void shared_caps_at_maxSize() {
         int max = 3;
-        ObjectPool<StringBuilder> pool = ObjectPool.shared(StringBuilder::new, max);
+        ObjectPool<StringBuilder> pool = new ObjectPool.Builder<>(StringBuilder::new, ObjectPool.Strategy.SHARED)
+                .maxSize(max)
+                .build();
         List<StringBuilder> held = new ArrayList<>();
         for (int i = 0; i < max + 2; i++) held.add(pool.acquire());
         for (StringBuilder sb : held) pool.release(sb);
@@ -156,7 +186,9 @@ class ObjectPoolTest {
 
     @Test
     void shared_cross_thread_recycle() throws InterruptedException {
-        ObjectPool<StringBuilder> pool = ObjectPool.shared(StringBuilder::new, 8);
+        ObjectPool<StringBuilder> pool = new ObjectPool.Builder<>(StringBuilder::new, ObjectPool.Strategy.SHARED)
+                .maxSize(8)
+                .build();
         StringBuilder produced = pool.acquire();
 
         CountDownLatch latch = new CountDownLatch(1);
@@ -171,7 +203,9 @@ class ObjectPoolTest {
 
     @Test
     void shared_null_release_ignored() {
-        ObjectPool<StringBuilder> pool = ObjectPool.shared(StringBuilder::new, 4);
-        assertDoesNotThrow(() -> pool.release(null));
+        ObjectPool<StringBuilder> pool = new ObjectPool.Builder<>(StringBuilder::new, ObjectPool.Strategy.SHARED)
+                .maxSize(4)
+                .build();
+        assertDoesNotThrow(() -> pool.release((StringBuilder) null));
     }
 }

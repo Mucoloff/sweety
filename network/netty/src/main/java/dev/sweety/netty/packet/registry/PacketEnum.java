@@ -1,7 +1,7 @@
 package dev.sweety.netty.packet.registry;
 
 import dev.sweety.util.logger.level.LogLevel;
-import dev.sweety.util.logger.SimpleLogger;
+import dev.sweety.util.logger.LoggerFactory;
 import dev.sweety.netty.messaging.exception.PacketRegistrationException;
 import dev.sweety.netty.packet.model.Packet;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
@@ -18,12 +18,10 @@ public interface PacketEnum {
 
     int id();
 
-    String name();
-
     Class<? extends Packet> packetClass();
 
     default void log(LogLevel level, Object... message) {
-        SimpleLogger.log(level, getClass().getSimpleName().replace("Packets", ""), message);
+        LoggerFactory.getLogger(getClass().getSimpleName().replace("Packets", "")).log(level, message);
     }
 
     List<PacketEnum> UNREGISTERED = new LinkedList<>();
@@ -45,7 +43,7 @@ public interface PacketEnum {
                 try {
                     registry.registerPacket(packetEnum.id(), packetEnum.packetClass());
                 } catch (PacketRegistrationException e) {
-                    log(LogLevel.ERROR, "Failed to register packet %s:".formatted(packetEnum.name()), e);
+                    log(LogLevel.ERROR, "Failed to register packet %s:".formatted(((Enum<?>) packetEnum).name()), e);
                 }
             }
         }
@@ -53,7 +51,7 @@ public interface PacketEnum {
 
     default void flag() {
         if (UNREGISTERED.isEmpty()) return;
-        log(LogLevel.WARN, "packets with no class implementation:\n", UNREGISTERED.stream().map(packet -> "%s(%s)".formatted(packet.name(), packet.id())));
+        log(LogLevel.WARN, "packets with no class implementation:\n", UNREGISTERED.stream().map(packet -> "%s(%s)".formatted(((Enum<?>) packet).name(), packet.id())));
     }
 
     static <T extends Enum<T> & PacketEnum> T getById(Class<T> enumClass, int id, T defaultVal) {

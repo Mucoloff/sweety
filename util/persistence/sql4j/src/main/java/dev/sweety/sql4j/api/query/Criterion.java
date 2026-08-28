@@ -175,7 +175,7 @@ public interface Criterion {
     static Criterion in(Column<?> col, Collection<?> values) {
         return new Criterion() {
             @Override public String toSql(Dialect dialect) {
-                String placeholders = values.stream().map(_ -> "?").collect(Collectors.joining(", "));
+                String placeholders = values.stream().map(ignored -> "?").collect(Collectors.joining(", "));
                 return (dialect != null ? col.toSql(dialect) : col.name()) + " IN (" + placeholders + ")";
             }
             @Override public void bind(PreparedStatement ps, int startIdx) throws SQLException {

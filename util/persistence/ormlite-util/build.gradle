@@ -1,6 +1,0 @@
-
-dependencies {
-    implementation("com.j256.ormlite:ormlite-core:5.1")
-    implementation("com.j256.ormlite:ormlite-jdbc:5.1")
-}
-

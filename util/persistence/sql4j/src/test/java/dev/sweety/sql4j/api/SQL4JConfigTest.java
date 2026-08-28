@@ -4,7 +4,10 @@ import dev.sweety.sql4j.api.configuration.SQL4JConfig;
 import dev.sweety.sql4j.impl.connection.dialect.DialectType;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Unit tests for {@link SQL4JConfig}.

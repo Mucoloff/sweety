@@ -1,6 +1,7 @@
 package dev.sweety.versioning.client.http;
 
 import com.google.gson.JsonObject;
+import dev.sweety.versioning.security.ArtifactVerifier;
 import dev.sweety.versioning.util.Utils;
 import dev.sweety.versioning.version.ReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;
@@ -39,6 +40,7 @@ public final class HttpTokenDownloadReleaseService implements ReleaseService {
     private final UUID clientId;
     private final Path cacheDir;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(TIMEOUT).build();
+    private final ArtifactVerifier verifier = ArtifactVerifier.fromConfig();
 
     public HttpTokenDownloadReleaseService(URI baseUri, String apiKey, UUID clientId, Path cacheDir) {
         this.baseUri = Objects.requireNonNull(baseUri, "baseUri");
@@ -82,7 +84,7 @@ public final class HttpTokenDownloadReleaseService implements ReleaseService {
         HttpRequest post = HttpRequest.newBuilder(reserve)
                 .timeout(TIMEOUT)
                 .header("Content-Type", "application/json; charset=utf-8")
-                .header("X-Sweety-Release-Key", apiKey)
+                .header("X-Luce-Release-Key", apiKey)
                 .POST(HttpRequest.BodyPublishers.ofString(Utils.gson().toJson(body), StandardCharsets.UTF_8))
                 .build();
         try {
@@ -101,6 +103,14 @@ public final class HttpTokenDownloadReleaseService implements ReleaseService {
                 if (dl.statusCode() != 200) {
                     Files.deleteIfExists(dl.body());
                     throw new IOException("download HTTP " + dl.statusCode());
+                }
+                ArtifactVerifier.Result vr = verifier.verifyFile(dl.body(),
+                        dl.headers().firstValue("X-Content-SHA256").orElse(null),
+                        dl.headers().firstValue("X-Content-HMAC").orElse(null),
+                        dl.headers().firstValue("X-Content-Ed25519").orElse(null));
+                if (!vr.ok()) {
+                    Files.deleteIfExists(dl.body());
+                    throw new IOException("artifact integrity verification failed: " + vr.reason());
                 }
                 Files.move(dl.body(), target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
                 return target;

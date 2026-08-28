@@ -1,6 +1,9 @@
 package dev.sweety.feature.service.impl;
 
-import dev.sweety.feature.service.api.*;
+import dev.sweety.feature.service.api.Provider;
+import dev.sweety.feature.service.api.Service;
+import dev.sweety.feature.service.api.ServiceKey;
+import dev.sweety.feature.service.api.ServiceRegistry;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -10,6 +13,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class ServiceManager implements ServiceRegistry, AutoCloseable {
@@ -140,6 +144,13 @@ public class ServiceManager implements ServiceRegistry, AutoCloseable {
         T instance = DependencyInjector.instantiate(this, type);
         put(type, instance);
         return instance;
+    }
+
+    @Override
+    @NotNull
+    public ServiceRegistry child(@NotNull Predicate<ServiceKey<?>> selector) {
+        ensureOpen();
+        return new ChildServiceRegistry(this, selector);
     }
 
     @Override

@@ -8,8 +8,8 @@ public enum Easing {
     EASE_LINEAR(x -> x),
     EASE_SQUARE(x -> -(x * x)),
 
-    // sweety
-    EASE_sweety(x -> Math.atan(x) * x),
+    // luce
+    EASE_LUCE(x -> Math.atan(x) * x),
 
     // Sinusoidal
     EASE_IN_SINE(x -> 1 - Math.cos((x * Math.PI) * 0.5)),

@@ -13,7 +13,6 @@ import dev.sweety.patch.model.PatchOperation;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
-import java.util.Locale;
 import java.util.NavigableSet;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -69,22 +68,21 @@ public class PatchValidator {
         } catch (IOException e) {
             throw new PatchValidationException("Validation failed: could not read patch archive index", e);
         }
-        if (!PatchArchiveConstants.HEADER.equals(idx.header)) {
+
+        if (!PatchArchiveConstants.HEADER.equals(idx.header))
             throw new PatchValidationException("Invalid patch archive header: expected " + PatchArchiveConstants.HEADER);
-        }
+
         try (JarFile out = new JarFile(outputJar.toFile())) {
             for (PatchArchiveOpEntry e : idx.operations) {
-                PatchOperation.Type t = PatchOperation.Type.valueOf(e.type.toUpperCase(Locale.ROOT));
+                PatchOperation.Type t = e.type;
                 String path = e.path;
                 if (t == PatchOperation.Type.DELETE) {
-                    if (out.getJarEntry(path) != null) {
+                    if (out.getJarEntry(path) != null)
                         throw new PatchValidationException("Validation failed: File " + path + " should be deleted but exists.");
-                    }
                 } else {
                     JarEntry je = out.getJarEntry(path);
-                    if (je == null) {
+                    if (je == null)
                         throw new PatchValidationException("Validation failed: File " + path + " is missing.");
-                    }
                     requireNonEmptyExpectedHash(path, e.hash);
                     try (InputStream in = out.getInputStream(je)) {
                         byte[] data = in.readAllBytes();

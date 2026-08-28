@@ -6,6 +6,10 @@ import dev.sweety.sql4j.api.query.functions.QueryBinder;
 import dev.sweety.sql4j.api.query.functions.QueryExecutor;
 import dev.sweety.sql4j.impl.query.SelectJoin;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.concurrent.CompletableFuture;
@@ -32,7 +36,7 @@ import java.util.function.Function;
  *
  * @param <T> the result type produced when this query is executed
  */
-public sealed interface Query<T> permits AbstractQuery, UnsafeQuery, SelectQuery, DeleteQuery, UpdateQuery, InsertQuery, UpsertQuery, SelectRawQuery, BatchQuery {
+public sealed interface Query<T> permits AbstractQuery, BatchQuery, DeleteQuery, InsertQuery, SelectQuery, SelectRawQuery, UnsafeQuery, UpdateQuery, UpsertQuery {
 
     /**
      * Binds this query's parameters to the given {@link PreparedStatement}.
@@ -98,9 +102,18 @@ public sealed interface Query<T> permits AbstractQuery, UnsafeQuery, SelectQuery
      */
     default <R> Query<R> extractObjects(Function<T, R> mapper) {
         return new AbstractQuery<R>() {
-            @Override protected String buildSql() { return Query.this.sql(); }
-            @Override public void bind(PreparedStatement ps) throws SQLException { Query.this.bind(ps); }
-            @Override public R execute(PreparedStatement ps) throws SQLException {
+            @Override
+            protected String buildSql() {
+                return Query.this.sql();
+            }
+
+            @Override
+            public void bind(PreparedStatement ps) throws SQLException {
+                Query.this.bind(ps);
+            }
+
+            @Override
+            public R execute(PreparedStatement ps) throws SQLException {
                 return mapper.apply(Query.this.execute(ps));
             }
         };
@@ -118,7 +131,7 @@ public sealed interface Query<T> permits AbstractQuery, UnsafeQuery, SelectQuery
      * @return a new {@code Query<T>}
      */
     static <T> Query<T> generate(final String query, final QueryBinder bind, final QueryExecutor<T> execute) {
-        return ParamQuery.<T>builder(query, execute).bind(bind).build();
+        return ParamQuery.builder(query, execute).bind(bind).build();
     }
 
     /**
@@ -132,7 +145,7 @@ public sealed interface Query<T> permits AbstractQuery, UnsafeQuery, SelectQuery
      * @return a {@link CompletableFuture} completing with the query result
      */
     static <T> CompletableFuture<T> execute(final SqlConnection connection, final String query,
-                                             final QueryBinder bind, final QueryExecutor<T> execute) {
+                                            final QueryBinder bind, final QueryExecutor<T> execute) {
         return generate(query, bind, execute).execute(connection);
     }
 
@@ -161,7 +174,7 @@ public sealed interface Query<T> permits AbstractQuery, UnsafeQuery, SelectQuery
      * @return a {@link CompletableFuture} completing with {@link QueryResult}
      */
     static CompletableFuture<QueryResult> execute(final SqlConnection connection, final String query,
-                                                   final Object... params) {
+                                                  final Object... params) {
         return generic(query, params).execute(connection);
     }
 
@@ -174,4 +187,22 @@ public sealed interface Query<T> permits AbstractQuery, UnsafeQuery, SelectQuery
     static SelectJoin.Builder join(Table<?>... tables) {
         return new SelectJoin.Builder().join(tables);
     }
+
+    /**
+     * Annotation for custom SQL queries in repository interfaces.
+     */
+    @Target(ElementType.METHOD)
+    @Retention(RetentionPolicy.RUNTIME)
+    @interface Info {
+        /**
+         * @return The raw SQL query. Use ? for parameters.
+         */
+        String value();
+
+        /**
+         * @return Whether this query is a native/raw query that should bypass DSL parsing.
+         */
+        boolean nativeQuery() default true;
+    }
+
 }

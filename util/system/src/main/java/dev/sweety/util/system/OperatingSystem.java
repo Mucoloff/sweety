@@ -1,6 +1,8 @@
 package dev.sweety.util.system;
 
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -26,6 +28,8 @@ public enum OperatingSystem {
     UNKNOWN("unknown");
 
     public static final OperatingSystem[] VALUES = values();
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(OperatingSystem.class);
 
     private final String name;
 
@@ -64,7 +68,7 @@ public enum OperatingSystem {
             process.getErrorStream().close();
             process.getOutputStream().close();
         } catch (IOException exception) {
-            System.err.printf("Couldn't open url %s %s\n", url, exception);
+            LOGGER.error("Couldn't open url {}", url, exception);
         }
 
     }
@@ -73,7 +77,7 @@ public enum OperatingSystem {
         try {
             this.open(uri.toURL());
         } catch (MalformedURLException exception) {
-            System.err.printf("Couldn't open uri %s %s\n", uri, exception);
+            LOGGER.error("Couldn't open uri {}", uri, exception);
         }
 
     }
@@ -82,7 +86,7 @@ public enum OperatingSystem {
         try {
             this.open(path.toUri().toURL());
         } catch (MalformedURLException exception) {
-            System.err.printf("Couldn't open file %s %s\n", path, exception);
+            LOGGER.error("Couldn't open file {}", path, exception);
         }
 
     }
@@ -98,7 +102,7 @@ public enum OperatingSystem {
         try {
             this.open((new URI(uri)).toURL());
         } catch (MalformedURLException | IllegalArgumentException | URISyntaxException exception) {
-            System.err.printf("Couldn't open uri %s %s\n", uri, exception);
+            LOGGER.error("Couldn't open uri {}", uri, exception);
         }
 
     }

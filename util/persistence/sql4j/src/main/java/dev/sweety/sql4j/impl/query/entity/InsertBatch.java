@@ -62,7 +62,7 @@ public final class InsertBatch<T> extends AbstractQuery<int[]> implements BatchQ
         String colKey = activeColumns.stream().map(Column::name).sorted().collect(Collectors.joining(","));
         String cacheKey = "insertBatch:meta:" + table.name() + ":" + colKey + ":" + dialect.name();
 
-        this.metadata = cache.getMetadata(cacheKey, _ -> {
+        this.metadata = cache.getMetadata(cacheKey, ignored -> {
             Column<?> generatedColumn = table.insertableColumns().autoIncrementColumn();
             int fieldsPerRow = activeColumns.size();
 

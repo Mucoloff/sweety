@@ -69,8 +69,10 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
 
     // O5: shared pool of StringBuilder instances to avoid per-call allocation when
     // assembling the WHERE / GROUP BY / ORDER BY / LIMIT clauses.
-    private static final ObjectPool<StringBuilder> SB_POOL =
-            ObjectPool.shared(StringBuilder::new, b -> b.setLength(0), 64);
+    private static final ObjectPool<StringBuilder> SB_POOL = ObjectPool.shared(StringBuilder::new)
+                    .reset(b -> b.setLength(0))
+                    .maxSize(64)
+                    .build();
 
     /**
      * Per-table metadata cached in {@link QueryCache}.
@@ -242,7 +244,7 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
                 : selectedColumnNames.stream().sorted().collect(Collectors.joining(","));
         String cacheKey = "select:base:" + table.name() + ":" + colKey + ":" + dialect.name();
 
-        this.activeMetadata = cache.getMetadata(cacheKey, _ -> {
+        this.activeMetadata = cache.getMetadata(cacheKey, ignored -> {
             List<Column<?>> selected;
             if (projection != null && !projection.isEmpty()) {
                 selected = projection;

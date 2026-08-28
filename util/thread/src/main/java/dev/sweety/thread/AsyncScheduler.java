@@ -1,27 +1,24 @@
 package dev.sweety.thread;
 
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
-
-import java.lang.reflect.Field;
-import java.util.concurrent.*;
-import java.util.function.Function;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class AsyncScheduler {
 
-    private static final char INNER_CLASS_SEPARATOR_CHAR = '$';
-    public static int STOP_WATCH_TIME_MILLIS = 1500;
-
     private static final Logger LOG = Logger.getLogger(AsyncScheduler.class.getName());
-    //static final SimpleLogger log = new SimpleLogger(AsyncScheduler.class);
 
-    @Getter
-    private static final ScheduledExecutorService scheduler = ThreadUtil.poolThreadScheduler(30, "MX Thread");
+    private static final ScheduledExecutorService scheduler =
+            ThreadUtil.poolThreadScheduler(30, "MX Thread");
 
-    private AsyncScheduler() {
+    private AsyncScheduler() {}
 
+    public static ScheduledExecutorService getScheduler() {
+        return scheduler;
     }
 
     public static void shutdown() {
@@ -29,125 +26,45 @@ public final class AsyncScheduler {
     }
 
     public static Future<?> run(Runnable runnable) {
-        return scheduler.submit(new DecoratedRunnable(runnable));
+        return scheduler.submit(wrap(runnable));
     }
 
     public static <T> Future<T> run(Callable<T> callable) {
-        return scheduler.submit(new DecoratedCallable<>(callable));
+        return scheduler.submit(wrap(callable));
     }
 
     public static ScheduledFuture<?> later(Runnable runnable, long delay, TimeUnit time) {
-        return scheduler.schedule(new DecoratedRunnable(runnable), delay, time);
+        return scheduler.schedule(wrap(runnable), delay, time);
     }
 
     public static ScheduledFuture<?> timer(Runnable runnable, long delay, long period, TimeUnit time) {
-        return scheduler.scheduleAtFixedRate(new DecoratedRunnable(runnable), delay, period, time);
+        return scheduler.scheduleAtFixedRate(wrap(runnable), delay, period, time);
     }
 
     public static void cancel(ScheduledFuture<?> timer) {
-        try {
-            if (timer != null) {
-                timer.cancel(true);
-            }
-        } catch (Exception e) {
-            LOG.warning("Failed to cancel scheduled future: " + e.getMessage());
-        }
+        if (timer != null) timer.cancel(true);
     }
 
-    public static String toString(Object object) {
-        if (object == null) return "null";
+    // ── wrappers that log uncaught exceptions ─────────────────────────────────
 
-        Class<?> clazz = object.getClass();
-        StringBuilder sb = new StringBuilder(clazz.getSimpleName() + "{");
-
-        Field[] fields = clazz.getDeclaredFields();
-        for (int i = 0; i < fields.length; i++) {
-            Field field = fields[i];
-            field.setAccessible(true);
-
+    private static Runnable wrap(Runnable runnable) {
+        return () -> {
             try {
-                if (field.getName().indexOf(INNER_CLASS_SEPARATOR_CHAR) != -1) {
-                    sb.append(field.getName()).append("=");
-                    Object value = field.get(object);
-                    sb.append(value == null ? "null" : value.toString());
-                }
-            } catch (IllegalAccessException e) {
-                sb.append(field.getName()).append("=<access denied>");
-            }
-
-            if (i < fields.length - 1) {
-                sb.append(", ");
-            }
-        }
-
-        sb.append("}");
-        return sb.toString();
-    }
-
-    @ToString
-    public static class DecoratedRunnable implements Runnable {
-        @Setter
-        private static Function<Runnable, Runnable> hotfixDecorator = runnable -> runnable;
-
-        private final Runnable originalRunnable;
-        private final Runnable decoratedRunnable;
-
-        public DecoratedRunnable(Runnable originalRunnable) {
-            this.originalRunnable = originalRunnable;
-            this.decoratedRunnable = hotfixDecorator.apply(originalRunnable);
-        }
-
-        @Override
-        public void run() {
-            long start = System.currentTimeMillis();
-            try {
-                decoratedRunnable.run();
+                runnable.run();
             } catch (Throwable e) {
-                //log.error("Error during execution of asynchronous task", AsyncScheduler.toString(originalRunnable), e);
-            } finally {
-                long after = System.currentTimeMillis() - start;
-                if (after > STOP_WATCH_TIME_MILLIS) {
-                    if (true) return;
-                    String l = AsyncScheduler.toString(originalRunnable);
-                    if (l.length() > 26) l = l.substring(0, 26) + "...";
-                    //log.warn("Busy task " + l + ", it was performed " + after + "ms.");
-                }
+                LOG.log(Level.SEVERE, "Uncaught exception in async task", e);
             }
-        }
+        };
     }
 
-    @ToString
-    public static class DecoratedCallable<T> implements Callable<T> {
-        @Setter
-        private static Function<Callable<?>, Callable<?>> hotfixDecorator = callable -> callable;
-
-        private final Callable<T> originalCallable;
-        private final Callable<T> decoratedCallable;
-
-        public DecoratedCallable(Callable<T> originalCallable) {
-            this.originalCallable = originalCallable;
-            //noinspection unchecked
-            this.decoratedCallable = (Callable<T>) hotfixDecorator.apply(originalCallable);
-        }
-
-        @Override
-        public T call() throws Exception {
-            long start = System.currentTimeMillis();
+    private static <T> Callable<T> wrap(Callable<T> callable) {
+        return () -> {
             try {
-                return decoratedCallable.call();
+                return callable.call();
             } catch (Throwable e) {
-                //log.error("Error while accepting to call method: " + AsyncScheduler.toString(originalCallable),e);
+                LOG.log(Level.SEVERE, "Uncaught exception in async task", e);
                 throw e;
-            } finally {
-                long after = System.currentTimeMillis() - start;
-                if (after > STOP_WATCH_TIME_MILLIS) {
-                    if (false) {
-                        String l = AsyncScheduler.toString(originalCallable);
-                        if (l.length() > 26) l = l.substring(0, 26) + "...";
-                        //log.warn("Busy task " + l + ", it was performed " + after + "ms.");
-                    }
-                }
             }
-        }
+        };
     }
 }

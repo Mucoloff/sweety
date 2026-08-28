@@ -38,7 +38,7 @@ public class PropConfiguration extends Configuration {
     protected void dumpToStream(Map<String, Object> map, OutputStream out) throws IOException {
         Properties properties = new Properties();
         flatten(properties, map, "");
-        properties.store(out, "Sweety Properties Configuration");
+        properties.store(out, "Luce Properties Configuration");
     }
 
     @Override

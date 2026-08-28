@@ -1,5 +1,7 @@
 package dev.sweety.patch.applier;
 
+import com.github.difflib.DiffUtils;
+import com.github.difflib.patch.Patch;
 import dev.sweety.patch.exception.PatchException;
 import dev.sweety.patch.exception.PatchFormatException;
 import dev.sweety.patch.exception.PatchValidationException;
@@ -10,11 +12,21 @@ import dev.sweety.patch.format.archive.PatchArchiveOpEntry;
 import dev.sweety.patch.format.archive.PatchArchiveReader;
 import dev.sweety.patch.hash.HashFunction;
 import com.github.difflib.UnifiedDiffUtils;
+import dev.sweety.patch.model.PatchOperation;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.StringJoiner;
+import java.util.TreeSet;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
@@ -39,22 +51,17 @@ class PatchSourceReader {
      */
     PatchReadResult read(JarFile base, ZipFile patchArchive) throws IOException {
         PatchArchiveIndex idx = PatchArchiveReader.readIndex(patchArchive);
-        if (!PatchArchiveConstants.HEADER.equals(idx.header)) {
+        if (!PatchArchiveConstants.HEADER.equals(idx.header))
             throw new PatchFormatException("Invalid patch archive header");
-        }
 
         verifyDeletePreconditions(base, idx);
 
         Map<String, PatchArchiveOpEntry> patchByPath = new HashMap<>();
         Set<String> needOriginal = new HashSet<>();
         for (PatchArchiveOpEntry e : idx.operations) {
-            if ("delete".equalsIgnoreCase(e.type)) {
-                continue;
-            }
+            if (PatchOperation.Type.DELETE.equals(e.type)) continue;
             patchByPath.put(e.path, e);
-            if ("modify".equalsIgnoreCase(e.type) && "text_diff".equalsIgnoreCase(e.method)) {
-                needOriginal.add(e.path);
-            }
+            if (PatchOperation.Type.MODIFY.equals(e.type) && PatchOperation.Method.TEXT_DIFF.equals(e.method)) needOriginal.add(e.path);
         }
 
         Map<String, byte[]> originals = readOriginalsForPaths(base, needOriginal);
@@ -63,7 +70,7 @@ class PatchSourceReader {
         Map<String, byte[]> patchedBytes = new LinkedHashMap<>();
         for (String path : outputPaths) {
             PatchArchiveOpEntry e = patchByPath.get(path);
-            if (e != null && ("add".equalsIgnoreCase(e.type) || "modify".equalsIgnoreCase(e.type))) {
+            if (e != null && ( PatchOperation.Type.ADD.equals(e.type) ||  PatchOperation.Type.MODIFY.equals(e.type))) {
                 byte[] payload = readZipPayload(patchArchive, e.payloadEntry);
                 byte[] finalData = resolveEntryBytes(e, payload, originals);
                 assertHash(finalData, e.hash);
@@ -76,9 +83,7 @@ class PatchSourceReader {
 
     private void verifyDeletePreconditions(JarFile base, PatchArchiveIndex idx) throws IOException {
         for (PatchArchiveOpEntry e : idx.operations) {
-            if (!"delete".equalsIgnoreCase(e.type)) {
-                continue;
-            }
+            if (!PatchOperation.Type.DELETE.equals(e.type)) continue;
             JarEntry je = base.getJarEntry(e.path);
             if (je == null) {
                 throw new PatchException("Trying to delete non-existing file: " + e.path);
@@ -114,7 +119,7 @@ class PatchSourceReader {
     private TreeSet<String> buildOutputPaths(JarFile base, PatchArchiveIndex idx) {
         Set<String> deleted = new HashSet<>();
         for (PatchArchiveOpEntry e : idx.operations) {
-            if ("delete".equalsIgnoreCase(e.type)) {
+            if (PatchOperation.Type.DELETE.equals(e.type)) {
                 deleted.add(e.path);
             }
         }
@@ -132,7 +137,7 @@ class PatchSourceReader {
             out.add(name);
         }
         for (PatchArchiveOpEntry e : idx.operations) {
-            if ("add".equalsIgnoreCase(e.type)) {
+            if (PatchOperation.Type.ADD.equals(e.type)) {
                 out.add(e.path);
             }
         }
@@ -140,11 +145,9 @@ class PatchSourceReader {
     }
 
     private byte[] resolveEntryBytes(PatchArchiveOpEntry e, byte[] payload, Map<String, byte[]> originals) {
-        if ("modify".equalsIgnoreCase(e.type) && "text_diff".equalsIgnoreCase(e.method)) {
+        if (PatchOperation.Type.MODIFY.equals(e.type) && PatchOperation.Method.TEXT_DIFF.equals(e.method)) {
             byte[] originalData = originals.get(e.path);
-            if (originalData == null) {
-                throw new PatchException("Original file not found for modification: " + e.path);
-            }
+            if (originalData == null) throw new PatchException("Original file not found for modification: " + e.path);
             return applyTextDiff(e.path, originalData, payload);
         }
         return payload;
@@ -158,31 +161,25 @@ class PatchSourceReader {
     }
 
     private void assertHash(byte[] data, String expectedHash) {
-        if (expectedHash != null) {
-            String calculatedHash = hashFunction.calculateHash(data);
-            if (!calculatedHash.equalsIgnoreCase(expectedHash)) {
-                throw new PatchValidationException("Patch integrity check failed"
-                        + ". Expected hash: " + expectedHash + ", Actual: " + calculatedHash);
-            }
-        }
+        if (expectedHash == null) return;
+
+        String calculatedHash = hashFunction.calculateHash(data);
+        if (calculatedHash.equals(expectedHash)) return;
+
+        throw new PatchValidationException("Patch integrity check failed"
+                + ". Expected hash: " + expectedHash + ", Actual: " + calculatedHash);
     }
 
     private byte[] applyTextDiff(String path, byte[] originalData, byte[] diffData) {
         try {
             List<String> originalLines = toLines(originalData);
             List<String> diffLines = toLines(diffData);
-            com.github.difflib.patch.Patch<String> patchObj = UnifiedDiffUtils.parseUnifiedDiff(diffLines);
-            List<String> patchedLines = com.github.difflib.DiffUtils.patch(originalLines, patchObj);
+            Patch<String> patchObj = UnifiedDiffUtils.parseUnifiedDiff(diffLines);
+            List<String> patchedLines = DiffUtils.patch(originalLines, patchObj);
 
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < patchedLines.size(); i++) {
-                sb.append(patchedLines.get(i));
-                if (i < patchedLines.size() - 1) {
-                    sb.append("\n");
-                }
-            }
-            sb.append("\n");
-            return sb.toString().getBytes(StandardCharsets.UTF_8);
+            StringJoiner joiner = new StringJoiner("\n", "", "\n");
+            for (String patchedLine : patchedLines) joiner.add(patchedLine);
+            return joiner.toString().getBytes(StandardCharsets.UTF_8);
         } catch (Exception e) {
             throw new PatchException("Failed to apply text diff for " + path, e);
         }

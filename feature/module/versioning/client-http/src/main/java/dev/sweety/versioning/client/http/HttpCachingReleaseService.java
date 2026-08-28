@@ -1,6 +1,7 @@
 package dev.sweety.versioning.client.http;
 
 import com.google.gson.JsonObject;
+import dev.sweety.versioning.security.ArtifactVerifier;
 import dev.sweety.versioning.util.Utils;
 import dev.sweety.versioning.version.ReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;
@@ -29,7 +30,7 @@ import java.util.Objects;
  * Read-only {@link ReleaseService} backed by HTTP endpoints on the update-server
  * ({@code GET /release/latest}, {@code GET /release/base-jar}). Non-blank {@code apiKey} is required
  * for {@link #resolveBaseJar}; it must match server setting {@code RELEASE_API_KEY} (JSON or env) and is sent
- * as header {@code X-Sweety-Release-Key}.
+ * as header {@code X-Luce-Release-Key}.
  */
 public final class HttpCachingReleaseService implements ReleaseService {
 
@@ -39,6 +40,7 @@ public final class HttpCachingReleaseService implements ReleaseService {
     private final String apiKey;
     private final Path cacheDir;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(TIMEOUT).build();
+    private final ArtifactVerifier verifier = ArtifactVerifier.fromConfig();
 
     public HttpCachingReleaseService(URI baseUri, String apiKey, Path cacheDir) {
         this.baseUri = Objects.requireNonNull(baseUri, "baseUri");
@@ -88,7 +90,7 @@ public final class HttpCachingReleaseService implements ReleaseService {
                 + "&version=" + urlEnc(version.toString()));
         HttpRequest req = HttpRequest.newBuilder(uri)
                 .timeout(TIMEOUT)
-                .header("X-Sweety-Release-Key", apiKey)
+                .header("X-Luce-Release-Key", apiKey)
                 .GET()
                 .build();
         Path tmp = Files.createTempFile(cacheDir, "dl-", ".jar.partial");
@@ -98,6 +100,7 @@ public final class HttpCachingReleaseService implements ReleaseService {
                 Files.deleteIfExists(res.body());
                 throw new IOException("base-jar HTTP " + res.statusCode());
             }
+            verifyOrThrow(res, res.body());
             Files.move(res.body(), target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             return target;
         } catch (InterruptedException e) {
@@ -148,6 +151,18 @@ public final class HttpCachingReleaseService implements ReleaseService {
         }
         ReleaseInfo fallback = latest(artifact, channel);
         return fallback != null ? fallback : ReleaseInfo.DEFAULT(channel);
+    }
+
+    /** Verifies the downloaded file against integrity headers; deletes it and throws on failure. */
+    private void verifyOrThrow(HttpResponse<Path> res, Path file) throws IOException {
+        ArtifactVerifier.Result vr = verifier.verifyFile(file,
+                res.headers().firstValue("X-Content-SHA256").orElse(null),
+                res.headers().firstValue("X-Content-HMAC").orElse(null),
+                res.headers().firstValue("X-Content-Ed25519").orElse(null));
+        if (!vr.ok()) {
+            Files.deleteIfExists(file);
+            throw new IOException("artifact integrity verification failed: " + vr.reason());
+        }
     }
 
     private static String urlEnc(String s) {

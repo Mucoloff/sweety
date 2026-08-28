@@ -3,6 +3,7 @@ package dev.sweety.math;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Array;
 import java.util.*;
 
 public class Pair<T> implements Collection<T> {
@@ -104,18 +105,31 @@ public class Pair<T> implements Collection<T> {
 
     @Override
     public @NotNull Object @NotNull [] toArray() {
-        List<Object> list = new ArrayList<>(size);
-        if (data[0] != null) list.add(data[0]);
-        if (data[1] != null) list.add(data[1]);
-        return list.toArray();
+        if (this.size == 0) return new Object[0];
+        if (this.size == 2) return new Object[]{this.data[0], this.data[1]};
+        return new Object[]{this.data[0] != null ? this.data[0] : this.data[1]};
     }
 
     @Override
-    public @NotNull <T1> T1 @NotNull [] toArray(@NotNull T1 @NotNull [] a) {
-        List<T> list = new ArrayList<>(size);
-        if (data[0] != null) list.add(data[0]);
-        if (data[1] != null) list.add(data[1]);
-        return list.toArray(a);
+    @SuppressWarnings("unchecked")
+    public <T1> T1 @NotNull [] toArray(T1 @NotNull [] a) {
+        if (a.length < this.size) {
+            a = (T1[]) Array.newInstance(a.getClass().getComponentType(), this.size);
+        }
+
+        if (this.size == 2) {
+            a[0] = (T1) this.data[0];
+            a[1] = (T1) this.data[1];
+        } else if (this.size == 1) {
+            a[0] = (T1) (this.data[0] != null ? this.data[0] : this.data[1]);
+        }
+
+        // JDK Contract: se l'array è più capiente della collezione, imposta il terminatore null
+        if (a.length > this.size) {
+            a[this.size] = null;
+        }
+
+        return a;
     }
 
     @Override
@@ -151,9 +165,7 @@ public class Pair<T> implements Collection<T> {
 
     @Override
     public boolean containsAll(@NotNull Collection<?> c) {
-        for (Object e : c) {
-            if (!contains(e)) return false;
-        }
+        for (Object e : c) if (!contains(e)) return false;
         return true;
     }
 
@@ -200,5 +212,26 @@ public class Pair<T> implements Collection<T> {
         if (Objects.equals(this.data[0], t)) return 0;
         if (Objects.equals(this.data[1], t)) return 1;
         return -1;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Collection<?> other)) return false;
+        if (this.size() != other.size()) return false;
+        return this.containsAll(other);
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 0;
+        if (this.data[0] != null) hash += this.data[0].hashCode();
+        if (this.data[1] != null) hash += this.data[1].hashCode();
+        return hash;
+    }
+
+    @Override
+    public String toString() {
+        return "Pair[" + this.data[0] + ", " + this.data[1] + "]";
     }
 }

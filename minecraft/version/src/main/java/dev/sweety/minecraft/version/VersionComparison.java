@@ -4,12 +4,13 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Comparator;
 import java.util.Objects;
+import java.util.function.IntPredicate;
 import java.util.function.Predicate;
 
 /**
  * This enum defines comparison predicates and strategies for Minecraft versions.
  */
-public enum VersionComparison implements Predicate<Integer>, Comparator<Version<?>> {
+public enum VersionComparison implements IntPredicate, Comparator<Version<?>> {
 
     /**
      * == (Equality)
@@ -57,17 +58,16 @@ public enum VersionComparison implements Predicate<Integer>, Comparator<Version<
 
     /* --- FIELDS & LOGIC --- */
 
-    private final Predicate<Integer> resultPredicate;
+    private final IntPredicate resultPredicate;
     private final int multiplier;
 
-    VersionComparison(Predicate<Integer> resultPredicate, int multiplier) {
+    VersionComparison(IntPredicate resultPredicate, int multiplier) {
         this.resultPredicate = resultPredicate;
         this.multiplier = multiplier;
     }
 
     @Override
-    public boolean test(Integer comparisonResult) {
-        if (comparisonResult == null) throw new NullPointerException("comparisonResult cannot be null");
+    public boolean test(int comparisonResult) {
         return resultPredicate.test(comparisonResult);
     }
 

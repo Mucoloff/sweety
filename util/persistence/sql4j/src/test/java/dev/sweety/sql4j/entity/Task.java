@@ -2,7 +2,7 @@ package dev.sweety.sql4j.entity;
 
 import dev.sweety.sql4j.api.obj.Column;
 import dev.sweety.sql4j.api.obj.Table;
-import dev.sweety.sql4j.api.obj.annotation.*;
+import dev.sweety.sql4j.api.obj.annotation.ManyToOne;
 
 @Table.Info(name = "full_tasks")
 public class Task {

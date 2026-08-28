@@ -6,11 +6,11 @@ import dev.sweety.sql4j.api.configuration.SQL4JConfig;
 import dev.sweety.sql4j.api.exception.Sql4jConnectionException;
 import dev.sweety.sql4j.impl.Database;
 import dev.sweety.sql4j.impl.connection.dialect.DialectType;
+import dev.sweety.thread.ThreadUtil;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 /**
@@ -235,7 +235,7 @@ public final class SQL4J {
                 // Power-user path: bypass SQL4JConfig-based provider construction
                 dev.sweety.sql4j.impl.connection.provider.HikariConnectionProvider provider =
                         new dev.sweety.sql4j.impl.connection.provider.HikariConnectionProvider(rawHikariConfig);
-                Executor exec = executor != null ? executor : Executors.newCachedThreadPool();
+                Executor exec = executor != null ? executor : ThreadUtil.cachedThreadPool("sql4j-hikari");
                 dev.sweety.sql4j.api.connection.SqlConnection conn =
                         new dev.sweety.sql4j.api.connection.SqlConnection(config.dialect(), provider, exec, executor == null);
                 Database db = new Database(conn);

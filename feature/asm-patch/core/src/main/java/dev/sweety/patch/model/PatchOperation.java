@@ -1,12 +1,11 @@
 package dev.sweety.patch.model;
 
-import lombok.Getter;
-
-public sealed interface PatchOperation permits AddOperation, ModifyOperation, DeleteOperation {
+public sealed interface PatchOperation permits AddOperation, ModifyOperation, MoveOperation, DeleteOperation {
 
     enum Type {
         ADD,
         MODIFY,
+        MOVE,
         DELETE
     }
 

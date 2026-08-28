@@ -29,7 +29,7 @@ public final class UpdateEntity<T> extends AbstractQuery<Integer> implements Upd
         Objects.requireNonNull(cache, "cache cannot be null");
 
         String cacheKey = "update:meta:" + table.name() + ":" + table.clazz().getName() + ":" + dialect.name();
-        this.metadata = cache.getMetadata(cacheKey, _ -> {
+        this.metadata = cache.getMetadata(cacheKey, ignored -> {
             List<Column<?>> primaryKeys = table.primaryKeys();
             List<Column<?>> updateColumns = table.updatableColumns();
 

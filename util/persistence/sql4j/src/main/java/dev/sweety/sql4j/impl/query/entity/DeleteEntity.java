@@ -33,7 +33,7 @@ public final class DeleteEntity<T> extends AbstractQuery<Integer> implements Del
         Objects.requireNonNull(cache, "cache is null");
 
         String cacheKey = "delete:meta:" + table.name() + ":" + dialect.name();
-        this.metadata = cache.getMetadata(cacheKey, _ -> {
+        this.metadata = cache.getMetadata(cacheKey, ignored -> {
             List<Column<?>> primaryKeys = table.primaryKeys();
             String whereClause = primaryKeys.stream()
                     .map(c -> c.toSql(dialect) + "=?")

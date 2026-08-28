@@ -2,6 +2,7 @@ package dev.sweety.netty.messaging.listener.decoder;
 
 import dev.sweety.data.buffer.BufferPool;
 import dev.sweety.data.compress.CompressUtils;
+import dev.sweety.data.compress.CompressionLimitException;
 import dev.sweety.exception.PacketDecodeException;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
@@ -18,13 +19,20 @@ import java.util.zip.Inflater;
 
 public class PacketDecoder {
 
-    private static final int MAX_PAYLOAD_SIZE = 1 << 20; // 1 MB — reject oversized payloads
+    private static final int MAX_PAYLOAD_SIZE = 1 << 20; // 1 MB — max compressed payload accepted off the wire
+    private static final int MAX_UNCOMPRESSED_SIZE = 16 << 20; // 16 MB — max decompressed output allowed (zipbomb size cap)
+    private static final int MAX_COMPRESSION_RATIO = 100; // decompressed/compressed sanity limit (zipbomb ratio cap)
+    private static final long MAX_DECOMPRESS_NANOS = 250_000_000L; // 250ms — CPU-bomb wall-clock guard on inflate loop
 
     private static final ByteBuffer SEED_BUFFER = ByteBuffer.wrap(new byte[]{
             (byte) (Messenger.SEED >>> 24), (byte) (Messenger.SEED >>> 16),
-            (byte) (Messenger.SEED >>> 8),  (byte)  Messenger.SEED
+            (byte) (Messenger.SEED >>> 8), (byte) Messenger.SEED
     }).asReadOnlyBuffer();
     private final PacketRegistry packetRegistry;
+    /**
+     * Per-connection timestamp memory: each PacketDecoder is created fresh per channel (see Messenger), so this never leaks across connections.
+     */
+    private final TimestampState timestampState = new TimestampState();
 
     public PacketDecoder(final PacketRegistry packetRegistry) {
         this.packetRegistry = packetRegistry;
@@ -37,10 +45,27 @@ public class PacketDecoder {
     }
 
     public void decode(final PacketBuffer in, final List<Packet> out) throws PacketDecodeException {
-        decode(in, out, this.packetRegistry);
+        decode(in, out, this.packetRegistry, this.timestampState);
     }
 
+    /**
+     * Stateless one-shot decode: always expects an absolute timestamp, mirroring {@link dev.sweety.netty.messaging.listener.encoder.PacketEncoder#encode(Packet, PacketBuffer, PacketRegistry)}.
+     */
     public static void decode(final PacketBuffer in, final List<Packet> out, final PacketRegistry packetRegistry) throws PacketDecodeException {
+        decode(in, out, packetRegistry, null);
+    }
+
+    /**
+     * Mutable per-connection timestamp memory mirroring {@code PacketEncoder.TimestampState}: only
+     * committed once a packet is fully decoded and delivered, so an aborted partial-frame decode
+     * attempt (incomplete data, retried once more bytes arrive) never double-advances it.
+     */
+    public static final class TimestampState {
+        private long last;
+        private boolean has;
+    }
+
+    public static void decode(final PacketBuffer in, final List<Packet> out, final PacketRegistry packetRegistry, final TimestampState timestampState) throws PacketDecodeException {
         if (in.readableBytes() - Integer.BYTES < 2) return; // minimal header
         in.markReaderIndex();
 
@@ -56,7 +81,9 @@ public class PacketDecoder {
             if (hasTimestamp) {
                 // Check if we can read the varlong
                 if (cantRead(in, 1)) return;
-                timestamp = in.readVarLong();
+                timestamp = (timestampState != null && timestampState.has)
+                        ? timestampState.last + in.readVarLongZigZag()
+                        : in.readVarLong();
             } else timestamp = Messenger.timeMode.now();
 
             // Validate checksum
@@ -75,6 +102,17 @@ public class PacketDecoder {
                     final int uncompressedLen = in.readVarInt();
                     if (cantRead(in, 1)) return;
                     final int compressedLen = in.readVarInt();
+
+                    // Anti-zipbomb: reject oversized compressed frame before touching the buffer.
+                    if (compressedLen < 0 || compressedLen > MAX_PAYLOAD_SIZE)
+                        throw PacketDecodeException.of("Compressed payload too large (" + compressedLen + " bytes) for packetId " + id);
+                    // Anti-zipbomb: reject declared uncompressed size before allocating for it.
+                    if (uncompressedLen < 0 || uncompressedLen > MAX_UNCOMPRESSED_SIZE)
+                        throw PacketDecodeException.of("Declared uncompressed size too large (" + uncompressedLen + " bytes) for packetId " + id);
+                    // Anti-zipbomb: reject anomalous expansion ratio.
+                    if (compressedLen == 0 ? uncompressedLen > 0 : uncompressedLen > (long) compressedLen * MAX_COMPRESSION_RATIO)
+                        throw PacketDecodeException.of("Compression ratio too high (" + uncompressedLen + "/" + compressedLen + ") for packetId " + id);
+
                     if (cantRead(in, compressedLen)) return;
 
                     final PacketBuffer slice = in.readRetainedSlice(compressedLen);
@@ -89,9 +127,12 @@ public class PacketDecoder {
                     try {
                         final byte[] decompressed = new byte[uncompressedLen];
                         try {
-                            CompressUtils.inflate(srcView, ByteBuffer.wrap(decompressed), inflater);
+                            CompressUtils.inflateBounded(srcView, decompressed, uncompressedLen, inflater,
+                                    MAX_DECOMPRESS_NANOS, MAX_UNCOMPRESSED_SIZE);
                         } catch (DataFormatException e) {
                             throw PacketDecodeException.of("Failed to inflate payload", e);
+                        } catch (CompressionLimitException e) {
+                            throw PacketDecodeException.of(e.getMessage() + " for packetId " + id);
                         }
                         payloadBuf = Unpooled.wrappedBuffer(decompressed); // zero-copy wrap
                     } finally {
@@ -143,6 +184,12 @@ public class PacketDecoder {
                 if (payloadBuf != Unpooled.EMPTY_BUFFER) payloadBuf.release();
             }
 
+            // Commit timestamp state only now that the packet is fully decoded and about to be
+            // delivered — never on an aborted partial-frame attempt (see TimestampState javadoc).
+            if (hasTimestamp && timestampState != null) {
+                timestampState.last = timestamp;
+                timestampState.has = true;
+            }
             out.add(packet);
         } catch (IndexOutOfBoundsException ignored) {
             // Incomplete frame: wait for the next network chunk instead of closing channel.

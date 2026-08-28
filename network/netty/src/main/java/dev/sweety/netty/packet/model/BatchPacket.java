@@ -1,30 +1,35 @@
 package dev.sweety.netty.packet.model;
 
-import dev.sweety.math.function.TriFunction;
+import dev.sweety.data.buffer.BufferReader;
+import dev.sweety.data.buffer.BufferWriter;
 import dev.sweety.netty.feature.batch.Batch;
 
 import java.util.function.Function;
 
 public class BatchPacket extends Packet {
 
-    private final Batch batch;
+    private Batch batch;
+
+    public BatchPacket() {}
 
     public BatchPacket(final Function<Class<? extends Packet>, Integer> idMap, final Packet... packets) {
         this.batch = new Batch(idMap, p -> p instanceof BatchPacket, packets);
-        this.batch.write(this.buffer());
     }
 
-    public BatchPacket(final int _id, final long _timestamp, final byte[] _data) {
-        super(_id, _timestamp, _data);
+    @Override
+    public void write(final BufferWriter buffer) {
+        this.batch.write(buffer);
+    }
+
+    @Override
+    public void read(final BufferReader buffer) {
         this.batch = new Batch();
-        this.batch.read(this.buffer());
+        this.batch.read(buffer);
+        // --- v1 tail ---
     }
 
-    public Packet[] decode(final TriFunction<Packet, Integer, Long, byte[]> constructor) {
-        if (this.batch == null) {
-            return new Packet[0];
-        }
-
+    public Packet[] decode(final Batch.Constructor constructor) {
+        if (this.batch == null) return new Packet[0];
         return this.batch.decode(constructor);
     }
 

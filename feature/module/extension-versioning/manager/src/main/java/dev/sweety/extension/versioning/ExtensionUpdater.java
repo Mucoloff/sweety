@@ -15,6 +15,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * Checks extensions against a remote or local {@link ReleaseService} and stages {@code .update} files
@@ -30,10 +31,22 @@ public class ExtensionUpdater<T extends VersionableExtension> {
 
     private final UpdateableExtensionManager<T> manager;
     private final ReleaseService releaseService;
+    private final Consumer<Path> afterDownload;
 
     public ExtensionUpdater(UpdateableExtensionManager<T> manager, ReleaseService releaseService) {
+        this(manager, releaseService, null);
+    }
+
+    /**
+     * @param afterDownload called with the staged update jar after a successful download.
+     *                      Use to wire {@code PendingUpdateApplier.INSTANCE::schedulePendingUpdate}
+     *                      from the bootstrap side (keeping api ↔ bootstrap boundary intact).
+     */
+    public ExtensionUpdater(UpdateableExtensionManager<T> manager, ReleaseService releaseService,
+                            Consumer<Path> afterDownload) {
         this.manager = manager;
         this.releaseService = releaseService;
+        this.afterDownload = afterDownload;
     }
 
     public CompletableFuture<UpdateOutcome> updateIfAvailable(@NotNull T extension, @NotNull Channel channel) {
@@ -74,6 +87,7 @@ public class ExtensionUpdater<T extends VersionableExtension> {
 
         Files.copy(newJar, updatePath, StandardCopyOption.REPLACE_EXISTING);
         LOGGER.info(MESSAGES.get("update.downloaded", extension.name()));
+        if (afterDownload != null) afterDownload.accept(updatePath);
         return true;
     }
 
@@ -84,14 +98,14 @@ public class ExtensionUpdater<T extends VersionableExtension> {
      */
     public CompletableFuture<Void> updateAll(@NotNull Channel channel) {
         Objects.requireNonNull(channel, "channel cannot be null");
-        @SuppressWarnings("unchecked")
+        //noinspection unchecked
         CompletableFuture<UpdateOutcome>[] futures = manager.extensions().values().stream()
                 .map(ext -> updateIfAvailable(ext, channel).handle((result, ex) -> {
                     if (ex != null) {
                         LOGGER.error(MESSAGES.get("update.taskFailed", ext.name()), ex);
                         return UpdateOutcome.failed(ex);
                     }
-                    return result instanceof UpdateOutcome ? result : UpdateOutcome.upToDate();
+                    return result != null ? result : UpdateOutcome.upToDate();
                 }))
                 .toArray(CompletableFuture[]::new);
         if (futures.length == 0) {

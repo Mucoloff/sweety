@@ -1,7 +1,9 @@
 package dev.sweety.minecraft.version;
 
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VersionComparisonTest {
 
@@ -52,7 +54,7 @@ class VersionComparisonTest {
     void testErrorPaths() {
         assertThrows(NullPointerException.class, () -> VersionComparison.EQUALS.test(null, MinecraftVersion.V_1_21));
         assertThrows(NullPointerException.class, () -> VersionComparison.EQUALS.test(MinecraftVersion.V_1_21, null));
-        assertThrows(NullPointerException.class, () -> VersionComparison.EQUALS.test(null));
+        assertThrows(NullPointerException.class, () -> VersionComparison.EQUALS.test(null,null));
         assertThrows(NullPointerException.class, () -> VersionComparison.EQUALS.compare(null, MinecraftVersion.V_1_21));
     }
 }

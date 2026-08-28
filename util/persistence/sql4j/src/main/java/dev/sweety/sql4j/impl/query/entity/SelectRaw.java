@@ -118,7 +118,7 @@ public final class SelectRaw extends AbstractQuery<List<Row>> implements SelectR
         String colKey = selectedColumnNames == null || selectedColumnNames.isEmpty() ? "*" : selectedColumnNames.stream().sorted().collect(Collectors.joining(","));
         String cacheKey = "selectraw:base:" + table.name() + ":" + colKey;
         
-        Metadata meta = cache.getMetadata(cacheKey, _ -> {
+        Metadata meta = cache.getMetadata(cacheKey, ignored -> {
             List<Column<?>> selected = (selectedColumnNames == null || selectedColumnNames.isEmpty())
                     ? table.columns()
                     : table.columns().stream().filter(c -> selectedColumnNames.contains(c.name())).collect(Collectors.toList());

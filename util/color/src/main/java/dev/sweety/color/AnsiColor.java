@@ -1,6 +1,6 @@
 package dev.sweety.color;
 
-import java.awt.*;
+import java.awt.Color;
 
 public enum AnsiColor {
     // Reset
@@ -99,7 +99,8 @@ public enum AnsiColor {
     }
 
     public static String fromColor(EColor color) {
-        return String.format("\u001B[38;2;%d;%d;%dm", color.getR(), color.getG(), color.getB());
+        int argb = color.getArgb();
+        return String.format("\u001B[38;2;%d;%d;%dm", (argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF);
     }
 
     public static String fromColor(Color color) {

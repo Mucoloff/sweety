@@ -1,0 +1,23 @@
+<idea-plugin>
+    <id>dev.luce.plugin</id>
+    <name>Luce</name>
+    <vendor>Luce</vendor>
+
+    <description><![CDATA[
+    IDE integration for Luce annotation processors.<br/>
+    <ul>
+      <li><b>Event</b>: adds code completion for @GenerateEvent generated factory methods (of, ofMutable).</li>
+      <li><b>Packet</b>: adds code completion for @BuildPacket generated create(...) factory method.</li>
+    </ul>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.java</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <lang.psiAugmentProvider implementation="dev.luce.event.plugin.EventAugmentProvider"/>
+<!--
+        <lang.psiAugmentProvider implementation="dev.luce.packet.plugin.PacketAugmentProvider"/>
+-->
+    </extensions>
+</idea-plugin>

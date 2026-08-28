@@ -1,44 +1,24 @@
 package dev.sweety.util.logger.formatter;
 
-import dev.sweety.color.AnsiColor;
 import dev.sweety.exception.ExceptionUtils;
 import dev.sweety.util.logger.level.LogLevel;
-import dev.sweety.util.logger.profile.LogProfile;
+import dev.sweety.util.logger.util.LogArguments;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Collection;
-import java.util.StringJoiner;
 
 public class SimpleLogFormatter implements LogFormatter {
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     @Override
-    public String format(LogLevel level, String loggerName, LogProfile profile, Object[] args) {
+    public String format(LogLevel level, String loggerName, Object[] args) {
+        // Mirrors Minecraft's Log4j line shape — `[time] [thread/LEVEL] (Tag) msg` — so bootstrap
+        // console logs sit visually inline with the loader/MC logs in the same stream.
         final String time = LocalDateTime.now().format(TIME_FORMATTER);
-        final String suffix = (profile != null) ? ("@" + profile.fullPath()) : "";
-        final String prefix = "[%s][%s][%s%s]".formatted(time, level, loggerName, suffix);
-        final String message = parseMessage(args);
+        final String thread = Thread.currentThread().getName();
+        final String prefix = "[%s] [%s/%s] (%s)".formatted(time, thread, level, loggerName);
+        final String message = LogFormatter.buildMessage(args);
         return prefix + " " + message;
     }
-
-    private String parseMessage(Object... input) {
-        final StringJoiner joiner = new StringJoiner(" ");
-        for (Object part : input) {
-            joiner.add(switch (part) {
-                case null -> "<null>";
-                case String s -> s;
-                case AnsiColor color -> color.color();
-                case Class<?> clazz -> clazz.getSimpleName();
-                case Throwable e -> ExceptionUtils.getStackTrace(e);
-                case Object[] arr -> parseMessage(arr);
-                case Collection<?> c -> parseMessage(c.toArray());
-                default -> part.toString();
-            });
-        }
-        return joiner.toString();
-    }
 }
-
-

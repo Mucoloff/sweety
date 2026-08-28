@@ -8,7 +8,9 @@ import org.objectweb.asm.FieldVisitor;
 import java.lang.reflect.Field;
 import java.util.Map;
 
-import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Opcodes.ACC_FINAL;
+import static org.objectweb.asm.Opcodes.ACC_STATIC;
+import static org.objectweb.asm.Opcodes.ASM9;
 
 public final class FieldInjector {
 

@@ -1,3 +1,5 @@
+plugins { id("sweety.kotlin-conventions") }
+
 dependencies {
     implementation("io.github.java-diff-utils:java-diff-utils:4.15")
     implementation("org.ow2.asm:asm:9.6")

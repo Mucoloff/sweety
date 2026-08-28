@@ -1,9 +1,11 @@
 package dev.sweety.event.impl;
 
-import dev.sweety.event.api.*;
+import dev.sweety.event.api.AbstractEvent;
+import dev.sweety.event.api.CancellableEvent;
+import dev.sweety.event.api.Event;
+import dev.sweety.event.api.MutableEvent;
 import dev.sweety.event.api.function.Operation;
-import dev.sweety.thread.ThreadManager;
-import dev.sweety.thread.ThreadType;
+import dev.sweety.thread.ThreadUtil;
 import it.unimi.dsi.fastutil.Pair;
 import org.jetbrains.annotations.NotNull;
 
@@ -15,14 +17,11 @@ import java.util.function.Function;
 
 class EventDispatcher {
 
-    private final ThreadManager threadManager;
     private final Executor asyncExecutor;
     private final CallbackRegistry registry;
     private final ExecutionPlanner planner;
 
-    EventDispatcher(ThreadManager threadManager, Executor asyncExecutor,
-                    CallbackRegistry registry, ExecutionPlanner planner) {
-        this.threadManager = threadManager;
+    EventDispatcher(Executor asyncExecutor, CallbackRegistry registry, ExecutionPlanner planner) {
         this.asyncExecutor = asyncExecutor;
         this.registry = registry;
         this.planner = planner;
@@ -37,9 +36,20 @@ class EventDispatcher {
 
         final int initialHash = event.hashCode();
 
+        // POST: wrap once — all callbacks share the same immutable snapshot.
+        // PRE:  pass the mutable event directly so listeners can mutate it.
+        final T view;
+        if (event.isPost()) {
+            T snapshot = wrapImmutable(event);
+            if (snapshot instanceof AbstractEvent<?> ae) ae.post();
+            view = snapshot;
+        } else {
+            view = event;
+        }
+
         for (ExecutionPlanner.ExecutionStep<T> step : plan) {
-            step.run(event, this);
-            if (isCancelled(event)) break;
+            step.run(view, this);
+            if (isCancelled(view)) break;
         }
 
         if (initialHash != event.hashCode()) {
@@ -58,14 +68,10 @@ class EventDispatcher {
             Object... args) {
 
         final T e = dispatch(event);
-
         if (isCancelled(e)) return Pair.of(e, null);
-
         R call = original.call(e.isChanged() ? changedArgsMapper.apply(e) : args);
-
         //noinspection unchecked
         final T post = (T) dispatch(e.post());
-
         return Pair.of(post, call);
     }
 
@@ -75,14 +81,10 @@ class EventDispatcher {
             Object... args) {
 
         final T e = dispatch(event);
-
         if (isCancelled(e)) return Pair.of(e, null);
-
         R call = original.call(args);
-
         //noinspection unchecked
         final T post = (T) dispatch(e.post());
-
         return Pair.of(post, call);
     }
 
@@ -110,21 +112,10 @@ class EventDispatcher {
 
         CompletableFuture<?>[] futures = new CompletableFuture[group.size()];
         int idx = 0;
-        Executor executor = asyncExecutor;
-
-        if (executor != null) {
-            for (EventCallback<T> cb : group) {
-                if (shouldCall(cb, event)) {
-                    futures[idx++] = CompletableFuture.runAsync(() -> cb.listener().call(immutableEvent), executor);
-                }
-            }
-        } else {
-            for (EventCallback<T> cb : group) {
-                if (shouldCall(cb, event)) {
-                    futures[idx++] = threadManager.fireAndForget(ThreadType.CACHED, t ->
-                            t.execute(() -> cb.listener().call(immutableEvent))
-                    );
-                }
+        for (EventCallback<T> cb : group) {
+            if (shouldCall(cb, event)) {
+                futures[idx++] = CompletableFuture.runAsync(
+                        () -> cb.listener().call(immutableEvent), asyncExecutor);
             }
         }
 
@@ -153,15 +144,16 @@ class EventDispatcher {
     }
 
     boolean isCancelled(Event<?> event) {
-        if (event instanceof CancellableEvent<?> ce) {
-            return ce.isCancelled();
-        }
+        if (event instanceof CancellableEvent<?> ce) return ce.isCancelled();
         return false;
     }
 
     void cancel(Event<?> event) {
-        if (event instanceof CancellableEvent<?> ce) {
-            ce.cancel();
-        }
+        if (event instanceof CancellableEvent<?> ce) ce.cancel();
+    }
+
+    /** Creates the default shared executor for async event dispatch. */
+    static Executor defaultAsyncExecutor() {
+        return ThreadUtil.cachedThreadPool("event-async");
     }
 }

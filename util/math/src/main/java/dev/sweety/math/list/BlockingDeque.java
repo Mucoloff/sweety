@@ -1,25 +1,20 @@
 package dev.sweety.math.list;
 
-import lombok.experimental.Delegate;
-
 import java.util.concurrent.LinkedBlockingDeque;
 
-public class BlockingDeque<E> implements java.util.concurrent.BlockingDeque<E> {
-
-    @Delegate
-    private final LinkedBlockingDeque<E> deque;
+public class BlockingDeque<E> extends LinkedBlockingDeque<E> {
 
     public BlockingDeque() {
-        this.deque = new LinkedBlockingDeque<>();
+        super();
     }
 
     public BlockingDeque(int capacity) {
-        this.deque = new LinkedBlockingDeque<>(capacity);
+        super(capacity);
     }
 
     public void addFixed(E e) {
-        while (!deque.offerLast(e)) {
-            deque.pollFirst();
+        while (!offerLast(e)) {
+            pollFirst();
         }
     }
 }

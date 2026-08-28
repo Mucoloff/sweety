@@ -1,5 +1,7 @@
 package dev.sweety.config.common;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -7,35 +9,46 @@ import java.util.function.Consumer;
 
 public abstract class FileContainer {
 
-    protected final Path root;
+    protected Path root;
 
-    public FileContainer(Path root) {
+    /** No-arg constructor for lazy-init subclasses that set {@code root} later via {@link #ensureExists}. */
+    protected FileContainer() {}
+
+    public FileContainer(@NotNull Path root) {
         this.root = root;
     }
 
     public FileContainer(Path parent, String name, boolean file, Consumer<String> logger) {
         this.root = parent.resolve(name);
-        try {
-            if (!Files.exists(this.root)) {
-                if (file) {
-                    Path parentPath = this.root.getParent();
-                    if (parentPath != null) {
-                        Files.createDirectories(parentPath);
-                    }
-                    Files.createFile(this.root);
-                } else {
-                    Files.createDirectories(this.root);
-                }
-            }
-        } catch (IOException e) {
-            logger.accept("Failed to create file at " + this.root.toAbsolutePath() + ": " + e.getMessage());
-            return;
-        }
-        logger.accept("Created " + (file ? "file" : "directory") + " at " + this.root.toAbsolutePath());
+        ensureExists(file, logger);
     }
 
-    abstract void load();
+    /**
+     * Creates {@link #root} on disk if it does not yet exist.
+     * Logs success/failure through {@code logger}; swallows {@link IOException}
+     * (failure is reported to the logger, not rethrown).
+     *
+     * @param file {@code true} to create a file (with parent dirs), {@code false} for a directory.
+     */
+    protected void ensureExists(boolean file, Consumer<String> logger) {
+        if (root == null) return;
+        if (Files.exists(root)) return;
+        try {
+            if (file) {
+                Path parent = root.getParent();
+                if (parent != null) Files.createDirectories(parent);
+                Files.createFile(root);
+            } else {
+                Files.createDirectories(root);
+            }
+            logger.accept("Created " + (file ? "file" : "directory") + " at " + root.toAbsolutePath());
+        } catch (IOException e) {
+            logger.accept("Failed to create " + root.toAbsolutePath() + ": " + e.getMessage());
+        }
+    }
 
-    abstract void save();
+    public abstract void load();
+
+    public abstract void save();
 
 }

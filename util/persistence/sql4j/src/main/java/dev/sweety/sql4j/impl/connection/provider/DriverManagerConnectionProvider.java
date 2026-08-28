@@ -35,6 +35,7 @@ public class DriverManagerConnectionProvider implements ConnectionProvider {
 
     @Deprecated
     public DriverManagerConnectionProvider(String jdbcUrl, @Nullable String user, @Nullable String password) {
+        if (jdbcUrl == null || jdbcUrl.isBlank()) throw new IllegalArgumentException("jdbcUrl must not be null or blank");
         this.jdbcUrl = jdbcUrl;
         this.user = user;
         this.password = password;
@@ -58,6 +59,7 @@ public class DriverManagerConnectionProvider implements ConnectionProvider {
     public Connection get() throws SQLException {
         Connection connection = DriverManager.getConnection(jdbcUrl, user, password);
         if (dialectType == DialectType.SQLITE) {
+            // WAL + busy_timeout are carried in the sqlite JDBC URL (see SQLiteConfig#jdbcUrl).
             try (var st = connection.createStatement()) {
                 st.execute("PRAGMA foreign_keys = ON");
             }

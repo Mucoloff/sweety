@@ -1,14 +1,32 @@
 package dev.sweety.transform.engine.transformer.virtualize;
 
-import dev.sweety.transform.engine.*;
-import org.objectweb.asm.*;
-import org.objectweb.asm.tree.*;
+import dev.sweety.transform.engine.MethodSelector;
+import dev.sweety.transform.engine.TransformContext;
+import dev.sweety.transform.engine.Transformer;
+import dev.sweety.transform.engine.transformer.constant.IntegerEncodingTransformer;
+import dev.sweety.util.logger.SimpleLogger;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.FieldNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.IntInsnNode;
+import org.objectweb.asm.tree.LdcInsnNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.TypeInsnNode;
+import org.objectweb.asm.tree.VarInsnNode;
 
-import java.util.*;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Virtualizer Transformer.
- *
+ * <p>
  * For each method annotated with {@code @Virtualize}:
  * <ol>
  *   <li>Compile the method body to VM bytecode via {@link VMCompiler}.</li>
@@ -31,9 +49,19 @@ import java.util.*;
  */
 public final class VirtualizerTransformer extends Transformer {
 
+    private static final SimpleLogger logger = SimpleLogger.of(VirtualizerTransformer.class);
+
     private static final String VM_INTERPRETER = "dev/sweety/transform/vm/VMInterpreter";
     private static final String EXECUTE_DESC =
             "(Ljava/lang/Object;[Ljava/lang/Object;[B)Ljava/lang/Object;";
+
+    /** Eager (plaintext, baked at transform time) vs gated (field left unset — see
+     *  {@link VirtualBytecodeService}, filled in only after the client proves a live session). */
+    private final boolean gated;
+
+    public VirtualizerTransformer() { this(false); }
+
+    public VirtualizerTransformer(boolean gated) { this.gated = gated; }
 
     @Override public String name() { return "Virtualizer"; }
 
@@ -55,7 +83,7 @@ public final class VirtualizerTransformer extends Transformer {
                 ctx.markProcessed(mn);
                 MethodSelector.stripAnnotations(mn);
             } catch (Exception e) {
-                System.err.println("[Virtualizer] Skipping " + cn.name + "." + mn.name + mn.desc
+                logger.profile("virtualize").warn("Skipping " + cn.name + "." + mn.name + mn.desc
                         + " — compile error: " + e.getMessage());
             }
         }
@@ -64,18 +92,41 @@ public final class VirtualizerTransformer extends Transformer {
     // ── Core virtualization ───────────────────────────────────────────────────
 
     private void virtualize(ClassNode cn, MethodNode mn) {
-        // 1. Compile to VM bytecode
-        final byte[] vmCode = VMCompiler.compile(mn);
+        final String fieldName = fieldNameFor(mn);
 
-        // 2. Create storage field
-        final String fieldName = "__vm$" + fnv32hex(mn.name + mn.desc);
-        injectBytecodeField(cn, fieldName, vmCode);
+        if (gated) {
+            // Field left unset (null) — VirtualBytecodeService fills it in on demand, only after the
+            // client proves a live session. Not final: it's reflectively set well after <clinit>.
+            declareBytecodeField(cn, fieldName, false);
+        } else {
+            // 1. Compile to VM bytecode
+            final byte[] vmCode = VMCompiler.compile(cn.name, mn);
+            // 2. Create storage field + bake it in eagerly
+            injectBytecodeField(cn, fieldName, vmCode);
+        }
 
-        // 3. Replace method body with stub
+        // 3. Replace method body with stub (same in both modes — reads whatever the field holds)
         replaceWithStub(cn, mn, fieldName);
     }
 
+    /**
+     * The injected static field name for a virtualized method — same derivation used at initial
+     * transform time and by {@link VirtualBytecodeService} when recompiling on demand, so the two
+     * always agree on which field a given method's bytecode belongs in.
+     */
+    public static String fieldNameFor(MethodNode mn) {
+        return "__vm$" + fnv32hex(mn.name + mn.desc);
+    }
+
     // ── Bytecode field injection ──────────────────────────────────────────────
+
+    /** Declares the storage field with no initializer — used by gated mode; filled in later via
+     *  reflection by the client once it decrypts the on-demand payload (see {@link VirtualBytecodeService}). */
+    private static void declareBytecodeField(ClassNode cn, String fieldName, boolean isFinal) {
+        int access = Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC;
+        if (isFinal) access |= Opcodes.ACC_FINAL;
+        cn.fields.add(new FieldNode(access, fieldName, "[B", null, null));
+    }
 
     private static void injectBytecodeField(ClassNode cn, String fieldName, byte[] vmCode) {
         // Add private static final byte[] field
@@ -258,26 +309,13 @@ public final class VirtualizerTransformer extends Transformer {
     }
 
     private static AbstractInsnNode pushInt(int v) {
-        return switch (v) {
-            case -1 -> new InsnNode(Opcodes.ICONST_M1);
-            case  0 -> new InsnNode(Opcodes.ICONST_0);
-            case  1 -> new InsnNode(Opcodes.ICONST_1);
-            case  2 -> new InsnNode(Opcodes.ICONST_2);
-            case  3 -> new InsnNode(Opcodes.ICONST_3);
-            case  4 -> new InsnNode(Opcodes.ICONST_4);
-            case  5 -> new InsnNode(Opcodes.ICONST_5);
-            default -> {
-                if (v >= Byte.MIN_VALUE  && v <= Byte.MAX_VALUE)  yield new IntInsnNode(Opcodes.BIPUSH, v);
-                if (v >= Short.MIN_VALUE && v <= Short.MAX_VALUE) yield new IntInsnNode(Opcodes.SIPUSH, v);
-                yield new LdcInsnNode(v);
-            }
-        };
+        return IntegerEncodingTransformer.pushInt(v);
     }
 
     /** FNV-32 of string → 8-char lowercase hex for unique field names. */
     private static String fnv32hex(String s) {
         int hash = 0x811c9dc5;
-        for (byte b : s.getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
+        for (byte b : s.getBytes(StandardCharsets.UTF_8)) {
             hash ^= b;
             hash *= 0x01000193;
         }

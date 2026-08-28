@@ -4,7 +4,15 @@ import dev.sweety.event.api.Event;
 import dev.sweety.event.api.MutableEvent;
 
 import java.lang.reflect.Type;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -73,7 +81,7 @@ class ExecutionPlanner {
 
             List<EventCallback<Event<?>>> currentBatch = new ArrayList<>();
             for (EventCallback<Event<?>> cb : group) {
-                if (cb.readOnly()) {
+                if (cb.readOnly() && cb.parallel()) {
                     currentBatch.add(cb);
                 } else {
                     if (!currentBatch.isEmpty()) {

@@ -137,89 +137,88 @@ interface ArrayPool<T> {
         }
     }
 
+    enum class Strategy {
+        THREAD_LOCAL,
+        SHARED
+    }
+
+    class Builder<T>(
+        private val factory: IntFunction<T>,
+        private val length: ToIntFunction<T>
+    ) {
+        private var defaultSize: Int = 0
+        private var onDiscard: Consumer<T>? = null
+        private var maxSize: Int = -1
+        private var strategy: Strategy = Strategy.THREAD_LOCAL
+
+        fun defaultSize(defaultSize: Int) = apply { this.defaultSize = defaultSize }
+        fun onDiscard(fn: Consumer<T>) = apply { this.onDiscard = fn }
+        fun maxSize(maxSize: Int) = apply { this.maxSize = maxSize }
+        fun strategy(strategy: Strategy) = apply { this.strategy = strategy }
+
+        fun build(): ArrayPool<T> {
+            return when (strategy) {
+                Strategy.THREAD_LOCAL -> buildThreadLocal()
+                Strategy.SHARED -> buildShared()
+            }
+        }
+
+        private fun buildThreadLocal(): ArrayPool<T> = when {
+            maxSize < 0 -> ThreadLocalPool(factory, length, defaultSize, onDiscard, Int.MAX_VALUE)
+            onDiscard != null -> ThreadLocalPool(factory, length, defaultSize, onDiscard, maxSize)
+            else -> ThreadLocalPool(factory, length, defaultSize, null, maxSize)
+        }
+
+        private fun buildShared(): ArrayPool<T> = when {
+            maxSize < 0 -> SharedPool(factory, length, defaultSize, onDiscard, Int.MAX_VALUE)
+            onDiscard != null -> SharedPool(factory, length, defaultSize, onDiscard, maxSize)
+            else -> SharedPool(factory, length, defaultSize, null, maxSize)
+        }
+    }
+
     companion object {
-        // ========================== TYPED CONVENIENCE FACTORIES ==========================
         @JvmStatic
-        fun threadLocalBytes(defaultSize: Int, maxPerThread: Int): ArrayPool<ByteArray> {
-            return threadLocal<ByteArray>(::ByteArray, ByteArray::size, defaultSize, maxPerThread)
-        }
-
-        @JvmStatic
-        fun threadLocalInts(defaultSize: Int, maxPerThread: Int): ArrayPool<IntArray> {
-            return threadLocal<IntArray>(::IntArray, IntArray::size, defaultSize, maxPerThread)
-        }
-
-        @JvmStatic
-        fun threadLocalLongs(defaultSize: Int, maxPerThread: Int): ArrayPool<LongArray> {
-            return threadLocal<LongArray>(::LongArray, LongArray::size, defaultSize, maxPerThread)
-        }
-
-        @JvmStatic
-        fun threadLocalFloats(defaultSize: Int, maxPerThread: Int): ArrayPool<FloatArray> {
-            return threadLocal<FloatArray>(::FloatArray, FloatArray::size, defaultSize, maxPerThread)
-        }
-
-        @JvmStatic
-        fun threadLocalDoubles(defaultSize: Int, maxPerThread: Int): ArrayPool<DoubleArray> {
-            return threadLocal<DoubleArray>(::DoubleArray, DoubleArray::size, defaultSize, maxPerThread)
-        }
-
-        @JvmStatic
-        fun sharedBytes(defaultSize: Int, maxPoolSize: Int): ArrayPool<ByteArray> {
-            return shared<ByteArray>(::ByteArray, ByteArray::size, defaultSize, maxPoolSize)
-        }
-
-        @JvmStatic
-        fun sharedInts(defaultSize: Int, maxPoolSize: Int): ArrayPool<IntArray> {
-            return shared<IntArray>(::IntArray, IntArray::size, defaultSize, maxPoolSize)
-        }
-
-        @JvmStatic
-        fun sharedLongs(defaultSize: Int, maxPoolSize: Int): ArrayPool<LongArray> {
-            return shared<LongArray>(::LongArray, LongArray::size, defaultSize, maxPoolSize)
-        }
-
-        @JvmStatic
-        fun sharedFloats(defaultSize: Int, maxPoolSize: Int): ArrayPool<FloatArray> {
-            return shared<FloatArray>(::FloatArray, FloatArray::size, defaultSize, maxPoolSize)
-        }
-
-        @JvmStatic
-        fun sharedDoubles(defaultSize: Int, maxPoolSize: Int): ArrayPool<DoubleArray> {
-            return shared<DoubleArray>(::DoubleArray, DoubleArray::size, defaultSize, maxPoolSize)
-        }
-
-        // ========================== GENERIC FACTORIES ==========================
-        @JvmStatic
-        fun <T> threadLocal(
-            factory: IntFunction<T>, length: ToIntFunction<T>,
-            defaultSize: Int, onDiscard: Consumer<T>?, maxPerThread: Int
-        ): ArrayPool<T> {
-            return ThreadLocalPool<T>(factory, length, defaultSize, onDiscard, maxPerThread)
-        }
+        fun <T> builder(factory: IntFunction<T>, length: ToIntFunction<T>): Builder<T> =
+            Builder(factory, length)
 
         @JvmStatic
         fun <T> threadLocal(
             factory: IntFunction<T>, length: ToIntFunction<T>,
-            defaultSize: Int, maxPerThread: Int
-        ): ArrayPool<T> {
-            return threadLocal<T>(factory, length, defaultSize, { _: T -> }, maxPerThread)
+            defaultSize: Int,
+            maxPerThread: Int,
+            onDiscard: Consumer<T>? = null
+        ): ArrayPool<T> = if (onDiscard == null) {
+            Builder(factory, length)
+                .defaultSize(defaultSize)
+                .maxSize(maxPerThread)
+                .build()
+        } else {
+            Builder(factory, length)
+                .defaultSize(defaultSize)
+                .onDiscard(onDiscard)
+                .maxSize(maxPerThread)
+                .build()
         }
 
         @JvmStatic
         fun <T> shared(
             factory: IntFunction<T>, length: ToIntFunction<T>,
-            defaultSize: Int, onDiscard: Consumer<T>?, maxPoolSize: Int
-        ): ArrayPool<T> {
-            return SharedPool<T>(factory, length, defaultSize, onDiscard, maxPoolSize)
-        }
-
-        @JvmStatic
-        fun <T> shared(
-            factory: IntFunction<T>, length: ToIntFunction<T>,
-            defaultSize: Int, maxPoolSize: Int
-        ): ArrayPool<T> {
-            return shared(factory, length, defaultSize, { _: T? -> }, maxPoolSize)
+            defaultSize: Int,
+            maxPoolSize: Int,
+            onDiscard: Consumer<T>? = null
+        ): ArrayPool<T> = if (onDiscard == null) {
+            Builder(factory, length)
+                .strategy(Strategy.SHARED)
+                .defaultSize(defaultSize)
+                .maxSize(maxPoolSize)
+                .build()
+        } else {
+            Builder(factory, length)
+                .strategy(Strategy.SHARED)
+                .defaultSize(defaultSize)
+                .onDiscard(onDiscard)
+                .maxSize(maxPoolSize)
+                .build()
         }
     }
 }

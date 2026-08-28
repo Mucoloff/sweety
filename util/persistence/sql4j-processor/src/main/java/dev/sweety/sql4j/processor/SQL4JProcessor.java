@@ -1,19 +1,39 @@
 package dev.sweety.sql4j.processor;
 
 import com.google.auto.service.AutoService;
-import com.squareup.javapoet.*;
+import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.CodeBlock;
+import com.squareup.javapoet.FieldSpec;
+import com.squareup.javapoet.JavaFile;
+import com.squareup.javapoet.MethodSpec;
+import com.squareup.javapoet.ParameterizedTypeName;
+import com.squareup.javapoet.TypeName;
+import com.squareup.javapoet.TypeSpec;
 
-import javax.annotation.processing.*;
+import javax.annotation.processing.AbstractProcessor;
+import javax.annotation.processing.Processor;
+import javax.annotation.processing.RoundEnvironment;
+import javax.annotation.processing.SupportedAnnotationTypes;
+import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
-import javax.lang.model.element.*;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @SupportedAnnotationTypes({
     "dev.sweety.sql4j.api.obj.Table.Info",
@@ -22,9 +42,9 @@ import java.util.stream.Stream;
     "dev.sweety.sql4j.api.obj.annotation.OneToMany",
     "dev.sweety.sql4j.api.obj.annotation.ManyToMany",
     "dev.sweety.sql4j.api.annotation.Sql4jRepository",
-    "dev.sweety.sql4j.api.annotation.Query"
+    "dev.sweety.sql4j.api.query.Query.Info"
 })
-@SupportedSourceVersion(SourceVersion.RELEASE_24)
+@SupportedSourceVersion(SourceVersion.RELEASE_21)
 @AutoService(Processor.class)
 public class SQL4JProcessor extends AbstractProcessor {
 
@@ -34,7 +54,7 @@ public class SQL4JProcessor extends AbstractProcessor {
     private static final String ONE_TO_MANY = "dev.sweety.sql4j.api.obj.annotation.OneToMany";
     private static final String MANY_TO_MANY = "dev.sweety.sql4j.api.obj.annotation.ManyToMany";
     private static final String SQL4J_REPOSITORY = "dev.sweety.sql4j.api.annotation.Sql4jRepository";
-    private static final String QUERY_ANNOTATION = "dev.sweety.sql4j.api.annotation.Query";
+    private static final String QUERY_ANNOTATION = "dev.sweety.sql4j.api.query.Query.Info";
     private static final String CACHE_EVICT_ANNOTATION = "dev.sweety.sql4j.api.annotation.CacheEvict";
     
     private static final String TABLE_REGISTRY = "dev.sweety.sql4j.api.obj.table.TableRegistry";
@@ -243,7 +263,7 @@ public class SQL4JProcessor extends AbstractProcessor {
         // Static SQL Generation
         String allCols = fields.stream().map(f -> f.colName).collect(Collectors.joining(", "));
         String insertCols = fields.stream().filter(f -> !f.isAutoInc).map(f -> f.colName).collect(Collectors.joining(", "));
-        String insertPlaceholders = fields.stream().filter(f -> !f.isAutoInc).map(_ -> "?").collect(Collectors.joining(", "));
+        String insertPlaceholders = fields.stream().filter(f -> !f.isAutoInc).map(ignored -> "?").collect(Collectors.joining(", "));
 
         mirrorBuilder.addField(FieldSpec.builder(String.class, "SELECT_ALL")
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
@@ -433,6 +453,15 @@ public class SQL4JProcessor extends AbstractProcessor {
                     block.beginControlFlow("if (value != null && $T.class.isInstance(value))", fd.boxedType);
                     block.addStatement("set_$L(instance, ($T) value)", fd.fieldName, fd.fieldType);
                     block.endControlFlow();
+                } else if (fd.fieldType.isPrimitive()) {
+                    // A primitive field (boolean/int/long/...) can't hold null - casting a null Object
+                    // here would NPE on unboxing (e.g. a legacy row with SQL NULL in a nullable=false
+                    // column whose migration added a DDL default but never backfilled existing rows).
+                    // Skip the set: the field keeps its Java-default value (false/0/0L/...), which
+                    // matches the declared @Column.Info default for every current nullable=false primitive.
+                    block.beginControlFlow("if (value != null)");
+                    block.addStatement("set_$L(instance, ($T) value)", fd.fieldName, fd.fieldType);
+                    block.endControlFlow();
                 } else {
                     block.addStatement("set_$L(instance, ($T) value)", fd.fieldName, fd.fieldType);
                 }
@@ -461,10 +490,10 @@ public class SQL4JProcessor extends AbstractProcessor {
         return null;
     }
 
-    /** Resolves {@code OneToMany}/{@code ManyToMany} {@code fetchType} enum for generated {@link Table.Relation}. */
+    /** Resolves {@code OneToMany}/{@code ManyToMany} {@code fetchType} enum for generated . */
     private static String normalizeFetchType(String raw) {
         if (raw == null) return "LAZY";
-        if (raw.endsWith("EAGER") || raw.equals("EAGER")) return "EAGER";
+        if (raw.endsWith("EAGER")) return "EAGER";
         return "LAZY";
     }
 

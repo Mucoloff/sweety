@@ -8,12 +8,24 @@ import dev.sweety.patch.model.PatchOperation;
 import dev.sweety.patch.model.AddOperation;
 import dev.sweety.patch.model.DeleteOperation;
 import dev.sweety.patch.model.ModifyOperation;
+import dev.sweety.patch.model.MoveOperation;
 import org.jetbrains.annotations.NotNull;
 
 import com.github.difflib.DiffUtils;
 import com.github.difflib.UnifiedDiffUtils;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableSet;
+import java.util.NoSuchElementException;
+import java.util.Objects;
+import java.util.TreeSet;
 
 public class PatchDiffEngine {
 
@@ -48,6 +60,7 @@ public class PatchDiffEngine {
         NavigableSet<String> allPaths = new TreeSet<>(oldNames);
         allPaths.addAll(newNames);
         Iterator<String> pathIter = allPaths.iterator();
+        Map<String, PatchOperation> moveOverrides = detectMoves(oldNames, newNames, oldArchive, newArchive);
 
         return new Iterator<>() {
             PatchOperation nextOp;
@@ -58,7 +71,12 @@ public class PatchDiffEngine {
                 }
                 while (pathIter.hasNext()) {
                     String path = pathIter.next();
-                    PatchOperation op = opForPath(path, oldNames, newNames, oldArchive, newArchive);
+                    PatchOperation op;
+                    if (moveOverrides.containsKey(path)) {
+                        op = moveOverrides.get(path);
+                    } else {
+                        op = opForPath(path, oldNames, newNames, oldArchive, newArchive);
+                    }
                     if (op != null) {
                         nextOp = op;
                         return;
@@ -75,9 +93,7 @@ public class PatchDiffEngine {
             @Override
             public PatchOperation next() {
                 ensureNext();
-                if (nextOp == null) {
-                    throw new NoSuchElementException();
-                }
+                if (nextOp == null) throw new NoSuchElementException();
                 PatchOperation r = nextOp;
                 nextOp = null;
                 return r;
@@ -93,12 +109,12 @@ public class PatchDiffEngine {
             Archive newA) {
         boolean inOld = oldNames.contains(path);
         boolean inNew = newNames.contains(path);
-        if (!inNew && inOld) {
-            return delete(path);
-        }
-        if (inNew && !inOld) {
+
+        if (!inNew && inOld) return delete(path);
+
+        if (inNew && !inOld)
             return add(path, Objects.requireNonNull(newA.readEntry(path), "missing new entry: " + path));
-        }
+
         if (inOld) {
             long s1 = oldA.uncompressedSize(path);
             long s2 = newA.uncompressedSize(path);
@@ -111,9 +127,7 @@ public class PatchDiffEngine {
             
             byte[] oldData = oldA.readEntry(path);
             byte[] newData = newA.readEntry(path);
-            if (shouldModify(path, oldData, newData)) {
-                return modify(path, oldData, newData);
-            }
+            if (shouldModify(path, oldData, newData)) return modify(path, oldData, newData);
         }
         return null;
     }
@@ -130,6 +144,48 @@ public class PatchDiffEngine {
         }
 
         return true;
+    }
+
+
+    /**
+     * Matches paths only in oldArchive against paths only in newArchive by (crc32, size),
+     * turning delete+add pairs with identical content into a single MoveOperation.
+     */
+    private Map<String, PatchOperation> detectMoves(
+            NavigableSet<String> oldNames,
+            NavigableSet<String> newNames,
+            Archive oldArchive,
+            Archive newArchive) {
+        Map<String, PatchOperation> overrides = new HashMap<>();
+        Map<String, Deque<String>> byKey = new HashMap<>();
+
+        for (String path : oldNames) {
+            if (newNames.contains(path)) continue;
+            long crc = oldArchive.crc32(path);
+            long size = oldArchive.uncompressedSize(path);
+            if (crc < 0 || size < 0) continue;
+            byKey.computeIfAbsent(crc + ":" + size, k -> new ArrayDeque<>()).add(path);
+        }
+
+        for (String path : newNames) {
+            if (oldNames.contains(path)) continue;
+            long crc = newArchive.crc32(path);
+            long size = newArchive.uncompressedSize(path);
+            if (crc < 0 || size < 0) continue;
+            Deque<String> candidates = byKey.get(crc + ":" + size);
+            if (candidates == null || candidates.isEmpty()) continue;
+
+            byte[] oldData = oldArchive.readEntry(candidates.peek());
+            byte[] newData = newArchive.readEntry(path);
+            if (!Arrays.equals(oldData, newData)) continue;
+
+            String oldPath = candidates.poll();
+            String hash = hashFunction.calculateHash(newData);
+            overrides.put(oldPath, null);
+            overrides.put(path, new MoveOperation(oldPath, path, hash));
+        }
+
+        return overrides;
     }
 
     private PatchOperation add(String path, byte[] data) {

@@ -29,4 +29,16 @@ public final class StopWatch {
     public boolean hasPassedMillis(long millis) {
         return elapsedMillis() >= millis;
     }
+
+    public boolean hasPassedNanos(long nanos, boolean reset) {
+        boolean passed = elapsedNanos() >= nanos;
+        if (reset && passed) reset();
+        return passed;
+    }
+
+    public boolean hasPassedMillis(long millis, boolean reset) {
+        boolean passed = elapsedMillis() >= millis;
+        if (reset && passed) reset();
+        return passed;
+    }
 }

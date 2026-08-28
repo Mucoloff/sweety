@@ -10,5 +10,6 @@ record EventCallback<T extends Event<?>>(
         int priority,
         State state,
         boolean readOnly,
+        boolean parallel,
         long subscribeOrder) {
 }

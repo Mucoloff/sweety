@@ -1,11 +1,19 @@
 package dev.sweety.transform.engine.transformer.constant;
 
-import dev.sweety.transform.engine.*;
-import org.objectweb.asm.*;
-import org.objectweb.asm.tree.*;
+import dev.sweety.transform.engine.MethodSelector;
+import dev.sweety.transform.engine.TransformContext;
+import dev.sweety.transform.engine.Transformer;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.LdcInsnNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
 
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.Base64;
 
 /**
  * String Constant Encryption.
@@ -58,9 +66,7 @@ public final class StringEncryptionTransformer extends Transformer {
             if (!MethodSelector.transformStrings(cn, mn)) continue;
             if (DECRYPT_METHOD.equals(mn.name)) continue; // don't recurse
 
-            if (encryptStrings(cn, mn, key)) {
-                anyEncrypted = true;
-            }
+            if (encryptStrings(cn, mn, key)) anyEncrypted = true;
         }
 
         if (anyEncrypted) {

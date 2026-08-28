@@ -13,7 +13,9 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -124,10 +126,10 @@ class EventSystemTest {
 
     @Test
     void testErrorPaths() {
-        assertThrows(NullPointerException.class, () -> system.subscribe(null, _ -> {
+        assertThrows(NullPointerException.class, () -> system.subscribe(null, ignored -> {
         }, 0, State.PRE));
         assertThrows(NullPointerException.class, () -> system.subscribe(TestEvent.class, null, 0, State.PRE));
-        assertThrows(NullPointerException.class, () -> system.subscribe(TestEvent.class, _ -> {
+        assertThrows(NullPointerException.class, () -> system.subscribe(TestEvent.class, ignored2 -> {
         }, 0, null));
         assertThrows(NullPointerException.class, () -> system.dispatch(null));
         assertThrows(NullPointerException.class, () -> system.subscribe(null));
@@ -136,7 +138,7 @@ class EventSystemTest {
     @Test
     void testEventAPI() {
         // Test static factory methods injected by processor
-        PlayerJoinedEvent ev = Event.ofMutable(PlayerJoinedEvent.class, "NomeUtente", 42);
+        MutablePlayerJoinedEvent ev = Event.ofMutable(PlayerJoinedEvent.class, "NomeUtente", 42);
 
         TestContainer container = new TestContainer();
         system.subscribe(container);

@@ -1,7 +1,6 @@
 package dev.sweety.netty.packet.registry;
 
-import dev.sweety.util.logger.level.LogLevel;
-import dev.sweety.util.logger.SimpleLogger;
+import dev.sweety.util.logger.LoggerFactory;
 import dev.sweety.netty.messaging.exception.PacketRegistrationException;
 import dev.sweety.netty.packet.model.Packet;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -64,7 +63,7 @@ public class OptimizedPacketRegistry implements PacketRegistry {
     @Override
     public int getPacketId(Class<? extends Packet> packetClass) {
         int id = classToId.getInt(packetClass);
-        if (id == -1) SimpleLogger.log(LogLevel.DEBUG, "Packet " + packetClass.getName() + " not registered!");
+        if (id == -1) LoggerFactory.getLogger("OptimizedPacketRegistry").debug("Packet {} not registered!", packetClass.getName());
         return id;
     }
 
@@ -73,7 +72,7 @@ public class OptimizedPacketRegistry implements PacketRegistry {
             throws InvocationTargetException, InstantiationException, IllegalAccessException {
         RegisteredPacket registered = idToPacket.get(packetId);
         if (registered == null) throw new IllegalArgumentException("Unknown packet id " + packetId);
-        return registered.create(packetId, timestamp, data);
+        return registered.create(timestamp, data);
     }
 
     @Override

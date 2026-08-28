@@ -1,11 +1,19 @@
 package dev.sweety.sql4j.api;
 
-import dev.sweety.sql4j.api.exception.*;
+import dev.sweety.sql4j.api.exception.Sql4jCacheException;
+import dev.sweety.sql4j.api.exception.Sql4jConnectionException;
+import dev.sweety.sql4j.api.exception.Sql4jException;
+import dev.sweety.sql4j.api.exception.Sql4jMappingException;
+import dev.sweety.sql4j.api.exception.Sql4jQueryException;
 import org.junit.jupiter.api.Test;
 
 import java.sql.SQLException;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
  * Unit tests for the Sql4j exception hierarchy.

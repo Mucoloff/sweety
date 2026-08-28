@@ -7,14 +7,24 @@ import dev.sweety.sql4j.api.util.SqlLogger;
 import dev.sweety.sql4j.impl.Database;
 import dev.sweety.sql4j.api.repository.Repository;
 import dev.sweety.sql4j.impl.connection.ConnectionType;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestMethodOrder;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Executors;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -257,7 +267,7 @@ public class SQL4JFullTest {
             u.setRole(Role.USER);
             tx.execute(users.insert(u));
             throw new RuntimeException("Rollback test");
-        }).handle((_, ex) -> {
+        }).handle((ignored, ex) -> {
             assertNotNull(ex, "Transaction should have failed with an exception");
             return null;
         }).join();

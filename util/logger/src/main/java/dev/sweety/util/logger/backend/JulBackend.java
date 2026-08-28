@@ -2,6 +2,8 @@ package dev.sweety.util.logger.backend;
 
 import dev.sweety.util.logger.LogEvent;
 import dev.sweety.util.logger.level.LogLevel;
+import dev.sweety.exception.ExceptionUtils;
+import dev.sweety.util.logger.util.LogArguments;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -25,14 +27,13 @@ public record JulBackend(Logger logger) implements LoggerBackend {
     public void log(LogEvent event) {
         final Level level = map(event.level());
         if (!logger.isLoggable(level)) return;
-
         if (event.rawArgs() == null || event.rawArgs().length == 0) return;
 
-        if (event.pattern() != null) {
-            logger.log(level, event.pattern(), event.params());
-        } else {
-            logger.log(level, String.valueOf(event.rawArgs()[0]));
-        }
+        String message = LogArguments.formatMessage(event.rawArgs());
+        Throwable cause = LogArguments.trailingThrowable(event.rawArgs());
+        if (cause != null) message = message + "\n" + ExceptionUtils.getStackTrace(cause);
+
+        logger.log(level, message);
     }
 
     private static Level map(LogLevel level) {

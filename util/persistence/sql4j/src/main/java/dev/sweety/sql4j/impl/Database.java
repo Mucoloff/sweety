@@ -22,16 +22,21 @@ import dev.sweety.sql4j.impl.query.table.CreateTable;
 import dev.sweety.sql4j.impl.transaction.TransactionManager;
 
 import dev.sweety.sql4j.api.query.AbstractQuery;
+import dev.sweety.thread.ThreadUtil;
 
 import java.lang.reflect.Constructor;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 import dev.sweety.sql4j.api.repository.Repository;
@@ -45,7 +50,10 @@ public class Database implements AutoCloseable {
     private final Dialect dialect;
     private final TransactionManager transactionManager;
     private final EntityCache entityCache = new EntityCache();
-    private final List<QueryInterceptor> interceptors = new ArrayList<>();
+    // CopyOnWriteArrayList: read by every query execution path off the connection/executor
+    // threads while addInterceptor() can be called concurrently — see SqlConnection for the
+    // same fix on the connection-scoped interceptor list.
+    private final List<QueryInterceptor> interceptors = new CopyOnWriteArrayList<>();
     private int batchChunkSize = 0;
 
     public Database(final SqlConnection connection) {
@@ -69,7 +77,7 @@ public class Database implements AutoCloseable {
     }
 
     private static SqlConnection buildConnection(SQL4JConfig config) {
-        Executor executor = config.executor() != null ? config.executor() : Executors.newCachedThreadPool();
+        Executor executor = config.executor() != null ? config.executor() : ThreadUtil.cachedThreadPool("sql4j-db");
         boolean ownsExecutor = config.executor() == null;
         ConnectionProvider provider = config.useHikari()
                 ? new HikariConnectionProvider(config)
@@ -82,7 +90,7 @@ public class Database implements AutoCloseable {
      */
     @Deprecated
     public Database(final ConnectionType connectionType, final String... params) {
-        this(connectionType.create(Executors.newCachedThreadPool(), params));
+        this(connectionType.create(ThreadUtil.cachedThreadPool("sql4j-db"), params));
     }
 
     public SqlConnection getConnection() {

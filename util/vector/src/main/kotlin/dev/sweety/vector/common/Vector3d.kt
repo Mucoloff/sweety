@@ -30,15 +30,17 @@ interface Vector3d : Vector<Double, Vector3d> {
     override fun length(): Double = sqrt(lengthSquared())
     override fun lengthSquared(): Double = x() * x() + y() * y() + z() * z()
 
-    override fun distance(other: Vector3d): Double = sqrt(distanceSquared(other))
-
     fun distanceSquared(x: Double, y: Double, z: Double): Double {
-        val dx = x() - x
+        val dx = (x() - x)
         val dy = y() - y
         val dz = z() - z
         return dx * dx + dy * dy + dz * dz
     }
+
+    fun distance(x: Double, y: Double, z: Double) = sqrt(distanceSquared(x, y, z))
     override fun distanceSquared(other: Vector3d) = distanceSquared(other.x(), other.y(), other.z())
+
+    override fun distance(other: Vector3d) = sqrt(distanceSquared(other))
 
     override fun normalize(): Vector3d {
         val l = length()
@@ -68,7 +70,8 @@ interface Vector3d : Vector<Double, Vector3d> {
         )
     }
 
-    fun string(precision: Int) = "x=${"%.${precision}f".format(x())}, y=${"%.${precision}f".format(y())}, z=${"%.${precision}f".format(z())}"
+    fun string(precision: Int) =
+        "x=${"%.${precision}f".format(x())}, y=${"%.${precision}f".format(y())}, z=${"%.${precision}f".format(z())}"
 
     companion object {
         fun of(x: Double = 0.0, y: Double = 0.0, z: Double = 0.0): Vec3d = Vec3d(x, y, z)

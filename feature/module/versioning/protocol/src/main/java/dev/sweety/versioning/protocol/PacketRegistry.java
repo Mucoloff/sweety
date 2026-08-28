@@ -4,6 +4,7 @@ import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.OptimizedPacketRegistry;
 import dev.sweety.netty.packet.registry.PacketEnum;
 import dev.sweety.versioning.protocol.handshake.HandshakeTransaction;
+import dev.sweety.versioning.protocol.integrity.IntegrityTransaction;
 import dev.sweety.versioning.protocol.update.ReleasePacket;
 import org.jetbrains.annotations.ApiStatus;
 
@@ -12,6 +13,7 @@ public enum PacketRegistry implements PacketEnum {
 
     HANDSHAKE(1, HandshakeTransaction.class),
     RELEASE(2, ReleasePacket.class),
+    INTEGRITY(3, IntegrityTransaction.class),
 
     ;
 

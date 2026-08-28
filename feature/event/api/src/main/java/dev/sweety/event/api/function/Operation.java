@@ -1,13 +1,6 @@
 package dev.sweety.event.api.function;
 
-import java.util.function.Function;
-
 @FunctionalInterface
-public interface Operation<R> extends Function<Object[], R> {
+public interface Operation<R> {
     R call(Object... args);
-
-    @Override
-    default R apply(Object... args) {
-        return call(args);
-    }
 }

@@ -5,8 +5,8 @@ import com.zaxxer.hikari.HikariDataSource;
 import dev.sweety.sql4j.api.configuration.DatabaseConfig;
 import dev.sweety.sql4j.api.configuration.SQL4JConfig;
 import dev.sweety.sql4j.api.connection.provider.ConnectionProvider;
-import dev.sweety.sql4j.api.exception.Sql4jConnectionException;
 import dev.sweety.sql4j.impl.connection.dialect.DialectType;
+import org.sqlite.SQLiteDataSource;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -17,7 +17,7 @@ public class HikariConnectionProvider implements ConnectionProvider {
 
     public HikariConnectionProvider(DatabaseConfig config) {
         HikariConfig hikariConfig = new HikariConfig();
-        hikariConfig.setJdbcUrl(config.jdbcUrl());
+        configureTarget(hikariConfig, config.jdbcUrl(), config.dialectType());
         hikariConfig.setUsername(config.user());
         hikariConfig.setPassword(config.password());
         applyDialectTuning(hikariConfig, config.dialectType());
@@ -34,7 +34,7 @@ public class HikariConnectionProvider implements ConnectionProvider {
      */
     public HikariConnectionProvider(SQL4JConfig config) {
         HikariConfig hikariConfig = new HikariConfig();
-        hikariConfig.setJdbcUrl(config.jdbcUrl());
+        configureTarget(hikariConfig, config.jdbcUrl(), config.dialect());
         hikariConfig.setUsername(config.user());
         hikariConfig.setPassword(config.password());
 
@@ -63,6 +63,27 @@ public class HikariConnectionProvider implements ConnectionProvider {
         }
     }
 
+    /**
+     * Point Hikari at the database. For SQLite we back the pool with a configured
+     * {@link SQLiteDataSource} so the pragmas actually stick (xerial ignores {@code journal_mode} from
+     * the URL/connectionInitSql): WAL + busy_timeout let multiple processes (auth server + admin
+     * service) share the file — readers concurrent with a writer, a wait instead of an instant
+     * "database is locked" — plus foreign-key enforcement. Other dialects use the JDBC URL directly.
+     */
+    private static void configureTarget(HikariConfig cfg, String jdbcUrl, DialectType dialect) {
+        if (dialect == DialectType.SQLITE) {
+            org.sqlite.SQLiteConfig sqlite = new org.sqlite.SQLiteConfig();
+            sqlite.setJournalMode(org.sqlite.SQLiteConfig.JournalMode.WAL);
+            sqlite.setBusyTimeout(5000);
+            sqlite.enforceForeignKeys(true);
+            SQLiteDataSource ds = new SQLiteDataSource(sqlite);
+            ds.setUrl(jdbcUrl);
+            cfg.setDataSource(ds);
+        } else {
+            cfg.setJdbcUrl(jdbcUrl);
+        }
+    }
+
     private static void applyDialectTuning(HikariConfig cfg, DialectType dialect) {
         switch (dialect) {
             case MYSQL, MARIADB -> {
@@ -78,9 +99,8 @@ public class HikariConnectionProvider implements ConnectionProvider {
                 cfg.addDataSourceProperty("preparedStatementCacheQueries", "250");
                 cfg.addDataSourceProperty("preparedStatementCacheSizeMiB", "5");
             }
-            case SQLITE -> cfg.setConnectionInitSql("PRAGMA foreign_keys = ON");
+            // SQLITE pragmas are configured on the SQLiteDataSource in configureTarget.
             default -> {}
         }
     }
 }
-

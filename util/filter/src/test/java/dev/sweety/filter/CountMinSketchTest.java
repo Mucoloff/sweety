@@ -1,10 +1,13 @@
 package dev.sweety.filter;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CountMinSketchTest {
 
@@ -14,7 +17,7 @@ class CountMinSketchTest {
     private HashFunction[] customHashers;
     private AtomicInteger[] customCalls;
 
-    @org.junit.jupiter.api.BeforeEach
+    @BeforeEach
     void setUp() {
         sketchDefault = new CountMinSketch(1024, 5);
         customCalls = new AtomicInteger[5];
@@ -29,7 +32,7 @@ class CountMinSketchTest {
             final int row = i;
             arr[i] = data -> {
                 calls[row].incrementAndGet();
-                return row * 1_000_003 ^ java.util.Arrays.hashCode(data);
+                return row * 1_000_003 ^ Arrays.hashCode(data);
             };
         }
         return arr;

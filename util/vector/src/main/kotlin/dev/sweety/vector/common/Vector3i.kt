@@ -31,13 +31,17 @@ interface Vector3i : Vector<Int, Vector3i> {
     override fun length(): Double = sqrt(lengthSquared())
     override fun lengthSquared(): Double = (x() * x() + y() * y() + z() * z()).toDouble()
 
-    override fun distance(other: Vector3i): Double = sqrt(distanceSquared(other))
-    override fun distanceSquared(other: Vector3i): Double {
-        val dx = (x() - other.x()).toDouble()
-        val dy = (y() - other.y()).toDouble()
-        val dz = (z() - other.z()).toDouble()
+    fun distanceSquared(x: Int, y: Int, z: Int): Double {
+        val dx = (x() - x).toDouble()
+        val dy = y() - y
+        val dz = z() - z
         return dx * dx + dy * dy + dz * dz
     }
+
+    fun distance(x: Int, y: Int, z: Int) = sqrt(distanceSquared(x, y, z))
+    override fun distanceSquared(other: Vector3i) = distanceSquared(other.x(), other.y(), other.z())
+
+    override fun distance(other: Vector3i) = sqrt(distanceSquared(other))
 
     override fun normalize(): Vector3i {
         val l = length()

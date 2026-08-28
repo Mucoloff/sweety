@@ -35,9 +35,7 @@ public final class MapArchive implements Archive {
     @Override
     public long crc32(String path) {
         byte[] b = map.get(path);
-        if (b == null) {
-            return -1;
-        }
+        if (b == null) return -1;
         CRC32 crc = new CRC32();
         crc.update(b);
         return crc.getValue();

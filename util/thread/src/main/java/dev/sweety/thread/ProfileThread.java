@@ -1,22 +1,29 @@
 package dev.sweety.thread;
 
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ProfileThread {
 
     private static final AtomicInteger THREAD_COUNTER = new AtomicInteger();
+
     private final AtomicInteger profileCount = new AtomicInteger(0);
     private final ExecutorService thread;
 
     public ProfileThread(final String name, final ThreadType type) {
         String indexedName = name + "-" + THREAD_COUNTER.incrementAndGet();
         this.thread = switch (type) {
-            case SINGLE -> ThreadUtil.singleThreadScheduler(indexedName);
-            case FIXED -> ThreadUtil.fixedThreadPool(Runtime.getRuntime().availableProcessors(), indexedName);
-            case CACHED -> ThreadUtil.cachedThreadPool(indexedName);
+            case SINGLE  -> ThreadUtil.singleThreadScheduler(indexedName);
+            case FIXED   -> ThreadUtil.fixedThreadPool(Runtime.getRuntime().availableProcessors(), indexedName);
+            case CACHED  -> ThreadUtil.cachedThreadPool(indexedName);
             case VIRTUAL -> ThreadUtil.virtualThreadExecutor(indexedName);
-            case POOL -> ThreadUtil.poolThreadScheduler(Runtime.getRuntime().availableProcessors(), indexedName);
+            case POOL    -> ThreadUtil.poolThreadScheduler(Runtime.getRuntime().availableProcessors(), indexedName);
         };
     }
 
@@ -42,28 +49,10 @@ public class ProfileThread {
         return this;
     }
 
-    // ---------------------- Utility ----------------------
-    private <V> CompletableFuture<V> wrapFuture(final CompletableFuture<V> future, final Future<?> scheduled) {
-        if (thread.isShutdown() || thread.isTerminated()) {
-            future.completeExceptionally(new RejectedExecutionException("ProfileThread is shutdown or terminated."));
-            if (scheduled != null) scheduled.cancel(false);
-            return future;
-        }
-
-        if (scheduled != null) {
-            future.whenComplete((r, t) -> {
-                if (future.isCancelled()) scheduled.cancel(false);
-            });
-        }
-
-        return future;
-    }
+    // ── helpers ───────────────────────────────────────────────────────────────
 
     private static <T> Callable<T> fromRunnable(Runnable runnable) {
-        return () -> {
-            runnable.run();
-            return null;
-        };
+        return () -> { runnable.run(); return null; };
     }
 
     private static <T> Runnable completeCallable(Callable<T> callable, CompletableFuture<T> future) {
@@ -76,68 +65,97 @@ public class ProfileThread {
         };
     }
 
-    // ---------------------- Base execute ----------------------
+    // ── execute ───────────────────────────────────────────────────────────────
+
     public CompletableFuture<?> execute(Runnable runnable) {
         return execute(fromRunnable(runnable));
     }
 
     public <T> CompletableFuture<T> execute(Callable<T> callable) {
         CompletableFuture<T> future = new CompletableFuture<>();
-        if (thread.isShutdown() || thread.isTerminated()) {
-            future.completeExceptionally(new RejectedExecutionException("ProfileThread is shutdown or terminated."));
-            return future;
+        try {
+            thread.execute(completeCallable(callable, future));
+        } catch (RejectedExecutionException e) {
+            future.completeExceptionally(e);
         }
-
-        thread.execute(completeCallable(callable, future));
-
         return future;
     }
 
-    // ---------------------- Schedule single delay ----------------------
+    // ── schedule (single delay) ───────────────────────────────────────────────
+
     public <V> CompletableFuture<V> schedule(Callable<V> callable, long delay, TimeUnit unit) {
-        if (!(thread instanceof ScheduledExecutorService scheduler)) {
-            throw new UnsupportedOperationException("This ProfileThread does not support scheduling.");
-        }
+        ScheduledExecutorService scheduler = requireScheduler();
         CompletableFuture<V> future = new CompletableFuture<>();
-        //noinspection unchecked
-        ScheduledFuture<V> scheduled = (ScheduledFuture<V>) scheduler.schedule(completeCallable(callable, future), delay, unit);
-        return wrapFuture(future, scheduled);
+        try {
+            //noinspection unchecked
+            ScheduledFuture<V> scheduled = (ScheduledFuture<V>) scheduler.schedule(
+                    completeCallable(callable, future), delay, unit);
+            cancelOnFutureCancel(future, scheduled);
+        } catch (RejectedExecutionException e) {
+            future.completeExceptionally(e);
+        }
+        return future;
     }
 
     public CompletableFuture<?> schedule(Runnable runnable, long delay, TimeUnit unit) {
         return schedule(fromRunnable(runnable), delay, unit);
     }
 
-    // ---------------------- Schedule with fixed delay ----------------------
+    // ── scheduleWithFixedDelay ────────────────────────────────────────────────
 
-    public <V> CompletableFuture<V> scheduleWithFixedDelay(Callable<V> callable, long initialDelay, long delay, TimeUnit unit) {
-        if (!(thread instanceof ScheduledExecutorService scheduler)) {
-            throw new UnsupportedOperationException("This ProfileThread does not support scheduling.");
-        }
+    public <V> CompletableFuture<V> scheduleWithFixedDelay(Callable<V> callable,
+                                                            long initialDelay, long delay, TimeUnit unit) {
+        ScheduledExecutorService scheduler = requireScheduler();
         CompletableFuture<V> future = new CompletableFuture<>();
-        //noinspection unchecked
-        ScheduledFuture<V> scheduled = (ScheduledFuture<V>) scheduler.scheduleWithFixedDelay(completeCallable(callable, future), initialDelay, delay, unit);
-
-        return wrapFuture(future, scheduled);
+        try {
+            //noinspection unchecked
+            ScheduledFuture<V> scheduled = (ScheduledFuture<V>) scheduler.scheduleWithFixedDelay(
+                    completeCallable(callable, future), initialDelay, delay, unit);
+            cancelOnFutureCancel(future, scheduled);
+        } catch (RejectedExecutionException e) {
+            future.completeExceptionally(e);
+        }
+        return future;
     }
 
-    public CompletableFuture<?> scheduleWithFixedDelay(Runnable runnable, long initialDelay, long delay, TimeUnit unit) {
+    public CompletableFuture<?> scheduleWithFixedDelay(Runnable runnable,
+                                                        long initialDelay, long delay, TimeUnit unit) {
         return scheduleWithFixedDelay(fromRunnable(runnable), initialDelay, delay, unit);
     }
 
-    // ---------------------- Schedule at fixed rate ----------------------
-    public <V> CompletableFuture<V> scheduleAtFixedRate(Callable<V> callable, long initialDelay, long period, TimeUnit unit) {
-        if (!(thread instanceof ScheduledExecutorService scheduler)) {
-            throw new UnsupportedOperationException("This ProfileThread does not support scheduling.");
-        }
-        CompletableFuture<V> future = new CompletableFuture<>();
-        //noinspection unchecked
-        ScheduledFuture<V> scheduled = (ScheduledFuture<V>) scheduler.scheduleAtFixedRate(completeCallable(callable, future), initialDelay, period, unit);
+    // ── scheduleAtFixedRate ───────────────────────────────────────────────────
 
-        return wrapFuture(future, scheduled);
+    public <V> CompletableFuture<V> scheduleAtFixedRate(Callable<V> callable,
+                                                         long initialDelay, long period, TimeUnit unit) {
+        ScheduledExecutorService scheduler = requireScheduler();
+        CompletableFuture<V> future = new CompletableFuture<>();
+        try {
+            //noinspection unchecked
+            ScheduledFuture<V> scheduled = (ScheduledFuture<V>) scheduler.scheduleAtFixedRate(
+                    completeCallable(callable, future), initialDelay, period, unit);
+            cancelOnFutureCancel(future, scheduled);
+        } catch (RejectedExecutionException e) {
+            future.completeExceptionally(e);
+        }
+        return future;
     }
 
-    public CompletableFuture<?> scheduleAtFixedRate(Runnable runnable, long initialDelay, long period, TimeUnit unit) {
+    public CompletableFuture<?> scheduleAtFixedRate(Runnable runnable,
+                                                     long initialDelay, long period, TimeUnit unit) {
         return scheduleAtFixedRate(fromRunnable(runnable), initialDelay, period, unit);
+    }
+
+    // ── internal ──────────────────────────────────────────────────────────────
+
+    private ScheduledExecutorService requireScheduler() {
+        if (!(thread instanceof ScheduledExecutorService s))
+            throw new UnsupportedOperationException("ProfileThread type does not support scheduling.");
+        return s;
+    }
+
+    private static void cancelOnFutureCancel(CompletableFuture<?> future, ScheduledFuture<?> scheduled) {
+        future.whenComplete((r, t) -> {
+            if (future.isCancelled()) scheduled.cancel(false);
+        });
     }
 }

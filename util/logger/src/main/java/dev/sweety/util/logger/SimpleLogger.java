@@ -1,27 +1,25 @@
 package dev.sweety.util.logger;
 
-import dev.sweety.color.AnsiColor;
 import dev.sweety.util.logger.backend.ConsoleBackend;
 import dev.sweety.util.logger.backend.FileBackend;
 import dev.sweety.util.logger.backend.LoggerBackend;
 import dev.sweety.util.logger.level.LogLevel;
-import dev.sweety.util.logger.profile.LogProfile;
-import dev.sweety.util.logger.profile.ProfileScope;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class SimpleLogger implements LogHelper {
 
     protected final String name;
-    private final ThreadLocal<Deque<LogProfile>> profiles = ThreadLocal.withInitial(ArrayDeque::new);
-    private final List<LoggerBackend> backends = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<LoggerBackend> backends;
+    private final Map<String, SimpleLogger> children = new ConcurrentHashMap<>();
 
     private SimpleLogger(String name) {
         this.name = name;
+        this.backends = new CopyOnWriteArrayList<>();
         backends.add(new ConsoleBackend());
     }
 
@@ -29,9 +27,16 @@ public class SimpleLogger implements LogHelper {
         this(clazz.getSimpleName());
     }
 
+    /** Builder ctor — copies the provided list (isolated from builder config). */
     private SimpleLogger(String name, List<LoggerBackend> backends) {
         this.name = name;
-        this.backends.addAll(backends);
+        this.backends = new CopyOnWriteArrayList<>(backends);
+    }
+
+    /** Child ctor — shares the parent's live backend list so config propagates. */
+    private SimpleLogger(String name, CopyOnWriteArrayList<LoggerBackend> sharedBackends) {
+        this.name = name;
+        this.backends = sharedBackends;
     }
 
     public static SimpleLogger of(String name) {
@@ -44,6 +49,9 @@ public class SimpleLogger implements LogHelper {
 
     public static Builder builder(String name) {
         return new Builder(name);
+    }
+    public static Builder builder(Class<?> clazz) {
+        return new Builder(clazz.getSimpleName());
     }
 
     public static class Builder {
@@ -71,8 +79,14 @@ public class SimpleLogger implements LogHelper {
         }
     }
 
-    public static void log(LogLevel level, String name, Object... input) {
-        new ConsoleBackend().log(new LogEvent(level, name, null, input));
+    /**
+     * Returns a child logger whose name is {@code this.name + "/" + profile}.
+     * The child shares this logger's backend list — backend/level changes on the
+     * parent are immediately visible to all children.
+     */
+    public SimpleLogger profile(String profile) {
+        return children.computeIfAbsent(profile,
+                p -> new SimpleLogger(this.name + "/" + p, this.backends));
     }
 
     public SimpleLogger setBackend(LoggerBackend backend) {
@@ -91,54 +105,14 @@ public class SimpleLogger implements LogHelper {
     }
 
     public SimpleLogger log(LogLevel level, Object... input) {
-        LogProfile profile = null;
         LogEvent event = null;
 
         for (LoggerBackend backend : backends) {
             if (!backend.isEnabled(level)) continue;
-            if (event == null) {
-                profile = profiles.get().peek();
-                event = new LogEvent(level, name, profile, input);
-            }
+            if (event == null) event = new LogEvent(level, name, input);
             backend.log(event);
         }
         return this;
-    }
-
-    public SimpleLogger push(String profile, AnsiColor color) {
-        return push(profile);
-    }
-
-    public SimpleLogger push(String profile, String color) {
-        return push(profile);
-    }
-
-    public SimpleLogger push(String profile) {
-        final Deque<LogProfile> stack = profiles.get();
-        stack.push(LogProfile.of(profile, stack.peek()));
-        return this;
-    }
-
-    public SimpleLogger pop() {
-        Deque<LogProfile> stack = profiles.get();
-        if (!stack.isEmpty()) stack.pop();
-        return this;
-    }
-
-    public String popProfile() {
-        LogProfile p = profiles.get().poll();
-        return p != null ? p.name() : null;
-    }
-
-    public String switchProfile(String profile) {
-        final Deque<LogProfile> stack = profiles.get();
-        LogProfile old = stack.poll();
-        stack.push(LogProfile.of(profile, stack.peek()));
-        return old != null ? old.name() : null;
-    }
-
-    public ProfileScope withProfile(String profile) {
-        return new ProfileScope(push(profile));
     }
 
     public String name() {

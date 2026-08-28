@@ -38,11 +38,8 @@ class JarWriter {
                 jos.setLevel(9);
                 for (String path : outputPaths) {
                     byte[] data = patchedBytes.get(path);
-                    if (data != null) {
-                        writeJarEntry(jos, path, data);
-                    } else {
-                        streamCopyEntry(base, path, jos);
-                    }
+                    if (data != null) writeJarEntry(jos, path, data);
+                    else streamCopyEntry(base, path, jos);
                 }
             }
             Files.move(temp, output, REPLACE_EXISTING, ATOMIC_MOVE);
@@ -65,9 +62,7 @@ class JarWriter {
 
     private void streamCopyEntry(JarFile base, String path, JarOutputStream jos) throws IOException {
         JarEntry src = base.getJarEntry(path);
-        if (src == null) {
-            throw new PatchException("Missing entry in base JAR: " + path);
-        }
+        if (src == null) throw new PatchException("Missing entry in base JAR: " + path);
         JarEntry dest = new JarEntry(path);
         dest.setMethod(ZipEntry.DEFLATED);
         dest.setTime(0);

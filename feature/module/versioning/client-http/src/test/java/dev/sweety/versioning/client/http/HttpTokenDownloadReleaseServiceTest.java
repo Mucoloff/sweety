@@ -39,7 +39,7 @@ class HttpTokenDownloadReleaseServiceTest {
                 ex.sendResponseHeaders(405, -1);
                 return;
             }
-            String k = ex.getRequestHeaders().getFirst("X-Sweety-Release-Key");
+            String k = ex.getRequestHeaders().getFirst("X-Luce-Release-Key");
             if (!"secret".equals(k)) {
                 ex.sendResponseHeaders(403, -1);
                 return;

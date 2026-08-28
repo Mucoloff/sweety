@@ -5,7 +5,11 @@ import dev.sweety.sql4j.api.connection.SqlConnection;
 import dev.sweety.sql4j.api.repository.Repository;
 import dev.sweety.sql4j.benchmark.entity.BenchItem;
 import dev.sweety.sql4j.impl.Database;
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 
 /**
  * JMH state shared by {@link InsertThroughputBenchmark} and {@link CacheHitVsMissBenchmark}.

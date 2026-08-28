@@ -29,12 +29,16 @@ interface Vector2f : Vector<Float, Vector2f> {
     override fun length(): Double = sqrt(lengthSquared())
     override fun lengthSquared(): Double = (x() * x() + y() * y()).toDouble()
 
-    override fun distance(other: Vector2f): Double = sqrt(distanceSquared(other))
-    override fun distanceSquared(other: Vector2f): Double {
-        val dx = (x() - other.x()).toDouble()
-        val dy = (y() - other.y()).toDouble()
+    fun distanceSquared(x: Float, y: Float): Double {
+        val dx = (x() - x).toDouble()
+        val dy = y() - y
         return dx * dx + dy * dy
     }
+
+    fun distance(x: Float, y: Float) = sqrt(distanceSquared(x, y))
+    override fun distanceSquared(other: Vector2f) = distanceSquared(other.x(), other.y())
+
+    override fun distance(other: Vector2f) = sqrt(distanceSquared(other))
 
     override fun normalize(): Vector2f {
         val l = length().toFloat()

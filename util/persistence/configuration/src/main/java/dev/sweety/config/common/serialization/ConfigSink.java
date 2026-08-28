@@ -39,32 +39,72 @@ public final class ConfigSink implements StructuredSink {
         path.removeLast();
     }
 
-    @Override public void writeBool(boolean v)  { writeValue(v); }
-    @Override public void writeByte(byte v)     { writeValue(v); }
-    @Override public void writeShort(short v)   { writeValue(v); }
-    @Override public void writeChar(char v)     { writeValue(v); }
-    @Override public void writeInt(int v)       { writeValue(v); }
-    @Override public void writeLong(long v)     { writeValue(v); }
-    @Override public void writeFloat(float v)   { writeValue(v); }
-    @Override public void writeDouble(double v) { writeValue(v); }
-    @Override public void writeString(String v) { writeValue(v); }
-    @Override public void writeUUID(UUID v)     { writeValue(v.toString()); }
-    @Override public void writeBytes(byte[] v)  { writeValue(v); }
+    @Override
+    public void writeBool(boolean v) {
+        writeValue(v);
+    }
 
-    /** Writes a pre-serialized map at the current path (or merges into root when no field is active). */
+    @Override
+    public void writeByte(byte v) {
+        writeValue(v);
+    }
+
+    @Override
+    public void writeShort(short v) {
+        writeValue(v);
+    }
+
+    @Override
+    public void writeChar(char v) {
+        writeValue(v);
+    }
+
+    @Override
+    public void writeInt(int v) {
+        writeValue(v);
+    }
+
+    @Override
+    public void writeLong(long v) {
+        writeValue(v);
+    }
+
+    @Override
+    public void writeFloat(float v) {
+        writeValue(v);
+    }
+
+    @Override
+    public void writeDouble(double v) {
+        writeValue(v);
+    }
+
+    @Override
+    public void writeString(String v) {
+        writeValue(v);
+    }
+
+    @Override
+    public void writeUUID(UUID v) {
+        writeValue(v.toString());
+    }
+
+    @Override
+    public void writeBytes(byte[] v) {
+        writeValue(v);
+    }
+
+    /**
+     * Writes a pre-serialized map at the current path (or merges into root when no field is active).
+     */
     public void writeRawMap(Map<String, Object> map) {
-        if (path.isEmpty()) {
-            root.putAll(map);
-        } else {
-            writeValue(new TreeMap<>(map));
-        }
+        if (path.isEmpty()) root.putAll(map);
+        else writeValue(new TreeMap<>(map));
     }
 
     private void writeValue(Object value) {
-        if (path.isEmpty()) {
-            throw new IllegalStateException("enterField() required before writing a scalar");
-        }
-        setNested(root, path.toArray(new String[0]), value);
+        if (path.isEmpty()) throw new IllegalStateException("enterField() required before writing a scalar");
+        setNested(root, path.toArray(String[]::new), value);
     }
 
     @SuppressWarnings("unchecked")
