@@ -133,14 +133,34 @@ public final class CreateTable extends AbstractQuery<Void> implements CreateTabl
 
     public static List<String> buildIndices(Table<?> table, Dialect dialect, boolean ifNotExists) {
         List<String> indices = new java.util.ArrayList<>();
+        java.util.Set<String> processedNames = new java.util.HashSet<>();
+
+        for (Table.IndexDef idx : table.indices()) {
+            if (processedNames.add(idx.name())) {
+                StringBuilder sb = new StringBuilder("CREATE ");
+                if (idx.unique()) sb.append("UNIQUE ");
+                sb.append("INDEX ");
+                if (ifNotExists && dialect.supportsIfNotExists()) sb.append("IF NOT EXISTS ");
+                sb.append(dialect.escape(idx.name())).append(" ON ").append(dialect.escape(table.name()))
+                        .append(" (");
+                StringJoiner joiner = new StringJoiner(", ");
+                for (String col : idx.columns()) {
+                    joiner.add(dialect.escape(col));
+                }
+                sb.append(joiner).append(")");
+                indices.add(sb.toString());
+            }
+        }
+
+        // Fallback for direct column-level indices if not registered in table.indices()
         for (Column<?> c : table.columns()) {
-            if (c.indexName() != null) {
+            if (c.indexName() != null && processedNames.add(c.indexName())) {
                 StringBuilder sb = new StringBuilder("CREATE ");
                 if (c.isUnique()) sb.append("UNIQUE ");
                 sb.append("INDEX ");
                 if (ifNotExists && dialect.supportsIfNotExists()) sb.append("IF NOT EXISTS ");
                 sb.append(dialect.escape(c.indexName())).append(" ON ").append(dialect.escape(table.name()))
-                        .append("(").append(dialect.escape(c.name())).append(")");
+                        .append(" (").append(dialect.escape(c.name())).append(")");
                 indices.add(sb.toString());
             }
         }

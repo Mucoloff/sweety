@@ -441,14 +441,39 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
 
     private T mapRow(ResultSet rs) throws SQLException {
         try {
-            // O3: MethodHandle.invoke() — equivalent to direct `new` after JIT warmup
-            @SuppressWarnings("unchecked")
-            T obj = (T) activeMetadata.constructor().invoke();
+            dev.sweety.sql4j.api.obj.TableAccessor<T> accessor = (dev.sweety.sql4j.api.obj.TableAccessor<T>) table.accessor();
+            T obj = accessor != null ? accessor.newInstance() : (T) activeMetadata.constructor().invoke();
             List<Column<?>> columns = activeMetadata.columns();
             int[] indices = activeMetadata.columnIndices();
-            for (int i = 0; i < columns.size(); i++) {
-                // O2: index-based lookup avoids string→int per-column scan in the JDBC driver
-                columns.get(i).set(obj, rs.getObject(indices[i]));
+            
+            if (accessor != null) {
+                for (int i = 0; i < columns.size(); i++) {
+                    Column<?> col = columns.get(i);
+                    int colOrd = col.ordinalIndex() >= 0 ? col.ordinalIndex() : i;
+                    int jdbcIdx = indices[i];
+                    switch (col.primitiveKind()) {
+                        case INT -> accessor.setInt(obj, colOrd, rs.getInt(jdbcIdx));
+                        case LONG -> accessor.setLong(obj, colOrd, rs.getLong(jdbcIdx));
+                        case BOOLEAN -> accessor.setBoolean(obj, colOrd, rs.getBoolean(jdbcIdx));
+                        case DOUBLE -> accessor.setDouble(obj, colOrd, rs.getDouble(jdbcIdx));
+                        case FLOAT -> accessor.setFloat(obj, colOrd, rs.getFloat(jdbcIdx));
+                        case SHORT -> accessor.setShort(obj, colOrd, rs.getShort(jdbcIdx));
+                        case BYTE -> accessor.setByte(obj, colOrd, rs.getByte(jdbcIdx));
+                        case CHAR -> {
+                            String s = rs.getString(jdbcIdx);
+                            accessor.setChar(obj, colOrd, s != null && !s.isEmpty() ? s.charAt(0) : '\0');
+                        }
+                        case OBJECT -> {
+                            Object val = rs.getObject(jdbcIdx);
+                            val = Column.convertValue(val, col.type());
+                            accessor.setObject(obj, colOrd, val);
+                        }
+                    }
+                }
+            } else {
+                for (int i = 0; i < columns.size(); i++) {
+                    columns.get(i).set(obj, rs.getObject(indices[i]));
+                }
             }
             return obj;
         } catch (Throwable e) {

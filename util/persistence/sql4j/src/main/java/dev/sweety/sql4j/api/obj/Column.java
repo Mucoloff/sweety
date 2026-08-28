@@ -38,6 +38,8 @@ public class Column<T> {
     private boolean primaryKey = false;
     private boolean autoIncrement = false;
     private boolean nullable = true;
+    private int ordinalIndex = -1;
+    private PrimitiveKind primitiveKind = PrimitiveKind.OBJECT;
 
     public Column(Table<?> table, String name, Field field, Info info) {
         this.table = Objects.requireNonNull(table, "table cannot be null");
@@ -47,6 +49,7 @@ public class Column<T> {
         this.type = (Class<T>) (field != null ? field.getType() : null);
         this.info = info;
         if (field != null) field.setAccessible(true);
+        this.primitiveKind = PrimitiveKind.from(type());
         if (info != null) {
             this.primaryKey = info.primaryKey();
             this.autoIncrement = info.autoIncrement();
@@ -60,6 +63,7 @@ public class Column<T> {
         this(table, name, field, info);
         this.relationIdField = relationIdField;
         if (relationIdField != null) relationIdField.setAccessible(true);
+        this.primitiveKind = PrimitiveKind.from(type());
     }
 
     public Column(Table<?> table, String name, Class<T> type, boolean primaryKey, boolean autoIncrement, boolean nullable) {
@@ -71,6 +75,7 @@ public class Column<T> {
         this.primaryKey = primaryKey;
         this.autoIncrement = autoIncrement;
         this.nullable = nullable;
+        this.primitiveKind = PrimitiveKind.from(type);
     }
 
     protected Column(Table<?> table, String name) {
@@ -80,6 +85,19 @@ public class Column<T> {
         this.field = null;
         this.info = null;
         this.nullable = true;
+        this.primitiveKind = PrimitiveKind.OBJECT;
+    }
+
+    public int ordinalIndex() {
+        return ordinalIndex;
+    }
+
+    public void setOrdinalIndex(int ordinalIndex) {
+        this.ordinalIndex = ordinalIndex;
+    }
+
+    public PrimitiveKind primitiveKind() {
+        return primitiveKind;
     }
 
     public String name() {
@@ -184,9 +202,22 @@ public class Column<T> {
 
     public T get(Object instance) {
         TableAccessor<?> accessor = table.accessor();
-        if (accessor != null) {
+        if (accessor != null && ordinalIndex >= 0) {
             //noinspection unchecked
-            return (T) ((TableAccessor<Object>) accessor).getFieldValue(instance, name);
+            TableAccessor<Object> objAccessor = (TableAccessor<Object>) accessor;
+            Object val = switch (primitiveKind) {
+                case BOOLEAN -> objAccessor.getBoolean(instance, ordinalIndex);
+                case BYTE -> objAccessor.getByte(instance, ordinalIndex);
+                case SHORT -> objAccessor.getShort(instance, ordinalIndex);
+                case INT -> objAccessor.getInt(instance, ordinalIndex);
+                case LONG -> objAccessor.getLong(instance, ordinalIndex);
+                case FLOAT -> objAccessor.getFloat(instance, ordinalIndex);
+                case DOUBLE -> objAccessor.getDouble(instance, ordinalIndex);
+                case CHAR -> objAccessor.getChar(instance, ordinalIndex);
+                case OBJECT -> objAccessor.getObject(instance, ordinalIndex);
+            };
+            //noinspection unchecked
+            return (T) val;
         }
 
         try {
@@ -229,9 +260,20 @@ public class Column<T> {
 
         // Try using the accessor first (to avoid reflection)
         TableAccessor<?> accessor = table.accessor();
-        if (accessor != null) {
+        if (accessor != null && ordinalIndex >= 0) {
             //noinspection unchecked
-            ((TableAccessor<Object>) accessor).setFieldValue(instance, name, value);
+            TableAccessor<Object> objAccessor = (TableAccessor<Object>) accessor;
+            switch (primitiveKind) {
+                case BOOLEAN -> objAccessor.setBoolean(instance, ordinalIndex, value instanceof Boolean b ? b : (Boolean.parseBoolean(String.valueOf(value))));
+                case BYTE -> objAccessor.setByte(instance, ordinalIndex, value instanceof Number n ? n.byteValue() : (Byte.parseByte(String.valueOf(value))));
+                case SHORT -> objAccessor.setShort(instance, ordinalIndex, value instanceof Number n ? n.shortValue() : (Short.parseShort(String.valueOf(value))));
+                case INT -> objAccessor.setInt(instance, ordinalIndex, value instanceof Number n ? n.intValue() : (Integer.parseInt(String.valueOf(value))));
+                case LONG -> objAccessor.setLong(instance, ordinalIndex, value instanceof Number n ? n.longValue() : (Long.parseLong(String.valueOf(value))));
+                case FLOAT -> objAccessor.setFloat(instance, ordinalIndex, value instanceof Number n ? n.floatValue() : (Float.parseFloat(String.valueOf(value))));
+                case DOUBLE -> objAccessor.setDouble(instance, ordinalIndex, value instanceof Number n ? n.doubleValue() : (Double.parseDouble(String.valueOf(value))));
+                case CHAR -> objAccessor.setChar(instance, ordinalIndex, value instanceof Character c ? c : (value != null && !value.toString().isEmpty() ? value.toString().charAt(0) : '\0'));
+                case OBJECT -> objAccessor.setObject(instance, ordinalIndex, value);
+            }
             return;
         }
 
@@ -246,9 +288,9 @@ public class Column<T> {
         }
     }
 
-    private Object convertValue(Object value, Class<?> type) {
+    public static Object convertValue(Object value, Class<?> type) {
         if (value == null) return null;
-        if (type.isInstance(value)) return value;
+        if (type == null || type.isInstance(value)) return value;
 
         if (type == boolean.class || type == Boolean.class) {
             switch (value) {

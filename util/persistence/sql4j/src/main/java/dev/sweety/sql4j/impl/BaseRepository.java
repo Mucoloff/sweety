@@ -423,6 +423,42 @@ public class BaseRepository<Entity> implements Repository<Entity> {
                     }
                 }
             }
+
+            // Index migration: discover existing indices and create any missing ones
+            Set<String> existingIndices = new HashSet<>();
+            try (ResultSet rs = metaData.getIndexInfo(null, null, table.name(), false, false)) {
+                while (rs.next()) {
+                    String indexName = rs.getString("INDEX_NAME");
+                    if (indexName != null) {
+                        existingIndices.add(indexName.toLowerCase(Locale.ENGLISH));
+                    }
+                }
+            } catch (SQLException e) {
+                // Some engines or drivers may fail on getIndexInfo, log and continue
+                LOGGER.debug("[SQL4J] Could not inspect index info for table {}: {}", table.name(), e.getMessage());
+            }
+
+            for (Table.IndexDef idx : table.indices()) {
+                if (!existingIndices.contains(idx.name().toLowerCase(Locale.ENGLISH))) {
+                    StringBuilder sb = new StringBuilder("CREATE ");
+                    if (idx.unique()) sb.append("UNIQUE ");
+                    sb.append("INDEX ");
+                    if (dialect.supportsIfNotExists()) sb.append("IF NOT EXISTS ");
+                    sb.append(dialect.escape(idx.name())).append(" ON ").append(dialect.escape(table.name()))
+                            .append(" (");
+                    java.util.StringJoiner joiner = new java.util.StringJoiner(", ");
+                    for (String col : idx.columns()) {
+                        joiner.add(dialect.escape(col));
+                    }
+                    sb.append(joiner).append(")");
+
+                    try (Statement stmt = raw.createStatement()) {
+                        stmt.execute(sb.toString());
+                    } catch (SQLException e) {
+                        LOGGER.warn("[SQL4J] Failed to create index {} on {}: {}", idx.name(), table.name(), e.getMessage());
+                    }
+                }
+            }
         } catch (SQLException e) {
             throw new Sql4jQueryException("Failed to migrate schema for table " + table.name(), e);
         }

@@ -145,6 +145,27 @@ public class SQL4JProcessor extends AbstractProcessor {
 
         List<FieldData> fields = new ArrayList<>();
         List<RelationData> relations = new ArrayList<>();
+        List<IndexData> classIndices = new ArrayList<>();
+
+        // Extract class-level @Index and @Indexes
+        for (AnnotationMirror am : typeElement.getAnnotationMirrors()) {
+            String annType = am.getAnnotationType().toString();
+            if (annType.equals("dev.sweety.sql4j.api.obj.annotation.Index")) {
+                parseIndexAnnotation(am, tableName, classIndices);
+            } else if (annType.equals("dev.sweety.sql4j.api.obj.annotation.Indexes")) {
+                for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry : am.getElementValues().entrySet()) {
+                    if (entry.getKey().getSimpleName().toString().equals("value")) {
+                        @SuppressWarnings("unchecked")
+                        List<? extends AnnotationValue> list = (List<? extends AnnotationValue>) entry.getValue().getValue();
+                        for (AnnotationValue val : list) {
+                            if (val.getValue() instanceof AnnotationMirror subAm) {
+                                parseIndexAnnotation(subAm, tableName, classIndices);
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         for (Element enclosed : typeElement.getEnclosedElements()) {
             if (enclosed.getKind() == ElementKind.FIELD) {
@@ -181,7 +202,16 @@ public class SQL4JProcessor extends AbstractProcessor {
                     boolean isNull = colAnn == null || "true".equals(getAnnotationValue(colAnn, "nullable"));
                     boolean isSoftDelete = getAnnotation(field, "dev.sweety.sql4j.api.obj.annotation.SoftDelete") != null;
 
-                    FieldData fd = new FieldData(fieldName, colName, fieldType, boxedFieldType, columnType, isPrivate, isPk, isAuto, isNull, isSoftDelete);
+                    AnnotationMirror indexAnn = getAnnotation(field, "dev.sweety.sql4j.api.obj.annotation.Index");
+                    String indexName = null;
+                    boolean isUniqueIdx = false;
+                    if (indexAnn != null) {
+                        String idxAnnName = getAnnotationValue(indexAnn, "name");
+                        indexName = (idxAnnName != null && !idxAnnName.isEmpty()) ? idxAnnName : "idx_" + tableName + "_" + colName;
+                        isUniqueIdx = "true".equals(getAnnotationValue(indexAnn, "unique"));
+                    }
+
+                    FieldData fd = new FieldData(fieldName, colName, fieldType, boxedFieldType, columnType, isPrivate, isPk, isAuto, isNull, isSoftDelete, indexName, isUniqueIdx);
                     fields.add(fd);
 
                     // Static Column reference
@@ -314,11 +344,28 @@ public class SQL4JProcessor extends AbstractProcessor {
         
         for (FieldData fd : fields) {
             String colConst = fd.fieldName.toUpperCase();
+            TypeName instType = (fd.columnType != fd.boxedType) ? fd.columnType : fd.fieldType;
             staticBlock.addStatement("$L = new $T<>(INSTANCE, $S, $T.class, $L, $L, $L)", 
-                    colConst, columnClass, fd.colName, fd.columnType, fd.isPrimaryKey, fd.isAutoInc, fd.isNullable);
+                    colConst, columnClass, fd.colName, instType, fd.isPrimaryKey, fd.isAutoInc, fd.isNullable);
             if (fd.isSoftDelete) staticBlock.addStatement("$L.setSoftDelete(true)", colConst);
             if (fd.columnType != fd.boxedType) staticBlock.addStatement("$L.setRelation(true)", colConst);
+            if (fd.indexName != null) {
+                staticBlock.addStatement("$L.setIndexName($S)", colConst, fd.indexName);
+                if (fd.isUniqueIndex) staticBlock.addStatement("$L.setUnique(true)", colConst);
+                staticBlock.addStatement("INSTANCE.addIndex(new $T.IndexDef($S, $T.of($S), $L))",
+                        ClassName.get("dev.sweety.sql4j.api.obj", "Table"), fd.indexName, List.class, fd.colName, fd.isUniqueIndex);
+            }
             staticBlock.addStatement("INSTANCE.addColumn($L)", colConst);
+        }
+        for (IndexData id : classIndices) {
+            CodeBlock.Builder colsBlock = CodeBlock.builder().add("$T.of(", List.class);
+            for (int i = 0; i < id.columns.size(); i++) {
+                if (i > 0) colsBlock.add(", ");
+                colsBlock.add("$S", id.columns.get(i));
+            }
+            colsBlock.add(")");
+            staticBlock.addStatement("INSTANCE.addIndex(new $T.IndexDef($S, $L, $L))",
+                    ClassName.get("dev.sweety.sql4j.api.obj", "Table"), id.name, colsBlock.build(), id.unique);
         }
         for (RelationData rd : relations) {
             if ("MANY_TO_ONE".equals(rd.type())) {
@@ -349,7 +396,35 @@ public class SQL4JProcessor extends AbstractProcessor {
                 .addAnnotation(Override.class).addModifiers(Modifier.PUBLIC).returns(entityClass)
                 .addStatement("return new $T()", entityClass).build());
 
-        // Dispatchers
+        // Primitive & Object Dispatchers (Zero-Boxing with UnsupportedOperationException)
+        mirrorBuilder.addMethod(buildPrimitiveDispatcher("getBoolean", TypeName.BOOLEAN, TypeName.BOOLEAN, entityClass, fields, false));
+        mirrorBuilder.addMethod(buildPrimitiveDispatcher("setBoolean", TypeName.BOOLEAN, TypeName.BOOLEAN, entityClass, fields, true));
+
+        mirrorBuilder.addMethod(buildPrimitiveDispatcher("getByte", TypeName.BYTE, TypeName.BYTE, entityClass, fields, false));
+        mirrorBuilder.addMethod(buildPrimitiveDispatcher("setByte", TypeName.BYTE, TypeName.BYTE, entityClass, fields, true));
+
+        mirrorBuilder.addMethod(buildPrimitiveDispatcher("getShort", TypeName.SHORT, TypeName.SHORT, entityClass, fields, false));
+        mirrorBuilder.addMethod(buildPrimitiveDispatcher("setShort", TypeName.SHORT, TypeName.SHORT, entityClass, fields, true));
+
+        mirrorBuilder.addMethod(buildPrimitiveDispatcher("getInt", TypeName.INT, TypeName.INT, entityClass, fields, false));
+        mirrorBuilder.addMethod(buildPrimitiveDispatcher("setInt", TypeName.INT, TypeName.INT, entityClass, fields, true));
+
+        mirrorBuilder.addMethod(buildPrimitiveDispatcher("getLong", TypeName.LONG, TypeName.LONG, entityClass, fields, false));
+        mirrorBuilder.addMethod(buildPrimitiveDispatcher("setLong", TypeName.LONG, TypeName.LONG, entityClass, fields, true));
+
+        mirrorBuilder.addMethod(buildPrimitiveDispatcher("getFloat", TypeName.FLOAT, TypeName.FLOAT, entityClass, fields, false));
+        mirrorBuilder.addMethod(buildPrimitiveDispatcher("setFloat", TypeName.FLOAT, TypeName.FLOAT, entityClass, fields, true));
+
+        mirrorBuilder.addMethod(buildPrimitiveDispatcher("getDouble", TypeName.DOUBLE, TypeName.DOUBLE, entityClass, fields, false));
+        mirrorBuilder.addMethod(buildPrimitiveDispatcher("setDouble", TypeName.DOUBLE, TypeName.DOUBLE, entityClass, fields, true));
+
+        mirrorBuilder.addMethod(buildPrimitiveDispatcher("getChar", TypeName.CHAR, TypeName.CHAR, entityClass, fields, false));
+        mirrorBuilder.addMethod(buildPrimitiveDispatcher("setChar", TypeName.CHAR, TypeName.CHAR, entityClass, fields, true));
+
+        mirrorBuilder.addMethod(buildObjectDispatcher("getObject", entityClass, fields, false));
+        mirrorBuilder.addMethod(buildObjectDispatcher("setObject", entityClass, fields, true));
+
+        // Legacy string-based dispatchers
         mirrorBuilder.addMethod(buildDispatcher("setFieldValue", entityClass, fields, true));
         mirrorBuilder.addMethod(buildDispatcher("getFieldValue", entityClass, fields, false));
 
@@ -473,6 +548,88 @@ public class SQL4JProcessor extends AbstractProcessor {
         }
         if (!isSetter) block.add("default:\n").indent().addStatement("return null").unindent();
         block.endControlFlow();
+        return mb.addCode(block.build()).build();
+    }
+
+    private MethodSpec buildPrimitiveDispatcher(String name, TypeName primType, TypeName boxedType, ClassName entityClass, List<FieldData> fields, boolean isSetter) {
+        MethodSpec.Builder mb = MethodSpec.methodBuilder(name)
+                .addAnnotation(Override.class)
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(entityClass, "instance")
+                .addParameter(TypeName.INT, "colIndex");
+
+        if (isSetter) mb.addParameter(primType, "value");
+        else mb.returns(primType);
+
+        CodeBlock.Builder block = CodeBlock.builder().beginControlFlow("switch (colIndex)");
+        boolean hasMatchingFields = false;
+
+        for (int i = 0; i < fields.size(); i++) {
+            FieldData fd = fields.get(i);
+            if (fd.fieldType.equals(primType)) {
+                hasMatchingFields = true;
+                block.add("case $L:\n", i);
+                block.indent();
+                if (isSetter) {
+                    block.addStatement("set_$L(instance, value)", fd.fieldName);
+                    block.addStatement("break");
+                } else {
+                    block.addStatement("return get_$L(instance)", fd.fieldName);
+                }
+                block.unindent();
+            }
+        }
+
+        block.add("default:\n").indent()
+                .addStatement("throw new $T($S + colIndex)", UnsupportedOperationException.class, name + " not supported for colIndex ")
+                .unindent();
+        block.endControlFlow();
+
+        return mb.addCode(block.build()).build();
+    }
+
+    private MethodSpec buildObjectDispatcher(String name, ClassName entityClass, List<FieldData> fields, boolean isSetter) {
+        MethodSpec.Builder mb = MethodSpec.methodBuilder(name)
+                .addAnnotation(Override.class)
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(entityClass, "instance")
+                .addParameter(TypeName.INT, "colIndex");
+
+        if (isSetter) mb.addParameter(Object.class, "value");
+        else mb.returns(Object.class);
+
+        CodeBlock.Builder block = CodeBlock.builder().beginControlFlow("switch (colIndex)");
+
+        for (int i = 0; i < fields.size(); i++) {
+            FieldData fd = fields.get(i);
+            block.add("case $L:\n", i);
+            block.indent();
+            if (isSetter) {
+                if (fd.columnType != fd.boxedType) {
+                    // It's a relation column, only set if type matches the Entity class
+                    block.beginControlFlow("if (value != null && $T.class.isInstance(value))", fd.boxedType);
+                    block.addStatement("set_$L(instance, ($T) value)", fd.fieldName, fd.fieldType);
+                    block.endControlFlow();
+                } else if (fd.fieldType.isPrimitive()) {
+                    // Setting Object value to primitive field (boxing bridge)
+                    block.beginControlFlow("if (value != null)");
+                    block.addStatement("set_$L(instance, ($T) value)", fd.fieldName, fd.fieldType);
+                    block.endControlFlow();
+                } else {
+                    block.addStatement("set_$L(instance, ($T) value)", fd.fieldName, fd.fieldType);
+                }
+                block.addStatement("break");
+            } else {
+                block.addStatement("return get_$L(instance)", fd.fieldName);
+            }
+            block.unindent();
+        }
+
+        block.add("default:\n").indent()
+                .addStatement("throw new $T($S + colIndex)", UnsupportedOperationException.class, name + " not supported for colIndex ")
+                .unindent();
+        block.endControlFlow();
+
         return mb.addCode(block.build()).build();
     }
 
@@ -631,8 +788,43 @@ public class SQL4JProcessor extends AbstractProcessor {
         javaFile.writeTo(processingEnv.getFiler());
     }
 
+    private void parseIndexAnnotation(AnnotationMirror am, String tableName, List<IndexData> target) {
+        String name = null;
+        List<String> cols = new ArrayList<>();
+        boolean unique = false;
+
+        for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry : am.getElementValues().entrySet()) {
+            String key = entry.getKey().getSimpleName().toString();
+            if (key.equals("name")) {
+                name = entry.getValue().getValue().toString();
+            } else if (key.equals("unique")) {
+                unique = "true".equals(entry.getValue().getValue().toString());
+            } else if (key.equals("columns")) {
+                if (entry.getValue().getValue() instanceof List<?> list) {
+                    for (Object item : list) {
+                        if (item instanceof AnnotationValue av) {
+                            String c = av.getValue().toString().trim();
+                            if (!c.isEmpty()) cols.add(c);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!cols.isEmpty()) {
+            if (name == null || name.isEmpty()) {
+                name = "idx_" + tableName + "_" + String.join("_", cols);
+            }
+            target.add(new IndexData(name, cols, unique));
+        }
+    }
+
+    private record IndexData(String name, List<String> columns, boolean unique) {
+    }
+
     private record FieldData(String fieldName, String colName, TypeName fieldType, TypeName boxedType, TypeName columnType,
-                             boolean isPrivate, boolean isPrimaryKey, boolean isAutoInc, boolean isNullable, boolean isSoftDelete) {
+                             boolean isPrivate, boolean isPrimaryKey, boolean isAutoInc, boolean isNullable, boolean isSoftDelete,
+                             String indexName, boolean isUniqueIndex) {
     }
 
     private record RelationData(String constName, String type, String fieldName, TypeName targetClass, String mappedBy,

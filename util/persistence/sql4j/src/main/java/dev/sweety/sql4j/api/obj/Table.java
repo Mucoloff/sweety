@@ -23,6 +23,7 @@ import java.lang.reflect.ParameterizedType;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -49,9 +50,20 @@ public class Table<T> {
     private final List<ForeignKey> foreignKeys = new ArrayList<>();
     private final List<Column<?>> updatableColumns = new ArrayList<>();
     private final List<Relation> relations = new ArrayList<>();
+    private final List<IndexDef> indices = new ArrayList<>();
     private InsertableColumns insertableColumns;
     private Column<?> softDeleteColumn;
     private TableAccessor<T> accessor;
+
+    public record IndexDef(String name, List<String> columns, boolean unique) {
+        public IndexDef {
+            Objects.requireNonNull(columns, "columns cannot be null");
+            if (columns.isEmpty()) throw new IllegalArgumentException("Index must have at least one column");
+            if (name == null || name.isBlank()) {
+                name = "idx_" + String.join("_", columns);
+            }
+        }
+    }
 
     private enum InitState { UNINIT, INITIALIZING, READY }
     private final AtomicReference<InitState> state = new AtomicReference<>(InitState.UNINIT);
@@ -103,6 +115,7 @@ public class Table<T> {
 
     public void addColumn(Column<?> col) {
         synchronized (this) {
+            col.setOrdinalIndex(this.columnsList.size());
             this.columnsList.add(col);
             this.columnsMap.put(col.name().toLowerCase(Locale.ENGLISH), col);
             if (col.isPrimaryKey()) this.primaryKeys.add(col);
@@ -247,11 +260,28 @@ public class Table<T> {
                         insertColumns.add(c);
                         if (!c.isPrimaryKey()) updatableColumns.add(c);
                     }
+                    if (c.indexName() != null) {
+                        addIndex(new IndexDef(c.indexName(), List.of(c.name()), c.isUnique()));
+                    }
                 }
                 if (autoInc == null && DEBUG) {
                     LOGGER.debug("TABLE {} NO AutoInc column found.", name);
                 }
                 this.insertableColumns = new InsertableColumns(insertColumns, autoInc);
+
+                // Pass 3: Class-level indices
+                for (Index idx : clazz.getAnnotationsByType(Index.class)) {
+                    if (idx.columns().length > 0) {
+                        List<String> colNames = Arrays.stream(idx.columns())
+                                .map(String::trim)
+                                .filter(s -> !s.isEmpty())
+                                .collect(Collectors.toList());
+                        if (!colNames.isEmpty()) {
+                            String idxName = idx.name().isEmpty() ? "idx_" + name + "_" + String.join("_", colNames) : idx.name();
+                            addIndex(new IndexDef(idxName, colNames, idx.unique()));
+                        }
+                    }
+                }
 
                 state.set(InitState.READY);
             } catch (Throwable t) {
@@ -304,6 +334,16 @@ public class Table<T> {
 
         table.state.set(InitState.READY);
         return table;
+    }
+
+    public List<IndexDef> indices() {
+        return indices;
+    }
+
+    public void addIndex(IndexDef index) {
+        if (index != null && !indices.contains(index)) {
+            indices.add(index);
+        }
     }
 
     public List<Column<?>> columns() {

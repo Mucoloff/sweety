@@ -48,6 +48,9 @@ public final class TableRegistry {
                 // Try to load the generated Table instance (which should self-register)
                 try {
                     String mirrorName = clazz.getName() + "Table";
+                    if (clazz.isMemberClass()) {
+                        mirrorName = clazz.getName().replace('$', '_') + "Table";
+                    }
                     Class<?> mirrorClass = Class.forName(mirrorName);
                     // Accessing mirrorClass should trigger its static block and register the instance
                     Field instanceField = mirrorClass.getField("INSTANCE");
