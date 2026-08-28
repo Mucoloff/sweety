@@ -5,6 +5,7 @@ dependencies {
     implementation(project(":feature:event:api"))
     implementation(project(":network:netty"))
     implementation(project(":util:math"))
+    implementation(project(":util:persistence:sql4j"))
 
     compileOnly("com.google.devtools.ksp:symbol-processing-api:2.3.8")
 

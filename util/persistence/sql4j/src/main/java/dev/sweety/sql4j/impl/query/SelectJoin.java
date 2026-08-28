@@ -14,6 +14,11 @@ import dev.sweety.sql4j.api.query.Query;
 
 import dev.sweety.sql4j.api.connection.SqlConnection;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
+
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -21,10 +26,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -212,15 +213,13 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
                 if (rootTableFound == null) throw new Sql4jMappingException("Root type " + type.getName() + " not found in join builder");
                 final Table<R> rootTable = rootTableFound;
                 
-                Map<Object, R> identityMap = new LinkedHashMap<>();
+                Object2ObjectLinkedOpenHashMap<Object, R> identityMap = new Object2ObjectLinkedOpenHashMap<>();
                 // identity maps for each table to ensure we reuse instances within the same result set
-                Map<Table<?>, Map<Object, Object>> globalIdentityMap = new HashMap<>();
-                for (Table<?> t : tables) globalIdentityMap.put(t, new HashMap<>());
+                Reference2ObjectOpenHashMap<Table<?>, Object2ObjectOpenHashMap<Object, Object>> globalIdentityMap = new Reference2ObjectOpenHashMap<>(tables.size());
+                for (Table<?> t : tables) globalIdentityMap.put(t, new Object2ObjectOpenHashMap<>());
 
-                // (relation, sourcePk) -> already-attached target PKs. Was a linear scan over the
-                // live collection per row (O(m) per row, O(n*m) total across a relation) — this
-                // makes the ONE_TO_MANY/MANY_TO_MANY dedup check O(1) per row instead.
-                Map<Table.Relation, Map<Object, Set<Object>>> seenTargetsByRelation = new HashMap<>();
+                // (relation, sourcePk) -> already-attached target PKs.
+                Object2ObjectOpenHashMap<Table.Relation, Object2ObjectOpenHashMap<Object, ObjectOpenHashSet<Object>>> seenTargetsByRelation = new Object2ObjectOpenHashMap<>();
 
                 for (Row row : rows) {
                     Object rootPk = row.get(rootTable.name() + "_" + rootTable.primaryKeys().get(0).name());
@@ -248,7 +247,7 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
             }
 
             private void populateRelation(Object source, Object sourcePk, Table.Relation rel, Object targetEntity, Object targetPk,
-                                           Map<Table.Relation, Map<Object, Set<Object>>> seenTargetsByRelation) {
+                                           Object2ObjectOpenHashMap<Table.Relation, Object2ObjectOpenHashMap<Object, ObjectOpenHashSet<Object>>> seenTargetsByRelation) {
                 try {
                     rel.field().setAccessible(true);
                     switch (rel.type()) {
@@ -256,12 +255,12 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
                             //noinspection unchecked
                             Collection<Object> collection = (Collection<Object>) rel.field().get(source);
                             if (collection == null) {
-                                collection = (rel.field().getType() == Set.class) ? new HashSet<>() : new ArrayList<>();
+                                collection = (rel.field().getType() == Set.class) ? new ObjectOpenHashSet<>() : new ArrayList<>();
                                 rel.field().set(source, collection);
                             }
-                            Set<Object> seenTargets = seenTargetsByRelation
-                                    .computeIfAbsent(rel, ignored -> new HashMap<>())
-                                    .computeIfAbsent(sourcePk, ignored -> new HashSet<>());
+                            ObjectOpenHashSet<Object> seenTargets = seenTargetsByRelation
+                                    .computeIfAbsent(rel, ignored -> new Object2ObjectOpenHashMap<>())
+                                    .computeIfAbsent(sourcePk, ignored -> new ObjectOpenHashSet<>());
                             if (seenTargets.add(targetPk)) collection.add(targetEntity);
                         }
                         case MANY_TO_ONE -> {
@@ -278,7 +277,7 @@ public final class SelectJoin extends AbstractQuery<List<Row>> {
     }
 
     public static class Builder implements JoinBuilder {
-        private final LinkedHashSet<Table<?>> tablesList = new LinkedHashSet<>();
+        private final ObjectOpenHashSet<Table<?>> tablesList = new ObjectOpenHashSet<>();
         private Table<?> lastTable;
         private final List<JoinInfo> joinsList = new ArrayList<>();
         private final List<String> onClausesList = new ArrayList<>();

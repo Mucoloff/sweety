@@ -1,13 +1,13 @@
 package dev.sweety.sql4j.api.obj;
 
 import dev.sweety.sql4j.api.exception.Sql4jMappingException;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -24,11 +24,11 @@ import java.util.Set;
  */
 public final class Row {
 
-    private final Map<String, Object> data;
+    private final Object2ObjectLinkedOpenHashMap<String, Object> data;
 
     @Deprecated
     public Row(Map<String, Object> data) {
-        this.data = Collections.unmodifiableMap(new LinkedHashMap<>(data));
+        this.data = new Object2ObjectLinkedOpenHashMap<>(data);
     }
 
     public static Row of(Map<String, Object> data) {
@@ -161,7 +161,7 @@ public final class Row {
     public static Row fromResultSet(ResultSet rs) throws SQLException {
         ResultSetMetaData meta = rs.getMetaData();
         int count = meta.getColumnCount();
-        Map<String, Object> map = new LinkedHashMap<>(count);
+        Object2ObjectLinkedOpenHashMap<String, Object> map = new Object2ObjectLinkedOpenHashMap<>(count);
         for (int i = 1; i <= count; i++) {
             String label = meta.getColumnLabel(i).toLowerCase(Locale.ENGLISH);
             Object value = rs.getObject(i);
