@@ -42,9 +42,12 @@ public final class VMInterpreter {
 
     private VMInterpreter() {}
 
-    // Per-bytecode reflection cache: method/field lookups are cached after first execution.
-    private static final Map<byte[], Map<String, Object>> CACHE =
-            Collections.synchronizedMap(new WeakHashMap<>());
+    // Per-bytecode reflection cache: method/field lookups are cached after first execution (ConcurrentHashMap for zero contention).
+    private static final Map<byte[], Map<String, Object>> CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+
+    // Reusable thread-local execution pools to eliminate 4 array allocations per virtualized method call
+    private static final ThreadLocal<VMStack> STACK_POOL = ThreadLocal.withInitial(() -> new VMStack(32));
+    private static final ThreadLocal<VMLocals> LOCALS_POOL = ThreadLocal.withInitial(() -> new VMLocals(16));
 
     // Bound once at client bootstrap to bridge the live session keystream (client/src, a module this
     // one can't compile-depend on). Unbound = neutral (tests, server-side compile path) — the same
@@ -63,7 +66,7 @@ public final class VMInterpreter {
      * @param self    {@code this} for instance methods; {@code null} for static
      * @param args    method arguments (does not include {@code this}) — boxed by the JVM's own calling
      *                convention at the generated stub's call site; unboxed here into {@link VMLocals}
-     * @param code    compiled VM bytecode produced by {@link dev.sweety.transform.engine.transformer.virtualize.VMCompiler}
+     * @param code    compiled VM bytecode produced by {@link dev.sweety.transform.transformers.virtualize.VMCompiler}
      * @return        boxed return value, or {@code null} for void
      */
     public static Object execute(Object self, Object[] args, byte[] code) {
@@ -95,7 +98,9 @@ public final class VMInterpreter {
         // sequential one-slot-per-arg layout would misread every local after a long/double param.
         // Each arg is routed to VMLocals' `prim` or `ref` array per its descriptor tag — the args
         // array itself stays boxed (unavoidable: it crossed the generated stub's real Java call).
-        final VMLocals locals = new VMLocals(maxLocals);
+        final VMLocals locals = LOCALS_POOL.get();
+        locals.reset(maxLocals);
+
         int slot = 0;
         if (self != null) locals.ref[slot++] = self; // `this` is always one slot, always a reference
         if (args != null) {
@@ -114,13 +119,17 @@ public final class VMInterpreter {
             }
         }
 
-        final VMStack stack = new VMStack(16); // grows as needed; most methods never exceed this
-        final Map<String, Object> cache = CACHE.computeIfAbsent(code, k -> new HashMap<>());
+        final VMStack stack = STACK_POOL.get();
+        stack.reset();
+        final Map<String, Object> cache = CACHE.computeIfAbsent(code, k -> new java.util.concurrent.ConcurrentHashMap<>());
 
         try {
             return runLoop(buf, locals, stack, cache);
         } catch (Throwable t) {
+            if (t instanceof RuntimeException re) throw re;
             throw new RuntimeException("VM execution error", t);
+        } finally {
+            stack.reset();
         }
     }
 

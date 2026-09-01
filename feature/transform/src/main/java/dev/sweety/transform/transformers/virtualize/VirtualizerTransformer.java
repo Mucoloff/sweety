@@ -1,9 +1,9 @@
-package dev.sweety.transform.engine.transformer.virtualize;
+package dev.sweety.transform.transformers.virtualize;
 
 import dev.sweety.transform.engine.MethodSelector;
 import dev.sweety.transform.engine.TransformContext;
 import dev.sweety.transform.engine.Transformer;
-import dev.sweety.transform.engine.transformer.constant.IntegerEncodingTransformer;
+import dev.sweety.transform.transformers.constant.IntegerEncodingTransformer;
 import dev.sweety.util.logger.SimpleLogger;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;

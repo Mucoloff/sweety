@@ -1,4 +1,4 @@
-package dev.sweety.transform.engine.transformer.virtualize;
+package dev.sweety.transform.transformers.virtualize;
 
 import dev.sweety.transform.vm.VmOp;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;

@@ -125,12 +125,12 @@ public final class TransformPipeline {
         /** Convenience: default pipeline used for plugin obfuscation. */
         public static TransformPipeline defaultPipeline() {
             return TransformPipeline.builder()
-                    .add(new dev.sweety.transform.engine.transformer.virtualize.VirtualizerTransformer())
-                    .add(new dev.sweety.transform.engine.transformer.control.GotoNormalizationTransformer())
-                    .add(new dev.sweety.transform.engine.transformer.control.ConditionalMutationTransformer())
-                    .add(new dev.sweety.transform.engine.transformer.control.ExceptionFlowTransformer())
-                    .add(new dev.sweety.transform.engine.transformer.constant.StringEncryptionTransformer())
-                    .add(new dev.sweety.transform.engine.transformer.constant.IntegerEncodingTransformer())
+                    .add(new dev.sweety.transform.transformers.virtualize.VirtualizerTransformer())
+                    .add(new dev.sweety.transform.transformers.control.GotoNormalizationTransformer())
+                    .add(new dev.sweety.transform.transformers.control.ConditionalMutationTransformer())
+                    .add(new dev.sweety.transform.transformers.control.ExceptionFlowTransformer())
+                    .add(new dev.sweety.transform.transformers.constant.StringEncryptionTransformer())
+                    .add(new dev.sweety.transform.transformers.constant.IntegerEncodingTransformer())
                     .build();
         }
     }

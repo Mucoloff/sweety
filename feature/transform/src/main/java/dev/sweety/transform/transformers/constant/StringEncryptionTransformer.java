@@ -1,4 +1,4 @@
-package dev.sweety.transform.engine.transformer.constant;
+package dev.sweety.transform.transformers.constant;
 
 import dev.sweety.transform.engine.MethodSelector;
 import dev.sweety.transform.engine.TransformContext;
@@ -158,15 +158,9 @@ public final class StringEncryptionTransformer extends Transformer {
                 "(Ljava/lang/String;)[B", false);
         mn.visitVarInsn(Opcodes.ASTORE, 2); // enc
 
-        // char[] out = new char[enc.length]
-        mn.visitVarInsn(Opcodes.ALOAD, 2);
-        mn.visitInsn(Opcodes.ARRAYLENGTH);
-        mn.visitIntInsn(Opcodes.NEWARRAY, Opcodes.T_CHAR);
-        mn.visitVarInsn(Opcodes.ASTORE, 3); // out
-
         // int i = 0
         mn.visitInsn(Opcodes.ICONST_0);
-        mn.visitVarInsn(Opcodes.ISTORE, 4);
+        mn.visitVarInsn(Opcodes.ISTORE, 3);
 
         final Label loopHead = new Label();
         final Label loopEnd  = new Label();
@@ -174,43 +168,44 @@ public final class StringEncryptionTransformer extends Transformer {
         mn.visitLabel(loopHead);
 
         // if (i >= enc.length) break
-        mn.visitVarInsn(Opcodes.ILOAD, 4);
+        mn.visitVarInsn(Opcodes.ILOAD, 3);
         mn.visitVarInsn(Opcodes.ALOAD, 2);
         mn.visitInsn(Opcodes.ARRAYLENGTH);
         mn.visitJumpInsn(Opcodes.IF_ICMPGE, loopEnd);
 
-        // out[i] = (char)(enc[i] ^ (key >>> ((i & 3) * 8)))
-        mn.visitVarInsn(Opcodes.ALOAD, 3);   // out
-        mn.visitVarInsn(Opcodes.ILOAD, 4);   // i
+        // enc[i] = (byte)(enc[i] ^ (key >>> ((i & 3) * 8)))
+        mn.visitVarInsn(Opcodes.ALOAD, 2);   // enc
+        mn.visitVarInsn(Opcodes.ILOAD, 3);   // i
         // enc[i]
         mn.visitVarInsn(Opcodes.ALOAD, 2);
-        mn.visitVarInsn(Opcodes.ILOAD, 4);
-        mn.visitInsn(Opcodes.BALOAD);         // byte (sign-extended)
+        mn.visitVarInsn(Opcodes.ILOAD, 3);
+        mn.visitInsn(Opcodes.BALOAD);         // byte
         // key >>> ((i & 3) * 8)
         mn.visitVarInsn(Opcodes.ILOAD, 1);   // key
-        mn.visitVarInsn(Opcodes.ILOAD, 4);   // i
+        mn.visitVarInsn(Opcodes.ILOAD, 3);   // i
         mn.visitInsn(Opcodes.ICONST_3);
         mn.visitInsn(Opcodes.IAND);           // i & 3
         mn.visitIntInsn(Opcodes.BIPUSH, 8);
         mn.visitInsn(Opcodes.IMUL);           // (i & 3) * 8
         mn.visitInsn(Opcodes.IUSHR);          // key >>> shift
         mn.visitInsn(Opcodes.IXOR);           // enc[i] ^ keyByte
-        mn.visitInsn(Opcodes.I2C);            // (char)
-        mn.visitInsn(Opcodes.CASTORE);
+        mn.visitInsn(Opcodes.I2B);            // (byte)
+        mn.visitInsn(Opcodes.BASTORE);
 
         // i++
-        mn.visitIincInsn(4, 1);
+        mn.visitIincInsn(3, 1);
         mn.visitJumpInsn(Opcodes.GOTO, loopHead);
 
         mn.visitLabel(loopEnd);
-        // return new String(out)
+        // return new String(enc, StandardCharsets.UTF_8)
         mn.visitTypeInsn(Opcodes.NEW, "java/lang/String");
         mn.visitInsn(Opcodes.DUP);
-        mn.visitVarInsn(Opcodes.ALOAD, 3);
-        mn.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/String", "<init>", "([C)V", false);
+        mn.visitVarInsn(Opcodes.ALOAD, 2);
+        mn.visitFieldInsn(Opcodes.GETSTATIC, "java/nio/charset/StandardCharsets", "UTF_8", "Ljava/nio/charset/Charset;");
+        mn.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/String", "<init>", "([BLjava/nio/charset/Charset;)V", false);
         mn.visitInsn(Opcodes.ARETURN);
 
-        mn.visitMaxs(6, 5);
+        mn.visitMaxs(6, 4);
         mn.visitEnd();
 
         cn.methods.add(mn);

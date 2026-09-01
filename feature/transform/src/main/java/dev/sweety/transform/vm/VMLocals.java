@@ -7,11 +7,21 @@ package dev.sweety.transform.vm;
  */
 final class VMLocals {
 
-    final long[] prim;
-    final Object[] ref;
+    long[] prim;
+    Object[] ref;
 
     VMLocals(int maxLocals) {
         prim = new long[maxLocals];
         ref = new Object[maxLocals];
+    }
+
+    void reset(int maxLocals) {
+        if (prim.length < maxLocals) {
+            prim = new long[maxLocals];
+            ref = new Object[maxLocals];
+        } else {
+            java.util.Arrays.fill(prim, 0, maxLocals, 0L);
+            java.util.Arrays.fill(ref, 0, maxLocals, null);
+        }
     }
 }

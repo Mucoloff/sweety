@@ -58,4 +58,11 @@ final class VMStack {
 
     /** Push a raw slot (both arrays) — used to re-push a value read via {@link #primAt}/{@link #refAt}. */
     void pushSlot(long p, Object r) { ensure(sp + 1); prim[sp] = p; ref[sp] = r; sp++; }
+
+    void reset() {
+        if (sp > 0) {
+            Arrays.fill(ref, 0, sp, null);
+            sp = 0;
+        }
+    }
 }

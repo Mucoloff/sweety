@@ -1,4 +1,4 @@
-package dev.sweety.transform.engine.transformer.inject;
+package dev.sweety.transform.transformers.inject;
 
 import dev.sweety.transform.engine.TransformContext;
 import dev.sweety.transform.engine.Transformer;

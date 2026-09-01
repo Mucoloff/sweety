@@ -2,8 +2,8 @@ package dev.sweety.transform.poc;
 
 import dev.sweety.util.signature.SessionCrypto;
 import dev.sweety.transform.engine.TransformPipeline;
-import dev.sweety.transform.engine.transformer.virtualize.VirtualBytecodeService;
-import dev.sweety.transform.engine.transformer.virtualize.VirtualizerTransformer;
+import dev.sweety.transform.transformers.virtualize.VirtualBytecodeService;
+import dev.sweety.transform.transformers.virtualize.VirtualizerTransformer;
 import dev.sweety.transform.vm.SessionFoldSource;
 import dev.sweety.transform.vm.VMInterpreter;
 import org.junit.jupiter.api.AfterEach;
