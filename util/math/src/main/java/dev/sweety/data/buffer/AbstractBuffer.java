@@ -1426,6 +1426,8 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
 
     public abstract AbstractBuffer<Self> readBytes(byte[] data);
 
+    public abstract AbstractBuffer<Self> readBytes(byte[] data, int offset, int length);
+
     public abstract AbstractBuffer<Self> writeBytes(byte[] data);
 
     public abstract AbstractBuffer<Self> writeBytes(byte[] data, int offset, int length);
@@ -1596,6 +1598,50 @@ public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implemen
     @Override
     public String toString() {
         return "%s(ridx=%d, widx=%d, readable=%d)".formatted(getClass().getSimpleName(), readerIndex(), writerIndex(), readableBytes());
+    }
+
+    /**
+     * Returns an {@link java.io.InputStream} view backed by this buffer's readable bytes.
+     * Advancing the stream advances this buffer's {@link #readerIndex()}.
+     */
+    public java.io.InputStream asInputStream() {
+        return new java.io.InputStream() {
+            @Override
+            public int read() {
+                return isReadable() ? (readByte() & 0xFF) : -1;
+            }
+
+            @Override
+            public int read(byte[] b, int off, int len) {
+                if (!isReadable()) return -1;
+                int toRead = Math.min(len, readableBytes());
+                readBytes(b, off, toRead);
+                return toRead;
+            }
+
+            @Override
+            public int available() {
+                return readableBytes();
+            }
+        };
+    }
+
+    /**
+     * Returns an {@link java.io.OutputStream} view backed by this buffer's writer.
+     * Writing to the stream writes directly into this buffer.
+     */
+    public java.io.OutputStream asOutputStream() {
+        return new java.io.OutputStream() {
+            @Override
+            public void write(int b) {
+                writeByte((byte) b);
+            }
+
+            @Override
+            public void write(byte[] b, int off, int len) {
+                writeBytes(b, off, len);
+            }
+        };
     }
 
 }

@@ -1,6 +1,7 @@
 package dev.sweety.netty.packet.internal;
 
-import dev.sweety.data.buffer.*;
+import dev.sweety.data.buffer.BufferReader;
+import dev.sweety.data.buffer.BufferWriter;
 import dev.sweety.netty.feature.batch.Batch;
 import dev.sweety.netty.packet.Packer;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
@@ -13,7 +14,6 @@ public class ForwardData extends PacketTransaction.Transaction {
 
     private int senderId, receiverId;
     private RoutingContext context;
-
     private Batch batch;
 
     /**
@@ -24,7 +24,7 @@ public class ForwardData extends PacketTransaction.Transaction {
                        final Packet... packets) {
         this.senderId = senderId;
         this.receiverId = receiverId;
-        this.context = context != null ? context : new RoutingContext();
+        this.context = context != null ? context : RoutingContext.empty();
         this.batch = new Batch(idMap, p -> p instanceof InternalPacket, packets);
     }
 
@@ -41,7 +41,7 @@ public class ForwardData extends PacketTransaction.Transaction {
      * Empty constructor for deserialization.
      */
     public ForwardData() {
-        this.context = new RoutingContext();
+        this.context = RoutingContext.empty();
         this.batch = new Batch();
     }
 
@@ -49,8 +49,8 @@ public class ForwardData extends PacketTransaction.Transaction {
     public void write(final BufferWriter buffer) {
         buffer.writeVarInt(this.senderId);
         buffer.writeVarInt(this.receiverId);
-        this.context.write(buffer);
-        // rawBatchBytes() returns the pre-serialized form, skipping an intermediate PacketBuffer allocation
+        (this.context != null ? this.context : RoutingContext.empty()).write(buffer);
+        // rawBatchBytes() returns the pre-serialized form, skipping intermediate PacketBuffer allocation
         buffer.writeByteArray(this.batch.rawBatchBytes());
     }
 
@@ -58,8 +58,7 @@ public class ForwardData extends PacketTransaction.Transaction {
     public void read(final BufferReader buffer) {
         this.senderId = buffer.readVarInt();
         this.receiverId = buffer.readVarInt();
-        this.context = new RoutingContext();
-        this.context.read(buffer);
+        this.context = RoutingContext.readContext(buffer);
         this.batch = new Batch();
         final PacketBuffer bytes = new PacketBuffer(buffer.readByteArray());
         try {
@@ -101,5 +100,11 @@ public class ForwardData extends PacketTransaction.Transaction {
 
     public boolean isDecoded() {
         return this.batch != null && this.batch.isDecoded();
+    }
+
+    public void release() {
+        if (this.context != null) {
+            this.context.release();
+        }
     }
 }

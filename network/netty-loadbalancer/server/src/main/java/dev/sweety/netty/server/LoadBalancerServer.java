@@ -318,6 +318,7 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
                     ForwardData responseForward = new ForwardData(
                             request.receiverId(),
                             request.senderId(),
+                            request.context(),
                             packetRegistry()::getPacketId,
                             responses);
                     InternalPacket responsePacket = new InternalPacket(internal.getRequestId(), responseForward);
@@ -326,6 +327,8 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
                 } catch (Throwable relayError) {
                     this.logger.profile("response-relay")
                             .error("Failed relaying response " + internal.requestCode(), relayError);
+                } finally {
+                    internal.release();
                 }
             });
 

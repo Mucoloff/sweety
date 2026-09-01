@@ -96,6 +96,8 @@ public interface BufferReader {
 
     BufferReader readBytes(byte[] data);
 
+    BufferReader readBytes(byte[] data, int offset, int length);
+
     byte[] readAllBytes();
 
     byte[] getBytes();
@@ -188,4 +190,34 @@ public interface BufferReader {
 
     double[] readFixedPosition(int fractionBits);
 
+    /**
+     * Reads bytes from this buffer and writes them to an {@link java.io.OutputStream} in chunks.
+     * Automatically wraps the stream in a {@link java.io.BufferedOutputStream} if not already buffered.
+     *
+     * @param out       the destination stream
+     * @param length    total bytes to write
+     * @param chunkSize chunk transfer buffer size (default: 8192)
+     * @return total bytes transferred
+     * @throws java.io.IOException on I/O error
+     */
+    default int readToStream(java.io.OutputStream out, int length, int chunkSize) throws java.io.IOException {
+        java.io.OutputStream buffered = (out instanceof java.io.BufferedOutputStream)
+                ? out
+                : new java.io.BufferedOutputStream(out, Math.max(256, chunkSize));
+
+        byte[] chunk = new byte[Math.min(length, Math.max(256, chunkSize))];
+        int remaining = length;
+        while (remaining > 0) {
+            int toWrite = Math.min(chunk.length, remaining);
+            readBytes(chunk, 0, toWrite);
+            buffered.write(chunk, 0, toWrite);
+            remaining -= toWrite;
+        }
+        buffered.flush();
+        return length;
+    }
+
+    default int readToStream(java.io.OutputStream out, int length) throws java.io.IOException {
+        return readToStream(out, length, 8192);
+    }
 }

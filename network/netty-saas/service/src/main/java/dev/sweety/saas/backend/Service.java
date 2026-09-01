@@ -14,6 +14,7 @@ import dev.sweety.saas.service.packet.global.handshake.SystemConnection;
 import dev.sweety.saas.service.packet.global.handshake.SystemConnectionTransaction;
 import dev.sweety.saas.service.packet.global.ping.SystemPing;
 import dev.sweety.saas.service.packet.global.ping.SystemPong;
+import dev.sweety.thread.ThreadManager;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import org.jetbrains.annotations.Nullable;
@@ -29,6 +30,7 @@ public abstract class Service extends Backend implements IService {
 
     protected final ServiceType type;
     protected final ServicesConfig config;
+    protected final dev.sweety.thread.ThreadManager threadManager;
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1, Thread.ofVirtual().name("metrics-reporter").factory());
     private final MetricsReporter metrics = new MetricsReporter(this);
@@ -38,6 +40,7 @@ public abstract class Service extends Backend implements IService {
 
         this.type = type;
         this.config = config;
+        this.threadManager = new dev.sweety.thread.ThreadManager(type.name().toLowerCase() + "-worker");
 
         scheduler.scheduleAtFixedRate(() -> {
             sample(this.metrics);
@@ -191,7 +194,14 @@ public abstract class Service extends Backend implements IService {
         return scheduler;
     }
 
-    public MetricsReporter metrics() {
-        return metrics;
+    public ThreadManager threadManager() {
+        return threadManager;
+    }
+
+    @Override
+    public void stop() {
+        super.stop();
+        scheduler.shutdownNow();
+        threadManager.shutdown();
     }
 }

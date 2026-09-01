@@ -47,4 +47,12 @@ public class InternalPacket extends PacketTransaction<ForwardData, ForwardData> 
         return Optional.ofNullable(val);
     }
 
+    public void release() {
+        if (hasRequest() && getRequest() != null) {
+            getRequest().release();
+        }
+        if (hasResponse() && getResponse() != null) {
+            getResponse().release();
+        }
+    }
 }

@@ -2,116 +2,309 @@ package dev.sweety.netty.packet.internal;
 
 import dev.sweety.data.buffer.BufferReader;
 import dev.sweety.data.buffer.BufferWriter;
+import dev.sweety.math.pool.ObjectPool;
 import dev.sweety.netty.packet.buffer.io.Codec;
 
 import java.util.UUID;
 
-public class RoutingContext implements Codec {
+/**
+ * Polymorphic, zero-allocation routing context for Netty packet dispatch.
+ * Backed by ThreadLocal ObjectPools to prevent JVM young-gen GC pressure.
+ */
+public interface RoutingContext extends Codec {
 
-    private String modelName;
-    private long shardKey;
-    private UUID clientSessionId;
-    private int priority;
-    private int flags;
+    byte TYPE_EMPTY = 0;
+    byte TYPE_MODEL = 1;
+    byte TYPE_SHARD = 2;
+    byte TYPE_SESSION = 3;
+    byte TYPE_COMPOSITE = 4;
 
-    public RoutingContext() {
+    byte typeId();
+
+    void reset();
+
+    default void release() {
+        RoutingContextPools.release(this);
     }
 
-    public RoutingContext(String modelName, long shardKey, UUID clientSessionId, int priority, int flags) {
-        this.modelName = modelName;
-        this.shardKey = shardKey;
-        this.clientSessionId = clientSessionId;
-        this.priority = priority;
-        this.flags = flags;
+    static RoutingContext empty() {
+        return EmptyRoutingContext.INSTANCE;
     }
 
-    public static RoutingContext ofModel(String modelName) {
-        RoutingContext ctx = new RoutingContext();
-        ctx.modelName = modelName;
+    static ModelRoutingContext ofModel(String modelName) {
+        return ofModel(modelName, 0);
+    }
+
+    static ModelRoutingContext ofModel(String modelName, int priority) {
+        ModelRoutingContext ctx = RoutingContextPools.MODEL_POOL.acquire();
+        ctx.modelName(modelName);
+        ctx.priority(priority);
         return ctx;
     }
 
-    public static RoutingContext ofShard(long shardKey) {
-        RoutingContext ctx = new RoutingContext();
-        ctx.shardKey = shardKey;
+    static ShardRoutingContext ofShard(long shardKey) {
+        ShardRoutingContext ctx = RoutingContextPools.SHARD_POOL.acquire();
+        ctx.shardKey(shardKey);
         return ctx;
     }
 
-    public static RoutingContext ofSession(UUID sessionId) {
-        RoutingContext ctx = new RoutingContext();
-        ctx.clientSessionId = sessionId;
+    static SessionRoutingContext ofSession(UUID sessionId) {
+        return ofSession(sessionId, 0);
+    }
+
+    static SessionRoutingContext ofSession(UUID sessionId, int priority) {
+        SessionRoutingContext ctx = RoutingContextPools.SESSION_POOL.acquire();
+        ctx.clientSessionId(sessionId);
+        ctx.priority(priority);
         return ctx;
     }
 
-    @Override
-    public void write(BufferWriter buffer) {
-        buffer.writeString(this.modelName != null ? this.modelName : "");
-        buffer.writeVarLong(this.shardKey);
-        buffer.writeBoolean(this.clientSessionId != null);
-        if (this.clientSessionId != null) {
-            buffer.writeLong(this.clientSessionId.getMostSignificantBits());
-            buffer.writeLong(this.clientSessionId.getLeastSignificantBits());
+    static CompositeRoutingContext ofComposite() {
+        return RoutingContextPools.COMPOSITE_POOL.acquire();
+    }
+
+    static RoutingContext readContext(BufferReader buffer) {
+        final byte typeId = buffer.readByte();
+        return switch (typeId) {
+            case TYPE_EMPTY -> EmptyRoutingContext.INSTANCE;
+            case TYPE_MODEL -> {
+                ModelRoutingContext ctx = RoutingContextPools.MODEL_POOL.acquire();
+                ctx.readBody(buffer);
+                yield ctx;
+            }
+            case TYPE_SHARD -> {
+                ShardRoutingContext ctx = RoutingContextPools.SHARD_POOL.acquire();
+                ctx.readBody(buffer);
+                yield ctx;
+            }
+            case TYPE_SESSION -> {
+                SessionRoutingContext ctx = RoutingContextPools.SESSION_POOL.acquire();
+                ctx.readBody(buffer);
+                yield ctx;
+            }
+            case TYPE_COMPOSITE -> {
+                CompositeRoutingContext ctx = RoutingContextPools.COMPOSITE_POOL.acquire();
+                ctx.readBody(buffer);
+                yield ctx;
+            }
+            default -> throw new IllegalArgumentException("Unknown RoutingContext typeId: " + typeId);
+        };
+    }
+
+    final class EmptyRoutingContext implements RoutingContext {
+        public static final EmptyRoutingContext INSTANCE = new EmptyRoutingContext();
+
+        private EmptyRoutingContext() {}
+
+        @Override public byte typeId() { return TYPE_EMPTY; }
+        @Override public void reset() {}
+        @Override public void release() {} // Singleton, no-op release
+
+        @Override public void write(BufferWriter buffer) { buffer.writeByte(TYPE_EMPTY); }
+        @Override public void read(BufferReader buffer) {}
+    }
+
+    final class ModelRoutingContext implements RoutingContext {
+        private String modelName;
+        private int priority;
+
+        public ModelRoutingContext() {}
+
+        @Override public byte typeId() { return TYPE_MODEL; }
+
+        @Override
+        public void reset() {
+            this.modelName = null;
+            this.priority = 0;
         }
-        buffer.writeVarInt(this.priority);
-        buffer.writeVarInt(this.flags);
+
+        @Override
+        public void write(BufferWriter buffer) {
+            buffer.writeByte(TYPE_MODEL);
+            buffer.writeString(this.modelName != null ? this.modelName : "");
+            buffer.writeVarInt(this.priority);
+        }
+
+        @Override
+        public void read(BufferReader buffer) {
+            // Header read externally
+            readBody(buffer);
+        }
+
+        public void readBody(BufferReader buffer) {
+            final String m = buffer.readString();
+            this.modelName = m.isEmpty() ? null : m;
+            this.priority = buffer.readVarInt();
+        }
+
+        public String modelName() { return modelName; }
+        public ModelRoutingContext modelName(String modelName) { this.modelName = modelName; return this; }
+        public int priority() { return priority; }
+        public ModelRoutingContext priority(int priority) { this.priority = priority; return this; }
     }
 
-    @Override
-    public void read(BufferReader buffer) {
-        final String model = buffer.readString();
-        this.modelName = model.isEmpty() ? null : model;
-        this.shardKey = buffer.readVarLong();
-        if (buffer.readBoolean()) {
-            this.clientSessionId = new UUID(buffer.readLong(), buffer.readLong());
-        } else {
+    final class ShardRoutingContext implements RoutingContext {
+        private long shardKey;
+
+        public ShardRoutingContext() {}
+
+        @Override public byte typeId() { return TYPE_SHARD; }
+
+        @Override
+        public void reset() {
+            this.shardKey = 0L;
+        }
+
+        @Override
+        public void write(BufferWriter buffer) {
+            buffer.writeByte(TYPE_SHARD);
+            buffer.writeVarLong(this.shardKey);
+        }
+
+        @Override
+        public void read(BufferReader buffer) {
+            readBody(buffer);
+        }
+
+        public void readBody(BufferReader buffer) {
+            this.shardKey = buffer.readVarLong();
+        }
+
+        public long shardKey() { return shardKey; }
+        public ShardRoutingContext shardKey(long shardKey) { this.shardKey = shardKey; return this; }
+    }
+
+    final class SessionRoutingContext implements RoutingContext {
+        private UUID clientSessionId;
+        private int priority;
+
+        public SessionRoutingContext() {}
+
+        @Override public byte typeId() { return TYPE_SESSION; }
+
+        @Override
+        public void reset() {
             this.clientSessionId = null;
+            this.priority = 0;
         }
-        this.priority = buffer.readVarInt();
-        this.flags = buffer.readVarInt();
+
+        @Override
+        public void write(BufferWriter buffer) {
+            buffer.writeByte(TYPE_SESSION);
+            buffer.writeBoolean(this.clientSessionId != null);
+            if (this.clientSessionId != null) {
+                buffer.writeLong(this.clientSessionId.getMostSignificantBits());
+                buffer.writeLong(this.clientSessionId.getLeastSignificantBits());
+            }
+            buffer.writeVarInt(this.priority);
+        }
+
+        @Override
+        public void read(BufferReader buffer) {
+            readBody(buffer);
+        }
+
+        public void readBody(BufferReader buffer) {
+            if (buffer.readBoolean()) {
+                this.clientSessionId = new UUID(buffer.readLong(), buffer.readLong());
+            } else {
+                this.clientSessionId = null;
+            }
+            this.priority = buffer.readVarInt();
+        }
+
+        public UUID clientSessionId() { return clientSessionId; }
+        public SessionRoutingContext clientSessionId(UUID id) { this.clientSessionId = id; return this; }
+        public int priority() { return priority; }
+        public SessionRoutingContext priority(int p) { this.priority = p; return this; }
     }
 
-    public String modelName() {
-        return modelName;
+    final class CompositeRoutingContext implements RoutingContext {
+        private String modelName;
+        private long shardKey;
+        private UUID clientSessionId;
+        private int priority;
+        private int flags;
+
+        public CompositeRoutingContext() {}
+
+        @Override public byte typeId() { return TYPE_COMPOSITE; }
+
+        @Override
+        public void reset() {
+            this.modelName = null;
+            this.shardKey = 0L;
+            this.clientSessionId = null;
+            this.priority = 0;
+            this.flags = 0;
+        }
+
+        @Override
+        public void write(BufferWriter buffer) {
+            buffer.writeByte(TYPE_COMPOSITE);
+            buffer.writeString(this.modelName != null ? this.modelName : "");
+            buffer.writeVarLong(this.shardKey);
+            buffer.writeBoolean(this.clientSessionId != null);
+            if (this.clientSessionId != null) {
+                buffer.writeLong(this.clientSessionId.getMostSignificantBits());
+                buffer.writeLong(this.clientSessionId.getLeastSignificantBits());
+            }
+            buffer.writeVarInt(this.priority);
+            buffer.writeVarInt(this.flags);
+        }
+
+        @Override
+        public void read(BufferReader buffer) {
+            readBody(buffer);
+        }
+
+        public void readBody(BufferReader buffer) {
+            final String m = buffer.readString();
+            this.modelName = m.isEmpty() ? null : m;
+            this.shardKey = buffer.readVarLong();
+            if (buffer.readBoolean()) {
+                this.clientSessionId = new UUID(buffer.readLong(), buffer.readLong());
+            } else {
+                this.clientSessionId = null;
+            }
+            this.priority = buffer.readVarInt();
+            this.flags = buffer.readVarInt();
+        }
+
+        public String modelName() { return modelName; }
+        public CompositeRoutingContext modelName(String m) { this.modelName = m; return this; }
+        public long shardKey() { return shardKey; }
+        public CompositeRoutingContext shardKey(long k) { this.shardKey = k; return this; }
+        public UUID clientSessionId() { return clientSessionId; }
+        public CompositeRoutingContext clientSessionId(UUID id) { this.clientSessionId = id; return this; }
+        public int priority() { return priority; }
+        public CompositeRoutingContext priority(int p) { this.priority = p; return this; }
+        public int flags() { return flags; }
+        public CompositeRoutingContext flags(int f) { this.flags = f; return this; }
     }
 
-    public RoutingContext modelName(String modelName) {
-        this.modelName = modelName;
-        return this;
-    }
+    final class RoutingContextPools {
+        public static final ObjectPool<ModelRoutingContext> MODEL_POOL =
+                ObjectPool.threadLocal(ModelRoutingContext::new).reset(ModelRoutingContext::reset).build();
 
-    public long shardKey() {
-        return shardKey;
-    }
+        public static final ObjectPool<ShardRoutingContext> SHARD_POOL =
+                ObjectPool.threadLocal(ShardRoutingContext::new).reset(ShardRoutingContext::reset).build();
 
-    public RoutingContext shardKey(long shardKey) {
-        this.shardKey = shardKey;
-        return this;
-    }
+        public static final ObjectPool<SessionRoutingContext> SESSION_POOL =
+                ObjectPool.threadLocal(SessionRoutingContext::new).reset(SessionRoutingContext::reset).build();
 
-    public UUID clientSessionId() {
-        return clientSessionId;
-    }
+        public static final ObjectPool<CompositeRoutingContext> COMPOSITE_POOL =
+                ObjectPool.threadLocal(CompositeRoutingContext::new).reset(CompositeRoutingContext::reset).build();
 
-    public RoutingContext clientSessionId(UUID clientSessionId) {
-        this.clientSessionId = clientSessionId;
-        return this;
-    }
-
-    public int priority() {
-        return priority;
-    }
-
-    public RoutingContext priority(int priority) {
-        this.priority = priority;
-        return this;
-    }
-
-    public int flags() {
-        return flags;
-    }
-
-    public RoutingContext flags(int flags) {
-        this.flags = flags;
-        return this;
+        public static void release(RoutingContext ctx) {
+            if (ctx == null) return;
+            switch (ctx.typeId()) {
+                case TYPE_MODEL -> MODEL_POOL.release((ModelRoutingContext) ctx);
+                case TYPE_SHARD -> SHARD_POOL.release((ShardRoutingContext) ctx);
+                case TYPE_SESSION -> SESSION_POOL.release((SessionRoutingContext) ctx);
+                case TYPE_COMPOSITE -> COMPOSITE_POOL.release((CompositeRoutingContext) ctx);
+                default -> {} // TYPE_EMPTY is singleton
+            }
+        }
     }
 }

@@ -162,4 +162,37 @@ public interface BufferWriter {
     BufferWriter writeFixedVarLong(double value, int fractionBits);
 
     BufferWriter writeFixedPosition(double x, double y, double z, int fractionBits);
+
+    /**
+     * Reads from an {@link java.io.InputStream} in chunks and writes all bytes into this buffer.
+     * Automatically wraps the stream in a {@link java.io.BufferedInputStream} if not already buffered.
+     *
+     * @param in        the source stream
+     * @param length    total bytes to read
+     * @param chunkSize chunk transfer buffer size (default: 8192)
+     * @return total bytes written
+     * @throws java.io.IOException on I/O error or unexpected EOF
+     */
+    default int writeFromStream(java.io.InputStream in, int length, int chunkSize) throws java.io.IOException {
+        java.io.InputStream buffered = (in instanceof java.io.BufferedInputStream)
+                ? in
+                : new java.io.BufferedInputStream(in, Math.max(256, chunkSize));
+
+        byte[] chunk = new byte[Math.min(length, Math.max(256, chunkSize))];
+        int remaining = length;
+        while (remaining > 0) {
+            int toRead = Math.min(chunk.length, remaining);
+            int read = buffered.read(chunk, 0, toRead);
+            if (read < 0) {
+                throw new java.io.EOFException("Unexpected end of stream while reading buffered chunk, remaining: " + remaining);
+            }
+            writeBytes(chunk, 0, read);
+            remaining -= read;
+        }
+        return length;
+    }
+
+    default int writeFromStream(java.io.InputStream in, int length) throws java.io.IOException {
+        return writeFromStream(in, length, 8192);
+    }
 }

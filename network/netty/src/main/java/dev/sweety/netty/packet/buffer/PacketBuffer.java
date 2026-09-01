@@ -316,6 +316,12 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
     }
 
     @Override
+    public PacketBuffer readBytes(byte[] data, int offset, int length) {
+        this.nettyBuffer.readBytes(data, offset, length);
+        return this;
+    }
+
+    @Override
     public PacketBuffer writeBytes(byte[] data) {
         this.nettyBuffer.writeBytes(data);
         return this;

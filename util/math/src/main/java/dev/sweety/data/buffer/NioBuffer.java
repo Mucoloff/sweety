@@ -291,6 +291,13 @@ public class NioBuffer extends AbstractBuffer<NioBuffer> {
     }
 
     @Override
+    public NioBuffer readBytes(byte[] data, int offset, int length) {
+        buffer.get(readerIndex, data, offset, length);
+        readerIndex += length;
+        return this;
+    }
+
+    @Override
     public NioBuffer writeBytes(byte[] data) {
         ensureWritable(data.length);
         buffer.put(writerIndex, data);
