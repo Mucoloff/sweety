@@ -35,10 +35,26 @@ public abstract class Client extends Messenger {
     }
 
     public <T> CompletableFuture<T> sendPacket(Packet packet) {
+        if (transportMode == dev.sweety.netty.messaging.transport.TransportMode.DUAL) {
+            byte targetTransport = packetRegistry().getTransportMode(packet.getClass());
+            if ((targetTransport & dev.sweety.netty.messaging.transport.TransportMode.FLAG_UDP) != 0) {
+                return sendUdp(new java.net.InetSocketAddress(host(), port()), packet);
+            }
+        }
         return super.sendPacket(channelContext(), packet);
     }
 
+    public <T> CompletableFuture<T> sendTcp(Packet packet) {
+        return super.sendPacket(channelContext(), packet);
+    }
+
+    public <T> CompletableFuture<T> sendUdp(Packet packet) {
+        return sendUdp(new java.net.InetSocketAddress(host(), port()), packet);
+    }
+
     public <T> CompletableFuture<T> sendPacket(Packet... packets) {
+        if (packets == null || packets.length == 0) return CompletableFuture.completedFuture(null);
+        if (packets.length == 1) return sendPacket(packets[0]);
         return super.sendPacket(channelContext(), packets);
     }
 

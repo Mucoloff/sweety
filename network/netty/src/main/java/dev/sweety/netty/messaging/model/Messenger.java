@@ -244,7 +244,7 @@ public abstract class Messenger {
         this.worker = NativeTransport.newEventLoopGroup(worker_threads, Thread.ofPlatform().name("netty-worker-", 0).factory());
 
         this.effectiveTcp = (transport != null && transport.connectionOriented()) ? transport : TcpTransport.INSTANCE;
-        this.effectiveUdp = (transport != null && !transport.connectionOriented()) ? transport : dev.sweety.netty.messaging.transport.UdpTransport.packets();
+        this.effectiveUdp = (transport != null && !transport.connectionOriented()) ? transport : (server ? dev.sweety.netty.messaging.transport.UdpTransport.packets() : dev.sweety.netty.messaging.transport.UdpTransport.unconnected());
         this.transport = transportMode.hasTcp() ? this.effectiveTcp : this.effectiveUdp;
 
         if (transportMode.hasTcp()) {
