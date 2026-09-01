@@ -26,6 +26,24 @@ public class IpAddress implements AbstractCodec {
         return new IpAddress(bytes, address);
     }
 
+    public static IpAddress from(InetAddress inet) {
+        if (inet == null) return new IpAddress();
+        return new IpAddress(inet.getAddress(), inet.getHostAddress());
+    }
+
+    public static IpAddress from(java.net.InetSocketAddress socketAddress) {
+        if (socketAddress == null) return new IpAddress();
+        return from(socketAddress.getAddress() != null ? socketAddress.getAddress() : null);
+    }
+
+    public java.net.InetSocketAddress toInetSocketAddress(int port) {
+        return new java.net.InetSocketAddress(address, port);
+    }
+
+    public InetAddress toInetAddress() throws UnknownHostException {
+        return InetAddress.getByAddress(bytes);
+    }
+
     public byte[] getBytes() {
         return bytes;
     }

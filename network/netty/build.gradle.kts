@@ -8,4 +8,5 @@ dependencies {
     implementation(project(":util:logger"))
     implementation(project(":util:time"))
     implementation(project(":util:thread"))
+    testImplementation(project(":util:cache"))
 }
