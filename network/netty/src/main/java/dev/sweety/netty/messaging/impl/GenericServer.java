@@ -1,27 +1,36 @@
 package dev.sweety.netty.messaging.impl;
 
+import dev.sweety.math.function.TriConsumer;
+import dev.sweety.netty.messaging.Server;
+import dev.sweety.netty.messaging.transport.TransportMode;
+import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.PacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
 import java.util.function.BiConsumer;
 
-public class GenericServer extends SimpleServer {
+public class GenericServer extends Server {
+
     private BiConsumer<ChannelHandlerContext, ChannelPromise> joinHandler;
     private BiConsumer<ChannelHandlerContext, ChannelPromise> quitHandler;
     private BiConsumer<ChannelHandlerContext, Throwable> exceptionHandler;
-    private BiConsumer<ChannelHandlerContext, dev.sweety.netty.packet.model.Packet> packetReceiveHandler;
-    private dev.sweety.math.function.TriConsumer<ChannelHandlerContext, dev.sweety.netty.packet.model.Packet, Boolean> packetSendHandler;
+    private BiConsumer<ChannelHandlerContext, Packet> packetReceiveHandler;
+    private TriConsumer<ChannelHandlerContext, Packet, Boolean> packetSendHandler;
 
     public GenericServer(String host, int port, PacketRegistry packetRegistry) {
-        super(host, port, packetRegistry);
+        this(TransportMode.TCP, host, port, packetRegistry);
     }
 
-    public void setPacketReceiveHandler(BiConsumer<ChannelHandlerContext, dev.sweety.netty.packet.model.Packet> packetReceiveHandler) {
+    public GenericServer(TransportMode mode, String host, int port, PacketRegistry packetRegistry) {
+        super(mode, host, port, packetRegistry);
+    }
+
+    public void setPacketReceiveHandler(BiConsumer<ChannelHandlerContext, Packet> packetReceiveHandler) {
         this.packetReceiveHandler = packetReceiveHandler;
     }
 
-    public void setPacketSendHandler(dev.sweety.math.function.TriConsumer<ChannelHandlerContext, dev.sweety.netty.packet.model.Packet, Boolean> packetSendHandler) {
+    public void setPacketSendHandler(TriConsumer<ChannelHandlerContext, Packet, Boolean> packetSendHandler) {
         this.packetSendHandler = packetSendHandler;
     }
 
@@ -39,23 +48,26 @@ public class GenericServer extends SimpleServer {
 
     @Override
     public void join(ChannelHandlerContext ctx, ChannelPromise promise) {
+        if (ctx.channel().remoteAddress() != null) {
+            addClient(ctx, ctx.channel().remoteAddress());
+        }
         if (joinHandler != null) joinHandler.accept(ctx, promise);
-        else super.join(ctx, promise);
+        else promise.setSuccess();
     }
 
     @Override
     public void quit(ChannelHandlerContext ctx, ChannelPromise promise) {
         if (quitHandler != null) quitHandler.accept(ctx, promise);
-        else super.quit(ctx, promise);
+        else promise.setSuccess();
     }
 
     @Override
-    public void onPacketReceive(ChannelHandlerContext ctx, dev.sweety.netty.packet.model.Packet packet) {
+    public void onPacketReceive(ChannelHandlerContext ctx, Packet packet) {
         if (packetReceiveHandler != null) packetReceiveHandler.accept(ctx, packet);
     }
 
     @Override
-    public void onPacketSend(ChannelHandlerContext ctx, dev.sweety.netty.packet.model.Packet packet, boolean pre) {
+    public void onPacketSend(ChannelHandlerContext ctx, Packet packet, boolean pre) {
         if (packetSendHandler != null) packetSendHandler.accept(ctx, packet, pre);
         else super.onPacketSend(ctx, packet, pre);
     }
@@ -63,6 +75,5 @@ public class GenericServer extends SimpleServer {
     @Override
     public void exception(ChannelHandlerContext ctx, Throwable throwable) {
         if (exceptionHandler != null) exceptionHandler.accept(ctx, throwable);
-        else super.exception(ctx, throwable);
     }
 }
