@@ -1,27 +1,34 @@
 package dev.sweety.config.binary;
 
 import dev.sweety.config.common.Configuration;
+import dev.sweety.data.buffer.NioBuffer;
 
+import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 
+/**
+ * High-performance binary configuration format 100% aligned with {@link dev.sweety.data.buffer.AbstractBuffer}.
+ * Uses writeDynamic/readDynamic with compact VarInts, VarLongs, bit-packed booleans, and UTF-8 zero-alloc strings.
+ */
 public class BinaryConfiguration extends Configuration {
+
+    public static final String MAGIC_V2 = "CFG2";
+    public static final String MAGIC_V1 = "CFG1";
+    public static final byte VERSION_2 = 2;
+    public static final byte VERSION_1 = 1;
 
     private final String magic;
     private final byte version;
 
     public BinaryConfiguration() {
-        this("bin", "CFG1",  1);
+        this("bin", MAGIC_V2, VERSION_2);
     }
 
     public BinaryConfiguration(String extension, String magic, int version) {
@@ -32,118 +39,75 @@ public class BinaryConfiguration extends Configuration {
 
     @Override
     protected void dumpToStream(Map<String, Object> map, OutputStream out) throws IOException {
-        DataOutputStream data = new DataOutputStream(out);
+        final NioBuffer buffer = NioBuffer.heap(1024);
+        try {
+            // Header: 4-byte ASCII magic + 1-byte version
+            buffer.writeBytes(this.magic.getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+            buffer.writeByte(this.version);
 
-        data.writeBytes(magic);
-        data.writeByte(version);
+            buffer.writeDynamic(map);
 
-        writeObject(data, map, Collections.newSetFromMap(new IdentityHashMap<>()));
+            out.write(buffer.readAllBytes());
+            out.flush();
+        } finally {
+            buffer.release();
+        }
     }
 
     @Override
     protected Map<String, Object> loadFromStream(InputStream in) throws IOException {
-        DataInputStream data = new DataInputStream(in);
+        byte[] allBytes = in.readAllBytes();
+        if (allBytes.length < 5) {
+            throw new IllegalStateException("Binary config stream too short");
+        }
 
+        String readMagic = new String(allBytes, 0, 4, java.nio.charset.StandardCharsets.US_ASCII);
+        byte readVersion = allBytes[4];
+
+        if (MAGIC_V1.equals(readMagic) && readVersion == VERSION_1) {
+            // Backward compatibility fallback for legacy CFG1 format
+            return loadLegacyV1(allBytes);
+        }
+
+        if (!this.magic.equals(readMagic)) {
+            throw new IllegalStateException("Invalid binary config magic: " + readMagic + ", expected: " + this.magic);
+        }
+        if (readVersion != this.version) {
+            throw new IllegalStateException("Unsupported binary config version: " + readVersion + ", expected: " + this.version);
+        }
+
+        NioBuffer buffer = NioBuffer.wrap(allBytes);
+        try {
+            buffer.readerIndex(5); // skip 4 magic + 1 version
+            Object root = buffer.readDynamic();
+            if (!(root instanceof Map<?, ?> map)) {
+                throw new IllegalStateException("Root must be a Map, found: " + (root != null ? root.getClass() : "null"));
+            }
+            //noinspection unchecked
+            return (Map<String, Object>) map;
+        } finally {
+            buffer.release();
+        }
+    }
+
+    // ── Legacy V1 Compatibility Fallback ──────────────────────────────────────
+
+    private Map<String, Object> loadLegacyV1(byte[] allBytes) throws IOException {
+        DataInputStream data = new DataInputStream(new ByteArrayInputStream(allBytes));
         byte[] magic = new byte[4];
         data.readFully(magic);
-
-        if (!this.magic.equals(new String(magic))) throw new IllegalStateException("Invalid binary config format");
-
         byte version = data.readByte();
-        if (version != this.version) throw new IllegalStateException("Unsupported version: " + version);
 
-        if (!(readObject(data) instanceof Map<?, ?> map)) throw new IllegalStateException("Root must be a Map");
-
+        Object legacyRoot = readLegacyObject(data);
+        if (!(legacyRoot instanceof Map<?, ?> map)) {
+            throw new IllegalStateException("Legacy Root must be a Map");
+        }
         //noinspection unchecked
         return (Map<String, Object>) map;
     }
 
-    private void writeObject(DataOutputStream out, Object obj, Set<Object> visited) throws IOException {
-        if (obj == null) {
-            out.writeByte(0);
-            return;
-        }
-
-        // cycle detection SOLO per strutture
-        if (obj instanceof Map || obj instanceof List) {
-            if (!visited.add(obj)) {
-                throw new IllegalStateException("Recursive reference detected (cycle)");
-            }
-        }
-
-        switch (obj) {
-            case String s -> {
-                out.writeByte(1);
-                out.writeUTF(s);
-            }
-            case Integer i -> {
-                out.writeByte(2);
-                out.writeInt(i);
-            }
-            case Long l -> {
-                out.writeByte(3);
-                out.writeLong(l);
-            }
-            case Double d -> {
-                out.writeByte(4);
-                out.writeDouble(d);
-            }
-            case Boolean b -> {
-                out.writeByte(5);
-                out.writeBoolean(b);
-            }
-            case List<?> list -> {
-                out.writeByte(6);
-                writeList(out, list, visited);
-            }
-            case Map<?, ?> map -> {
-                out.writeByte(7);
-                writeMap(out, map, visited);
-            }
-            case Float f -> {
-                out.writeByte(8);
-                out.writeFloat(f);
-            }
-            case Byte b -> {
-                out.writeByte(9);
-                out.writeByte(b);
-            }
-            case Short s -> {
-                out.writeByte(10);
-                out.writeShort(s);
-            }
-            case Character c -> {
-                out.writeByte(11);
-                out.writeChar(c);
-            }
-            default -> throw new IllegalArgumentException("Unsupported type: " + obj.getClass());
-        }
-
-        if (obj instanceof Map || obj instanceof List) {
-            visited.remove(obj);
-        }
-    }
-
-    private void writeMap(DataOutputStream out, Map<?, ?> map, Set<Object> visited) throws IOException {
-        out.writeInt(map.size());
-
-        for (Map.Entry<?, ?> entry : map.entrySet()) {
-            out.writeUTF(String.valueOf(entry.getKey()));
-            writeObject(out, entry.getValue(), visited);
-        }
-    }
-
-    private void writeList(DataOutputStream out, List<?> list, Set<Object> visited) throws IOException {
-        out.writeInt(list.size());
-
-        for (Object obj : list) {
-            writeObject(out, obj, visited);
-        }
-    }
-
-    private Object readObject(DataInputStream in) throws IOException {
+    private Object readLegacyObject(DataInputStream in) throws IOException {
         byte type = in.readByte();
-
         return switch (type) {
             case 0 -> null;
             case 1 -> in.readUTF();
@@ -151,37 +115,33 @@ public class BinaryConfiguration extends Configuration {
             case 3 -> in.readLong();
             case 4 -> in.readDouble();
             case 5 -> in.readBoolean();
-            case 6 -> readList(in);
-            case 7 -> readMap(in);
+            case 6 -> readLegacyList(in);
+            case 7 -> readLegacyMap(in);
             case 8 -> in.readFloat();
             case 9 -> in.readByte();
             case 10 -> in.readShort();
             case 11 -> in.readChar();
-            default -> throw new IllegalStateException("Unknown type: " + type);
+            default -> throw new IllegalStateException("Unknown legacy type: " + type);
         };
     }
 
-    private Map<String, Object> readMap(DataInputStream in) throws IOException {
+    private Map<String, Object> readLegacyMap(DataInputStream in) throws IOException {
         int size = in.readInt();
         Map<String, Object> map = new TreeMap<>();
-
         for (int i = 0; i < size; i++) {
             String key = in.readUTF();
-            Object value = readObject(in);
+            Object value = readLegacyObject(in);
             map.put(key, value);
         }
-
         return map;
     }
 
-    private List<Object> readList(DataInputStream in) throws IOException {
+    private List<Object> readLegacyList(DataInputStream in) throws IOException {
         int size = in.readInt();
         List<Object> list = new ArrayList<>(size);
-
         for (int i = 0; i < size; i++) {
-            list.add(readObject(in));
+            list.add(readLegacyObject(in));
         }
-
         return list;
     }
 }
