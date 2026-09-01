@@ -44,4 +44,22 @@ public class PatchEngineTest {
         ClassReader reader = new ClassReader(transformedBytes);
         assertEquals(internalName, reader.getClassName());
     }
+
+    @Test
+    public void testSafeClassWriterFallback() {
+        SafeClassWriter writer = new SafeClassWriter(0);
+        String common = writer.getCommonSuperClass("non/existent/TypeA", "non/existent/TypeB");
+        assertEquals("java/lang/Object", common, "SafeClassWriter should fall back to java/lang/Object without throwing");
+    }
+
+    @Test
+    public void testInvokeAndFieldPatchMatching() {
+        ClassPatch patch = ClassPatch.of("com/example/Test")
+                .patchMethod(MethodPatch.atInvoke("run", "()V", "java/io/PrintStream", "println", "(Ljava/lang/String;)V", (mv, op) -> {}))
+                .patchMethod(MethodPatch.atField("init", "()V", "com/example/Test", "value", "I", (mv, op) -> {}));
+
+        assertEquals(1, patch.findPatches("run", "()V").size());
+        assertEquals(1, patch.findPatches("init", "()V").size());
+        assertEquals(0, patch.findPatches("other", "()V").size());
+    }
 }

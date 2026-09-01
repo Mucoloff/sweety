@@ -3,5 +3,8 @@ package dev.sweety.patch;
 public enum InjectionPoint {
     HEAD,
     RETURN,
-    INVOKE
+    INVOKE,
+    FIELD,
+    WRAP,
+    REPLACE
 }
