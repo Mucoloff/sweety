@@ -248,7 +248,9 @@ private data class FieldInfo(
 private fun KSClassDeclaration.extractFields(): List<FieldInfo> =
     getDeclaredFunctions()
         .filter { func ->
+            func.isAbstract &&
             func.parameters.isEmpty() &&
+            func.annotations.none { it.shortName.asString() == "Ignore" } &&
             func.returnType?.resolve()?.declaration?.qualifiedName?.asString() != "kotlin.Unit"
         }
         .map { func ->

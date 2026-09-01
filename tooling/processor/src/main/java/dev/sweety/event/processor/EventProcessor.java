@@ -1,28 +1,18 @@
-// NOTE: This processor uses com.sun.tools.javac.* (JDK-internal AST APIs) to inject inner classes
-// and factory methods directly into the interface tree at compile time. Migrating off these internals
-// is a separate effort tracked as a follow-up; they cannot be replaced with standard Filer-based codegen
-// without changing the generated API surface.
 package dev.sweety.event.processor;
 
 import com.google.auto.service.AutoService;
 import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
+import dev.sweety.event.api.AbstractCancellableEvent;
+import dev.sweety.event.api.AbstractEvent;
 import dev.sweety.event.api.CancellableEvent;
 import dev.sweety.event.api.Event;
 import dev.sweety.event.api.MutableEvent;
-import com.sun.source.util.Trees;
-import com.sun.tools.javac.code.Flags;
-import com.sun.tools.javac.code.TypeTag;
-import com.sun.tools.javac.processing.JavacProcessingEnvironment;
-import com.sun.tools.javac.tree.JCTree;
-import com.sun.tools.javac.tree.TreeMaker;
-import com.sun.tools.javac.util.Context;
-import com.sun.tools.javac.util.List;
-import com.sun.tools.javac.util.Names;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -41,6 +31,7 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 
 @SupportedAnnotationTypes("dev.sweety.event.processor.GenerateEvent")
@@ -50,23 +41,14 @@ public class EventProcessor extends AbstractProcessor {
 
     private Messager messager;
     private Elements elementUtils;
-
-    private TreeMaker maker;
-    private Names names;
-    private Trees trees;
     private EventFieldScanner fieldScanner;
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
-        messager = processingEnv.getMessager();
-        elementUtils = processingEnv.getElementUtils();
+        this.messager = processingEnv.getMessager();
+        this.elementUtils = processingEnv.getElementUtils();
         Types typeUtils = processingEnv.getTypeUtils();
-
-        this.trees = Trees.instance(processingEnv);
-        Context context = ((JavacProcessingEnvironment) processingEnv).getContext();
-        this.maker = TreeMaker.instance(context);
-        this.names = Names.instance(context);
         this.fieldScanner = new EventFieldScanner(typeUtils);
     }
 
@@ -98,181 +80,203 @@ public class EventProcessor extends AbstractProcessor {
         if (cleanName.endsWith("Template")) cleanName = cleanName.substring(0, cleanName.length() - 8);
         else if (cleanName.endsWith("Def")) cleanName = cleanName.substring(0, cleanName.length() - 3);
 
-        String eventInterfaceName = cleanName.endsWith("Event") ? cleanName : cleanName + "Event";
-        String mutableInterfaceName = "Mutable" + eventInterfaceName;
-        String immutableImplName = eventInterfaceName + "Impl";
-        String mutableImplName = "Mutable" + eventInterfaceName + "Impl";
+        String eventName = cleanName.endsWith("Event") ? cleanName : cleanName + "Event";
+        String mutableName = "Mutable" + eventName;
+        String immutableImplName = eventName + "Impl";
+        String mutableImplName = "Mutable" + eventName + "Impl";
+        String factoryName = eventName + "Factory";
 
-        ClassName eventInterface = ClassName.get(packageName, eventInterfaceName);
-        ClassName mutableInterface = ClassName.get(packageName, mutableInterfaceName);
+        boolean genImmutable = config == null || config.type().immutable();
+        boolean genMutable = config == null || config.type().mutable();
 
-        var fields = fieldScanner.extractFields(interfaceElement);
+        boolean isTemplateTheInterface = templateName.equals(eventName);
         boolean isCancellable = fieldScanner.isCancellable(interfaceElement);
+        List<EventFieldScanner.FieldInfo> fields = fieldScanner.extractFields(interfaceElement);
 
-        // 1. Generate interfaces if they don't match the template
-        boolean isTemplateTheInterface = templateName.equals(eventInterfaceName);
-        if (!isTemplateTheInterface && (config == null || config.type().immutable())) {
-            TypeSpec.Builder readOnlyInterfaceBuilder = TypeSpec.interfaceBuilder(eventInterfaceName)
+        ClassName eventClass = ClassName.get(packageName, eventName);
+        ClassName mutableClass = ClassName.get(packageName, mutableName);
+
+        // 1. Generate Immutable Interface if template name != event name
+        if (!isTemplateTheInterface && genImmutable) {
+            TypeName superIface = isCancellable
+                    ? ParameterizedTypeName.get(ClassName.get(CancellableEvent.class), eventClass)
+                    : ParameterizedTypeName.get(ClassName.get(Event.class), eventClass);
+
+            TypeSpec.Builder readOnlyInterfaceBuilder = TypeSpec.interfaceBuilder(eventName)
                     .addModifiers(Modifier.PUBLIC)
-                    .addSuperinterface(ParameterizedTypeName.get(ClassName.get(isCancellable ? CancellableEvent.class : Event.class), eventInterface));
-            for (EventFieldScanner.FieldInfo field : fields)
-                readOnlyInterfaceBuilder.addMethod(MethodSpec.methodBuilder(field.getterName()).addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT).returns(field.type()).build());
+                    .addSuperinterface(superIface);
+
+            for (EventFieldScanner.FieldInfo field : fields) {
+                readOnlyInterfaceBuilder.addMethod(MethodSpec.methodBuilder(field.getterName())
+                        .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                        .returns(field.type())
+                        .build());
+            }
             writeJavaFile(packageName, readOnlyInterfaceBuilder.build());
         }
 
-        if (config == null || config.type().mutable()) {
-            TypeSpec.Builder mutableInterfaceBuilder = TypeSpec.interfaceBuilder(mutableInterfaceName).addModifiers(Modifier.PUBLIC).addSuperinterface(eventInterface).addSuperinterface(ParameterizedTypeName.get(ClassName.get(MutableEvent.class), eventInterface));
-            for (EventFieldScanner.FieldInfo field : fields)
-                mutableInterfaceBuilder.addMethod(MethodSpec.methodBuilder(field.setterName()).addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT).addParameter(field.type(), field.name()).build());
-            mutableInterfaceBuilder.addMethod(MethodSpec.methodBuilder("post").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT).addAnnotation(Override.class).addAnnotation(NotNull.class).returns(mutableInterface).build());
+        // 2. Generate Mutable Interface
+        if (genMutable) {
+            TypeSpec.Builder mutableInterfaceBuilder = TypeSpec.interfaceBuilder(mutableName)
+                    .addModifiers(Modifier.PUBLIC)
+                    .addSuperinterface(eventClass)
+                    .addSuperinterface(ParameterizedTypeName.get(ClassName.get(MutableEvent.class), eventClass));
+
+            for (EventFieldScanner.FieldInfo field : fields) {
+                mutableInterfaceBuilder.addMethod(MethodSpec.methodBuilder(field.setterName())
+                        .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                        .addParameter(field.type(), field.name())
+                        .returns(TypeName.VOID)
+                        .build());
+            }
+
+            mutableInterfaceBuilder.addMethod(MethodSpec.methodBuilder("post")
+                    .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+                    .addAnnotation(Override.class)
+                    .addAnnotation(NotNull.class)
+                    .returns(mutableClass)
+                    .build());
+
             writeJavaFile(packageName, mutableInterfaceBuilder.build());
         }
 
-        // 2. Inject components into the interface (Inner classes and static methods)
-        injectEventComponents(interfaceElement, fields, eventInterface, mutableInterface, immutableImplName, mutableImplName, isCancellable, config);
-    }
+        // 3. Generate Immutable Impl Class
+        if (genImmutable) {
+            TypeName superClass = isCancellable
+                    ? ParameterizedTypeName.get(ClassName.get(AbstractCancellableEvent.class), eventClass)
+                    : ParameterizedTypeName.get(ClassName.get(AbstractEvent.class), eventClass);
 
-    private void injectEventComponents(TypeElement interfaceElement, java.util.List<EventFieldScanner.FieldInfo> fields, ClassName eventInterface, ClassName mutableInterface, String immutableImplName, String mutableImplName, boolean isCancellable, GenerateEvent config) {
-        JCTree tree = (JCTree) trees.getTree(interfaceElement);
-        if (!(tree instanceof JCTree.JCClassDecl classDecl)) return;
+            TypeSpec.Builder implBuilder = TypeSpec.classBuilder(immutableImplName)
+                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                    .superclass(superClass)
+                    .addSuperinterface(eventClass);
 
-        maker.at(classDecl.pos);
-
-        // Inject Impl
-        if (config == null || config.type().immutable()) {
-            JCTree.JCClassDecl implClass = createInnerClass(immutableImplName, fields, eventInterface, null, isCancellable, false);
-            classDecl.defs = classDecl.defs.append(implClass);
-
-            JCTree.JCMethodDecl ofMethod = createFactoryMethod("of", fields, eventInterface, immutableImplName);
-            if (!methodExists(classDecl, ofMethod)) classDecl.defs = classDecl.defs.append(ofMethod);
-        }
-
-        // Inject MutableImpl
-        if (config == null || config.type().mutable()) {
-            JCTree.JCClassDecl mutableImplClass = createInnerClass(mutableImplName, fields, eventInterface, mutableInterface, isCancellable, true);
-            classDecl.defs = classDecl.defs.append(mutableImplClass);
-
-            JCTree.JCMethodDecl ofMutableMethod = createFactoryMethod("ofMutable", fields, mutableInterface, mutableImplName);
-            if (!methodExists(classDecl, ofMutableMethod)) classDecl.defs = classDecl.defs.append(ofMutableMethod);
-        }
-    }
-
-    private JCTree.JCClassDecl createInnerClass(String className, java.util.List<EventFieldScanner.FieldInfo> fields, ClassName eventInterface, ClassName mutableInterface, boolean isCancellable, boolean mutable) {
-        List<JCTree> defs = List.nil();
-
-        // Fields
-        for (EventFieldScanner.FieldInfo field : fields) {
-            defs = defs.append(maker.VarDef(maker.Modifiers(mutable ? Flags.PRIVATE : Flags.PRIVATE | Flags.FINAL), names.fromString(field.name()), typeToExpression(field.type()), null));
-        }
-
-        // Constructor (Private)
-        List<JCTree.JCVariableDecl> params = List.nil();
-        List<JCTree.JCStatement> stats = List.nil();
-        for (EventFieldScanner.FieldInfo field : fields) {
-            params = params.append(maker.VarDef(maker.Modifiers(Flags.PARAMETER), names.fromString(field.name()), typeToExpression(field.type()), null));
-            stats = stats.append(maker.Exec(maker.Assign(maker.Select(maker.Ident(names.fromString("this")), names.fromString(field.name())), maker.Ident(names.fromString(field.name())))));
-        }
-        defs = defs.append(maker.MethodDef(maker.Modifiers(Flags.PRIVATE), names.init, maker.TypeIdent(TypeTag.VOID), List.nil(), params, List.nil(), maker.Block(0, stats), null));
-
-        // Getters
-        for (EventFieldScanner.FieldInfo field : fields) {
-            defs = defs.append(maker.MethodDef(maker.Modifiers(Flags.PUBLIC), names.fromString(field.getterName()), typeToExpression(field.type()), List.nil(), List.nil(), List.nil(), maker.Block(0, List.of(maker.Return(maker.Select(maker.Ident(names.fromString("this")), names.fromString(field.name()))))), null));
-            if (mutable) {
-                // Setter
-                List<JCTree.JCVariableDecl> setterParams = List.of(maker.VarDef(maker.Modifiers(Flags.PARAMETER), names.fromString(field.name()), typeToExpression(field.type()), null));
-                List<JCTree.JCStatement> setterStats = List.of(
-                        maker.Exec(maker.Assign(maker.Select(maker.Ident(names.fromString("this")), names.fromString(field.name())), maker.Ident(names.fromString(field.name()))))
-                );
-                defs = defs.append(maker.MethodDef(maker.Modifiers(Flags.PUBLIC), names.fromString(field.setterName()), maker.TypeIdent(TypeTag.VOID), List.nil(), setterParams, List.nil(), maker.Block(0, setterStats), null));
+            for (EventFieldScanner.FieldInfo field : fields) {
+                implBuilder.addField(FieldSpec.builder(field.type(), field.name(), Modifier.PRIVATE, Modifier.FINAL).build());
             }
-        }
 
-        // post() and toImmutable() if mutable
-        if (mutable) {
-            // post()
-            defs = defs.append(maker.MethodDef(maker.Modifiers(Flags.PUBLIC), names.fromString("post"), typeToExpression(mutableInterface), List.nil(), List.nil(), List.nil(), maker.Block(0, List.of(maker.Exec(maker.Assign(maker.Select(maker.Ident(names.fromString("this")), names.fromString("pre")), maker.Literal(false))), maker.Return(maker.Ident(names.fromString("this"))))), null));
-            // toImmutable()
-            List<JCTree.JCExpression> factoryArgs = List.nil();
-            for (EventFieldScanner.FieldInfo field : fields)
-                factoryArgs = factoryArgs.append(maker.Select(maker.Ident(names.fromString("this")), names.fromString(field.name())));
-            JCTree.JCMethodInvocation ofCall = maker.Apply(List.nil(), maker.Select(typeToExpression(eventInterface), names.fromString("of")), factoryArgs);
-            defs = defs.append(maker.MethodDef(maker.Modifiers(Flags.PUBLIC), names.fromString("toImmutable"), typeToExpression(eventInterface), List.nil(), List.nil(), List.nil(), maker.Block(0, List.of(maker.Return(ofCall))), null));
-        }
-
-        // Super class
-        String superClassName = isCancellable ? "dev.sweety.event.api.AbstractCancellableEvent" : "dev.sweety.event.api.AbstractEvent";
-        JCTree.JCExpression superClass = typeToExpression(ParameterizedTypeName.get(ClassName.bestGuess(superClassName), eventInterface));
-
-        List<JCTree.JCExpression> implementing = List.of(typeToExpression(mutable ? mutableInterface : eventInterface));
-
-        return maker.ClassDef(
-                maker.Modifiers(Flags.STATIC | Flags.FINAL), // Implicitly public in interface
-                names.fromString(className),
-                List.nil(),
-                superClass,
-                implementing,
-                defs
-        );
-    }
-
-    private JCTree.JCMethodDecl createFactoryMethod(String methodName, java.util.List<EventFieldScanner.FieldInfo> fields, ClassName returnType, String implClassName) {
-        List<JCTree.JCVariableDecl> params = List.nil();
-        List<JCTree.JCExpression> args = List.nil();
-        for (EventFieldScanner.FieldInfo field : fields) {
-            params = params.append(maker.VarDef(maker.Modifiers(Flags.PARAMETER), names.fromString(field.name()), typeToExpression(field.type()), null));
-            args = args.append(maker.Ident(names.fromString(field.name())));
-        }
-
-        JCTree.JCExpression newExpr = maker.NewClass(null, List.nil(), maker.Ident(names.fromString(implClassName)), args, null);
-        JCTree.JCBlock body = maker.Block(0, List.of(maker.Return(newExpr)));
-
-        return maker.MethodDef(
-                maker.Modifiers(Flags.PUBLIC | Flags.STATIC),
-                names.fromString(methodName),
-                typeToExpression(returnType),
-                List.nil(),
-                params,
-                List.nil(),
-                body,
-                null
-        );
-    }
-
-    private JCTree.JCExpression typeToExpression(TypeName typeName) {
-        if (typeName.isPrimitive()) {
-            if (typeName.equals(TypeName.INT)) return maker.TypeIdent(TypeTag.INT);
-            if (typeName.equals(TypeName.BOOLEAN)) return maker.TypeIdent(TypeTag.BOOLEAN);
-            if (typeName.equals(TypeName.BYTE)) return maker.TypeIdent(TypeTag.BYTE);
-            if (typeName.equals(TypeName.SHORT)) return maker.TypeIdent(TypeTag.SHORT);
-            if (typeName.equals(TypeName.LONG)) return maker.TypeIdent(TypeTag.LONG);
-            if (typeName.equals(TypeName.CHAR)) return maker.TypeIdent(TypeTag.CHAR);
-            if (typeName.equals(TypeName.FLOAT)) return maker.TypeIdent(TypeTag.FLOAT);
-            if (typeName.equals(TypeName.DOUBLE)) return maker.TypeIdent(TypeTag.DOUBLE);
-            if (typeName.equals(TypeName.VOID)) return maker.TypeIdent(TypeTag.VOID);
-        }
-        if (typeName instanceof ParameterizedTypeName ptn) {
-            JCTree.JCExpression base = typeToExpression(ptn.rawType);
-            List<JCTree.JCExpression> args = List.nil();
-            for (TypeName arg : ptn.typeArguments) args = args.append(typeToExpression(arg));
-            return maker.TypeApply(base, args);
-        }
-        if (typeName instanceof ClassName cn) {
-            String full = cn.packageName() + "." + String.join(".", cn.simpleNames());
-            String[] parts = full.split("\\.");
-            JCTree.JCExpression expr = maker.Ident(names.fromString(parts[0]));
-            for (int i = 1; i < parts.length; i++) expr = maker.Select(expr, names.fromString(parts[i]));
-            return expr;
-        }
-        return maker.Ident(names.fromString(typeName.toString()));
-    }
-
-    private boolean methodExists(JCTree.JCClassDecl classDecl, JCTree.JCMethodDecl method) {
-        for (JCTree def : classDecl.defs) {
-            if (def instanceof JCTree.JCMethodDecl existing) {
-                if (existing.name.equals(method.name) && existing.params.size() == method.params.size()) return true;
+            MethodSpec.Builder ctor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
+            for (EventFieldScanner.FieldInfo field : fields) {
+                ctor.addParameter(field.type(), field.name());
+                ctor.addStatement("this.$N = $N", field.name(), field.name());
             }
+            implBuilder.addMethod(ctor.build());
+
+            for (EventFieldScanner.FieldInfo field : fields) {
+                implBuilder.addMethod(MethodSpec.methodBuilder(field.getterName())
+                        .addModifiers(Modifier.PUBLIC)
+                        .addAnnotation(Override.class)
+                        .returns(field.type())
+                        .addStatement("return this.$N", field.name())
+                        .build());
+            }
+
+            writeJavaFile(packageName, implBuilder.build());
         }
-        return false;
+
+        // 4. Generate Mutable Impl Class
+        if (genMutable) {
+            TypeName superClass = isCancellable
+                    ? ParameterizedTypeName.get(ClassName.get(AbstractCancellableEvent.class), eventClass)
+                    : ParameterizedTypeName.get(ClassName.get(AbstractEvent.class), eventClass);
+
+            TypeSpec.Builder mutableImplBuilder = TypeSpec.classBuilder(mutableImplName)
+                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                    .superclass(superClass)
+                    .addSuperinterface(mutableClass);
+
+            for (EventFieldScanner.FieldInfo field : fields) {
+                mutableImplBuilder.addField(FieldSpec.builder(field.type(), field.name(), Modifier.PRIVATE).build());
+            }
+
+            MethodSpec.Builder mutableCtor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
+            for (EventFieldScanner.FieldInfo field : fields) {
+                mutableCtor.addParameter(field.type(), field.name());
+                mutableCtor.addStatement("this.$N = $N", field.name(), field.name());
+            }
+            mutableImplBuilder.addMethod(mutableCtor.build());
+
+            for (EventFieldScanner.FieldInfo field : fields) {
+                mutableImplBuilder.addMethod(MethodSpec.methodBuilder(field.getterName())
+                        .addModifiers(Modifier.PUBLIC)
+                        .addAnnotation(Override.class)
+                        .returns(field.type())
+                        .addStatement("return this.$N", field.name())
+                        .build());
+
+                mutableImplBuilder.addMethod(MethodSpec.methodBuilder(field.setterName())
+                        .addModifiers(Modifier.PUBLIC)
+                        .addAnnotation(Override.class)
+                        .addParameter(field.type(), field.name())
+                        .addStatement("this.$N = $N", field.name(), field.name())
+                        .build());
+            }
+
+            mutableImplBuilder.addMethod(MethodSpec.methodBuilder("post")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addAnnotation(Override.class)
+                    .addAnnotation(NotNull.class)
+                    .returns(mutableClass)
+                    .addStatement("this.pre = false")
+                    .addStatement("return this")
+                    .build());
+
+            if (genImmutable) {
+                ClassName factoryClass = ClassName.get(packageName, factoryName);
+                MethodSpec.Builder toImmutable = MethodSpec.methodBuilder("toImmutable")
+                        .addModifiers(Modifier.PUBLIC)
+                        .addAnnotation(Override.class)
+                        .addAnnotation(NotNull.class)
+                        .returns(eventClass);
+                StringBuilder args = new StringBuilder();
+                for (int i = 0; i < fields.size(); i++) {
+                    if (i > 0) args.append(", ");
+                    args.append("this.").append(fields.get(i).name());
+                }
+                toImmutable.addStatement("return $T.of($L)", factoryClass, args.toString());
+                mutableImplBuilder.addMethod(toImmutable.build());
+            }
+
+            writeJavaFile(packageName, mutableImplBuilder.build());
+        }
+
+        // 5. Generate Factory Class
+        TypeSpec.Builder factory = TypeSpec.classBuilder(factoryName)
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                .addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build());
+
+        ClassName implImmutableClass = ClassName.get(packageName, immutableImplName);
+        ClassName implMutableClass = ClassName.get(packageName, mutableImplName);
+
+        if (genImmutable) {
+            MethodSpec.Builder of = MethodSpec.methodBuilder("of")
+                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                    .returns(eventClass);
+            for (EventFieldScanner.FieldInfo field : fields) of.addParameter(field.type(), field.name());
+            StringBuilder args = new StringBuilder();
+            for (int i = 0; i < fields.size(); i++) {
+                if (i > 0) args.append(", ");
+                args.append(fields.get(i).name());
+            }
+            of.addStatement("return new $T($L)", implImmutableClass, args.toString());
+            factory.addMethod(of.build());
+        }
+
+        if (genMutable) {
+            MethodSpec.Builder ofMutable = MethodSpec.methodBuilder("ofMutable")
+                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                    .returns(mutableClass);
+            for (EventFieldScanner.FieldInfo field : fields) ofMutable.addParameter(field.type(), field.name());
+            StringBuilder args = new StringBuilder();
+            for (int i = 0; i < fields.size(); i++) {
+                if (i > 0) args.append(", ");
+                args.append(fields.get(i).name());
+            }
+            ofMutable.addStatement("return new $T($L)", implMutableClass, args.toString());
+            factory.addMethod(ofMutable.build());
+        }
+
+        writeJavaFile(packageName, factory.build());
     }
 
     private void writeJavaFile(String packageName, TypeSpec typeSpec) throws IOException {

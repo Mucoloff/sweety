@@ -26,13 +26,13 @@ public class EventFieldScanner {
         for (Element enclosed : element.getEnclosedElements()) {
             if (enclosed.getKind() != ElementKind.METHOD) continue;
             ExecutableElement method = (ExecutableElement) enclosed;
-            if (method.isDefault() ||method.getModifiers().contains(Modifier.DEFAULT)) continue;
+            if (method.isDefault() || method.getModifiers().contains(Modifier.DEFAULT) || method.getModifiers().contains(Modifier.STATIC)) continue;
             if (!method.getParameters().isEmpty() || method.getReturnType().toString().equals("void")) continue;
             String methodName = method.getSimpleName().toString();
             String name = methodName.startsWith("get") ? uncapitalize(methodName.substring(3))
                     : (methodName.startsWith("is") ? uncapitalize(methodName.substring(2)) : methodName);
-            fields.add(new FieldInfo(name, TypeName.get(method.getReturnType()), methodName,
-                    methodName.replace("is", "set").replace("get", "set")));
+            String setterName = "set" + Character.toUpperCase(name.charAt(0)) + name.substring(1);
+            fields.add(new FieldInfo(name, TypeName.get(method.getReturnType()), methodName, setterName));
         }
         return fields;
     }

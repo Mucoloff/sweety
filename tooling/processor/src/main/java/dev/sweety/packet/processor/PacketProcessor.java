@@ -7,11 +7,14 @@ import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterSpec;
+import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 import dev.sweety.data.buffer.BufferReader;
 import dev.sweety.data.buffer.BufferWriter;
+import dev.sweety.math.pool.ObjectPool;
 import dev.sweety.netty.packet.model.Packet;
+import dev.sweety.processor.Ignore;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -22,6 +25,7 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -70,7 +74,7 @@ public class PacketProcessor extends AbstractProcessor {
             try {
                 generatePacketClass(typeElement);
             } catch (IOException e) {
-                messager.printMessage(Diagnostic.Kind.ERROR, "Couldn't generate packet class", element);
+                messager.printMessage(Diagnostic.Kind.ERROR, "Couldn't generate packet class: " + e.getMessage(), element);
             }
         }
         return true;
@@ -84,16 +88,32 @@ public class PacketProcessor extends AbstractProcessor {
         final String packetName = (buildPacket == null || buildPacket.name() == null || buildPacket.name().isEmpty()) ? (interfaceName + "Packet") : buildPacket.name();
         final String packetBuildPackage = packetPackage + ((buildPacket == null || buildPacket.path() == null) ? ("") : buildPacket.path());
         final ClassName packetClassName = ClassName.get(packetPackage, interfaceName);
+        final ClassName generatedPacketClassName = ClassName.get(packetBuildPackage, packetName);
 
+        final boolean isPooled = isPooled(interfaceElement);
         final ArrayList<AnnotationSpec> annotations = getAnnotations(buildPacket);
 
-        // No-arg ctor — used by RegisteredPacket for decode
+        // No-arg ctor — used for decoding / pool instantiations
         final MethodSpec noArgCtor = MethodSpec.constructorBuilder()
                 .addModifiers(Modifier.PUBLIC)
                 .build();
 
-        // Encode ctor — stores fields, no buffer I/O
+        // Encode ctor — stores fields
         final MethodSpec.Builder encodeCtorBuilder = MethodSpec.constructorBuilder()
+                .addModifiers(Modifier.PUBLIC);
+
+        // Static factory of(...)
+        final MethodSpec.Builder ofFactoryBuilder = MethodSpec.methodBuilder("of")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(generatedPacketClassName);
+
+        // Static acquire(...) for pooled instances
+        final MethodSpec.Builder acquireBuilder = MethodSpec.methodBuilder("acquire")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(generatedPacketClassName);
+
+        // reset() method for pool recycling
+        final MethodSpec.Builder resetBuilder = MethodSpec.methodBuilder("reset")
                 .addModifiers(Modifier.PUBLIC);
 
         // write(BufferWriter buffer) — serializes fields
@@ -113,15 +133,30 @@ public class PacketProcessor extends AbstractProcessor {
         final List<? extends Element> enclosedElements = interfaceElement.getEnclosedElements();
 
         TypeSpec.Builder eventClassBuilder = TypeSpec.classBuilder(packetName)
-                .addModifiers(Modifier.PUBLIC)
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .superclass(ClassName.get(Packet.class))
                 .addSuperinterface(packetClassName);
 
+        if (isPooled) {
+            ParameterizedTypeName poolType = ParameterizedTypeName.get(ClassName.get(ObjectPool.class), generatedPacketClassName);
+            FieldSpec poolField = FieldSpec.builder(poolType, "POOL", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+                    .initializer("$T.threadLocal($T::new).reset($T::reset).build()", ClassName.get(ObjectPool.class), generatedPacketClassName, generatedPacketClassName)
+                    .build();
+            eventClassBuilder.addField(poolField);
+
+            acquireBuilder.addStatement("$T instance = POOL.acquire()", generatedPacketClassName);
+        }
+
+        List<String> fieldNames = new ArrayList<>();
+
         for (Element enclosedElement : enclosedElements) {
             if (enclosedElement.getKind() != ElementKind.METHOD) continue;
-            BuildPacket fieldBuildPacket = enclosedElement.getAnnotation(BuildPacket.class);
-
             final ExecutableElement method = (ExecutableElement) enclosedElement;
+
+            // Strict Filter: Only abstract, parameterless, non-void, non-ignored methods are treated as fields
+            if (!isDataField(method)) continue;
+
+            BuildPacket fieldBuildPacket = method.getAnnotation(BuildPacket.class);
             final String originalFieldName = method.getSimpleName().toString();
 
             final String fieldName;
@@ -134,15 +169,15 @@ public class PacketProcessor extends AbstractProcessor {
                 replace = fieldBuildPacket.addMethod();
             }
 
+            fieldNames.add(fieldName);
             final TypeMirror returnType = method.getReturnType();
             final TypeName returnTypeName = TypeName.get(returnType);
 
             ArrayList<AnnotationSpec> fieldAnnotations = getAnnotations(fieldBuildPacket);
-
             FieldSpec.Builder field = FieldSpec.builder(returnTypeName, fieldName, Modifier.PRIVATE);
-
-            if (!fieldAnnotations.isEmpty()) for (AnnotationSpec annotation : fieldAnnotations)
-                field.addAnnotation(annotation);
+            if (!fieldAnnotations.isEmpty()) {
+                for (AnnotationSpec annotation : fieldAnnotations) field.addAnnotation(annotation);
+            }
 
             eventClassBuilder.addField(field.build());
             eventClassBuilder.addMethod(
@@ -154,7 +189,7 @@ public class PacketProcessor extends AbstractProcessor {
                             .build()
             );
 
-            if (!originalFieldName.equals(fieldName) && replace)
+            if (!originalFieldName.equals(fieldName) && replace) {
                 eventClassBuilder.addMethod(
                         MethodSpec.methodBuilder(fieldName)
                                 .addModifiers(Modifier.PUBLIC)
@@ -162,13 +197,20 @@ public class PacketProcessor extends AbstractProcessor {
                                 .addStatement("return this.$N", fieldName)
                                 .build()
                 );
+            }
 
-            // Encode ctor: store parameter into field
+            // Encode ctor & of factory
             encodeCtorBuilder.addParameter(returnTypeName, fieldName, Modifier.FINAL);
             encodeCtorBuilder.addStatement("this.$N = $N", fieldName, fieldName);
 
-            FieldBuffer fieldBuffer = method.getAnnotation(FieldBuffer.class);
+            ofFactoryBuilder.addParameter(returnTypeName, fieldName, Modifier.FINAL);
+            if (isPooled) {
+                acquireBuilder.addParameter(returnTypeName, fieldName, Modifier.FINAL);
+                acquireBuilder.addStatement("instance.$N = $N", fieldName, fieldName);
+                addResetStatement(resetBuilder, fieldName, returnType);
+            }
 
+            FieldBuffer fieldBuffer = method.getAnnotation(FieldBuffer.class);
             if (fieldBuffer != null) {
                 TypeName encoderType = getEncoderTypeName(fieldBuffer);
                 TypeName decoderType = getDecoderTypeName(fieldBuffer);
@@ -180,26 +222,66 @@ public class PacketProcessor extends AbstractProcessor {
             generateBuffer(fieldName, returnType, writeMethodBuilder, readMethodBuilder, method);
         }
 
+        // Complete of factory
+        String args = String.join(", ", fieldNames);
+        ofFactoryBuilder.addStatement("return new $T($L)", generatedPacketClassName, args);
+
         eventClassBuilder
                 .addMethod(noArgCtor)
                 .addMethod(encodeCtorBuilder.build())
+                .addMethod(ofFactoryBuilder.build())
                 .addMethod(writeMethodBuilder.build())
                 .addMethod(readMethodBuilder.build());
 
-        if (!annotations.isEmpty()) for (AnnotationSpec annotation : annotations) {
-            eventClassBuilder.addAnnotation(annotation);
+        if (isPooled) {
+            acquireBuilder.addStatement("return instance");
+            eventClassBuilder.addMethod(acquireBuilder.build());
+            eventClassBuilder.addMethod(resetBuilder.build());
+
+            MethodSpec releaseMethod = MethodSpec.methodBuilder("release")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addStatement("POOL.release(this)")
+                    .build();
+            eventClassBuilder.addMethod(releaseMethod);
+        }
+
+        if (!annotations.isEmpty()) {
+            for (AnnotationSpec annotation : annotations) eventClassBuilder.addAnnotation(annotation);
         }
 
         JavaFile javaFile = JavaFile.builder(packetBuildPackage, eventClassBuilder.build())
                 .build();
-
         javaFile.writeTo(processingEnv.getFiler());
     }
 
+    private boolean isDataField(ExecutableElement method) {
+        Set<Modifier> modifiers = method.getModifiers();
+        if (modifiers.contains(Modifier.STATIC) || modifiers.contains(Modifier.DEFAULT)) return false;
+        if (!modifiers.contains(Modifier.ABSTRACT)) return false;
+        if (!method.getParameters().isEmpty()) return false;
+        if (method.getReturnType().getKind() == TypeKind.VOID) return false;
+        if (method.getAnnotation(Ignore.class) != null) return false;
+        return true;
+    }
+
+    private boolean isPooled(TypeElement element) {
+        for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
+            String name = mirror.getAnnotationType().asElement().getSimpleName().toString();
+            if ("Pooled".equals(name)) return true;
+        }
+        return false;
+    }
+
+    private void addResetStatement(MethodSpec.Builder resetBuilder, String fieldName, TypeMirror type) {
+        switch (type.getKind()) {
+            case BOOLEAN -> resetBuilder.addStatement("this.$N = false", fieldName);
+            case BYTE, SHORT, INT, LONG, CHAR, FLOAT, DOUBLE -> resetBuilder.addStatement("this.$N = 0", fieldName);
+            default -> resetBuilder.addStatement("this.$N = null", fieldName);
+        }
+    }
+
     private @NotNull ArrayList<AnnotationSpec> getAnnotations(BuildPacket buildPacket) {
-
         ArrayList<AnnotationSpec> annotations = new ArrayList<>();
-
         if (buildPacket != null) {
             try {
                 Class<? extends Annotation>[] onType = buildPacket.annotations();
@@ -251,13 +333,11 @@ public class PacketProcessor extends AbstractProcessor {
                     writeMethodBuilder.addStatement("buffer.writeEnum($N)", fieldName);
                     readMethodBuilder.addStatement("this.$N = buffer.readEnum($T.class)", fieldName, TypeName.get(returnType));
                 } else if (hasStaticDecoderField(returnType)) {
-                    // Record-style: static DECODER field + write()
                     writeMethodBuilder.addStatement("buffer.writeObject($N)", fieldName);
                     readMethodBuilder.addStatement("this.$N = buffer.readObject($T.DECODER)", fieldName, TypeName.get(returnType));
                 } else if (hasNoArgConstructor(returnType)
                         && implementsInterface(returnType, ABSTRACT_ENCODER)
                         && implementsInterface(returnType, ABSTRACT_DECODER)) {
-                    // Class-style: no-arg ctor + write() + read()
                     writeMethodBuilder.addStatement("buffer.writeObject($N)", fieldName);
                     readMethodBuilder.addStatement("this.$N = buffer.readObject($T::new)", fieldName, TypeName.get(returnType));
                 } else {
@@ -306,13 +386,13 @@ public class PacketProcessor extends AbstractProcessor {
                     case DECLARED -> {
                         String typeString = componentType.toString();
                         if (typeString.equals("java.lang.String")) {
-                            writeMethodBuilder.addStatement("buffer.writeArray($T::writeString,$N)", TypeName.get(BufferWriter.class), fieldName);
+                            writeMethodBuilder.addStatement("buffer.writeArray($T::writeString, $N)", TypeName.get(BufferWriter.class), fieldName);
                             readMethodBuilder.addStatement("this.$N = buffer.readArray($T::readString, $T[]::new)", fieldName, TypeName.get(BufferReader.class), TypeName.get(String.class));
                         } else if (typeString.equals("java.util.UUID")) {
-                            writeMethodBuilder.addStatement("buffer.writeArray($T::writeUuid,$N)", TypeName.get(BufferWriter.class), fieldName);
+                            writeMethodBuilder.addStatement("buffer.writeArray($T::writeUuid, $N)", TypeName.get(BufferWriter.class), fieldName);
                             readMethodBuilder.addStatement("this.$N = buffer.readArray($T::readUuid, $T[]::new)", fieldName, TypeName.get(BufferReader.class), TypeName.get(UUID.class));
                         } else if (typeUtils.asElement(componentType).getKind() == ElementKind.ENUM) {
-                            writeMethodBuilder.addStatement("buffer.writeArray($T::writeEnum,$N)", TypeName.get(BufferWriter.class), fieldName);
+                            writeMethodBuilder.addStatement("buffer.writeArray($T::writeEnum, $N)", TypeName.get(BufferWriter.class), fieldName);
                             readMethodBuilder.addStatement("this.$N = buffer.readArray(b -> b.readEnum($T.class), $T[]::new)", fieldName, TypeName.get(componentType), TypeName.get(componentType));
                         } else {
                             TypeName typeName = TypeName.get(componentType);
@@ -323,7 +403,7 @@ public class PacketProcessor extends AbstractProcessor {
                                 switch (primitiveName) {
                                     case "int", "boolean", "float", "long", "short", "byte", "double" -> {
                                         String capitalized = capitalize(primitiveName);
-                                        writeMethodBuilder.addStatement("buffer.writeArray($T::write$N,$N)", TypeName.get(BufferWriter.class), capitalized, fieldName);
+                                        writeMethodBuilder.addStatement("buffer.writeArray($T::write$N, $N)", TypeName.get(BufferWriter.class), capitalized, fieldName);
                                         readMethodBuilder.addStatement("this.$N = buffer.readArray($T::read$N, $T[]::new)", fieldName, TypeName.get(BufferReader.class), capitalized, typeName);
                                     }
 

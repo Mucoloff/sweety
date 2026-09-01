@@ -4,11 +4,23 @@
   <component name="GradleSettings">
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
+        <compositeConfiguration>
+          <compositeBuild compositeDefinitionSource="SCRIPT">
+            <builds>
+              <build path="$PROJECT_DIR$/build-logic/sweety-conventions" name="sweety-conventions">
+                <projects>
+                  <project path="$PROJECT_DIR$/build-logic/sweety-conventions" />
+                </projects>
+              </build>
+            </builds>
+          </compositeBuild>
+        </compositeConfiguration>
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="gradleJvm" value="corretto-24" />
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/build-logic/sweety-conventions" />
             <option value="$PROJECT_DIR$/feature" />
             <option value="$PROJECT_DIR$/feature/asm-patch" />
             <option value="$PROJECT_DIR$/feature/asm-patch/applier" />
@@ -16,9 +28,7 @@
             <option value="$PROJECT_DIR$/feature/asm-patch/generator" />
             <option value="$PROJECT_DIR$/feature/event" />
             <option value="$PROJECT_DIR$/feature/event/api" />
-            <option value="$PROJECT_DIR$/feature/event/event-processor" />
             <option value="$PROJECT_DIR$/feature/event/impl" />
-            <option value="$PROJECT_DIR$/feature/event/intellij-plugin" />
             <option value="$PROJECT_DIR$/feature/module" />
             <option value="$PROJECT_DIR$/feature/module/extension" />
             <option value="$PROJECT_DIR$/feature/module/extension-versioning" />
@@ -38,12 +48,9 @@
             <option value="$PROJECT_DIR$/feature/service/api" />
             <option value="$PROJECT_DIR$/feature/service/impl" />
             <option value="$PROJECT_DIR$/feature/transform" />
-            <option value="$PROJECT_DIR$/hook" />
-            <option value="$PROJECT_DIR$/hook/microsoft-auth" />
-            <option value="$PROJECT_DIR$/hook/spotify" />
             <option value="$PROJECT_DIR$/minecraft" />
+            <option value="$PROJECT_DIR$/minecraft/auth" />
             <option value="$PROJECT_DIR$/minecraft/network" />
-            <option value="$PROJECT_DIR$/minecraft/plugin" />
             <option value="$PROJECT_DIR$/minecraft/version" />
             <option value="$PROJECT_DIR$/network" />
             <option value="$PROJECT_DIR$/network/netty" />
@@ -55,32 +62,34 @@
             <option value="$PROJECT_DIR$/network/netty-saas/hub" />
             <option value="$PROJECT_DIR$/network/netty-saas/packet" />
             <option value="$PROJECT_DIR$/network/netty-saas/service" />
+            <option value="$PROJECT_DIR$/tooling" />
+            <option value="$PROJECT_DIR$/tooling/intellij-plugin" />
+            <option value="$PROJECT_DIR$/tooling/ksp" />
+            <option value="$PROJECT_DIR$/tooling/processor" />
             <option value="$PROJECT_DIR$/util" />
             <option value="$PROJECT_DIR$/util/animation" />
+            <option value="$PROJECT_DIR$/util/cache" />
             <option value="$PROJECT_DIR$/util/color" />
-            <option value="$PROJECT_DIR$/util/data" />
             <option value="$PROJECT_DIR$/util/exception" />
             <option value="$PROJECT_DIR$/util/file" />
             <option value="$PROJECT_DIR$/util/filter" />
             <option value="$PROJECT_DIR$/util/i18n" />
             <option value="$PROJECT_DIR$/util/logger" />
             <option value="$PROJECT_DIR$/util/math" />
+            <option value="$PROJECT_DIR$/util/media" />
             <option value="$PROJECT_DIR$/util/persistence" />
             <option value="$PROJECT_DIR$/util/persistence/configuration" />
-            <option value="$PROJECT_DIR$/util/persistence/ormlite-util" />
             <option value="$PROJECT_DIR$/util/persistence/sql4j" />
             <option value="$PROJECT_DIR$/util/persistence/sql4j-benchmarks" />
             <option value="$PROJECT_DIR$/util/persistence/sql4j-integration-tests" />
             <option value="$PROJECT_DIR$/util/persistence/sql4j-processor" />
-            <option value="$PROJECT_DIR$/util/processor" />
-            <option value="$PROJECT_DIR$/util/processor/intellij-plugin" />
-            <option value="$PROJECT_DIR$/util/processor/packet-processor" />
-            <option value="$PROJECT_DIR$/util/processor/record-getter-processor" />
+            <option value="$PROJECT_DIR$/util/persistence/sql4j-rpc" />
             <option value="$PROJECT_DIR$/util/serialization" />
             <option value="$PROJECT_DIR$/util/signature" />
             <option value="$PROJECT_DIR$/util/system" />
             <option value="$PROJECT_DIR$/util/thread" />
             <option value="$PROJECT_DIR$/util/time" />
+            <option value="$PROJECT_DIR$/util/tree" />
             <option value="$PROJECT_DIR$/util/vector" />
           </set>
         </option>

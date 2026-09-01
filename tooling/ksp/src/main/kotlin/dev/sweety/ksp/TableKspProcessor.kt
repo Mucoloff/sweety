@@ -50,7 +50,7 @@ class TableKspProcessor(
     override fun process(resolver: Resolver): kotlin.collections.List<KSAnnotated> {
         val deferred = mutableListOf<KSAnnotated>()
         resolver.getSymbolsWithAnnotation(TABLE_INFO).forEach { sym ->
-            if (sym is KSClassDeclaration && sym.classKind == ClassKind.CLASS) {
+            if (sym is KSClassDeclaration && (sym.classKind == ClassKind.CLASS || sym.classKind == ClassKind.INTERFACE)) {
                 if (sym.validate()) generateTable(sym)
                 else deferred += sym
             }
