@@ -120,7 +120,7 @@ public class UdpTransportTest {
 
         server.start();
 
-        SimpleClient client = new SimpleClient(UdpTransport.packets(), "127.0.0.1", serverPort, registry, -1) {
+        SimpleClient client = new SimpleClient(UdpTransport.unconnected(), "127.0.0.1", serverPort, registry, -1) {
             @Override
             public void onPacketReceive(io.netty.channel.ChannelHandlerContext ctx, Packet packet) {
             }

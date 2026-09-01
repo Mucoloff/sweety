@@ -43,7 +43,7 @@ public final class TcpTransport implements Transport {
                            ChannelHandler init, int localPort) {
         if (bootstrap instanceof ServerBootstrap serverBootstrap) {
             serverBootstrap.group(boss, worker)
-                    .channel(NioServerSocketChannel.class)
+                    .channel(NativeTransport.serverSocketChannelClass())
                     .option(ChannelOption.SO_BACKLOG, soBacklog)
                     .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
                     .childOption(ChannelOption.TCP_NODELAY, true)
@@ -52,7 +52,7 @@ public final class TcpTransport implements Transport {
                     .childHandler(init);
         } else if (bootstrap instanceof Bootstrap clientBootstrap) {
             clientBootstrap.group(worker)
-                    .channel(NioSocketChannel.class)
+                    .channel(NativeTransport.socketChannelClass())
                     .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
                     .option(ChannelOption.TCP_NODELAY, true)
                     .option(ChannelOption.SO_KEEPALIVE, true)

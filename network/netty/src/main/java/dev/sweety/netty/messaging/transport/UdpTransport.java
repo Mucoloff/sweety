@@ -51,7 +51,7 @@ public final class UdpTransport implements Transport {
         this.localPort = localPort;
         if (bootstrap instanceof Bootstrap datagramBootstrap) {
             datagramBootstrap.group(worker)
-                    .channel(NioDatagramChannel.class)
+                    .channel(NativeTransport.datagramChannelClass())
                     .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
                     .option(ChannelOption.SO_REUSEADDR, true)
                     .handler(init);

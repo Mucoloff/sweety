@@ -1,5 +1,6 @@
 package dev.sweety.netty.messaging.model;
 
+import dev.sweety.netty.messaging.transport.NativeTransport;
 import dev.sweety.netty.messaging.transport.TcpTransport;
 import dev.sweety.netty.messaging.transport.Transport;
 import dev.sweety.netty.packet.model.Packet;
@@ -15,8 +16,8 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.ChannelPromise;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.WriteBufferWaterMark;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.AttributeKey;
@@ -38,7 +39,7 @@ public abstract class Messenger {
     private final AbstractBootstrap<?, ?> bootstrap;
     private final Transport transport;
     private final boolean server;
-    private final NioEventLoopGroup boss, worker;
+    private final EventLoopGroup boss, worker;
     // ===================================/
     public static final int SEED = 0x000FFFFF;
 
@@ -151,6 +152,10 @@ public abstract class Messenger {
 
     protected Channel channel;
 
+    public Channel channel() {
+        return channel;
+    }
+
     protected int port;
     protected String host;
 
@@ -194,7 +199,7 @@ public abstract class Messenger {
         this.transport = transport;
         this.server = server;
         this.bootstrap = transport.newBootstrap(server);
-        this.boss = new NioEventLoopGroup();
+        this.boss = NativeTransport.newEventLoopGroup(1, Thread.ofPlatform().name("netty-boss-", 0).factory());
         final int worker_threads = Integer.parseInt(
                 System.getenv().getOrDefault("NETTY_WORKER_THREADS",
                         String.valueOf(Math.max(4, Runtime.getRuntime().availableProcessors() * 2))));
@@ -208,7 +213,7 @@ public abstract class Messenger {
         // Slowloris guard: a connection sending nothing (or trickling bytes) ties up its fd + event-loop
         // slot indefinitely otherwise. 0 disables the check.
         final int idleTimeoutSeconds = Integer.parseInt(System.getenv().getOrDefault("NETTY_IDLE_TIMEOUT_SECONDS", "60"));
-        this.worker = new NioEventLoopGroup(worker_threads);
+        this.worker = NativeTransport.newEventLoopGroup(worker_threads, Thread.ofPlatform().name("netty-worker-", 0).factory());
 
         this.port = port;
         this.host = host;
