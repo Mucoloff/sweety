@@ -3,6 +3,7 @@ plugins { id("sweety.java-conventions") }
 dependencies {
     api(project(":util:persistence:sql4j"))
     api(project(":network:netty"))
+    api(project(":network:netty-saas:service"))
     api(project(":util:math"))
     implementation(project(":util:thread"))
 

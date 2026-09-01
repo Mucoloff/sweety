@@ -1,7 +1,6 @@
 package dev.sweety.netty.messaging.transport;
 
 import dev.sweety.netty.messaging.listener.decoder.DatagramPacketDecoder;
-import dev.sweety.netty.messaging.listener.decoder.RawDatagramPacketDecoder;
 import dev.sweety.netty.messaging.listener.encoder.DatagramPacketEncoder;
 import dev.sweety.netty.messaging.listener.watcher.NettyWatcher;
 import dev.sweety.netty.messaging.model.Messenger;
@@ -20,43 +19,24 @@ import io.netty.channel.socket.nio.NioDatagramChannel;
 import java.net.InetSocketAddress;
 
 /**
- * UDP transport: a datagram "server" binds through a plain {@link Bootstrap} (no {@code ServerBootstrap}
- * — datagram channels have no accept/child-channel split), same as a datagram "client" that connects.
- *
- * <p>Two codec modes: {@link #packets()} installs a generic {@link dev.sweety.netty.packet.model.Packet}
- * codec pair over datagrams; {@link #raw()} wraps every inbound datagram in a {@link RawDatagramPacket}
- * and delivers it through the exact same {@code Messenger#onPacketReceive} path TCP already uses (via
- * {@link RawDatagramPacketDecoder} + {@link NettyWatcher} — no separate hook), required whenever the
- * wire format cannot be a generic packet codec (e.g. a custom type-byte + encrypted-blob envelope that
- * only becomes a {@code Packet} after application-level decryption).
+ * UDP datagram transport for high-throughput, low-latency communication (gaming, telemetry, presence).
+ * Uses {@link DatagramPacketDecoder} and {@link DatagramPacketEncoder} paired symmetrically with {@link AddressedPacket}.
  */
 public final class UdpTransport implements Transport {
 
-    private final boolean rawMode;
     private final boolean unconnected;
     private volatile int localPort = -1;
 
-    private UdpTransport(boolean rawMode, boolean unconnected) {
-        this.rawMode = rawMode;
+    private UdpTransport(boolean unconnected) {
         this.unconnected = unconnected;
     }
 
     public static UdpTransport packets() {
-        return new UdpTransport(false, false);
+        return new UdpTransport(false);
     }
 
-    public static UdpTransport raw() {
-        return new UdpTransport(true, false);
-    }
-
-    /**
-     * A raw-mode client that {@code bind()}s an ephemeral local socket instead of {@code connect()}ing
-     * to a fixed remote — required to send/receive datagrams addressed to more than one remote peer on
-     * the same socket (P2P direct path). Loses the kernel-level source-address filtering a connected
-     * socket gives for free; callers MUST validate {@code RawDatagramPacket#sender()} themselves.
-     */
-    public static UdpTransport rawUnconnected() {
-        return new UdpTransport(true, true);
+    public static UdpTransport unconnected() {
+        return new UdpTransport(true);
     }
 
     @Override
@@ -80,24 +60,16 @@ public final class UdpTransport implements Transport {
 
     @Override
     public void installCodecs(ChannelPipeline pipeline, PacketRegistry registry, Messenger owner, int idleTimeoutSeconds) {
-        if (rawMode) {
-            pipeline.addLast(new RawDatagramPacketDecoder(), new NettyWatcher(owner));
-        } else {
-            pipeline.addLast(
-                    new DatagramPacketDecoder(registry),
-                    new NettyWatcher(owner),
-                    new DatagramPacketEncoder(registry)
-            );
-        }
+        pipeline.addLast(
+                new DatagramPacketDecoder(registry),
+                new NettyWatcher(owner),
+                new DatagramPacketEncoder(registry)
+        );
     }
 
     @Override
     public ChannelFuture start(AbstractBootstrap<?, ?> bootstrap, boolean server, String host, int port) {
         Bootstrap datagramBootstrap = (Bootstrap) bootstrap;
-        // A datagram "server" binds a shared socket; an unconnected client binds an ephemeral (or
-        // pinned) local socket so it can send/receive to more than one remote address (P2P direct
-        // path); an ordinary datagram "client" that only ever talks to one remote still `connect()`s
-        // (fixes the peer address, matching UdpSocialClient's server-relay usage).
         if (server) {
             return datagramBootstrap.bind(new InetSocketAddress(host, port));
         } else if (unconnected) {

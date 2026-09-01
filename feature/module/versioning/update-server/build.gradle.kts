@@ -24,6 +24,7 @@ dependencies {
     implementation(project(":util:logger"))
     implementation(project(":util:time"))
     implementation(project(":network:netty"))
+    implementation(project(":network:netty-saas:service"))
     implementation(project(":feature:module:versioning:protocol"))
     implementation(project(":feature:asm-patch:core"))
     implementation(project(":feature:asm-patch:generator"))
