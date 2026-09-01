@@ -1,7 +1,8 @@
-package dev.sweety.netty.messaging.listener.decoder;
+package dev.sweety.netty.messaging.listener;
 
 import dev.sweety.exception.PacketDecodeException;
-import dev.sweety.netty.messaging.listener.encoder.PacketEncoder;
+import dev.sweety.netty.messaging.listener.encoder.*;
+import dev.sweety.netty.messaging.listener.decoder.*;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.messaging.transport.AddressedPacket;
 import dev.sweety.netty.packet.buffer.PacketBuffer;
@@ -77,8 +78,7 @@ public final class PacketCodecSupport {
         if (packets.isEmpty()) return;
 
         if (messenger != null) {
-            for (int i = 0, n = packets.size(); i < n; i++) {
-                Packet packet = packets.get(i);
+            for (Packet packet : packets) {
                 if (packet == null) continue;
                 messenger.onPacketReceive(ctx, packet);
             }

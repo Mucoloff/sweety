@@ -1,6 +1,6 @@
 package dev.sweety.netty.messaging.listener.encoder;
 
-import dev.sweety.netty.messaging.listener.decoder.PacketCodecSupport;
+import dev.sweety.netty.messaging.listener.PacketCodecSupport;
 import dev.sweety.netty.messaging.transport.AddressedPacket;
 import dev.sweety.netty.packet.registry.PacketRegistry;
 import io.netty.channel.ChannelHandlerContext;
