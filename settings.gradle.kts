@@ -33,6 +33,8 @@ group("", listOf(
     "feature:service", "feature:service:api", "feature:service:impl",
 
     "network:netty",
+    "network:netty-loadbalancer", "network:netty-loadbalancer:backend", "network:netty-loadbalancer:packet", "network:netty-loadbalancer:server",
+    "network:netty-saas", "network:netty-saas:hub", "network:netty-saas:service", "network:netty-saas:packet",
 
     "minecraft:network", "minecraft:version", "minecraft:auth",
 

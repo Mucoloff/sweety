@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class LeastConnectionsLoadBalancer implements LoadBalancer {
 
     public static final AttributeKey<AtomicInteger> ACTIVE_REQUESTS =
-            AttributeKey.valueOf("aurora.lb.active_requests");
+            AttributeKey.valueOf("sweety.lb.active_requests");
 
     private static final LeastConnectionsLoadBalancer INSTANCE = new LeastConnectionsLoadBalancer();
 

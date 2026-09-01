@@ -19,7 +19,7 @@ public abstract class Server extends Messenger {
     // cheap numeric identity has to be assigned ourselves rather than derived per-lookup from
     // Channel.id().asLongText() (a string alloc + string-keyed hash on every access). Assigned once at
     // addClient(), read back via this attribute wherever the channel needs its own id again.
-    private static final AttributeKey<Long> CONNECTION_ID = AttributeKey.valueOf("luce.connectionId");
+    private static final AttributeKey<Long> CONNECTION_ID = AttributeKey.valueOf("sweety.connectionId");
     private static final AtomicLong NEXT_CONNECTION_ID = new AtomicLong();
 
     private final LongKeyedRegistry<ChannelHandlerContext> clients = new LongKeyedRegistry<>();

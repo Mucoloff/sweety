@@ -1,0 +1,93 @@
+package dev.sweety.netty.metrics.state;
+
+public final class LoadGate {
+
+    private volatile NodeState state = NodeState.HEALTHY;
+
+    private final double min, max;
+    private final double[] in;
+    private final double[] out;
+    private final double[] weights;
+
+    private final int count;
+
+    @Deprecated
+    public LoadGate(double min, double max, Limits... limits) {
+        if (min >= max) throw new IllegalArgumentException("min must be less than max");
+        this.min = min;
+        this.max = max;
+        if (limits == null || (this.count = limits.length) == 0) throw new IllegalArgumentException("limits is empty");
+        this.in = new double[this.count];
+        this.out = new double[this.count];
+        this.weights = new double[this.count];
+        for (int i = 0; i < this.count; i++) {
+            this.in[i] = limits[i].in();
+            this.out[i] = limits[i].out();
+            this.weights[i] = limits[i].weight();
+        }
+    }
+
+    public static LoadGate of(double min, double max, Limits... limits) {
+        return new LoadGate(min, max, limits);
+    }
+
+    public synchronized NodeState update(double... metrics) {
+        if (metrics == null) throw new IllegalArgumentException("metrics null");
+        if (metrics.length != in.length)
+            throw new IllegalArgumentException("metrics length mismatch: expected " + in.length + " got " + metrics.length);
+
+        switch (state) {
+            case HEALTHY -> {
+                if (aboveOut(metrics)) state = NodeState.DEGRADED;
+            }
+            case DEGRADED -> {
+                if (belowIn(metrics)) state = NodeState.HEALTHY;
+            }
+        }
+        return state;
+    }
+
+    public synchronized void reset() {
+        this.state = NodeState.HEALTHY;
+    }
+
+    public NodeState get() {
+        return state;
+    }
+
+    private boolean aboveOut(double... metrics) {
+        double value = 0f;
+        for (int i = 0; i < metrics.length && i < this.count; i++) {
+            if (metrics[i] > out[i]) {
+                value += weights[i];
+            }
+        }
+        return value >= max;
+    }
+
+    private boolean belowIn(double... metrics) {
+        double value = 0f;
+        for (int i = 0; i < metrics.length && i < this.count; i++) {
+            if (metrics[i] >= in[i]) {
+                value += weights[i];
+            }
+        }
+        return value <= min;
+    }
+
+    @Override
+    public String toString() {
+        return "LoadGate{" +
+                "state=" + state +
+                ", min=" + min +
+                ", max=" + max +
+                '}';
+    }
+
+    public record Limits(double in, double out, double weight) {
+        public Limits {
+            if (in >= out) throw new IllegalArgumentException("in must be less than out");
+            if (weight <= 0) throw new IllegalArgumentException("weight must be positive");
+        }
+    }
+}

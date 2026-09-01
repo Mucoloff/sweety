@@ -1,0 +1,30 @@
+package dev.sweety.saas.service.packet.global.monitoring.transaction;
+
+import dev.sweety.netty.packet.model.PacketTransaction;
+import dev.sweety.saas.service.packet.global.monitoring.request.MonitoringMetricReportRequest;
+import dev.sweety.saas.service.packet.global.monitoring.response.MonitoringMetricReportResponse;
+
+public class MonitoringMetricReportTransaction extends PacketTransaction<MonitoringMetricReportRequest, MonitoringMetricReportResponse> {
+
+    public MonitoringMetricReportTransaction() {
+        super();
+    }
+
+    public MonitoringMetricReportTransaction(MonitoringMetricReportRequest request) {
+        super(request);
+    }
+
+    public MonitoringMetricReportTransaction(long id, MonitoringMetricReportResponse response) {
+        super(id, response);
+    }
+
+    @Override
+    protected MonitoringMetricReportRequest request() {
+        return new MonitoringMetricReportRequest();
+    }
+
+    @Override
+    protected MonitoringMetricReportResponse response() {
+        return new MonitoringMetricReportResponse();
+    }
+}

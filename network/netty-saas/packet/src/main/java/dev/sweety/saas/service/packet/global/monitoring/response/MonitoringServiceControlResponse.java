@@ -1,0 +1,48 @@
+package dev.sweety.saas.service.packet.global.monitoring.response;
+
+import dev.sweety.data.buffer.*;
+import dev.sweety.netty.packet.model.PacketTransaction;
+
+public class MonitoringServiceControlResponse extends PacketTransaction.Transaction {
+
+    private boolean success;
+    private String message;
+
+    public MonitoringServiceControlResponse() {
+    }
+
+    public MonitoringServiceControlResponse(boolean success, String message) {
+        this.success = success;
+        this.message = message;
+    }
+
+    @Override
+    public void write(BufferWriter buffer) {
+        buffer.writeBoolean(success);
+        buffer.writeString(message);
+    }
+
+    @Override
+    public void read(BufferReader buffer) {
+        this.success = buffer.readBoolean();
+        this.message = buffer.readString();
+    }
+
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public MonitoringServiceControlResponse setSuccess(boolean success) {
+        this.success = success;
+        return this;
+    }
+
+    public String message() {
+        return message;
+    }
+
+    public MonitoringServiceControlResponse setMessage(String message) {
+        this.message = message;
+        return this;
+    }
+}
