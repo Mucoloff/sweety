@@ -106,9 +106,11 @@ public final class MethodSelector {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private static boolean hasAnnotation(List<AnnotationNode> list, String desc) {
+    public static boolean hasAnnotation(List<AnnotationNode> list, String descOrName) {
         if (list == null) return false;
-        return list.stream().anyMatch(a -> desc.equals(a.desc));
+        String formatted = descOrName.startsWith("L") && descOrName.endsWith(";") ?
+                descOrName : "L" + descOrName.replace('.', '/') + ";";
+        return list.stream().anyMatch(a -> formatted.equals(a.desc));
     }
 
     private static boolean getBooleanValue(List<AnnotationNode> list, String desc, String element) {

@@ -51,7 +51,7 @@ public final class VirtualizerTransformer extends Transformer {
 
     private static final SimpleLogger logger = SimpleLogger.of(VirtualizerTransformer.class);
 
-    private static final String VM_INTERPRETER = "dev/sweety/transform/vm/VMInterpreter";
+    private static final String VM_INTERPRETER = "dev/sweety/transform/vm/core/VMInterpreter";
     private static final String EXECUTE_DESC =
             "(Ljava/lang/Object;[Ljava/lang/Object;[B)Ljava/lang/Object;";
 

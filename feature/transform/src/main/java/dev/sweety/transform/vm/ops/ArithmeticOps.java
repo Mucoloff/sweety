@@ -1,12 +1,17 @@
-package dev.sweety.transform.vm;
+package dev.sweety.transform.vm.ops;
+import dev.sweety.transform.vm.core.VmOp;
+import dev.sweety.transform.vm.core.VMSupport;
+import dev.sweety.transform.vm.state.PendingNew;
+import dev.sweety.transform.vm.state.VMLocals;
+import dev.sweety.transform.vm.state.VMStack;
 
 /** Int/long/float/double arithmetic, bitwise, compare and widening/narrowing conversion ops. Pure — no
  * reflection, no I/O, no boxing (reads/writes {@link VMStack}'s raw primitive array directly). */
-final class ArithmeticOps {
+public final class ArithmeticOps {
 
     private ArithmeticOps() {}
 
-    static void execute(VmOp op, VMStack stack) {
+    public static void execute(VmOp op, VMStack stack) {
         switch (op) {
             case IADD  -> { int b = stack.popI(); int a = stack.popI(); stack.pushI(a + b); }
             case ISUB  -> { int b = stack.popI(); int a = stack.popI(); stack.pushI(a - b); }

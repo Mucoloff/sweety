@@ -1,6 +1,6 @@
 package dev.sweety.transform.transformers.virtualize;
 
-import dev.sweety.transform.vm.VmOp;
+import dev.sweety.transform.vm.core.VmOp;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;

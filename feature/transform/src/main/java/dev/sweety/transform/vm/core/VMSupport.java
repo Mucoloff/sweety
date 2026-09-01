@@ -1,4 +1,7 @@
-package dev.sweety.transform.vm;
+package dev.sweety.transform.vm.core;
+
+import dev.sweety.transform.vm.state.PendingNew;
+import dev.sweety.transform.vm.state.VMStack;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -7,33 +10,31 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 
 /**
- * Low-level helpers shared by the VM's op-family executors ({@link ArithmeticOps},
- * {@link ReflectionOps}, {@link ObjectOps}, {@link ArrayOps}, {@link StackOps}): unboxing,
- * reflection resolution + descriptor building, and bytecode-buffer string reads.
+ * Low-level helpers shared by the VM's op-family executors.
  */
-final class VMSupport {
+public final class VMSupport {
 
     private VMSupport() {}
 
-    static int unboxI(Object o) {
+    public static int unboxI(Object o) {
         if (o instanceof Integer i) return i;
         if (o instanceof Boolean b) return b ? 1 : 0;   // boolean/byte/char/short are all int-width on the VM stack
         if (o instanceof Character c) return c;
         if (o instanceof Number n) return n.intValue();
         return 0;
     }
-    static long   unboxL(Object o) { return o instanceof Long l ? l : o instanceof Number n ? n.longValue() : 0L; }
-    static float  unboxF(Object o) { return o instanceof Float f ? f : o instanceof Number n ? n.floatValue() : 0f; }
-    static double unboxD(Object o) { return o instanceof Double d ? d : o instanceof Number n ? n.doubleValue() : 0.0; }
+    public static long   unboxL(Object o) { return o instanceof Long l ? l : o instanceof Number n ? n.longValue() : 0L; }
+    public static float  unboxF(Object o) { return o instanceof Float f ? f : o instanceof Number n ? n.floatValue() : 0f; }
+    public static double unboxD(Object o) { return o instanceof Double d ? d : o instanceof Number n ? n.doubleValue() : 0.0; }
 
-    static String readString(ByteBuffer buf) {
+    public static String readString(ByteBuffer buf) {
         int len = buf.getShort() & 0xFFFF;
         byte[] bytes = new byte[len];
         buf.get(bytes);
         return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
     }
 
-    static Class<?> classFor(Map<String, Object> cache, String internal) throws ClassNotFoundException {
+    public static Class<?> classFor(Map<String, Object> cache, String internal) throws ClassNotFoundException {
         String key = "C:" + internal;
         Class<?> c = (Class<?>) cache.get(key);
         if (c == null) {
@@ -43,7 +44,7 @@ final class VMSupport {
         return c;
     }
 
-    static Method findMethod(Class<?> cls, String name, String desc) throws NoSuchMethodException {
+    public static Method findMethod(Class<?> cls, String name, String desc) throws NoSuchMethodException {
         for (Class<?> c = cls; c != null; c = c.getSuperclass()) {
             for (Method m : c.getDeclaredMethods()) {
                 if (m.getName().equals(name) && buildMethodDescriptor(m).equals(desc)) return m;
@@ -57,21 +58,21 @@ final class VMSupport {
         throw new NoSuchMethodException(cls.getName() + "." + name + desc);
     }
 
-    static Constructor<?> findConstructor(Class<?> cls, String desc) throws NoSuchMethodException {
+    public static Constructor<?> findConstructor(Class<?> cls, String desc) throws NoSuchMethodException {
         for (Constructor<?> c : cls.getDeclaredConstructors()) {
             if (buildCtorDescriptor(c).equals(desc)) return c;
         }
         throw new NoSuchMethodException(cls.getName() + ".<init>" + desc);
     }
 
-    static Field findField(Class<?> cls, String name) throws NoSuchFieldException {
+    public static Field findField(Class<?> cls, String name) throws NoSuchFieldException {
         for (Class<?> c = cls; c != null; c = c.getSuperclass()) {
             try { return c.getDeclaredField(name); } catch (NoSuchFieldException ignored) {} // walking hierarchy, absence expected
         }
         throw new NoSuchFieldException(cls.getName() + "." + name);
     }
 
-    static String buildMethodDescriptor(Method m) {
+    public static String buildMethodDescriptor(Method m) {
         StringBuilder sb = new StringBuilder("(");
         for (Class<?> p : m.getParameterTypes()) appendTypeDesc(sb, p);
         sb.append(')');
@@ -79,7 +80,7 @@ final class VMSupport {
         return sb.toString();
     }
 
-    static String buildCtorDescriptor(Constructor<?> c) {
+    public static String buildCtorDescriptor(Constructor<?> c) {
         StringBuilder sb = new StringBuilder("(");
         for (Class<?> p : c.getParameterTypes()) appendTypeDesc(sb, p);
         sb.append(")V");
@@ -91,7 +92,7 @@ final class VMSupport {
      * Handles primitives, void, arrays (any depth), and reference types.
      * No external dependencies — pure Java reflection.
      */
-    static void appendTypeDesc(StringBuilder sb, Class<?> c) {
+    public static void appendTypeDesc(StringBuilder sb, Class<?> c) {
         if (c == void.class)    { sb.append('V'); return; }
         if (c == boolean.class) { sb.append('Z'); return; }
         if (c == byte.class)    { sb.append('B'); return; }
@@ -111,7 +112,7 @@ final class VMSupport {
         sb.append('L').append(c.getName().replace('.', '/')).append(';');
     }
 
-    static Object coerce(Object val, Class<?> target) {
+    public static Object coerce(Object val, Class<?> target) {
         if (val == null || !target.isPrimitive()) return val;
         if (target == int.class)    return unboxI(val);
         if (target == long.class)   return unboxL(val);
@@ -130,7 +131,7 @@ final class VMSupport {
      * (int/boolean/byte/char/short — all int-width on the VM stack, matching the real JVM's own
      * local/stack conventions, e.g. {@code ILOAD}/{@code ICONST} for booleans).
      */
-    static char[] paramTypeTags(String desc) {
+    public static char[] paramTypeTags(String desc) {
         int open = desc.indexOf('(');
         int close = desc.indexOf(')');
         if (open < 0 || close < 0) return new char[0];
@@ -149,7 +150,7 @@ final class VMSupport {
     }
 
     /** Type tag (see {@link #paramTypeTags}) for a single resolved {@link Class}. */
-    static char tagOf(Class<?> c) {
+    public static char tagOf(Class<?> c) {
         if (c == long.class) return 'J';
         if (c == float.class) return 'F';
         if (c == double.class) return 'D';
@@ -158,7 +159,7 @@ final class VMSupport {
     }
 
     /** Pop a value of the given tag's shape off {@code stack}, unwrapping a pending-construction ref. */
-    static Object popByTag(VMStack stack, char tag) {
+    public static Object popByTag(VMStack stack, char tag) {
         return switch (tag) {
             case 'J' -> stack.popL();
             case 'F' -> stack.popF();
@@ -168,8 +169,8 @@ final class VMSupport {
         };
     }
 
-    /** Push a reflection result of static type {@code type} onto {@code stack}, boxed only at this call boundary. */
-    static void pushTyped(VMStack stack, Class<?> type, Object result) {
+    /** Push a reflection result of public static type {@code type} onto {@code stack}, boxed only at this call boundary. */
+    public static void pushTyped(VMStack stack, Class<?> type, Object result) {
         if (type == void.class) return;
         if (type == long.class)   { stack.pushL((Long) result); return; }
         if (type == float.class)  { stack.pushF((Float) result); return; }
@@ -181,7 +182,7 @@ final class VMSupport {
     }
 
     /** Local-slot width per parameter from a method descriptor: 2 for long/double, 1 otherwise. */
-    static int[] paramSlotWidths(String desc) {
+    public static int[] paramSlotWidths(String desc) {
         int open = desc.indexOf('(');
         int close = desc.indexOf(')');
         if (open < 0 || close < 0) return new int[0];

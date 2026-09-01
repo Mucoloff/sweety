@@ -1,4 +1,4 @@
-package dev.sweety.transform.vm;
+package dev.sweety.transform.vm.core;
 
 /**
  * VM opcode table for the EcstacyTransform lightweight stack machine.

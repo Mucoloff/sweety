@@ -1,19 +1,27 @@
-package dev.sweety.transform.vm;
+package dev.sweety.transform.vm.core;
+
+import dev.sweety.transform.vm.ops.ArithmeticOps;
+import dev.sweety.transform.vm.ops.ArrayOps;
+import dev.sweety.transform.vm.ops.ObjectOps;
+import dev.sweety.transform.vm.ops.ReflectionOps;
+import dev.sweety.transform.vm.ops.StackOps;
+import dev.sweety.transform.vm.security.AntiDumpGuard;
+import dev.sweety.transform.vm.security.SessionFoldSource;
+import dev.sweety.transform.vm.state.PendingNew;
+import dev.sweety.transform.vm.state.VMLocals;
+import dev.sweety.transform.vm.state.VMStack;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.WeakHashMap;
 
-import static dev.sweety.transform.vm.VMSupport.paramSlotWidths;
-import static dev.sweety.transform.vm.VMSupport.paramTypeTags;
-import static dev.sweety.transform.vm.VMSupport.readString;
-import static dev.sweety.transform.vm.VMSupport.unboxD;
-import static dev.sweety.transform.vm.VMSupport.unboxF;
-import static dev.sweety.transform.vm.VMSupport.unboxI;
-import static dev.sweety.transform.vm.VMSupport.unboxL;
+import static dev.sweety.transform.vm.core.VMSupport.paramSlotWidths;
+import static dev.sweety.transform.vm.core.VMSupport.paramTypeTags;
+import static dev.sweety.transform.vm.core.VMSupport.readString;
+import static dev.sweety.transform.vm.core.VMSupport.unboxD;
+import static dev.sweety.transform.vm.core.VMSupport.unboxF;
+import static dev.sweety.transform.vm.core.VMSupport.unboxI;
+import static dev.sweety.transform.vm.core.VMSupport.unboxL;
 
 /**
  * Lightweight stack-based VM that executes method bodies compiled to
@@ -76,6 +84,9 @@ public final class VMInterpreter {
         if (code == null || code.length == 0) {
             throw new IllegalStateException("Virtualized method has no bytecode — session not yet live");
         }
+
+        // Verify runtime environment integrity (anti-debug & agent dump guard)
+        AntiDumpGuard.verify();
 
         final ByteBuffer buf = ByteBuffer.wrap(code);
         buf.order(ByteOrder.BIG_ENDIAN);

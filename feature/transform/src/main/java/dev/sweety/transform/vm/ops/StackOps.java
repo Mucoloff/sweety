@@ -1,4 +1,9 @@
-package dev.sweety.transform.vm;
+package dev.sweety.transform.vm.ops;
+import dev.sweety.transform.vm.core.VmOp;
+import dev.sweety.transform.vm.core.VMSupport;
+import dev.sweety.transform.vm.state.PendingNew;
+import dev.sweety.transform.vm.state.VMLocals;
+import dev.sweety.transform.vm.state.VMStack;
 
 /**
  * Operand-stack shuffling (POP/DUP/SWAP family). The VM's operand stack is one slot per JVM value
@@ -12,11 +17,11 @@ package dev.sweety.transform.vm;
  * {@code refAt}/{@code pushSlot}) — it never needs to know whether a slot holds a primitive or a
  * reference, only how many slots and in what order, so no PRIM/REF variants are needed here at all.
  */
-final class StackOps {
+public final class StackOps {
 
     private StackOps() {}
 
-    static void execute(VmOp op, VMStack stack) {
+    public static void execute(VmOp op, VMStack stack) {
         switch (op) {
             case POP -> stack.popRaw(1);
             case POP2_CAT1 -> stack.popRaw(2);

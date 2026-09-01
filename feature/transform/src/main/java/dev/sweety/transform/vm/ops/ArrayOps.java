@@ -1,20 +1,25 @@
-package dev.sweety.transform.vm;
+package dev.sweety.transform.vm.ops;
+import dev.sweety.transform.vm.core.VmOp;
+import dev.sweety.transform.vm.core.VMSupport;
+import dev.sweety.transform.vm.state.PendingNew;
+import dev.sweety.transform.vm.state.VMLocals;
+import dev.sweety.transform.vm.state.VMStack;
 
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-import static dev.sweety.transform.vm.VMSupport.classFor;
-import static dev.sweety.transform.vm.VMSupport.readString;
+import static dev.sweety.transform.vm.core.VMSupport.classFor;
+import static dev.sweety.transform.vm.core.VMSupport.readString;
 
 /** Array element load/store and array allocation (NEWARRAY/ANEWARRAY). Array references are always
  * unwrapped via {@link PendingNew#unwrap} for consistency, though in practice only NEW-constructed
  * objects (never arrays) can be pending. */
-final class ArrayOps {
+public final class ArrayOps {
 
     private ArrayOps() {}
 
-    static void execute(VmOp op, VMStack stack, Map<String, Object> cache, ByteBuffer buf) throws ClassNotFoundException {
+    public static void execute(VmOp op, VMStack stack, Map<String, Object> cache, ByteBuffer buf) throws ClassNotFoundException {
         switch (op) {
             case AALOAD  -> { int i = stack.popI(); Object arr = PendingNew.unwrap(stack.popRef()); stack.pushRef(Array.get(arr, i)); }
             case AASTORE -> { Object val = PendingNew.unwrap(stack.popRef()); int i = stack.popI(); Object arr = PendingNew.unwrap(stack.popRef()); Array.set(arr, i, val); }

@@ -44,5 +44,5 @@ group("", listOf(
     "util:persistence:sql4j-processor", "util:persistence:sql4j-rpc", "util:persistence:sql4j-benchmarks",
     "util:persistence:sql4j-integration-tests",
 
-    "tooling:processor", "tooling:ksp", "tooling:intellij-plugin",
+    "tooling:processor", "tooling:ksp", // "tooling:intellij-plugin",
 ))

@@ -1,4 +1,9 @@
-package dev.sweety.transform.vm;
+package dev.sweety.transform.vm.ops;
+import dev.sweety.transform.vm.core.VmOp;
+import dev.sweety.transform.vm.core.VMSupport;
+import dev.sweety.transform.vm.state.PendingNew;
+import dev.sweety.transform.vm.state.VMLocals;
+import dev.sweety.transform.vm.state.VMStack;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -6,16 +11,16 @@ import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-import static dev.sweety.transform.vm.VMSupport.classFor;
-import static dev.sweety.transform.vm.VMSupport.coerce;
-import static dev.sweety.transform.vm.VMSupport.findConstructor;
-import static dev.sweety.transform.vm.VMSupport.findField;
-import static dev.sweety.transform.vm.VMSupport.findMethod;
-import static dev.sweety.transform.vm.VMSupport.paramTypeTags;
-import static dev.sweety.transform.vm.VMSupport.popByTag;
-import static dev.sweety.transform.vm.VMSupport.pushTyped;
-import static dev.sweety.transform.vm.VMSupport.readString;
-import static dev.sweety.transform.vm.VMSupport.tagOf;
+import static dev.sweety.transform.vm.core.VMSupport.classFor;
+import static dev.sweety.transform.vm.core.VMSupport.coerce;
+import static dev.sweety.transform.vm.core.VMSupport.findConstructor;
+import static dev.sweety.transform.vm.core.VMSupport.findField;
+import static dev.sweety.transform.vm.core.VMSupport.findMethod;
+import static dev.sweety.transform.vm.core.VMSupport.paramTypeTags;
+import static dev.sweety.transform.vm.core.VMSupport.popByTag;
+import static dev.sweety.transform.vm.core.VMSupport.pushTyped;
+import static dev.sweety.transform.vm.core.VMSupport.readString;
+import static dev.sweety.transform.vm.core.VMSupport.tagOf;
 
 /**
  * Method invocation and field access, resolved via reflection and cached per bytecode array
@@ -24,11 +29,11 @@ import static dev.sweety.transform.vm.VMSupport.tagOf;
  * {@code Field.get}/{@code Constructor.newInstance} all take/return {@code Object}) — everywhere else
  * in the VM stays unboxed via {@link VMStack}'s typed push/pop.
  */
-final class ReflectionOps {
+public final class ReflectionOps {
 
     private ReflectionOps() {}
 
-    static void executeInvoke(VMStack stack, Map<String, Object> cache,
+    public static void executeInvoke(VMStack stack, Map<String, Object> cache,
                                ByteBuffer buf, boolean isStatic,
                                boolean isVirtual, boolean isInterface) throws Exception {
         final String owner = readString(buf);
@@ -97,7 +102,7 @@ final class ReflectionOps {
         pending.resolved = ctor.newInstance(callArgs); // <init> is void — nothing pushed, same as real invokespecial
     }
 
-    static void executeGetField(VMStack stack, Map<String, Object> cache,
+    public static void executeGetField(VMStack stack, Map<String, Object> cache,
                                  ByteBuffer buf, boolean isStatic) throws Exception {
         final String owner = readString(buf);
         final String name  = readString(buf);
@@ -108,7 +113,7 @@ final class ReflectionOps {
         pushTyped(stack, field.getType(), field.get(receiver));
     }
 
-    static void executePutField(VMStack stack, Map<String, Object> cache,
+    public static void executePutField(VMStack stack, Map<String, Object> cache,
                                  ByteBuffer buf, boolean isStatic) throws Exception {
         final String owner = readString(buf);
         final String name  = readString(buf);
