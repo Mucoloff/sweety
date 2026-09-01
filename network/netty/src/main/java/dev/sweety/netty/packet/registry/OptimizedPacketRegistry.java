@@ -14,17 +14,22 @@ public class OptimizedPacketRegistry implements PacketRegistry {
 
     private final Int2ObjectOpenHashMap<RegisteredPacket> idToPacket;
     private final Object2IntOpenHashMap<Class<? extends Packet>> classToId;
+    private final it.unimi.dsi.fastutil.ints.Int2ByteOpenHashMap idToTransport;
 
     public OptimizedPacketRegistry() {
         this.idToPacket = new Int2ObjectOpenHashMap<>();
         this.classToId = new Object2IntOpenHashMap<>();
         this.classToId.defaultReturnValue(-1);
+        this.idToTransport = new it.unimi.dsi.fastutil.ints.Int2ByteOpenHashMap();
+        this.idToTransport.defaultReturnValue(dev.sweety.netty.messaging.transport.TransportMode.FLAG_TCP);
     }
 
     public OptimizedPacketRegistry(final int size) {
         this.idToPacket = new Int2ObjectOpenHashMap<>(size);
         this.classToId = new Object2IntOpenHashMap<>(size);
         this.classToId.defaultReturnValue(-1);
+        this.idToTransport = new it.unimi.dsi.fastutil.ints.Int2ByteOpenHashMap(size);
+        this.idToTransport.defaultReturnValue(dev.sweety.netty.messaging.transport.TransportMode.FLAG_TCP);
     }
 
     @SafeVarargs
@@ -49,6 +54,11 @@ public class OptimizedPacketRegistry implements PacketRegistry {
             if (idToPacket.putIfAbsent(packetId, registered) != null)
                 throw new PacketRegistrationException("PacketID already in use");
             classToId.put(packet, packetId);
+
+            dev.sweety.netty.packet.annotation.TransportHint hint =
+                    packet.getAnnotation(dev.sweety.netty.packet.annotation.TransportHint.class);
+            byte mask = (hint != null) ? hint.value().mask() : dev.sweety.netty.messaging.transport.TransportMode.FLAG_TCP;
+            idToTransport.put(packetId, mask);
         } catch (NoSuchMethodException e) {
             throw new PacketRegistrationException("Cannot register packet", e);
         }
@@ -58,6 +68,7 @@ public class OptimizedPacketRegistry implements PacketRegistry {
     public void trim() {
         idToPacket.trim();
         classToId.trim();
+        idToTransport.trim();
     }
 
     @Override
@@ -83,5 +94,16 @@ public class OptimizedPacketRegistry implements PacketRegistry {
     @Override
     public Set<Class<? extends Packet>> packets() {
         return classToId.keySet();
+    }
+
+    @Override
+    public byte getTransportMode(int packetId) {
+        return idToTransport.get(packetId);
+    }
+
+    @Override
+    public byte getTransportMode(Class<? extends Packet> packetClass) {
+        int id = getPacketId(packetClass);
+        return id != -1 ? idToTransport.get(id) : dev.sweety.netty.messaging.transport.TransportMode.FLAG_TCP;
     }
 }

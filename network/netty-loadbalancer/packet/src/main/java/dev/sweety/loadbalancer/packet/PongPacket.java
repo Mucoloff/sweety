@@ -2,8 +2,11 @@ package dev.sweety.loadbalancer.packet;
 
 import dev.sweety.data.buffer.BufferReader;
 import dev.sweety.data.buffer.BufferWriter;
+import dev.sweety.netty.messaging.transport.TransportMode;
+import dev.sweety.netty.packet.annotation.TransportHint;
 import dev.sweety.netty.packet.model.Packet;
 
+@TransportHint(TransportMode.UDP)
 public final class PongPacket extends Packet {
 
     private long clientTimestampNanos;

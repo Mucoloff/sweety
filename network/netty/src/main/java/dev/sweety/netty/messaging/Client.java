@@ -19,7 +19,12 @@ public abstract class Client extends Messenger {
     protected final int localPort;
 
     public Client(String host, int port, PacketRegistry packetRegistry, int localPort) {
-        super(false, host, port, packetRegistry, localPort);
+        super(dev.sweety.netty.messaging.transport.TransportMode.TCP, false, host, port, packetRegistry, localPort);
+        this.localPort = localPort;
+    }
+
+    public Client(dev.sweety.netty.messaging.transport.TransportMode transportMode, String host, int port, PacketRegistry packetRegistry, int localPort) {
+        super(transportMode, false, host, port, packetRegistry, localPort);
         this.localPort = localPort;
     }
 

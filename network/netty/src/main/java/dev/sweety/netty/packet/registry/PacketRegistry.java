@@ -42,4 +42,12 @@ public interface PacketRegistry {
 
     Set<Class<? extends Packet>> packets();
 
+    default byte getTransportMode(int packetId) {
+        return dev.sweety.netty.messaging.transport.TransportMode.FLAG_TCP;
+    }
+
+    default byte getTransportMode(Class<? extends Packet> packetClass) {
+        int id = getPacketId(packetClass);
+        return id != -1 ? getTransportMode(id) : dev.sweety.netty.messaging.transport.TransportMode.FLAG_TCP;
+    }
 }

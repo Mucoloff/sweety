@@ -25,7 +25,11 @@ public abstract class Server extends Messenger {
     private final LongKeyedRegistry<ChannelHandlerContext> clients = new LongKeyedRegistry<>();
 
     public Server(String host, int port, PacketRegistry packetRegistry) {
-        super(true, host, port, packetRegistry, -1);
+        super(dev.sweety.netty.messaging.transport.TransportMode.TCP, true, host, port, packetRegistry, -1);
+    }
+
+    public Server(dev.sweety.netty.messaging.transport.TransportMode transportMode, String host, int port, PacketRegistry packetRegistry) {
+        super(transportMode, true, host, port, packetRegistry, -1);
     }
 
     /** For a non-TCP transport (e.g. {@code UdpTransport.raw()}/{@code packets()}) — see {@code SimpleServer}'s overload. */

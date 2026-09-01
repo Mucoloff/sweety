@@ -3,6 +3,7 @@ package dev.sweety.netty.messaging.model;
 import dev.sweety.netty.messaging.transport.NativeTransport;
 import dev.sweety.netty.messaging.transport.TcpTransport;
 import dev.sweety.netty.messaging.transport.Transport;
+import dev.sweety.netty.messaging.transport.TransportMode;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.PacketRegistry;
 import dev.sweety.time.TimeMode;
@@ -37,7 +38,10 @@ public abstract class Messenger {
     // Handlers are now created per-connection instead of shared
     // ==============================/
     private final AbstractBootstrap<?, ?> bootstrap;
+    private final AbstractBootstrap<?, ?> tcpBootstrap;
+    private final AbstractBootstrap<?, ?> udpBootstrap;
     private final Transport transport;
+    protected final TransportMode transportMode;
     private final boolean server;
     private final EventLoopGroup boss, worker;
     // ===================================/
@@ -151,9 +155,19 @@ public abstract class Messenger {
     }
 
     protected Channel channel;
+    protected Channel tcpChannel;
+    protected Channel udpChannel;
 
     public Channel channel() {
         return channel;
+    }
+
+    public Channel tcpChannel() {
+        return tcpChannel;
+    }
+
+    public Channel udpChannel() {
+        return udpChannel;
     }
 
     protected int port;
@@ -187,50 +201,84 @@ public abstract class Messenger {
         return packetRegistry;
     }
 
+    public TransportMode transportMode() {
+        return transportMode;
+    }
+
+    private final Transport effectiveTcp;
+    private final Transport effectiveUdp;
+
     protected Messenger(String host, int port, PacketRegistry packetRegistry, int localPort) {
-        this(TcpTransport.INSTANCE, false, host, port, packetRegistry, localPort);
+        this(dev.sweety.netty.messaging.transport.TransportMode.TCP, false, host, port, packetRegistry, localPort);
     }
 
     protected Messenger(boolean server, String host, int port, PacketRegistry packetRegistry, int localPort) {
-        this(TcpTransport.INSTANCE, server, host, port, packetRegistry, localPort);
+        this(dev.sweety.netty.messaging.transport.TransportMode.TCP, server, host, port, packetRegistry, localPort);
     }
 
     protected Messenger(Transport transport, boolean server, String host, int port, PacketRegistry packetRegistry, int localPort) {
-        this.transport = transport;
+        this(transport, transport.connectionOriented() ? dev.sweety.netty.messaging.transport.TransportMode.TCP : dev.sweety.netty.messaging.transport.TransportMode.UDP,
+                server, host, port, packetRegistry, localPort);
+    }
+
+    protected Messenger(dev.sweety.netty.messaging.transport.TransportMode transportMode, boolean server, String host, int port, PacketRegistry packetRegistry, int localPort) {
+        this(null, transportMode, server, host, port, packetRegistry, localPort);
+    }
+
+    protected Messenger(Transport transport, dev.sweety.netty.messaging.transport.TransportMode transportMode, boolean server, String host, int port, PacketRegistry packetRegistry, int localPort) {
+        this.transportMode = transportMode;
         this.server = server;
-        this.bootstrap = transport.newBootstrap(server);
+        this.port = port;
+        this.host = host;
+        this.packetRegistry = packetRegistry;
+
         this.boss = NativeTransport.newEventLoopGroup(1, Thread.ofPlatform().name("netty-boss-", 0).factory());
         final int worker_threads = Integer.parseInt(
                 System.getenv().getOrDefault("NETTY_WORKER_THREADS",
                         String.valueOf(Math.max(4, Runtime.getRuntime().availableProcessors() * 2))));
         final int so_backlog = Integer.parseInt(System.getenv().getOrDefault("NETTY_SO_BACKLOG", "256"));
-        // OOM guard: without this, a slow/malicious reader on the other end never applies backpressure —
-        // writes just keep queuing in the outbound buffer with no ceiling. High mark pauses writability,
-        // low mark resumes it once drained.
         final WriteBufferWaterMark waterMark = new WriteBufferWaterMark(
                 Integer.parseInt(System.getenv().getOrDefault("NETTY_WRITE_BUFFER_LOW_WATER_MARK", String.valueOf(1 << 20))),
                 Integer.parseInt(System.getenv().getOrDefault("NETTY_WRITE_BUFFER_HIGH_WATER_MARK", String.valueOf(4 << 20))));
-        // Slowloris guard: a connection sending nothing (or trickling bytes) ties up its fd + event-loop
-        // slot indefinitely otherwise. 0 disables the check.
         final int idleTimeoutSeconds = Integer.parseInt(System.getenv().getOrDefault("NETTY_IDLE_TIMEOUT_SECONDS", "60"));
         this.worker = NativeTransport.newEventLoopGroup(worker_threads, Thread.ofPlatform().name("netty-worker-", 0).factory());
 
-        this.port = port;
-        this.host = host;
-        this.packetRegistry = packetRegistry;
+        this.effectiveTcp = (transport != null && transport.connectionOriented()) ? transport : TcpTransport.INSTANCE;
+        this.effectiveUdp = (transport != null && !transport.connectionOriented()) ? transport : dev.sweety.netty.messaging.transport.UdpTransport.packets();
+        this.transport = transportMode.hasTcp() ? this.effectiveTcp : this.effectiveUdp;
 
-        final ChannelInitializer<Channel> init = new ChannelInitializer<>() {
-            @Override
-            protected void initChannel(Channel ch) {
-                ChannelPipeline p = ch.pipeline();
-                Messenger.this.configurePipeline(p);
-                transport.installCodecs(p, Messenger.this.packetRegistry, Messenger.this, idleTimeoutSeconds);
-            }
-        };
+        if (transportMode.hasTcp()) {
+            this.tcpBootstrap = this.effectiveTcp.newBootstrap(server);
+            final ChannelInitializer<Channel> tcpInit = new ChannelInitializer<>() {
+                @Override
+                protected void initChannel(Channel ch) {
+                    ChannelPipeline p = ch.pipeline();
+                    Messenger.this.configurePipeline(p);
+                    effectiveTcp.installCodecs(p, Messenger.this.packetRegistry, Messenger.this, idleTimeoutSeconds);
+                }
+            };
+            this.effectiveTcp.configure(this.tcpBootstrap, server, this.boss, this.worker, so_backlog, waterMark, 10000, tcpInit, localPort);
+        } else {
+            this.tcpBootstrap = null;
+        }
 
-        transport.configure(this.bootstrap, server, this.boss, this.worker, so_backlog, waterMark, 10000, init, localPort);
+        if (transportMode.hasUdp()) {
+            this.udpBootstrap = this.effectiveUdp.newBootstrap(server);
+            final ChannelInitializer<Channel> udpInit = new ChannelInitializer<>() {
+                @Override
+                protected void initChannel(Channel ch) {
+                    ChannelPipeline p = ch.pipeline();
+                    Messenger.this.configurePipeline(p);
+                    effectiveUdp.installCodecs(p, Messenger.this.packetRegistry, Messenger.this, idleTimeoutSeconds);
+                }
+            };
+            this.effectiveUdp.configure(this.udpBootstrap, server, this.boss, this.worker, so_backlog, waterMark, 10000, udpInit, localPort);
+        } else {
+            this.udpBootstrap = null;
+        }
+
+        this.bootstrap = (this.tcpBootstrap != null) ? this.tcpBootstrap : this.udpBootstrap;
     }
-
 
     public Channel start() {
         return this.connect().join();
@@ -249,34 +297,77 @@ public abstract class Messenger {
 
     /** {@code true} for TCP (stream, per-connection lifecycle); {@code false} for UDP (shared datagram channel). */
     protected final boolean connectionOriented() {
-        return transport.connectionOriented();
+        return transportMode.hasTcp();
     }
 
     public CompletableFuture<Channel> connect() {
-        final CompletableFuture<Channel> future = new CompletableFuture<>();
+        if (transportMode == dev.sweety.netty.messaging.transport.TransportMode.DUAL) {
+            CompletableFuture<Channel> tcpFuture = startTransport(this.effectiveTcp, this.tcpBootstrap);
+            CompletableFuture<Channel> udpFuture = startTransport(this.effectiveUdp, this.udpBootstrap);
 
-        ChannelFutureListener channelFutureListener = (f) -> {
-            if (f.isSuccess()) {
-                future.complete(this.channel = f.channel());
+            return CompletableFuture.allOf(tcpFuture, udpFuture).thenApply(v -> {
+                this.tcpChannel = tcpFuture.join();
+                this.udpChannel = udpFuture.join();
+                this.channel = this.tcpChannel;
                 if (this.onConnect != null) onConnect.accept(this.channel);
-            } else {
-                future.completeExceptionally(f.cause());
-            }
-        };
+                return this.channel;
+            });
+        } else if (transportMode.hasUdp()) {
+            return startTransport(this.effectiveUdp, this.udpBootstrap).thenApply(ch -> {
+                this.udpChannel = ch;
+                this.channel = ch;
+                if (this.onConnect != null) onConnect.accept(this.channel);
+                return ch;
+            });
+        } else {
+            return startTransport(this.effectiveTcp, this.tcpBootstrap).thenApply(ch -> {
+                this.tcpChannel = ch;
+                this.channel = ch;
+                if (this.onConnect != null) onConnect.accept(this.channel);
+                return ch;
+            });
+        }
+    }
 
-        final ChannelFuture channelFuture;
+    private CompletableFuture<Channel> startTransport(Transport transport, AbstractBootstrap<?, ?> bootstrap) {
+        final CompletableFuture<Channel> future = new CompletableFuture<>();
         try {
-            channelFuture = transport.start(this.bootstrap, this.server, this.host, this.port);
+            ChannelFuture channelFuture = transport.start(bootstrap, this.server, this.host, this.port);
+            channelFuture.addListener(f -> {
+                if (f.isSuccess()) future.complete(channelFuture.channel());
+                else future.completeExceptionally(f.cause());
+            });
         } catch (Exception e) {
             future.completeExceptionally(e);
-            return future;
         }
-        channelFuture.addListener(channelFutureListener);
-
         return future;
     }
 
+    public <T> CompletableFuture<T> sendTcp(ChannelHandlerContext ctx, Packet packet) {
+        return writePacket(ctx, packet);
+    }
+
+    public <T> CompletableFuture<T> sendUdp(java.net.InetSocketAddress recipient, Packet packet) {
+        if (udpChannel != null && udpChannel.isActive()) {
+            CompletableFuture<T> future = new CompletableFuture<>();
+            udpChannel.writeAndFlush(new dev.sweety.netty.messaging.transport.AddressedPacket(packet, recipient)).addListener(f -> {
+                if (f.isSuccess()) future.complete(null);
+                else future.completeExceptionally(f.cause());
+            });
+            return future;
+        }
+        CompletableFuture<T> failed = new CompletableFuture<>();
+        failed.completeExceptionally(new IllegalStateException("UDP channel is not active"));
+        return failed;
+    }
+
     public <T> CompletableFuture<T> sendPacket(ChannelHandlerContext ctx, Packet packet) {
+        if (transportMode == dev.sweety.netty.messaging.transport.TransportMode.DUAL) {
+            byte targetTransport = packetRegistry.getTransportMode(packet.getClass());
+            if ((targetTransport & dev.sweety.netty.messaging.transport.TransportMode.FLAG_UDP) != 0 && ctx != null && ctx.channel().remoteAddress() instanceof java.net.InetSocketAddress inet) {
+                return sendUdp(inet, packet);
+            }
+        }
         CompletableFuture<T> future = writePacket(ctx, packet);
         flush(ctx);
         return future;
@@ -385,6 +476,12 @@ public abstract class Messenger {
     }
 
     public void stop() {
+        if (this.tcpChannel != null && this.tcpChannel.isActive()) {
+            this.tcpChannel.close();
+        }
+        if (this.udpChannel != null && this.udpChannel.isActive()) {
+            this.udpChannel.close();
+        }
         this.boss.shutdownGracefully();
         this.worker.shutdownGracefully();
     }
