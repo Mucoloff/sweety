@@ -34,6 +34,10 @@ interface ObjectPool<T> {
 
     fun release(vararg objs: T) = objs.forEach { release(it) }
 
+    /** Borrow wrapped in a [PoolHandle] for try-with-resources / .use */
+    @Acquire
+    fun borrow(): PoolHandle<T> = PoolHandle(this, acquire())
+
     /** Borrow for the duration of `fn`, then auto-release. */
     @Borrows
     fun <V> use(fn: Function<T, V>): V {
