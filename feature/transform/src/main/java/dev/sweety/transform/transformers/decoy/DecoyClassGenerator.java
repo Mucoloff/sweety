@@ -12,540 +12,310 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Stochastic Bytecode Synthesizer generating highly diverse, realistic Decoy (Honey-pot) classes
- * across 5 distinct functional archetypes:
- * 1. Network & Packet Serialization Handlers
- * 2. 3D Vector & Matrix Transformations
- * 3. Cryptographic Permutation & S-Box Hash Pipelines
- * 4. Security & Fake Token Validators
- * 5. State Machine & Bitmask Event Dispatchers
+ * Stochastic Control-Flow & Bytecode Synthesizer.
+ * Generates highly realistic, unique, and structurally diverse classes with varied
+ * field combinations, complex control-flow graphs (loops, switches, nested branches),
+ * and rich string/numeric constants ready to be transformed through the full TransformPipeline.
  */
 public final class DecoyClassGenerator {
 
     public static class DecoyClass {
         private final String internalName;
         private final byte[] bytecode;
-        private final String archetype;
 
-        public DecoyClass(String internalName, byte[] bytecode, String archetype) {
+        public DecoyClass(String internalName, byte[] bytecode) {
             this.internalName = internalName;
             this.bytecode = bytecode;
-            this.archetype = archetype;
         }
 
         public String getInternalName() { return internalName; }
         public byte[] getBytecode() { return bytecode; }
-        public String getArchetype() { return archetype; }
     }
 
     public List<DecoyClass> generateBatch(int count, String packagePrefix, ConfusableDictionary dictionary, int nameLength) {
         List<DecoyClass> list = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            String className = ConfusableNameGenerator.generate(200 + i * 17, dictionary, nameLength);
+            String className = ConfusableNameGenerator.generate(200 + i * 37 + 13, dictionary, nameLength);
             String internalName = packagePrefix.isEmpty() ? className : packagePrefix + "/" + className;
-            int archetypeIndex = i % 5;
+            long seed = 0xCAFEBABE00000000L ^ ((long) i * 0x9E3779B97F4A7C15L);
 
-            byte[] bytes;
-            String archetype;
-            switch (archetypeIndex) {
-                case 0 -> {
-                    bytes = generatePacketSerializerDecoy(internalName, i);
-                    archetype = "PacketSerializer";
-                }
-                case 1 -> {
-                    bytes = generateVectorMatrixMathDecoy(internalName, i);
-                    archetype = "VectorMatrixMath";
-                }
-                case 2 -> {
-                    bytes = generateCryptoPipelineDecoy(internalName, i);
-                    archetype = "CryptoPipeline";
-                }
-                case 3 -> {
-                    bytes = generateTokenValidatorDecoy(internalName, i);
-                    archetype = "TokenValidator";
-                }
-                default -> {
-                    bytes = generateStateMachineDecoy(internalName, i);
-                    archetype = "StateMachine";
-                }
-            }
-
-            list.add(new DecoyClass(internalName, bytes, archetype));
+            byte[] bytes = generateStochasticClass(internalName, new Random(seed), i);
+            list.add(new DecoyClass(internalName, bytes));
         }
         return list;
     }
 
-    // -------------------------------------------------------------------------------------------------
-    // Archetype 1: Network Packet Serializer (VarInt, CRC32, Framing, Checksum)
-    // -------------------------------------------------------------------------------------------------
-    private byte[] generatePacketSerializerDecoy(String internalName, int seed) {
+    public byte[] generateStochasticClass(String internalName, Random rng, int classIndex) {
         ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
         cw.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, internalName, null, "java/lang/Object", null);
 
-        cw.visitField(Opcodes.ACC_PUBLIC, "a", "I", null, null).visitEnd();
-        cw.visitField(Opcodes.ACC_PUBLIC, "a", "[B", null, null).visitEnd();
-        cw.visitField(Opcodes.ACC_PUBLIC, "a", "J", null, null).visitEnd();
-        cw.visitField(Opcodes.ACC_PUBLIC, "a", "Ljava/lang/String;", null, null).visitEnd();
+        // 1. Stochastic Fields with random types (3 to 6 fields)
+        String[] types = new String[]{"I", "J", "Ljava/lang/String;", "[B", "Z", "D", "F", "[I"};
+        int fieldCount = 4 + rng.nextInt(3); // 4 to 6 fields
+        List<String> chosenTypes = new ArrayList<>();
+        for (int f = 0; f < fieldCount; f++) {
+            String desc = types[f % types.length];
+            chosenTypes.add(desc);
+            cw.visitField(Opcodes.ACC_PUBLIC, "a", desc, null, null).visitEnd();
+        }
 
-        // <init>
+        // 2. <init> method initializing fields with varied pseudo-random constants
         MethodVisitor init = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
         init.visitCode();
         init.visitVarInsn(Opcodes.ALOAD, 0);
         init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
-        init.visitVarInsn(Opcodes.ALOAD, 0);
-        init.visitIntInsn(Opcodes.SIPUSH, 256 + seed);
-        init.visitFieldInsn(Opcodes.PUTFIELD, internalName, "a", "I");
-        init.visitVarInsn(Opcodes.ALOAD, 0);
-        init.visitLdcInsn("PACKET_BUFFER_INITIALIZED_" + seed);
-        init.visitFieldInsn(Opcodes.PUTFIELD, internalName, "a", "Ljava/lang/String;");
+
+        for (String desc : chosenTypes) {
+            init.visitVarInsn(Opcodes.ALOAD, 0);
+            switch (desc) {
+                case "I" -> {
+                    init.visitIntInsn(Opcodes.SIPUSH, 1000 + rng.nextInt(9000));
+                    init.visitFieldInsn(Opcodes.PUTFIELD, internalName, "a", desc);
+                }
+                case "J" -> {
+                    init.visitLdcInsn(1700000000000L + rng.nextInt(100000000));
+                    init.visitFieldInsn(Opcodes.PUTFIELD, internalName, "a", desc);
+                }
+                case "Ljava/lang/String;" -> {
+                    init.visitLdcInsn("TOKEN_CONTEXT_PAYLOAD_" + classIndex + "_" + rng.nextInt(99999));
+                    init.visitFieldInsn(Opcodes.PUTFIELD, internalName, "a", desc);
+                }
+                case "[B" -> {
+                    int arrLen = 16 + rng.nextInt(16);
+                    init.visitIntInsn(Opcodes.BIPUSH, arrLen);
+                    init.visitIntInsn(Opcodes.NEWARRAY, Opcodes.T_BYTE);
+                    init.visitFieldInsn(Opcodes.PUTFIELD, internalName, "a", desc);
+                }
+                case "Z" -> {
+                    init.visitInsn(rng.nextBoolean() ? Opcodes.ICONST_1 : Opcodes.ICONST_0);
+                    init.visitFieldInsn(Opcodes.PUTFIELD, internalName, "a", desc);
+                }
+                case "D" -> {
+                    init.visitLdcInsn(rng.nextDouble() * 100.0);
+                    init.visitFieldInsn(Opcodes.PUTFIELD, internalName, "a", desc);
+                }
+                case "F" -> {
+                    init.visitLdcInsn(rng.nextFloat() * 50.0f);
+                    init.visitFieldInsn(Opcodes.PUTFIELD, internalName, "a", desc);
+                }
+                case "[I" -> {
+                    init.visitIntInsn(Opcodes.BIPUSH, 8);
+                    init.visitIntInsn(Opcodes.NEWARRAY, Opcodes.T_INT);
+                    init.visitFieldInsn(Opcodes.PUTFIELD, internalName, "a", desc);
+                }
+            }
+        }
         init.visitInsn(Opcodes.RETURN);
-        init.visitMaxs(2, 1);
+        init.visitMaxs(4, 1);
         init.visitEnd();
 
-        // Method 1: writeVarInt
-        MethodVisitor mVarInt = cw.visitMethod(Opcodes.ACC_PUBLIC, "writeVarInt", "(I[BI)I", null, null);
-        mVarInt.visitCode();
-        Label loop = new Label();
-        Label end = new Label();
-        mVarInt.visitLabel(loop);
-        mVarInt.visitVarInsn(Opcodes.ILOAD, 1);
-        mVarInt.visitIntInsn(Opcodes.BIPUSH, -128);
-        mVarInt.visitInsn(Opcodes.IAND);
-        mVarInt.visitJumpInsn(Opcodes.IFEQ, end);
-        mVarInt.visitVarInsn(Opcodes.ALOAD, 2);
-        mVarInt.visitVarInsn(Opcodes.ILOAD, 3);
-        mVarInt.visitVarInsn(Opcodes.ILOAD, 1);
-        mVarInt.visitIntInsn(Opcodes.BIPUSH, 127);
-        mVarInt.visitInsn(Opcodes.IAND);
-        mVarInt.visitIntInsn(Opcodes.BIPUSH, 128);
-        mVarInt.visitInsn(Opcodes.IOR);
-        mVarInt.visitInsn(Opcodes.I2B);
-        mVarInt.visitInsn(Opcodes.BASTORE);
-        mVarInt.visitIincInsn(3, 1);
-        mVarInt.visitVarInsn(Opcodes.ILOAD, 1);
-        mVarInt.visitIntInsn(Opcodes.BIPUSH, 7);
-        mVarInt.visitInsn(Opcodes.IUSHR);
-        mVarInt.visitVarInsn(Opcodes.ISTORE, 1);
-        mVarInt.visitJumpInsn(Opcodes.GOTO, loop);
-        mVarInt.visitLabel(end);
-        mVarInt.visitVarInsn(Opcodes.ALOAD, 2);
-        mVarInt.visitVarInsn(Opcodes.ILOAD, 3);
-        mVarInt.visitVarInsn(Opcodes.ILOAD, 1);
-        mVarInt.visitInsn(Opcodes.I2B);
-        mVarInt.visitInsn(Opcodes.BASTORE);
-        mVarInt.visitVarInsn(Opcodes.ILOAD, 3);
-        mVarInt.visitInsn(Opcodes.ICONST_1);
-        mVarInt.visitInsn(Opcodes.IADD);
-        mVarInt.visitInsn(Opcodes.IRETURN);
-        mVarInt.visitMaxs(5, 4);
-        mVarInt.visitEnd();
+        // 3. Generate 4 to 6 Rich Procedural Methods with diverse Control-Flow Graphs
+        int methodCount = 4 + rng.nextInt(3);
+        for (int m = 0; m < methodCount; m++) {
+            generateProceduralMethod(cw, internalName, rng, m, classIndex);
+        }
 
-        // Method 2: computeChecksum
-        MethodVisitor mCrc = cw.visitMethod(Opcodes.ACC_PUBLIC, "computeChecksum", "([B)J", null, null);
-        mCrc.visitCode();
-        mCrc.visitTypeInsn(Opcodes.NEW, "java/util/zip/CRC32");
-        mCrc.visitInsn(Opcodes.DUP);
-        mCrc.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/util/zip/CRC32", "<init>", "()V", false);
-        mCrc.visitVarInsn(Opcodes.ASTORE, 2);
-        mCrc.visitVarInsn(Opcodes.ALOAD, 2);
-        mCrc.visitVarInsn(Opcodes.ALOAD, 1);
-        mCrc.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/util/zip/CRC32", "update", "([B)V", false);
-        mCrc.visitVarInsn(Opcodes.ALOAD, 2);
-        mCrc.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/util/zip/CRC32", "getValue", "()J", false);
-        mCrc.visitInsn(Opcodes.LRETURN);
-        mCrc.visitMaxs(2, 3);
-        mCrc.visitEnd();
-
-        // Method 3: framePayload
-        MethodVisitor mFrame = cw.visitMethod(Opcodes.ACC_PUBLIC, "framePayload", "([BII)[B", null, null);
-        mFrame.visitCode();
-        mFrame.visitVarInsn(Opcodes.ILOAD, 3);
-        mFrame.visitIntInsn(Opcodes.BIPUSH, 4);
-        mFrame.visitInsn(Opcodes.IADD);
-        mFrame.visitIntInsn(Opcodes.NEWARRAY, Opcodes.T_BYTE);
-        mFrame.visitVarInsn(Opcodes.ASTORE, 4);
-        mFrame.visitVarInsn(Opcodes.ALOAD, 1);
-        mFrame.visitVarInsn(Opcodes.ILOAD, 2);
-        mFrame.visitVarInsn(Opcodes.ALOAD, 4);
-        mFrame.visitInsn(Opcodes.ICONST_4);
-        mFrame.visitVarInsn(Opcodes.ILOAD, 3);
-        mFrame.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/System", "arraycopy", "(Ljava/lang/Object;ILjava/lang/Object;II)V", false);
-        mFrame.visitVarInsn(Opcodes.ALOAD, 4);
-        mFrame.visitInsn(Opcodes.ARETURN);
-        mFrame.visitMaxs(5, 5);
-        mFrame.visitEnd();
-
-        injectSharedDecoyDecryptor(cw);
         cw.visitEnd();
         return cw.toByteArray();
     }
 
-    // -------------------------------------------------------------------------------------------------
-    // Archetype 2: 3D Vector & 4x4 Matrix Transformations (Trigonometry, Dot Product, Normalize)
-    // -------------------------------------------------------------------------------------------------
-    private byte[] generateVectorMatrixMathDecoy(String internalName, int seed) {
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
-        cw.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, internalName, null, "java/lang/Object", null);
+    private void generateProceduralMethod(ClassWriter cw, String internalName, Random rng, int methodIndex, int classIndex) {
+        String methodName = "routine_" + methodIndex + "_" + Math.abs(rng.nextInt(1000));
+        int methodKind = (methodIndex + classIndex) % 5;
 
-        cw.visitField(Opcodes.ACC_PUBLIC, "a", "D", null, null).visitEnd();
-        cw.visitField(Opcodes.ACC_PUBLIC, "a", "F", null, null).visitEnd();
-        cw.visitField(Opcodes.ACC_PUBLIC, "a", "[D", null, null).visitEnd();
-        cw.visitField(Opcodes.ACC_PUBLIC, "a", "I", null, null).visitEnd();
-
-        // <init>
-        MethodVisitor init = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
-        init.visitCode();
-        init.visitVarInsn(Opcodes.ALOAD, 0);
-        init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
-        init.visitVarInsn(Opcodes.ALOAD, 0);
-        init.visitLdcInsn(3.141592653589793);
-        init.visitFieldInsn(Opcodes.PUTFIELD, internalName, "a", "D");
-        init.visitInsn(Opcodes.RETURN);
-        init.visitMaxs(3, 1);
-        init.visitEnd();
-
-        // Method 1: transformVector
-        MethodVisitor mVec = cw.visitMethod(Opcodes.ACC_PUBLIC, "transformVector", "(DDDD)[D", null, null);
-        mVec.visitCode();
-        mVec.visitVarInsn(Opcodes.DLOAD, 7);
-        mVec.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Math", "cos", "(D)D", false);
-        mVec.visitVarInsn(Opcodes.DSTORE, 9);
-        mVec.visitVarInsn(Opcodes.DLOAD, 7);
-        mVec.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Math", "sin", "(D)D", false);
-        mVec.visitVarInsn(Opcodes.DSTORE, 11);
-
-        mVec.visitIntInsn(Opcodes.BIPUSH, 3);
-        mVec.visitIntInsn(Opcodes.NEWARRAY, Opcodes.T_DOUBLE);
-        mVec.visitInsn(Opcodes.DUP);
-        mVec.visitInsn(Opcodes.ICONST_0);
-        mVec.visitVarInsn(Opcodes.DLOAD, 1);
-        mVec.visitVarInsn(Opcodes.DLOAD, 9);
-        mVec.visitInsn(Opcodes.DMUL);
-        mVec.visitVarInsn(Opcodes.DLOAD, 5);
-        mVec.visitVarInsn(Opcodes.DLOAD, 11);
-        mVec.visitInsn(Opcodes.DMUL);
-        mVec.visitInsn(Opcodes.DSUB);
-        mVec.visitInsn(Opcodes.DASTORE);
-
-        mVec.visitInsn(Opcodes.DUP);
-        mVec.visitInsn(Opcodes.ICONST_1);
-        mVec.visitVarInsn(Opcodes.DLOAD, 3);
-        mVec.visitInsn(Opcodes.DASTORE);
-
-        mVec.visitInsn(Opcodes.DUP);
-        mVec.visitInsn(Opcodes.ICONST_2);
-        mVec.visitVarInsn(Opcodes.DLOAD, 1);
-        mVec.visitVarInsn(Opcodes.DLOAD, 11);
-        mVec.visitInsn(Opcodes.DMUL);
-        mVec.visitVarInsn(Opcodes.DLOAD, 5);
-        mVec.visitVarInsn(Opcodes.DLOAD, 9);
-        mVec.visitInsn(Opcodes.DMUL);
-        mVec.visitInsn(Opcodes.DADD);
-        mVec.visitInsn(Opcodes.DASTORE);
-
-        mVec.visitInsn(Opcodes.ARETURN);
-        mVec.visitMaxs(9, 13);
-        mVec.visitEnd();
-
-        // Method 2: dotProduct
-        MethodVisitor mDot = cw.visitMethod(Opcodes.ACC_PUBLIC, "dotProduct", "([D[D)D", null, null);
-        mDot.visitCode();
-        mDot.visitVarInsn(Opcodes.ALOAD, 1);
-        mDot.visitInsn(Opcodes.ICONST_0);
-        mDot.visitInsn(Opcodes.DALOAD);
-        mDot.visitVarInsn(Opcodes.ALOAD, 2);
-        mDot.visitInsn(Opcodes.ICONST_0);
-        mDot.visitInsn(Opcodes.DALOAD);
-        mDot.visitInsn(Opcodes.DMUL);
-        mDot.visitVarInsn(Opcodes.ALOAD, 1);
-        mDot.visitInsn(Opcodes.ICONST_1);
-        mDot.visitInsn(Opcodes.DALOAD);
-        mDot.visitVarInsn(Opcodes.ALOAD, 2);
-        mDot.visitInsn(Opcodes.ICONST_1);
-        mDot.visitInsn(Opcodes.DALOAD);
-        mDot.visitInsn(Opcodes.DMUL);
-        mDot.visitInsn(Opcodes.DADD);
-        mDot.visitInsn(Opcodes.DRETURN);
-        mDot.visitMaxs(5, 3);
-        mDot.visitEnd();
-
-        injectSharedDecoyDecryptor(cw);
-        cw.visitEnd();
-        return cw.toByteArray();
+        switch (methodKind) {
+            case 0 -> generateLoopAccumulator(cw, internalName, methodName, rng);
+            case 1 -> generateBufferTransform(cw, internalName, methodName, rng);
+            case 2 -> generateSwitchStateMachine(cw, internalName, methodName, rng);
+            case 3 -> generateNestedBranchCrypto(cw, internalName, methodName, rng);
+            default -> generateMathVectorPipeline(cw, internalName, methodName, rng);
+        }
     }
 
-    // -------------------------------------------------------------------------------------------------
-    // Archetype 3: Cryptographic S-Box Permutations & Hash Pipelines
-    // -------------------------------------------------------------------------------------------------
-    private byte[] generateCryptoPipelineDecoy(String internalName, int seed) {
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
-        cw.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, internalName, null, "java/lang/Object", null);
-
-        cw.visitField(Opcodes.ACC_PUBLIC, "a", "[B", null, null).visitEnd();
-        cw.visitField(Opcodes.ACC_PUBLIC, "a", "I", null, null).visitEnd();
-        cw.visitField(Opcodes.ACC_PUBLIC, "a", "Z", null, null).visitEnd();
-
-        // <init>
-        MethodVisitor init = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
-        init.visitCode();
-        init.visitVarInsn(Opcodes.ALOAD, 0);
-        init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
-        init.visitVarInsn(Opcodes.ALOAD, 0);
-        init.visitIntInsn(Opcodes.SIPUSH, 256);
-        init.visitIntInsn(Opcodes.NEWARRAY, Opcodes.T_BYTE);
-        init.visitFieldInsn(Opcodes.PUTFIELD, internalName, "a", "[B");
-        init.visitInsn(Opcodes.RETURN);
-        init.visitMaxs(2, 1);
-        init.visitEnd();
-
-        // Method 1: substituteBox
-        MethodVisitor mSbox = cw.visitMethod(Opcodes.ACC_PUBLIC, "substituteBox", "([BI)[B", null, null);
-        mSbox.visitCode();
-        mSbox.visitVarInsn(Opcodes.ALOAD, 1);
-        mSbox.visitInsn(Opcodes.ARRAYLENGTH);
-        mSbox.visitIntInsn(Opcodes.NEWARRAY, Opcodes.T_BYTE);
-        mSbox.visitVarInsn(Opcodes.ASTORE, 3);
-        mSbox.visitInsn(Opcodes.ICONST_0);
-        mSbox.visitVarInsn(Opcodes.ISTORE, 4);
+    // Kind 0: Complex Loop with bitwise operations and accumulator
+    private void generateLoopAccumulator(ClassWriter cw, String internalName, String methodName, Random rng) {
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC, methodName, "(Ljava/lang/String;I)I", null, null);
+        mv.visitCode();
+        mv.visitVarInsn(Opcodes.ILOAD, 2);
+        mv.visitVarInsn(Opcodes.ISTORE, 3); // acc
+        mv.visitInsn(Opcodes.ICONST_0);
+        mv.visitVarInsn(Opcodes.ISTORE, 4); // i
 
         Label loop = new Label();
         Label end = new Label();
-        mSbox.visitLabel(loop);
-        mSbox.visitVarInsn(Opcodes.ILOAD, 4);
-        mSbox.visitVarInsn(Opcodes.ALOAD, 1);
-        mSbox.visitInsn(Opcodes.ARRAYLENGTH);
-        mSbox.visitJumpInsn(Opcodes.IF_ICMPGE, end);
+        mv.visitLabel(loop);
+        mv.visitVarInsn(Opcodes.ILOAD, 4);
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/String", "length", "()I", false);
+        mv.visitJumpInsn(Opcodes.IF_ICMPGE, end);
 
-        mSbox.visitVarInsn(Opcodes.ALOAD, 3);
-        mSbox.visitVarInsn(Opcodes.ILOAD, 4);
-        mSbox.visitVarInsn(Opcodes.ALOAD, 1);
-        mSbox.visitVarInsn(Opcodes.ILOAD, 4);
-        mSbox.visitInsn(Opcodes.BALOAD);
-        mSbox.visitVarInsn(Opcodes.ILOAD, 2);
-        mSbox.visitInsn(Opcodes.IXOR);
-        mSbox.visitIntInsn(Opcodes.BIPUSH, 0x1F);
-        mSbox.visitInsn(Opcodes.IAND);
-        mSbox.visitInsn(Opcodes.I2B);
-        mSbox.visitInsn(Opcodes.BASTORE);
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitVarInsn(Opcodes.ILOAD, 4);
+        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/String", "charAt", "(I)C", false);
+        mv.visitVarInsn(Opcodes.ISTORE, 5);
 
-        mSbox.visitIincInsn(4, 1);
-        mSbox.visitJumpInsn(Opcodes.GOTO, loop);
+        mv.visitVarInsn(Opcodes.ILOAD, 3);
+        mv.visitIntInsn(Opcodes.BIPUSH, 31);
+        mv.visitInsn(Opcodes.IMUL);
+        mv.visitVarInsn(Opcodes.ILOAD, 5);
+        mv.visitInsn(Opcodes.IXOR);
+        mv.visitVarInsn(Opcodes.ISTORE, 3);
 
-        mSbox.visitLabel(end);
-        mSbox.visitVarInsn(Opcodes.ALOAD, 3);
-        mSbox.visitInsn(Opcodes.ARETURN);
-        mSbox.visitMaxs(5, 5);
-        mSbox.visitEnd();
+        mv.visitIincInsn(4, 1);
+        mv.visitJumpInsn(Opcodes.GOTO, loop);
 
-        // Method 2: computeFeistelHash
-        MethodVisitor mFeistel = cw.visitMethod(Opcodes.ACC_PUBLIC, "computeFeistelHash", "([B)I", null, null);
-        mFeistel.visitCode();
-        mFeistel.visitIntInsn(Opcodes.SIPUSH, 0x1337);
-        mFeistel.visitVarInsn(Opcodes.ISTORE, 2);
-        mFeistel.visitInsn(Opcodes.ICONST_0);
-        mFeistel.visitVarInsn(Opcodes.ISTORE, 3);
-        Label fLoop = new Label();
-        Label fEnd = new Label();
-        mFeistel.visitLabel(fLoop);
-        mFeistel.visitVarInsn(Opcodes.ILOAD, 3);
-        mFeistel.visitVarInsn(Opcodes.ALOAD, 1);
-        mFeistel.visitInsn(Opcodes.ARRAYLENGTH);
-        mFeistel.visitJumpInsn(Opcodes.IF_ICMPGE, fEnd);
-        mFeistel.visitVarInsn(Opcodes.ILOAD, 2);
-        mFeistel.visitIntInsn(Opcodes.BIPUSH, 31);
-        mFeistel.visitInsn(Opcodes.IMUL);
-        mFeistel.visitVarInsn(Opcodes.ALOAD, 1);
-        mFeistel.visitVarInsn(Opcodes.ILOAD, 3);
-        mFeistel.visitInsn(Opcodes.BALOAD);
-        mFeistel.visitInsn(Opcodes.IXOR);
-        mFeistel.visitVarInsn(Opcodes.ISTORE, 2);
-        mFeistel.visitIincInsn(3, 1);
-        mFeistel.visitJumpInsn(Opcodes.GOTO, fLoop);
-        mFeistel.visitLabel(fEnd);
-        mFeistel.visitVarInsn(Opcodes.ILOAD, 2);
-        mFeistel.visitInsn(Opcodes.IRETURN);
-        mFeistel.visitMaxs(3, 4);
-        mFeistel.visitEnd();
-
-        injectSharedDecoyDecryptor(cw);
-        cw.visitEnd();
-        return cw.toByteArray();
+        mv.visitLabel(end);
+        mv.visitVarInsn(Opcodes.ILOAD, 3);
+        mv.visitInsn(Opcodes.IRETURN);
+        mv.visitMaxs(4, 6);
+        mv.visitEnd();
     }
 
-    // -------------------------------------------------------------------------------------------------
-    // Archetype 4: Security Token Validator (JWT, Nonce Expiration, Challenge Signature)
-    // -------------------------------------------------------------------------------------------------
-    private byte[] generateTokenValidatorDecoy(String internalName, int seed) {
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
-        cw.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, internalName, null, "java/lang/Object", null);
+    // Kind 1: Buffer parsing and transformation
+    private void generateBufferTransform(ClassWriter cw, String internalName, String methodName, Random rng) {
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC, methodName, "([BII)[B", null, null);
+        mv.visitCode();
+        mv.visitVarInsn(Opcodes.ILOAD, 3);
+        mv.visitIntInsn(Opcodes.NEWARRAY, Opcodes.T_BYTE);
+        mv.visitVarInsn(Opcodes.ASTORE, 4);
 
-        cw.visitField(Opcodes.ACC_PUBLIC, "a", "Ljava/lang/String;", null, null).visitEnd();
-        cw.visitField(Opcodes.ACC_PUBLIC, "a", "J", null, null).visitEnd();
-        cw.visitField(Opcodes.ACC_PUBLIC, "a", "Z", null, null).visitEnd();
-        cw.visitField(Opcodes.ACC_PUBLIC, "a", "I", null, null).visitEnd();
+        Label loop = new Label();
+        Label end = new Label();
+        mv.visitInsn(Opcodes.ICONST_0);
+        mv.visitVarInsn(Opcodes.ISTORE, 5);
 
-        // <init>
-        MethodVisitor init = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
-        init.visitCode();
-        init.visitVarInsn(Opcodes.ALOAD, 0);
-        init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
-        init.visitVarInsn(Opcodes.ALOAD, 0);
-        init.visitLdcInsn("eyJhbGciOiJIUzI1NiJ9.payload." + seed);
-        init.visitFieldInsn(Opcodes.PUTFIELD, internalName, "a", "Ljava/lang/String;");
-        init.visitVarInsn(Opcodes.ALOAD, 0);
-        init.visitLdcInsn(1760000000000L + seed * 1000L);
-        init.visitFieldInsn(Opcodes.PUTFIELD, internalName, "a", "J");
-        init.visitInsn(Opcodes.RETURN);
-        init.visitMaxs(3, 1);
-        init.visitEnd();
+        mv.visitLabel(loop);
+        mv.visitVarInsn(Opcodes.ILOAD, 5);
+        mv.visitVarInsn(Opcodes.ILOAD, 3);
+        mv.visitJumpInsn(Opcodes.IF_ICMPGE, end);
 
-        // Method 1: validateTokenNonce
-        MethodVisitor mVal = cw.visitMethod(Opcodes.ACC_PUBLIC, "validateTokenNonce", "(Ljava/lang/String;J)Z", null, null);
-        mVal.visitCode();
-        mVal.visitVarInsn(Opcodes.ALOAD, 1);
-        Label fail = new Label();
-        mVal.visitJumpInsn(Opcodes.IFNULL, fail);
-        mVal.visitVarInsn(Opcodes.ALOAD, 1);
-        mVal.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/String", "length", "()I", false);
-        mVal.visitIntInsn(Opcodes.BIPUSH, 16);
-        mVal.visitJumpInsn(Opcodes.IF_ICMPLT, fail);
-        mVal.visitVarInsn(Opcodes.LLOAD, 2);
-        mVal.visitVarInsn(Opcodes.ALOAD, 0);
-        mVal.visitFieldInsn(Opcodes.GETFIELD, internalName, "a", "J");
-        mVal.visitInsn(Opcodes.LCMP);
-        mVal.visitJumpInsn(Opcodes.IFGE, fail);
-        mVal.visitInsn(Opcodes.ICONST_1);
-        mVal.visitInsn(Opcodes.IRETURN);
-        mVal.visitLabel(fail);
-        mVal.visitInsn(Opcodes.ICONST_0);
-        mVal.visitInsn(Opcodes.IRETURN);
-        mVal.visitMaxs(4, 4);
-        mVal.visitEnd();
+        mv.visitVarInsn(Opcodes.ALOAD, 4);
+        mv.visitVarInsn(Opcodes.ILOAD, 5);
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitVarInsn(Opcodes.ILOAD, 2);
+        mv.visitVarInsn(Opcodes.ILOAD, 5);
+        mv.visitInsn(Opcodes.IADD);
+        mv.visitInsn(Opcodes.BALOAD);
+        mv.visitIntInsn(Opcodes.BIPUSH, rng.nextInt(127) + 1);
+        mv.visitInsn(Opcodes.IXOR);
+        mv.visitInsn(Opcodes.I2B);
+        mv.visitInsn(Opcodes.BASTORE);
 
-        // Method 2: parsePayloadHeader
-        MethodVisitor mHeader = cw.visitMethod(Opcodes.ACC_PUBLIC, "parsePayloadHeader", "(Ljava/lang/String;)Ljava/lang/String;", null, null);
-        mHeader.visitCode();
-        mHeader.visitVarInsn(Opcodes.ALOAD, 1);
-        mHeader.visitLdcInsn(".");
-        mHeader.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/String", "indexOf", "(Ljava/lang/String;)I", false);
-        mHeader.visitVarInsn(Opcodes.ISTORE, 2);
-        mHeader.visitVarInsn(Opcodes.ILOAD, 2);
-        Label hFail = new Label();
-        mHeader.visitJumpInsn(Opcodes.IFLE, hFail);
-        mHeader.visitVarInsn(Opcodes.ALOAD, 1);
-        mHeader.visitInsn(Opcodes.ICONST_0);
-        mHeader.visitVarInsn(Opcodes.ILOAD, 2);
-        mHeader.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/String", "substring", "(II)Ljava/lang/String;", false);
-        mHeader.visitInsn(Opcodes.ARETURN);
-        mHeader.visitLabel(hFail);
-        mHeader.visitLdcInsn("");
-        mHeader.visitInsn(Opcodes.ARETURN);
-        mHeader.visitMaxs(3, 3);
-        mHeader.visitEnd();
+        mv.visitIincInsn(5, 1);
+        mv.visitJumpInsn(Opcodes.GOTO, loop);
 
-        injectSharedDecoyDecryptor(cw);
-        cw.visitEnd();
-        return cw.toByteArray();
+        mv.visitLabel(end);
+        mv.visitVarInsn(Opcodes.ALOAD, 4);
+        mv.visitInsn(Opcodes.ARETURN);
+        mv.visitMaxs(6, 6);
+        mv.visitEnd();
     }
 
-    // -------------------------------------------------------------------------------------------------
-    // Archetype 5: State Machine & Bitmask Event Dispatcher (TABLESWITCH, Lookup, Transitions)
-    // -------------------------------------------------------------------------------------------------
-    private byte[] generateStateMachineDecoy(String internalName, int seed) {
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
-        cw.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, internalName, null, "java/lang/Object", null);
-
-        cw.visitField(Opcodes.ACC_PUBLIC, "a", "I", null, null).visitEnd();
-        cw.visitField(Opcodes.ACC_PUBLIC, "a", "Z", null, null).visitEnd();
-        cw.visitField(Opcodes.ACC_PUBLIC, "a", "Ljava/lang/String;", null, null).visitEnd();
-
-        // <init>
-        MethodVisitor init = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
-        init.visitCode();
-        init.visitVarInsn(Opcodes.ALOAD, 0);
-        init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
-        init.visitVarInsn(Opcodes.ALOAD, 0);
-        init.visitInsn(Opcodes.ICONST_0);
-        init.visitFieldInsn(Opcodes.PUTFIELD, internalName, "a", "I");
-        init.visitInsn(Opcodes.RETURN);
-        init.visitMaxs(2, 1);
-        init.visitEnd();
-
-        // Method 1: transitionState
-        MethodVisitor mState = cw.visitMethod(Opcodes.ACC_PUBLIC, "transitionState", "(II)I", null, null);
-        mState.visitCode();
+    // Kind 2: Multi-case State Switch Table
+    private void generateSwitchStateMachine(ClassWriter cw, String internalName, String methodName, Random rng) {
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC, methodName, "(II)I", null, null);
+        mv.visitCode();
         Label s0 = new Label();
         Label s1 = new Label();
         Label s2 = new Label();
+        Label s3 = new Label();
         Label def = new Label();
 
-        mState.visitVarInsn(Opcodes.ILOAD, 1);
-        mState.visitTableSwitchInsn(0, 2, def, s0, s1, s2);
+        mv.visitVarInsn(Opcodes.ILOAD, 1);
+        mv.visitTableSwitchInsn(0, 3, def, s0, s1, s2, s3);
 
-        mState.visitLabel(s0);
-        mState.visitVarInsn(Opcodes.ILOAD, 2);
-        mState.visitIntInsn(Opcodes.BIPUSH, 1);
-        mState.visitInsn(Opcodes.IOR);
-        mState.visitInsn(Opcodes.IRETURN);
+        mv.visitLabel(s0);
+        mv.visitVarInsn(Opcodes.ILOAD, 2);
+        mv.visitIntInsn(Opcodes.BIPUSH, 7);
+        mv.visitInsn(Opcodes.ISHL);
+        mv.visitInsn(Opcodes.IRETURN);
 
-        mState.visitLabel(s1);
-        mState.visitVarInsn(Opcodes.ILOAD, 2);
-        mState.visitIntInsn(Opcodes.BIPUSH, 2);
-        mState.visitInsn(Opcodes.IXOR);
-        mState.visitInsn(Opcodes.IRETURN);
+        mv.visitLabel(s1);
+        mv.visitVarInsn(Opcodes.ILOAD, 2);
+        mv.visitIntInsn(Opcodes.BIPUSH, 3);
+        mv.visitInsn(Opcodes.ISHR);
+        mv.visitInsn(Opcodes.IRETURN);
 
-        mState.visitLabel(s2);
-        mState.visitVarInsn(Opcodes.ILOAD, 2);
-        mState.visitIntInsn(Opcodes.BIPUSH, 4);
-        mState.visitInsn(Opcodes.IAND);
-        mState.visitInsn(Opcodes.IRETURN);
+        mv.visitLabel(s2);
+        mv.visitVarInsn(Opcodes.ILOAD, 2);
+        mv.visitIntInsn(Opcodes.SIPUSH, 0x5A5A);
+        mv.visitInsn(Opcodes.IXOR);
+        mv.visitInsn(Opcodes.IRETURN);
 
-        mState.visitLabel(def);
-        mState.visitInsn(Opcodes.ICONST_M1);
-        mState.visitInsn(Opcodes.IRETURN);
+        mv.visitLabel(s3);
+        mv.visitVarInsn(Opcodes.ILOAD, 2);
+        mv.visitIntInsn(Opcodes.SIPUSH, 1337);
+        mv.visitInsn(Opcodes.IADD);
+        mv.visitInsn(Opcodes.IRETURN);
 
-        mState.visitMaxs(2, 3);
-        mState.visitEnd();
+        mv.visitLabel(def);
+        mv.visitInsn(Opcodes.ICONST_M1);
+        mv.visitInsn(Opcodes.IRETURN);
 
-        // Method 2: isTerminalState
-        MethodVisitor mTerm = cw.visitMethod(Opcodes.ACC_PUBLIC, "isTerminalState", "(I)Z", null, null);
-        mTerm.visitCode();
-        mTerm.visitVarInsn(Opcodes.ILOAD, 1);
-        mTerm.visitIntInsn(Opcodes.BIPUSH, 7);
-        Label tMatch = new Label();
-        mTerm.visitJumpInsn(Opcodes.IF_ICMPEQ, tMatch);
-        mTerm.visitInsn(Opcodes.ICONST_0);
-        mTerm.visitInsn(Opcodes.IRETURN);
-        mTerm.visitLabel(tMatch);
-        mTerm.visitInsn(Opcodes.ICONST_1);
-        mTerm.visitInsn(Opcodes.IRETURN);
-        mTerm.visitMaxs(2, 2);
-        mTerm.visitEnd();
-
-        injectSharedDecoyDecryptor(cw);
-        cw.visitEnd();
-        return cw.toByteArray();
+        mv.visitMaxs(2, 3);
+        mv.visitEnd();
     }
 
-    // -------------------------------------------------------------------------------------------------
-    // Shared Decoy Helper: In-Place String Decryptor (IlllIIIIlIlI)
-    // -------------------------------------------------------------------------------------------------
-    private void injectSharedDecoyDecryptor(ClassWriter cw) {
-        MethodVisitor mn = cw.visitMethod(
-                Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC,
-                "IlllIIIIlIlI", "(Ljava/lang/String;I)Ljava/lang/String;", null, null);
-        mn.visitCode();
-        mn.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Base64", "getDecoder", "()Ljava/util/Base64$Decoder;", false);
-        mn.visitVarInsn(Opcodes.ALOAD, 0);
-        mn.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/util/Base64$Decoder", "decode", "(Ljava/lang/String;)[B", false);
-        mn.visitVarInsn(Opcodes.ASTORE, 2);
-        mn.visitTypeInsn(Opcodes.NEW, "java/lang/String");
-        mn.visitInsn(Opcodes.DUP);
-        mn.visitVarInsn(Opcodes.ALOAD, 2);
-        mn.visitFieldInsn(Opcodes.GETSTATIC, "java/nio/charset/StandardCharsets", "UTF_8", "Ljava/nio/charset/Charset;");
-        mn.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/String", "<init>", "([BLjava/nio/charset/Charset;)V", false);
-        mn.visitInsn(Opcodes.ARETURN);
-        mn.visitMaxs(4, 3);
-        mn.visitEnd();
+    // Kind 3: Nested Branch Condition with String Inspection
+    private void generateNestedBranchCrypto(ClassWriter cw, String internalName, String methodName, Random rng) {
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC, methodName, "(Ljava/lang/String;J)Z", null, null);
+        mv.visitCode();
+        Label fail = new Label();
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitJumpInsn(Opcodes.IFNULL, fail);
+
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/String", "length", "()I", false);
+        mv.visitIntInsn(Opcodes.BIPUSH, 8);
+        mv.visitJumpInsn(Opcodes.IF_ICMPLT, fail);
+
+        mv.visitVarInsn(Opcodes.LLOAD, 2);
+        mv.visitLdcInsn(1700000000000L);
+        mv.visitInsn(Opcodes.LCMP);
+        mv.visitJumpInsn(Opcodes.IFLE, fail);
+
+        mv.visitInsn(Opcodes.ICONST_1);
+        mv.visitInsn(Opcodes.IRETURN);
+
+        mv.visitLabel(fail);
+        mv.visitInsn(Opcodes.ICONST_0);
+        mv.visitInsn(Opcodes.IRETURN);
+
+        mv.visitMaxs(4, 4);
+        mv.visitEnd();
+    }
+
+    // Kind 4: Math & Trigonometry transformations
+    private void generateMathVectorPipeline(ClassWriter cw, String internalName, String methodName, Random rng) {
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC, methodName, "(DDD)[D", null, null);
+        mv.visitCode();
+        mv.visitIntInsn(Opcodes.BIPUSH, 3);
+        mv.visitIntInsn(Opcodes.NEWARRAY, Opcodes.T_DOUBLE);
+        mv.visitVarInsn(Opcodes.ASTORE, 7);
+
+        mv.visitVarInsn(Opcodes.ALOAD, 7);
+        mv.visitInsn(Opcodes.ICONST_0);
+        mv.visitVarInsn(Opcodes.DLOAD, 1);
+        mv.visitVarInsn(Opcodes.DLOAD, 3);
+        mv.visitInsn(Opcodes.DMUL);
+        mv.visitInsn(Opcodes.DASTORE);
+
+        mv.visitVarInsn(Opcodes.ALOAD, 7);
+        mv.visitInsn(Opcodes.ICONST_1);
+        mv.visitVarInsn(Opcodes.DLOAD, 3);
+        mv.visitVarInsn(Opcodes.DLOAD, 5);
+        mv.visitInsn(Opcodes.DADD);
+        mv.visitInsn(Opcodes.DASTORE);
+
+        mv.visitVarInsn(Opcodes.ALOAD, 7);
+        mv.visitInsn(Opcodes.ICONST_2);
+        mv.visitVarInsn(Opcodes.DLOAD, 5);
+        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Math", "sqrt", "(D)D", false);
+        mv.visitInsn(Opcodes.DASTORE);
+
+        mv.visitVarInsn(Opcodes.ALOAD, 7);
+        mv.visitInsn(Opcodes.ARETURN);
+        mv.visitMaxs(6, 8);
+        mv.visitEnd();
     }
 }

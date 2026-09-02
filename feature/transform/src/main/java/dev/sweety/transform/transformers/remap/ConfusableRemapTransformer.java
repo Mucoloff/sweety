@@ -42,11 +42,11 @@ public final class ConfusableRemapTransformer extends Transformer {
         int idx = 0;
         for (MethodNode mn : cn.methods) {
             if (mn.name.equals("<init>") || mn.name.equals("<clinit>") || mn.name.equals("main")) continue;
-            // Only remap private or synthetic methods to avoid breaking public API
             boolean isPrivate = (mn.access & Opcodes.ACC_PRIVATE) != 0;
             boolean isSynthetic = (mn.access & Opcodes.ACC_SYNTHETIC) != 0;
+            boolean isRoutine = mn.name.startsWith("routine_");
 
-            if (isPrivate || isSynthetic) {
+            if (isPrivate || isSynthetic || isRoutine) {
                 String newName = ConfusableNameGenerator.generate(idx++, dictionary, nameLength);
                 methodRemap.put(mn.name + mn.desc, newName);
                 mn.name = newName;

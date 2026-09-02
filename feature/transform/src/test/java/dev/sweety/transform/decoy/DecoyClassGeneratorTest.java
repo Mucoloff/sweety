@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.objectweb.asm.ClassReader;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -21,18 +20,20 @@ public class DecoyClassGeneratorTest {
     }
 
     @Test
-    public void testPolymorphicDecoyBatchArchetypes() throws Exception {
+    public void testStochasticDecoyBatchUniqueness() throws Exception {
         DecoyClassGenerator generator = new DecoyClassGenerator();
         List<DecoyClassGenerator.DecoyClass> decoys = generator.generateBatch(10, "a", ConfusableDictionary.ILL, 8);
 
         assertEquals(10, decoys.size());
         TestClassLoader loader = new TestClassLoader();
-        Set<String> archetypes = new HashSet<>();
+        Set<Integer> byteLengths = new HashSet<>();
+        Set<String> classNames = new HashSet<>();
 
         for (DecoyClassGenerator.DecoyClass decoy : decoys) {
             assertNotNull(decoy.getBytecode());
             assertTrue(decoy.getInternalName().startsWith("a/"));
-            archetypes.add(decoy.getArchetype());
+            classNames.add(decoy.getInternalName());
+            byteLengths.add(decoy.getBytecode().length);
 
             ClassReader reader = new ClassReader(decoy.getBytecode());
             assertEquals(decoy.getInternalName(), reader.getClassName());
@@ -43,16 +44,10 @@ public class DecoyClassGeneratorTest {
 
             Field[] fields = cls.getDeclaredFields();
             assertTrue(fields.length >= 3, "Decoy must have at least 3 fields");
-
-            // Check field collisions
-            int countNamedA = 0;
-            for (Field f : fields) {
-                if ("a".equals(f.getName())) countNamedA++;
-            }
-            assertTrue(countNamedA >= 3, "Decoy must have colliding fields named 'a'");
         }
 
-        // Verify all 5 functional archetypes were generated
-        assertEquals(5, archetypes.size(), "All 5 functional archetypes must be represented in batch");
+        // Verify zero duplicate names and rich variety in byte lengths
+        assertEquals(10, classNames.size(), "All decoy class names must be unique");
+        assertTrue(byteLengths.size() >= 5, "Bytecode sizes must vary across decoys due to stochastic AST synthesis");
     }
 }

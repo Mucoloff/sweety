@@ -96,19 +96,21 @@ public class ExportDecompilationDemoTest {
         java.util.List<dev.sweety.transform.transformers.decoy.DecoyClassGenerator.DecoyClass> decoys =
                 decoyGen.generateBatch(10, "a", ConfusableDictionary.ILL, 8);
 
-        // Build a complete JAR with the real obfuscated class + all decoy classes
+        // Build a complete JAR with the real obfuscated class + all fully-transformed decoy classes
         File desktopJar = new File("/Users/francesco/Desktop/ClientSecurityPayload_HARDENED_DECOYS.jar");
         try (java.util.jar.JarOutputStream jos = new java.util.jar.JarOutputStream(new FileOutputStream(desktopJar))) {
-            // Write main remapped class (e.g. a/IllIIlIl.class)
-            String mainEntryName = remapper.getMappings().getOrDefault(internalName, "a/IllIIlIl") + ".class";
+            // Write main remapped class (e.g. a/lllIIlll.class)
+            String mainEntryName = remapper.getMappings().getOrDefault(internalName, "a/lllIIlll") + ".class";
             jos.putNextEntry(new java.util.jar.JarEntry(mainEntryName));
             jos.write(obfuscatedBytes);
             jos.closeEntry();
 
-            // Write all decoy classes
+            // Transform each decoy through the full obfuscation pipeline (Indy, Opaque Predicates, String Encryption, Collisions)
             for (dev.sweety.transform.transformers.decoy.DecoyClassGenerator.DecoyClass decoy : decoys) {
-                jos.putNextEntry(new java.util.jar.JarEntry(decoy.getInternalName() + ".class"));
-                jos.write(decoy.getBytecode());
+                byte[] transformedDecoy = pipeline.transform(decoy.getBytecode(), decoy.getInternalName() + ".class");
+                String decoyEntryName = remapper.getMappings().getOrDefault(decoy.getInternalName(), decoy.getInternalName()) + ".class";
+                jos.putNextEntry(new java.util.jar.JarEntry(decoyEntryName));
+                jos.write(transformedDecoy);
                 jos.closeEntry();
             }
         }
@@ -117,7 +119,7 @@ public class ExportDecompilationDemoTest {
         System.out.println("✅ JAR CON CLASSI CONFUSABILI, FLATTEN PACKAGE & DECOYS GENERATO:");
         System.out.println("📦 JAR Desktop:  " + desktopJar.getAbsolutePath());
         System.out.println("🔑 Entry Reale:  " + remapper.getMappings().get(internalName) + ".class");
-        System.out.println("🛡 Decoys Count: " + decoys.size() + " classi fake nel package a/");
+        System.out.println("🛡 Decoys Count: " + decoys.size() + " classi fake trasformate al 100% nel package a/");
         System.out.println("=================================================================");
     }
 }
