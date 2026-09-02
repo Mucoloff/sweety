@@ -84,8 +84,13 @@ public class PacketProcessor extends AbstractProcessor {
         BuildPacket buildPacket = interfaceElement.getAnnotation(BuildPacket.class);
 
         final String interfaceName = interfaceElement.getSimpleName().toString();
+        String cleanName = interfaceName;
+        if (cleanName.endsWith("Template")) cleanName = cleanName.substring(0, cleanName.length() - 8);
+        else if (cleanName.endsWith("Def")) cleanName = cleanName.substring(0, cleanName.length() - 3);
+
+        final String defaultPacketName = cleanName.endsWith("Packet") ? (cleanName + "Impl") : (cleanName + "PacketImpl");
         final String packetPackage = elementUtils.getPackageOf(interfaceElement).getQualifiedName().toString();
-        final String packetName = (buildPacket == null || buildPacket.name() == null || buildPacket.name().isEmpty()) ? (interfaceName + "Packet") : buildPacket.name();
+        final String packetName = (buildPacket == null || buildPacket.name() == null || buildPacket.name().isEmpty()) ? defaultPacketName : buildPacket.name();
         final String packetBuildPackage = packetPackage + ((buildPacket == null || buildPacket.path() == null) ? ("") : buildPacket.path());
         final ClassName packetClassName = ClassName.get(packetPackage, interfaceName);
         final ClassName generatedPacketClassName = ClassName.get(packetBuildPackage, packetName);

@@ -13,7 +13,7 @@ public @interface BuildPacket {
     //changes the name of the element
     String name() default "";
 
-    String path() default ".packet";
+    String path() default "";
 
     //adds annotations to the Element
     Class<? extends Annotation>[] annotations() default {};

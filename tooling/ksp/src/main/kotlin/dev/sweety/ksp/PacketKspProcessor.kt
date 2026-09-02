@@ -39,9 +39,15 @@ class PacketKspProcessor(
         val interfaceName = decl.simpleName.asString()
         val pkg = decl.packageName.asString()
 
+        var cleanName = interfaceName
+        if (cleanName.endsWith("Template")) cleanName = cleanName.dropLast(8)
+        else if (cleanName.endsWith("Def")) cleanName = cleanName.dropLast(3)
+
+        val defaultPacketName = if (cleanName.endsWith("Packet")) "${cleanName}Impl" else "${cleanName}PacketImpl"
+
         val customName = ann?.arg<String>("name") ?: ""
-        val path       = ann?.arg<String>("path") ?: ".packet"
-        val packetName = if (customName.isNotEmpty()) customName else "${interfaceName}Packet"
+        val path       = ann?.arg<String>("path") ?: ""
+        val packetName = if (customName.isNotEmpty()) customName else defaultPacketName
         val packetPkg  = pkg + path
 
         val ifaceClass = ClassName.get(pkg, interfaceName)
