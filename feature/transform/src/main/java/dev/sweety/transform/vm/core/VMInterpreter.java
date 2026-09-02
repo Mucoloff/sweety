@@ -88,7 +88,8 @@ public final class VMInterpreter {
         // Verify runtime environment integrity (anti-debug & agent dump guard)
         AntiDumpGuard.verify();
 
-        final ByteBuffer buf = ByteBuffer.wrap(code);
+        final byte[] decrypted = code.clone();
+        final ByteBuffer buf = ByteBuffer.wrap(decrypted);
         buf.order(ByteOrder.BIG_ENDIAN);
 
         // Header: maxLocals + method descriptor (drives JVM slot layout for long/double params) +
@@ -96,6 +97,14 @@ public final class VMInterpreter {
         final int maxLocals = buf.getShort() & 0xFFFF;
         final String desc = readString(buf);
         final int methodSalt = buf.getInt();
+
+        // Dynamic decryption of the instruction payload
+        final int headerLen = buf.position();
+        final int encKey = methodSalt ^ 0x5F3759DF;
+        for (int p = headerLen; p < decrypted.length; p++) {
+            int shift = (p & 3) * 8;
+            decrypted[p] = (byte) (decrypted[p] ^ (encKey >>> shift));
+        }
 
         // Entangle with the live session, if one is bound. A bound-but-stale session aborts loudly —
         // no separate patchable branch, same property SessionKeystream.kill() gives other consumers.

@@ -48,20 +48,16 @@ public final class FieldOverloadCollisionTransformer extends Transformer {
         if (cn.fields == null || cn.fields.isEmpty()) return;
         Map<String, String> fieldRemap = globalFieldMappings.computeIfAbsent(cn.name, k -> new HashMap<>());
 
-        Map<String, Integer> descToNameIndexStatic = new HashMap<>();
-        Map<String, Integer> descToNameIndexInstance = new HashMap<>();
+        Map<String, Integer> descToNameIndex = new HashMap<>();
 
         for (FieldNode fn : cn.fields) {
-            boolean isStatic = (fn.access & Opcodes.ACC_STATIC) != 0;
-            Map<String, Integer> descMap = isStatic ? descToNameIndexStatic : descToNameIndexInstance;
-
             int nameIdx = 0;
             String assignedName = basePrefix;
-            if (descMap.containsKey(fn.desc)) {
-                nameIdx = descMap.get(fn.desc) + 1;
+            if (descToNameIndex.containsKey(fn.desc)) {
+                nameIdx = descToNameIndex.get(fn.desc) + 1;
                 assignedName = String.valueOf((char) (basePrefix.charAt(0) + nameIdx));
             }
-            descMap.put(fn.desc, nameIdx);
+            descToNameIndex.put(fn.desc, nameIdx);
             fieldRemap.put(fn.name + "#" + fn.desc, assignedName);
         }
     }

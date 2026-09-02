@@ -118,12 +118,25 @@ public final class VMCompiler {
             final LabelNode label    = (LabelNode) patch[1];
             final int       target   = labelOffsets.getInt(label);
             if (target < 0) {
-                throw new IllegalStateException("Unresolved label in VMCompiler for " + mn.name);
+                throw new IllegalStateException("Unresolved label " + label + " in "
+                        + ownerInternalName + "." + mn.name + mn.desc);
             }
             raw[patchPos]     = (byte) (target >>> 24);
             raw[patchPos + 1] = (byte) (target >>> 16);
-            raw[patchPos + 2] = (byte) (target >>> 8);
-            raw[patchPos + 3] = (byte) target;
+            raw[patchPos + 2] = (byte) (target >>>  8);
+            raw[patchPos + 3] = (byte)  target;
+        }
+
+        // ── Pass 3: Encrypt instruction payload with method salt keystream ─────
+        final int headerLen = 2 + (2 + mn.desc.getBytes(StandardCharsets.UTF_8).length) + 4;
+        final int salt = ((raw[headerLen - 4] & 0xFF) << 24)
+                | ((raw[headerLen - 3] & 0xFF) << 16)
+                | ((raw[headerLen - 2] & 0xFF) << 8)
+                | (raw[headerLen - 1] & 0xFF);
+        final int encKey = salt ^ 0x5F3759DF;
+        for (int p = headerLen; p < raw.length; p++) {
+            int shift = (p & 3) * 8;
+            raw[p] = (byte) (raw[p] ^ (encKey >>> shift));
         }
 
         return raw;

@@ -55,13 +55,17 @@ public final class VirtualizerTransformer extends Transformer {
     private static final String EXECUTE_DESC =
             "(Ljava/lang/Object;[Ljava/lang/Object;[B)Ljava/lang/Object;";
 
-    /** Eager (plaintext, baked at transform time) vs gated (field left unset — see
-     *  {@link VirtualBytecodeService}, filled in only after the client proves a live session). */
     private final boolean gated;
+    private final boolean virtualizeAll;
 
-    public VirtualizerTransformer() { this(false); }
+    public VirtualizerTransformer() { this(false, false); }
 
-    public VirtualizerTransformer(boolean gated) { this.gated = gated; }
+    public VirtualizerTransformer(boolean gated) { this(gated, false); }
+
+    public VirtualizerTransformer(boolean gated, boolean virtualizeAll) {
+        this.gated = gated;
+        this.virtualizeAll = virtualizeAll;
+    }
 
     @Override public String name() { return "Virtualizer"; }
 
@@ -72,7 +76,8 @@ public final class VirtualizerTransformer extends Transformer {
 
         for (MethodNode mn : cn.methods) {
             if (!MethodSelector.isEligible(mn)) continue;
-            if (!MethodSelector.shouldVirtualize(mn)) continue;
+            if (mn.name.equals("<init>") || mn.name.equals("<clinit>")) continue;
+            if (!virtualizeAll && !MethodSelector.shouldVirtualize(mn)) continue;
             if (!MethodSelector.isVirtualizable(mn)) continue;
             toVirtualize.add(mn);
         }

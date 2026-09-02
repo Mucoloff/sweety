@@ -135,17 +135,23 @@ public final class VMSupport {
         int open = desc.indexOf('(');
         int close = desc.indexOf(')');
         if (open < 0 || close < 0) return new char[0];
-        it.unimi.dsi.fastutil.chars.CharArrayList tags = new it.unimi.dsi.fastutil.chars.CharArrayList();
+        char[] buf = new char[16];
+        int size = 0;
         int i = open + 1;
         while (i < close) {
+            if (size == buf.length) {
+                char[] next = new char[buf.length * 2];
+                System.arraycopy(buf, 0, next, 0, size);
+                buf = next;
+            }
             char c = desc.charAt(i);
-            if (c == 'J' || c == 'F' || c == 'D') { tags.add(c); i++; }
-            else if (c == 'L') { tags.add('L'); i = desc.indexOf(';', i) + 1; }
-            else if (c == '[') { int j = i; while (desc.charAt(j) == '[') j++; tags.add('L'); i = (desc.charAt(j) == 'L') ? desc.indexOf(';', j) + 1 : j + 1; }
-            else { tags.add('I'); i++; } // Z/B/C/S/I
+            if (c == 'J' || c == 'F' || c == 'D') { buf[size++] = c; i++; }
+            else if (c == 'L') { buf[size++] = 'L'; i = desc.indexOf(';', i) + 1; }
+            else if (c == '[') { int j = i; while (desc.charAt(j) == '[') j++; buf[size++] = 'L'; i = (desc.charAt(j) == 'L') ? desc.indexOf(';', j) + 1 : j + 1; }
+            else { buf[size++] = 'I'; i++; } // Z/B/C/S/I
         }
-        char[] out = new char[tags.size()];
-        for (int k = 0; k < out.length; k++) out[k] = tags.getChar(k);
+        char[] out = new char[size];
+        System.arraycopy(buf, 0, out, 0, size);
         return out;
     }
 
@@ -186,17 +192,23 @@ public final class VMSupport {
         int open = desc.indexOf('(');
         int close = desc.indexOf(')');
         if (open < 0 || close < 0) return new int[0];
-        it.unimi.dsi.fastutil.ints.IntArrayList widths = new it.unimi.dsi.fastutil.ints.IntArrayList();
+        int[] buf = new int[16];
+        int size = 0;
         int i = open + 1;
         while (i < close) {
+            if (size == buf.length) {
+                int[] next = new int[buf.length * 2];
+                System.arraycopy(buf, 0, next, 0, size);
+                buf = next;
+            }
             char c = desc.charAt(i);
-            if (c == 'J' || c == 'D') { widths.add(2); i++; }
-            else if (c == 'L') { widths.add(1); i = desc.indexOf(';', i) + 1; }
-            else if (c == '[') { int j = i; while (desc.charAt(j) == '[') j++; widths.add(1); i = (desc.charAt(j) == 'L') ? desc.indexOf(';', j) + 1 : j + 1; }
-            else { widths.add(1); i++; }
+            if (c == 'J' || c == 'D') { buf[size++] = 2; i++; }
+            else if (c == 'L') { buf[size++] = 1; i = desc.indexOf(';', i) + 1; }
+            else if (c == '[') { int j = i; while (desc.charAt(j) == '[') j++; buf[size++] = 1; i = (desc.charAt(j) == 'L') ? desc.indexOf(';', j) + 1 : j + 1; }
+            else { buf[size++] = 1; i++; }
         }
-        int[] out = new int[widths.size()];
-        for (int k = 0; k < out.length; k++) out[k] = widths.getInt(k);
+        int[] out = new int[size];
+        System.arraycopy(buf, 0, out, 0, size);
         return out;
     }
 }
