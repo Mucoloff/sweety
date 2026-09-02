@@ -53,6 +53,7 @@
             <option value="$PROJECT_DIR$/feature/service" />
             <option value="$PROJECT_DIR$/feature/service/api" />
             <option value="$PROJECT_DIR$/feature/service/impl" />
+            <option value="$PROJECT_DIR$/feature/transform" />
             <option value="$PROJECT_DIR$/minecraft" />
             <option value="$PROJECT_DIR$/minecraft/auth" />
             <option value="$PROJECT_DIR$/minecraft/network" />
