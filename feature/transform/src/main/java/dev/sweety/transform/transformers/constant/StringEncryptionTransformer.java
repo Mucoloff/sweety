@@ -47,8 +47,18 @@ import java.util.Base64;
 public final class StringEncryptionTransformer extends Transformer {
 
     /** Name of the injected decryptor method — chosen to look like a synthetic accessor. */
-    private static final String DECRYPT_METHOD = "__s";
-    private static final String DECRYPT_DESC   = "(Ljava/lang/String;I)Ljava/lang/String;";
+    public static final String DECRYPT_METHOD = "__s";
+    public static final String DECRYPT_DESC   = "(Ljava/lang/String;I)Ljava/lang/String;";
+
+    private final boolean transformAll;
+
+    public StringEncryptionTransformer() {
+        this(true);
+    }
+
+    public StringEncryptionTransformer(boolean transformAll) {
+        this.transformAll = transformAll;
+    }
 
     @Override public String name() { return "StringEncryption"; }
 
@@ -62,8 +72,8 @@ public final class StringEncryptionTransformer extends Transformer {
 
         for (MethodNode mn : cn.methods) {
             if (!MethodSelector.isEligible(mn)) continue;
-            if (!MethodSelector.shouldTransform(ctx, mn)) continue;
-            if (!MethodSelector.transformStrings(cn, mn)) continue;
+            if (!transformAll && !MethodSelector.shouldTransform(ctx, mn)) continue;
+            if (!transformAll && !MethodSelector.transformStrings(cn, mn)) continue;
             if (DECRYPT_METHOD.equals(mn.name)) continue; // don't recurse
 
             if (encryptStrings(cn, mn, key)) anyEncrypted = true;

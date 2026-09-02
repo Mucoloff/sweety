@@ -67,13 +67,14 @@ public class TransformSampleAppTest {
                 .add(new OpaquePredicateTransformer())
                 .add(new GotoNormalizationTransformer())
                 .add(new ConditionalMutationTransformer())
-                .add(new StringEncryptionTransformer())
+                .add(new StringEncryptionTransformer(true))
                 .add(new IntegerEncodingTransformer())
                 .add(fieldCollisions)
                 .add(new ConfusableRemapTransformer(null, 12))
                 .add(remapper)
                 .add(new InvokeDynamicObfuscator())
                 .add(new MetadataStripperTransformer())
+                .add(new dev.sweety.transform.transformers.security.AiDecoyInjectionTransformer())
                 .build();
 
         byte[] transformedSec = pipeline.transform(secBytes, "com/example/demo/SecurityManager.class");
