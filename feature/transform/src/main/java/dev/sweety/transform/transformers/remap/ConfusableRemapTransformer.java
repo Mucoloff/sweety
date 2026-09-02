@@ -39,6 +39,7 @@ public final class ConfusableRemapTransformer extends Transformer {
         ClassNode cn = ctx.classNode();
         Map<String, String> methodRemap = new HashMap<>();
 
+        ConfusableDictionary[] allDicts = ConfusableDictionary.values();
         int idx = 0;
         for (MethodNode mn : cn.methods) {
             if (mn.name.equals("<init>") || mn.name.equals("<clinit>") || mn.name.equals("main")) continue;
@@ -47,7 +48,8 @@ public final class ConfusableRemapTransformer extends Transformer {
             boolean isRoutine = mn.name.startsWith("routine_");
 
             if (isPrivate || isSynthetic || isRoutine) {
-                String newName = ConfusableNameGenerator.generate(idx++, dictionary, nameLength);
+                ConfusableDictionary dict = (dictionary != null) ? dictionary : allDicts[idx % allDicts.length];
+                String newName = ConfusableNameGenerator.generate(idx++, dict, nameLength);
                 methodRemap.put(mn.name + mn.desc, newName);
                 mn.name = newName;
             }

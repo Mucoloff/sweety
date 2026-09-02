@@ -34,8 +34,10 @@ public final class DecoyClassGenerator {
 
     public List<DecoyClass> generateBatch(int count, String packagePrefix, ConfusableDictionary dictionary, int nameLength) {
         List<DecoyClass> list = new ArrayList<>(count);
+        ConfusableDictionary[] allDicts = ConfusableDictionary.values();
         for (int i = 0; i < count; i++) {
-            String className = ConfusableNameGenerator.generate(200 + i * 37 + 13, dictionary, nameLength);
+            ConfusableDictionary dict = (dictionary != null) ? dictionary : allDicts[i % allDicts.length];
+            String className = ConfusableNameGenerator.generate(200 + i * 37 + 13, dict, nameLength);
             String internalName = packagePrefix.isEmpty() ? className : packagePrefix + "/" + className;
             long seed = 0xCAFEBABE00000000L ^ ((long) i * 0x9E3779B97F4A7C15L);
 

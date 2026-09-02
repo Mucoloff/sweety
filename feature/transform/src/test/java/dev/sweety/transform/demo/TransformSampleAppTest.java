@@ -9,6 +9,7 @@ import dev.sweety.transform.transformers.control.GotoNormalizationTransformer;
 import dev.sweety.transform.transformers.decoy.DecoyClassGenerator;
 import dev.sweety.transform.transformers.remap.ClassRemapAndFlattenTransformer;
 import dev.sweety.transform.transformers.remap.ConfusableDictionary;
+import dev.sweety.transform.transformers.remap.ConfusableNameGenerator;
 import dev.sweety.transform.transformers.remap.ConfusableRemapTransformer;
 import dev.sweety.transform.transformers.remap.FieldOverloadCollisionTransformer;
 import dev.sweety.transform.transformers.security.AntiTamperTransformer;
@@ -49,14 +50,18 @@ public class TransformSampleAppTest {
         try (FileInputStream fis = new FileInputStream(appClassFile)) { appBytes = fis.readAllBytes(); }
         try (FileInputStream fis = new FileInputStream(secClassFile)) { secBytes = fis.readAllBytes(); }
 
+        // Generate diverse confusable class names for real classes
+        String mainClassName = ConfusableNameGenerator.generate(101, ConfusableDictionary.RN_M, 10);
+        String secClassName = ConfusableNameGenerator.generate(102, ConfusableDictionary.OH_ZERO, 10);
+
         // Setup global package flattening mappings
-        ClassRemapAndFlattenTransformer remapper = new ClassRemapAndFlattenTransformer("a", ConfusableDictionary.ILL, 8);
-        remapper.registerMapping("com/example/demo/App", "a/AppMain");
-        remapper.registerMapping("com/example/demo/SecurityManager", "a/IllIIlIl");
+        ClassRemapAndFlattenTransformer remapper = new ClassRemapAndFlattenTransformer("a", null, 8);
+        remapper.registerMapping("com/example/demo/App", "a/" + mainClassName);
+        remapper.registerMapping("com/example/demo/SecurityManager", "a/" + secClassName);
 
         FieldOverloadCollisionTransformer fieldCollisions = new FieldOverloadCollisionTransformer("a");
 
-        // Unified full protection pipeline
+        // Unified full protection pipeline with mixed confusable dictionaries (ILL, OH_ZERO, RN_M, PQ_DB, NH)
         TransformPipeline pipeline = TransformPipeline.builder()
                 .add(new AntiTamperTransformer())
                 .add(new OpaquePredicateTransformer())
@@ -65,7 +70,7 @@ public class TransformSampleAppTest {
                 .add(new StringEncryptionTransformer())
                 .add(new IntegerEncodingTransformer())
                 .add(fieldCollisions)
-                .add(new ConfusableRemapTransformer(ConfusableDictionary.ILL, 12))
+                .add(new ConfusableRemapTransformer(null, 12))
                 .add(remapper)
                 .add(new InvokeDynamicObfuscator())
                 .add(new MetadataStripperTransformer())
@@ -74,24 +79,24 @@ public class TransformSampleAppTest {
         byte[] transformedSec = pipeline.transform(secBytes, "com/example/demo/SecurityManager.class");
         byte[] transformedApp = pipeline.transform(appBytes, "com/example/demo/App.class");
 
-        // Generate 6 Stochastic Decoys in package "a/" and run them through the same pipeline
+        // Generate 6 Stochastic Decoys in package "a/" using mixed dictionaries
         DecoyClassGenerator decoyGen = new DecoyClassGenerator();
-        List<DecoyClassGenerator.DecoyClass> rawDecoys = decoyGen.generateBatch(6, "a", ConfusableDictionary.ILL, 8);
+        List<DecoyClassGenerator.DecoyClass> rawDecoys = decoyGen.generateBatch(6, "a", null, 8);
 
         File outJar = new File(scratchDir, "dist/app-transformed.jar");
         outJar.getParentFile().mkdirs();
         Manifest manifest = new Manifest();
         manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
-        manifest.getMainAttributes().put(Attributes.Name.MAIN_CLASS, "a.AppMain");
+        manifest.getMainAttributes().put(Attributes.Name.MAIN_CLASS, "a." + mainClassName);
 
         try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(outJar), manifest)) {
             // Write main app
-            jos.putNextEntry(new JarEntry("a/AppMain.class"));
+            jos.putNextEntry(new JarEntry("a/" + mainClassName + ".class"));
             jos.write(transformedApp);
             jos.closeEntry();
 
             // Write security manager
-            jos.putNextEntry(new JarEntry("a/IllIIlIl.class"));
+            jos.putNextEntry(new JarEntry("a/" + secClassName + ".class"));
             jos.write(transformedSec);
             jos.closeEntry();
 
@@ -106,7 +111,9 @@ public class TransformSampleAppTest {
 
         System.out.println("=================================================================");
         System.out.println("✅ MINI-PROGETTO TRASFORMATO CON SUCCESSO!");
-        System.out.println("📦 JAR Offuscato: " + outJar.getAbsolutePath());
+        System.out.println("📦 JAR Offuscato:   " + outJar.getAbsolutePath());
+        System.out.println("🚀 Main Class Remap: a." + mainClassName);
+        System.out.println("🔑 Sec Class Remap:  a." + secClassName);
         System.out.println("=================================================================");
     }
 }

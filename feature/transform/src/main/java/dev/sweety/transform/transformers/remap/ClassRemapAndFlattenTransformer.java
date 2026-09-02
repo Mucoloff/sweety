@@ -45,7 +45,8 @@ public final class ClassRemapAndFlattenTransformer extends Transformer {
     }
 
     public String computeNewName(String originalInternalName, int index) {
-        String baseName = ConfusableNameGenerator.generate(index, dictionary, nameLength);
+        ConfusableDictionary dict = (dictionary != null) ? dictionary : ConfusableDictionary.values()[index % ConfusableDictionary.values().length];
+        String baseName = ConfusableNameGenerator.generate(index, dict, nameLength);
         String prefix = targetPackage.isEmpty() ? "" : targetPackage + "/";
         return prefix + baseName;
     }
