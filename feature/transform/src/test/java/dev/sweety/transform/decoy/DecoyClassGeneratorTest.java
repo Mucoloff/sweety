@@ -40,9 +40,9 @@ public class DecoyClassGeneratorTest {
             Field[] fields = cls.getDeclaredFields();
             assertTrue(fields.length >= 3);
 
-            Method verifyMethod = cls.getDeclaredMethod("verifyPayload", String.class, int.class);
-            assertNotNull(verifyMethod);
-            Object result = verifyMethod.invoke(inst, "test-license", 1234);
+            Method decryptMethod = cls.getDeclaredMethod("decryptLicense", String.class, int.class);
+            assertNotNull(decryptMethod);
+            Object result = decryptMethod.invoke(inst, "test-license", 1234);
             assertNotNull(result);
         }
     }

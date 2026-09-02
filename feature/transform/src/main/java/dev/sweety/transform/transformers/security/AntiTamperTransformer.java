@@ -7,11 +7,18 @@ import dev.sweety.transform.engine.Transformer;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.JumpInsnNode;
+import org.objectweb.asm.tree.LabelNode;
+import org.objectweb.asm.tree.LdcInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.TypeInsnNode;
+import org.objectweb.asm.tree.VarInsnNode;
 
 /**
- * Injects runtime anti-tamper, debugger detection, and JVM TI / agent dump guards into security-critical methods.
+ * Injects self-contained inline anti-debug and debugger attachment checks directly into bytecode
+ * without referencing any external framework classes.
  */
 public final class AntiTamperTransformer extends Transformer {
 
@@ -33,21 +40,49 @@ public final class AntiTamperTransformer extends Transformer {
                                      MethodSelector.hasAnnotation(mn.visibleAnnotations, SecurityCritical.class.getName());
 
             if (methodCritical) {
-                injectAntiTamperGuard(mn);
+                injectSelfContainedAntiDebug(mn);
             }
         }
     }
 
-    private void injectAntiTamperGuard(MethodNode mn) {
+    private void injectSelfContainedAntiDebug(MethodNode mn) {
         InsnList list = new InsnList();
-        // Invoke AntiDumpGuard.verify()
-        list.add(new MethodInsnNode(
-                Opcodes.INVOKESTATIC,
-                "dev/sweety/transform/vm/security/AntiDumpGuard",
-                "verify",
-                "()V",
-                false
-        ));
+        LabelNode trap = new LabelNode();
+        LabelNode safe = new LabelNode();
+
+        int tempVar = mn.maxLocals + 2;
+
+        // 1. Get VM input args string and store in temp variable
+        list.add(new MethodInsnNode(Opcodes.INVOKESTATIC, "java/lang/management/ManagementFactory", "getRuntimeMXBean", "()Ljava/lang/management/RuntimeMXBean;", false));
+        list.add(new MethodInsnNode(Opcodes.INVOKEINTERFACE, "java/lang/management/RuntimeMXBean", "getInputArguments", "()Ljava/util/List;", true));
+        list.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/Object", "toString", "()Ljava/lang/String;", false));
+        list.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "toLowerCase", "()Ljava/lang/String;", false));
+        list.add(new VarInsnNode(Opcodes.ASTORE, tempVar));
+
+        // 2. First check: "-xdebug" (stack depth is exactly 0)
+        list.add(new VarInsnNode(Opcodes.ALOAD, tempVar));
+        list.add(new LdcInsnNode("-xdebug"));
+        list.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "contains", "(Ljava/lang/CharSequence;)Z", false));
+        list.add(new JumpInsnNode(Opcodes.IFNE, trap));
+
+        // 3. Second check: "jdwp" (stack depth is exactly 0)
+        list.add(new VarInsnNode(Opcodes.ALOAD, tempVar));
+        list.add(new LdcInsnNode("jdwp"));
+        list.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "contains", "(Ljava/lang/CharSequence;)Z", false));
+        list.add(new JumpInsnNode(Opcodes.IFNE, trap));
+
+        // If safe, continue method execution
+        list.add(new JumpInsnNode(Opcodes.GOTO, safe));
+
+        // 4. Trap handler (stack depth is guaranteed 0 on entry)
+        list.add(trap);
+        list.add(new TypeInsnNode(Opcodes.NEW, "java/lang/SecurityException"));
+        list.add(new InsnNode(Opcodes.DUP));
+        list.add(new MethodInsnNode(Opcodes.INVOKESPECIAL, "java/lang/SecurityException", "<init>", "()V", false));
+        list.add(new InsnNode(Opcodes.ATHROW));
+
+        list.add(safe);
+
         mn.instructions.insert(list);
     }
 }

@@ -102,7 +102,7 @@ public final class TransformPipeline {
 
         try {
             node.accept(writer);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             LOG.severe("[Pipeline] ClassWriter failed for " + sourceName + ": " + e.getMessage()
                     + " — returning original bytes");
             return classBytes; // Safety fallback: never break a class

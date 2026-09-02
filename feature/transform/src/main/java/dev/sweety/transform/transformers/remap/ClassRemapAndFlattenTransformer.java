@@ -67,18 +67,28 @@ public final class ClassRemapAndFlattenTransformer extends Transformer {
         }
 
         SimpleRemapper remapper = new SimpleRemapper(mappings);
-        ClassNode remappedNode = new ClassNode();
-        ClassRemapper classRemapper = new ClassRemapper(remappedNode, remapper);
-
+        ClassWriter tempWriter = new ClassWriter(0);
+        ClassRemapper classRemapper = new ClassRemapper(tempWriter, remapper);
         originalNode.accept(classRemapper);
 
+        byte[] remappedBytes = tempWriter.toByteArray();
+        ClassNode remappedNode = new ClassNode();
+        new ClassReader(remappedBytes).accept(remappedNode, ClassReader.EXPAND_FRAMES);
+
         // Replace class node content with remapped node
+        originalNode.version = remappedNode.version;
+        originalNode.access = remappedNode.access;
         originalNode.name = remappedNode.name;
+        originalNode.signature = remappedNode.signature;
         originalNode.superName = remappedNode.superName;
         originalNode.interfaces = remappedNode.interfaces;
+        originalNode.sourceFile = remappedNode.sourceFile;
+        originalNode.sourceDebug = remappedNode.sourceDebug;
         originalNode.fields = remappedNode.fields;
         originalNode.methods = remappedNode.methods;
         originalNode.innerClasses = remappedNode.innerClasses;
+        originalNode.nestHostClass = remappedNode.nestHostClass;
+        originalNode.nestMembers = remappedNode.nestMembers;
         originalNode.visibleAnnotations = remappedNode.visibleAnnotations;
         originalNode.invisibleAnnotations = remappedNode.invisibleAnnotations;
     }

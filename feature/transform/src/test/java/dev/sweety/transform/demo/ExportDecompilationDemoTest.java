@@ -78,11 +78,18 @@ public class ExportDecompilationDemoTest {
                 .add(new IntegerEncodingTransformer())
                 .add(new FieldOverloadCollisionTransformer("a"))
                 .add(new ConfusableRemapTransformer(ConfusableDictionary.ILL, 12))
-                .add(new InvokeDynamicObfuscator())
                 .add(remapper)
+                .add(new InvokeDynamicObfuscator())
+                .add(new dev.sweety.transform.transformers.clean.MetadataStripperTransformer())
                 .build();
 
-        byte[] obfuscatedBytes = pipeline.transform(originalBytes, internalName + ".class");
+        byte[] obfuscatedBytes;
+        try {
+            obfuscatedBytes = pipeline.transform(originalBytes, internalName + ".class");
+        } catch (Throwable t) {
+            t.printStackTrace();
+            throw t;
+        }
 
         // Generate 6 Decoy / Honey-pot classes in the same flattened package "a/"
         dev.sweety.transform.transformers.decoy.DecoyClassGenerator decoyGen = new dev.sweety.transform.transformers.decoy.DecoyClassGenerator();

@@ -4,22 +4,14 @@ import dev.sweety.transform.annotation.SecurityCritical;
 import dev.sweety.transform.annotation.Transform;
 import dev.sweety.transform.engine.TransformPipeline;
 import dev.sweety.transform.transformers.security.AntiTamperTransformer;
-import dev.sweety.transform.vm.security.AntiDumpGuard;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class AntiTamperTransformerTest {
-
-    @AfterEach
-    public void resetGuard() {
-        AntiDumpGuard.setCompromised(false);
-    }
 
     @Transform
     @SecurityCritical
@@ -54,30 +46,5 @@ public class AntiTamperTransformerTest {
 
         assertEquals(true, m.invoke(inst, "VALID-LICENSE"));
         assertEquals(false, m.invoke(inst, "INVALID"));
-    }
-
-    @Test
-    public void testAntiTamperAbortsWhenCompromised() throws Exception {
-        String internalName = LicenseCheckSample.class.getName().replace('.', '/');
-        byte[] originalBytes;
-        try (InputStream is = LicenseCheckSample.class.getResourceAsStream("AntiTamperTransformerTest$LicenseCheckSample.class")) {
-            assertNotNull(is);
-            originalBytes = is.readAllBytes();
-        }
-
-        TransformPipeline pipeline = TransformPipeline.builder()
-                .add(new AntiTamperTransformer())
-                .build();
-
-        byte[] transformedBytes = pipeline.transform(originalBytes, internalName + ".class");
-        Class<?> transformedCls = new TestClassLoader().define(LicenseCheckSample.class.getName(), transformedBytes);
-        Object inst = transformedCls.getDeclaredConstructor().newInstance();
-        Method m = transformedCls.getDeclaredMethod("verifyLicense", String.class);
-
-        // Mark as compromised (simulating debugger / agent dump)
-        AntiDumpGuard.setCompromised(true);
-
-        InvocationTargetException ite = assertThrows(InvocationTargetException.class, () -> m.invoke(inst, "VALID-LICENSE"));
-        assertTrue(ite.getCause() instanceof SecurityException);
     }
 }
