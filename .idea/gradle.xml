@@ -7,6 +7,11 @@
         <compositeConfiguration>
           <compositeBuild compositeDefinitionSource="SCRIPT">
             <builds>
+              <build path="$PROJECT_DIR$/../Obfuscator" name="Obfuscator">
+                <projects>
+                  <project path="$PROJECT_DIR$/../Obfuscator" />
+                </projects>
+              </build>
               <build path="$PROJECT_DIR$/build-logic/sweety-conventions" name="sweety-conventions">
                 <projects>
                   <project path="$PROJECT_DIR$/build-logic/sweety-conventions" />
@@ -19,6 +24,7 @@
         <option name="gradleJvm" value="corretto-24" />
         <option name="modules">
           <set>
+            <option value="$PROJECT_DIR$/../Obfuscator" />
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/build-logic/sweety-conventions" />
             <option value="$PROJECT_DIR$/feature" />
@@ -63,7 +69,6 @@
             <option value="$PROJECT_DIR$/network/netty-saas/packet" />
             <option value="$PROJECT_DIR$/network/netty-saas/service" />
             <option value="$PROJECT_DIR$/tooling" />
-            <option value="$PROJECT_DIR$/tooling/intellij-plugin" />
             <option value="$PROJECT_DIR$/tooling/ksp" />
             <option value="$PROJECT_DIR$/tooling/processor" />
             <option value="$PROJECT_DIR$/util" />

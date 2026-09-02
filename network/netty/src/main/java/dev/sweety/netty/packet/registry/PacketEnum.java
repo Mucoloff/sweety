@@ -53,10 +53,8 @@ public interface PacketEnum {
         }
     }
 
-    static record None(int id, Class<? extends Packet> packetClass) implements PacketEnum {
-
+    record None(int id, Class<? extends Packet> packetClass) implements PacketEnum {
         public static None NONE = new None(-1, null);
-
     }
 
     default void flag() {
@@ -69,9 +67,9 @@ public interface PacketEnum {
         if (map == null) return defaultVal;
 
         final PacketEnum val = map.get(id);
-        if (val == null || val == None.NONE || !enumClass.isInstance(val)) {
+        if (val == null || val == None.NONE || !enumClass.isInstance(val))
             return defaultVal;
-        }
+
         return enumClass.cast(val);
     }
 }
