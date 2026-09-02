@@ -25,13 +25,45 @@ import java.util.Set;
 public final class FieldOverloadCollisionTransformer extends Transformer {
 
     private final String basePrefix;
+    private final Map<String, Map<String, String>> globalFieldMappings;
 
     public FieldOverloadCollisionTransformer() {
-        this("a");
+        this("a", new HashMap<>());
     }
 
     public FieldOverloadCollisionTransformer(String basePrefix) {
+        this(basePrefix, new HashMap<>());
+    }
+
+    public FieldOverloadCollisionTransformer(String basePrefix, Map<String, Map<String, String>> globalFieldMappings) {
         this.basePrefix = basePrefix;
+        this.globalFieldMappings = globalFieldMappings != null ? globalFieldMappings : new HashMap<>();
+    }
+
+    public Map<String, Map<String, String>> getGlobalFieldMappings() {
+        return globalFieldMappings;
+    }
+
+    public void registerClass(ClassNode cn) {
+        if (cn.fields == null || cn.fields.isEmpty()) return;
+        Map<String, String> fieldRemap = globalFieldMappings.computeIfAbsent(cn.name, k -> new HashMap<>());
+
+        Map<String, Integer> descToNameIndexStatic = new HashMap<>();
+        Map<String, Integer> descToNameIndexInstance = new HashMap<>();
+
+        for (FieldNode fn : cn.fields) {
+            boolean isStatic = (fn.access & Opcodes.ACC_STATIC) != 0;
+            Map<String, Integer> descMap = isStatic ? descToNameIndexStatic : descToNameIndexInstance;
+
+            int nameIdx = 0;
+            String assignedName = basePrefix;
+            if (descMap.containsKey(fn.desc)) {
+                nameIdx = descMap.get(fn.desc) + 1;
+                assignedName = String.valueOf((char) (basePrefix.charAt(0) + nameIdx));
+            }
+            descMap.put(fn.desc, nameIdx);
+            fieldRemap.put(fn.name + "#" + fn.desc, assignedName);
+        }
     }
 
     @Override
@@ -42,40 +74,25 @@ public final class FieldOverloadCollisionTransformer extends Transformer {
     @Override
     public void transform(TransformContext ctx) {
         ClassNode cn = ctx.classNode();
-        if (cn.fields == null || cn.fields.isEmpty()) return;
-
-        // Old field identity (name + desc) -> New field name
-        Map<String, String> fieldRemap = new HashMap<>();
-
-        // Group by static vs instance
-        Map<String, Integer> descToNameIndexStatic = new HashMap<>();
-        Map<String, Integer> descToNameIndexInstance = new HashMap<>();
-
-        for (FieldNode fn : cn.fields) {
-            boolean isStatic = (fn.access & Opcodes.ACC_STATIC) != 0;
-            Map<String, Integer> descMap = isStatic ? descToNameIndexStatic : descToNameIndexInstance;
-
-            // Find an available common name index for this descriptor
-            int nameIdx = 0;
-            String assignedName = basePrefix;
-            if (descMap.containsKey(fn.desc)) {
-                // Another field with the same descriptor already used this name, increment index
-                nameIdx = descMap.get(fn.desc) + 1;
-                assignedName = String.valueOf((char) (basePrefix.charAt(0) + nameIdx));
+        if (cn.fields != null && !cn.fields.isEmpty()) {
+            registerClass(cn);
+            Map<String, String> fieldRemap = globalFieldMappings.get(cn.name);
+            for (FieldNode fn : cn.fields) {
+                String newName = fieldRemap.get(fn.name + "#" + fn.desc);
+                if (newName != null) {
+                    fn.name = newName;
+                }
             }
-            descMap.put(fn.desc, nameIdx);
-
-            fieldRemap.put(fn.name + "#" + fn.desc, assignedName);
-            fn.name = assignedName;
         }
 
-        // Remap all GETFIELD, PUTFIELD, GETSTATIC, PUTSTATIC instructions
+        // Remap all GETFIELD, PUTFIELD, GETSTATIC, PUTSTATIC instructions (intra-class and cross-class)
         for (MethodNode mn : cn.methods) {
             for (AbstractInsnNode insn : mn.instructions.toArray()) {
                 if (insn instanceof FieldInsnNode finsn) {
-                    if (finsn.owner.equals(cn.name)) {
+                    Map<String, String> remapForOwner = globalFieldMappings.get(finsn.owner);
+                    if (remapForOwner != null) {
                         String key = finsn.name + "#" + finsn.desc;
-                        String newName = fieldRemap.get(key);
+                        String newName = remapForOwner.get(key);
                         if (newName != null) {
                             finsn.name = newName;
                         }
