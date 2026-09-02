@@ -50,6 +50,12 @@ public final class TransformPipeline {
         this.superTransformClasses = Set.copyOf(classes);
     }
 
+    private ClassLoader frameClassLoader;
+
+    public void setFrameClassLoader(ClassLoader cl) {
+        this.frameClassLoader = cl;
+    }
+
     /**
      * Transform a single class.
      *
@@ -65,6 +71,9 @@ public final class TransformPipeline {
 
         final TransformContext ctx = new TransformContext(node, sourceName);
         ctx.setSuperTransformClasses(superTransformClasses);
+        if (frameClassLoader != null) {
+            ctx.setFrameClassLoader(frameClassLoader);
+        }
 
         // Apply each transformer in order
         for (Transformer t : transformers) {

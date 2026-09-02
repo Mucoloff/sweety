@@ -54,6 +54,16 @@ public final class TransformContext {
     public ClassNode classNode()  { return classNode; }
     public String    sourceName() { return sourceName; }
 
+    private ClassLoader frameClassLoader;
+
+    public ClassLoader frameClassLoader() {
+        return frameClassLoader != null ? frameClassLoader : getClass().getClassLoader();
+    }
+
+    public void setFrameClassLoader(ClassLoader cl) {
+        this.frameClassLoader = cl;
+    }
+
     public void   setMeta(String key, Object value) { meta.put(key, value); }
     @SuppressWarnings("unchecked")
     public <T> T  getMeta(String key)               { return (T) meta.get(key); }
