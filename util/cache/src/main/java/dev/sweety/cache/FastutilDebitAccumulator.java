@@ -47,9 +47,9 @@ public final class FastutilDebitAccumulator {
         Objects.requireNonNull(consumer, "consumer must not be null");
         if (pendingDebits.isEmpty()) return;
 
-        for (var entry : pendingDebits.long2IntEntrySet()) {
+        it.unimi.dsi.fastutil.longs.Long2IntMaps.fastForEach(pendingDebits, entry -> {
             consumer.accept(entry.getLongKey(), entry.getIntValue());
-        }
+        });
         pendingDebits.clear();
     }
 

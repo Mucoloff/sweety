@@ -35,7 +35,11 @@ public interface PacketEnum {
             if (array.length == 0) continue;
 
             Class<?> enumClass = array.getClass().getComponentType();
-            Int2ObjectMap<PacketEnum> map = LOOKUP.computeIfAbsent(enumClass, k -> new Int2ObjectOpenHashMap<>());
+            Int2ObjectMap<PacketEnum> map = LOOKUP.computeIfAbsent(enumClass, k -> {
+                Int2ObjectOpenHashMap<PacketEnum> m = new Int2ObjectOpenHashMap<>();
+                m.defaultReturnValue(None.NONE);
+                return m;
+            });
 
             for (PacketEnum packetEnum : array) {
                 map.put(packetEnum.id(), packetEnum);
@@ -49,6 +53,12 @@ public interface PacketEnum {
         }
     }
 
+    static record None(int id, Class<? extends Packet> packetClass) implements PacketEnum {
+
+        public static None NONE = new None(-1, null);
+
+    }
+
     default void flag() {
         if (UNREGISTERED.isEmpty()) return;
         log(LogLevel.WARN, "packets with no class implementation:\n", UNREGISTERED.stream().map(packet -> "%s(%s)".formatted(((Enum<?>) packet).name(), packet.id())));
@@ -58,9 +68,11 @@ public interface PacketEnum {
         final Int2ObjectMap<PacketEnum> map = LOOKUP.get(enumClass);
         if (map == null) return defaultVal;
 
-        //noinspection unchecked
-        final T val = (T) map.get(id);
-        return val != null ? val : defaultVal;
+        final PacketEnum val = map.get(id);
+        if (val == null || val == None.NONE || !enumClass.isInstance(val)) {
+            return defaultVal;
+        }
+        return enumClass.cast(val);
     }
 }
 

@@ -53,7 +53,9 @@ public enum MinecraftVersion implements Version<MinecraftVersion> {
         // Group by protocol into TreeMap
         Map<Integer, List<MinecraftVersion>> grouped = Arrays.stream(VALUES)
                 .collect(Collectors.groupingBy(MinecraftVersion::protocolVersion));
+        BY_PROTOCOL.defaultReturnValue(Collections.emptyList());
         BY_PROTOCOL.putAll(grouped);
+        BY_PROTOCOL.trim();
 
         // Populate LinkedHashMap
         for (MinecraftVersion value : VALUES) {
