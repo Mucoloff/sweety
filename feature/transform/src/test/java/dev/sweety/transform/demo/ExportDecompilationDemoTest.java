@@ -91,10 +91,10 @@ public class ExportDecompilationDemoTest {
             throw t;
         }
 
-        // Generate 6 Decoy / Honey-pot classes in the same flattened package "a/"
+        // Generate 10 Polymorphic Decoy / Honey-pot classes in the same flattened package "a/"
         dev.sweety.transform.transformers.decoy.DecoyClassGenerator decoyGen = new dev.sweety.transform.transformers.decoy.DecoyClassGenerator();
         java.util.List<dev.sweety.transform.transformers.decoy.DecoyClassGenerator.DecoyClass> decoys =
-                decoyGen.generateBatch(6, "a", ConfusableDictionary.ILL, 8);
+                decoyGen.generateBatch(10, "a", ConfusableDictionary.ILL, 8);
 
         // Build a complete JAR with the real obfuscated class + all decoy classes
         File desktopJar = new File("/Users/francesco/Desktop/ClientSecurityPayload_HARDENED_DECOYS.jar");
