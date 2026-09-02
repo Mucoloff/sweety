@@ -47,3 +47,9 @@ bin/
 
 
 
+
+### Obfuscation & Scratch Artifacts ###
+scratch/
+decompiled/
+*.decompiled.txt
+dist/
