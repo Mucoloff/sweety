@@ -8,6 +8,8 @@ plugins {
 
 rootProject.name = "sweety"
 
+includeBuild("../Obfuscator")
+
 // ── helpers: flat gradle paths ───────────────────────────────────────────────
 fun remap(p: ProjectDescriptor, group: String) {
     val relativePath = p.path.trimStart(':').replace(':', '/')
