@@ -31,6 +31,7 @@ group("", listOf(
     "feature:module:versioning:client", "feature:module:versioning:client:app", "feature:module:versioning:client:launcher",
     "feature:module:versioning:update-server",
     "feature:asm-patch", "feature:asm-patch:core", "feature:asm-patch:generator", "feature:asm-patch:applier",
+    "feature:transform",
     "feature:service", "feature:service:api", "feature:service:impl",
 
     "network:netty",

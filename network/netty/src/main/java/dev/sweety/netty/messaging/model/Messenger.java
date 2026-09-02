@@ -344,7 +344,9 @@ public abstract class Messenger {
     }
 
     public <T> CompletableFuture<T> sendTcp(ChannelHandlerContext ctx, Packet packet) {
-        return writePacket(ctx, packet);
+        CompletableFuture<T> future = writePacket(ctx, packet);
+        flush(ctx);
+        return future;
     }
 
     public <T> CompletableFuture<T> sendUdp(java.net.InetSocketAddress recipient, Packet packet) {
