@@ -1,7 +1,7 @@
 package dev.sweety.packet.processor;
 
 import dev.sweety.data.buffer.NioBuffer;
-import dev.sweety.packet.processor.fixture.PlayerMovePacketDefPacket;
+import dev.sweety.packet.processor.fixture.PlayerMovePacketImpl;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -10,7 +10,7 @@ public class PacketCodegenTest {
 
     @Test
     public void testGeneratedPacketSerializationAndDefaultMethod() {
-        PlayerMovePacketDefPacket packet = PlayerMovePacketDefPacket.of(3.0, 4.0, 0.0, 180.0f, 45.0f, true);
+        PlayerMovePacketImpl packet = PlayerMovePacketImpl.of(3.0, 4.0, 0.0, 180.0f, 45.0f, true);
 
         // Verify getter methods
         assertEquals(3.0, packet.x());
@@ -27,7 +27,7 @@ public class PacketCodegenTest {
         NioBuffer buffer = NioBuffer.heap(128);
         packet.write(buffer);
 
-        PlayerMovePacketDefPacket readPacket = new PlayerMovePacketDefPacket();
+        PlayerMovePacketImpl readPacket = new PlayerMovePacketImpl();
         readPacket.read(buffer);
 
         assertEquals(3.0, readPacket.x());
@@ -40,12 +40,12 @@ public class PacketCodegenTest {
 
     @Test
     public void testGeneratedPacketPooling() {
-        PlayerMovePacketDefPacket p1 = PlayerMovePacketDefPacket.acquire(1.0, 2.0, 3.0, 10.0f, 20.0f, false);
+        PlayerMovePacketImpl p1 = PlayerMovePacketImpl.acquire(1.0, 2.0, 3.0, 10.0f, 20.0f, false);
         assertEquals(1.0, p1.x());
 
         p1.release();
 
-        PlayerMovePacketDefPacket p2 = PlayerMovePacketDefPacket.acquire(5.0, 6.0, 7.0, 30.0f, 40.0f, true);
+        PlayerMovePacketImpl p2 = PlayerMovePacketImpl.acquire(5.0, 6.0, 7.0, 30.0f, 40.0f, true);
         assertSame(p1, p2, "Pooled instance should be reused on acquire");
         assertEquals(5.0, p2.x());
         assertTrue(p2.onGround());

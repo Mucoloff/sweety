@@ -1,6 +1,6 @@
 package dev.sweety.packet.processor;
 
-import dev.sweety.packet.processor.fixture.LocationPacketDefPacket;
+import dev.sweety.packet.processor.fixture.LocationPacketImpl;
 import dev.sweety.packet.processor.fixture.Point;
 import org.junit.jupiter.api.Test;
 
@@ -13,10 +13,10 @@ class PacketSerializableTest {
         Point original = new Point(3, 7);
 
         // Write constructor encodes all fields into the internal buffer
-        LocationPacketDefPacket written = new LocationPacketDefPacket("spawn", original);
+        LocationPacketImpl written = new LocationPacketImpl("spawn", original);
 
         // Read constructor decodes from raw bytes
-        LocationPacketDefPacket read = new LocationPacketDefPacket(written.name(), written.position());
+        LocationPacketImpl read = new LocationPacketImpl(written.name(), written.position());
         read.assignTimestamp(written.timestamp());
 
         assertEquals("spawn", read.name());
