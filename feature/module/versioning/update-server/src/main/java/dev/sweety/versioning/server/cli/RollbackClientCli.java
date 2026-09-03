@@ -1,3 +1,5 @@
+package dev.sweety.versioning.server.cli;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -10,7 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
 import java.util.UUID;
 
-public class Rollback {
+public class RollbackClientCli {
 
     public static void main(String[] args) throws IOException, InterruptedException {
         String serverUrl = "http://localhost:8080/rollback";

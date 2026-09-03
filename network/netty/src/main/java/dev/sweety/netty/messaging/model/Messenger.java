@@ -232,7 +232,7 @@ public abstract class Messenger {
         this.host = host;
         this.packetRegistry = packetRegistry;
 
-        this.boss = NativeTransport.newEventLoopGroup(1, Thread.ofPlatform().name("netty-boss-", 0).factory());
+        this.boss = NativeTransport.newEventLoopGroup(1, Thread.ofPlatform().name("netty-boss-", 0).daemon(true).factory());
         final int worker_threads = Integer.parseInt(
                 System.getenv().getOrDefault("NETTY_WORKER_THREADS",
                         String.valueOf(Math.max(4, Runtime.getRuntime().availableProcessors() * 2))));
@@ -241,7 +241,7 @@ public abstract class Messenger {
                 Integer.parseInt(System.getenv().getOrDefault("NETTY_WRITE_BUFFER_LOW_WATER_MARK", String.valueOf(1 << 20))),
                 Integer.parseInt(System.getenv().getOrDefault("NETTY_WRITE_BUFFER_HIGH_WATER_MARK", String.valueOf(4 << 20))));
         final int idleTimeoutSeconds = Integer.parseInt(System.getenv().getOrDefault("NETTY_IDLE_TIMEOUT_SECONDS", "60"));
-        this.worker = NativeTransport.newEventLoopGroup(worker_threads, Thread.ofPlatform().name("netty-worker-", 0).factory());
+        this.worker = NativeTransport.newEventLoopGroup(worker_threads, Thread.ofPlatform().name("netty-worker-", 0).daemon(true).factory());
 
         this.effectiveTcp = (transport != null && transport.connectionOriented()) ? transport : TcpTransport.INSTANCE;
         this.effectiveUdp = (transport != null && !transport.connectionOriented()) ? transport : (server ? dev.sweety.netty.messaging.transport.UdpTransport.packets() : dev.sweety.netty.messaging.transport.UdpTransport.unconnected());

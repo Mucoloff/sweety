@@ -1,16 +1,16 @@
+package dev.sweety.launcher.cli;
+
 import java.nio.file.*;
 import java.util.*;
 
-public class Bootstrap {
+public class ProcessBootstrap {
 
     public static void main(String[] args) throws Exception {
-
         String jarName = "launcher.jar";
         List<String> jvmArgs = new ArrayList<>();
         List<String> appArgs = new ArrayList<>();
 
         int i = 0;
-
         if (args.length > 0 && !args[0].startsWith("--")) {
             jarName = args[0];
             i = 1;
@@ -57,16 +57,12 @@ public class Bootstrap {
         }
 
         List<String> command = new ArrayList<>();
-
         Path javaBin = Paths.get(System.getProperty("java.home"), "bin", "java");
 
         command.add(javaBin.toString());
-
         command.addAll(jvmArgs);
-
         command.add("-jar");
         command.add(appJar.getFileName().toString());
-
         command.addAll(appArgs);
 
         System.exit(new ProcessBuilder(command).inheritIO().start().waitFor());

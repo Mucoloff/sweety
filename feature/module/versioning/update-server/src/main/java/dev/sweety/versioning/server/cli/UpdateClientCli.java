@@ -1,3 +1,5 @@
+package dev.sweety.versioning.server.cli;
+
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
@@ -12,7 +14,7 @@ import java.util.HexFormat;
 import java.util.Scanner;
 import java.util.UUID;
 
-class Update {
+public class UpdateClientCli {
 
     public static void main(String[] args) throws Exception {
         String serverUrl = "http://localhost:8080/webhook";
@@ -62,8 +64,7 @@ class Update {
 
     private static String getArg(String[] args, int index, String label, String defaultValue) {
         if (args.length > index) return args[index];
-        if (defaultValue != null) return defaultValue;
-        return null;
+        return defaultValue;
     }
 
     private static byte[] createMultipartBody(String boundary, String artifact, String channel, String version, Path jarPath) throws IOException {
