@@ -1,12 +1,12 @@
 package dev.sweety.vector.list
 
-import dev.sweety.config.common.serialization.ConfigSerializable
 import java.nio.ByteBuffer
 
 /**
- * Base interface for packed primitive vector lists (zero-allocation arrays).
+ * Base interface for all compact primitive vector array-lists.
  */
-interface VectorList : ConfigSerializable {
+interface VectorList {
+    fun serialize(): Map<String?, Any?> = emptyMap()
     fun size(): Int
     fun capacity(): Int
     fun isEmpty(): Boolean = size() == 0

@@ -1,13 +1,12 @@
 package dev.sweety.vector.common
 
-import dev.sweety.config.common.serialization.ConfigSerializable
-
 /**
  * Base interface for all vector types.
  * @param N The numeric type (Int, Float, Double)
  * @param Self The implementation type for fluent API
  */
-interface Vector<N : Number, Self : Vector<N, Self>> : ConfigSerializable {
+interface Vector<N : Number, Self : Vector<N, Self>> {
+    fun serialize(): Map<String?, Any?> = emptyMap()
     fun add(other: Self): Self
     fun sub(other: Self): Self
     fun mul(other: Self): Self
