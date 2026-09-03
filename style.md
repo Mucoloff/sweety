@@ -661,14 +661,14 @@ Ogni implementazione deve essere sostituibile al contratto dell'interfaccia senz
 Preferire interfacce piccole e specifiche a una grande e generica.
 
 - Vedi §12 — un'interfaccia "definisce solo il contratto": se il contratto cresce e i consumatori iniziano a implementare metodi che non usano (no-op, `UnsupportedOperationException`), l'interfaccia va spezzata per ruolo.
-- Vedi §19.A (Port & Adapters) — `port/in`/`port/out` sono già segregate per use-case (`*UseCase`) e per ruolo (`*Repository`, `*Publisher`), non un'unica interfaccia "god" per modulo.
+- Vedi §19.A (Split api/impl) — le interfacce in `api/` sono segregate per ruolo specifico e feature, non un'unica interfaccia "god" per modulo.
 
 ## D — Dependency Inversion
 
 Dipendere da astrazioni, non da implementazioni concrete.
 
-- Vedi §20 — default constructor injection su interfacce/port, non su classi concrete.
-- Vedi §19.A — `application/` dipende solo da `domain/` + `port/`, mai da `adapter/` direttamente.
+- Vedi §20 — default constructor injection su interfacce/contratti di `api/`, non su classi concrete.
+- Vedi §19.A — i consumatori dipendono solo dai contratti in `api/`, mai dalle classi concrete in `impl/`.
 - Anti-pattern già in §20: service locator (`Globals.get(X.class)`) e static factory globale per dipendenze runtime-swappable — entrambi invertono la dipendenza nella direzione sbagliata.
 
 ---
