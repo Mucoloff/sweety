@@ -489,57 +489,51 @@ Usare quando: framework con data-binding nativo (JavaFX Property, Jetpack Compos
 
 ---
 
-# 19. Architettura sistemi/SaaS
+# 19. Architettura modulare & Varianza (API / Implementation Split)
 
-Per moduli backend, network, SaaS. Tre pillar: esagonale, event-driven, modulare.
+Per moduli backend, feature, network e tooling. Tre pillar: split netto `api`/`impl`, feature packaging speculare, event-driven leggero.
 
-## A. Esagonale (Ports & Adapters)
+## A. Split `api` / `impl` & Feature Packaging
 
-### Layout canon
-
-Struttura canonizzata da `feature/module/versioning/update-server` e `client/launcher`:
+Niente overengineering esagonale (no proliferazione inutile di folder `domain/port/adapter/infra`). Struttura flat, lineare e speculare:
 
 ```
 <module>/
-├─ domain/                     # entità, value object, regole pure di dominio
-├─ port/
-│  ├─ in/                      # use-case (interfacce *UseCase)
-│  └─ out/                     # SPI (*Repository, *Store, *Publisher)
-├─ application/                # implementazioni use-case (servizi orchestratori)
-├─ adapter/
-│  ├─ in/<transport>/          # http, netty, cli, ws  →  chiama port/in
-│  └─ out/<resource>/          # storage, cache, webhook  →  implementa port/out
-└─ infra/                      # wiring, bootstrap, config
+├─ api/                        # CONTRATTI PUBBLICI
+│  ├─ <category>/             # subpackage per feature/dominio
+│  │  ├─ *Service / *Engine   # interfacce pure di contratto
+│  │  ├─ *Record / *Config    # DTO e value objects immutabili
+│  │  └─ annotation/          # annotazioni di marcatura
+│  └─ SPI / Provider          # punti di estensione aperti
+│
+└─ impl/                       # LOGICA CONCRETA & WIRING
+   ├─ <category>/              # STESSA suddivisione speculare di api/
+   │  ├─ Default* / Base*      # implementazioni concrete dell'engine
+   │  └─ internal/             # helper privati, algoritmi, codec
+   └─ bootstrap / wiring       # lifecycle, setup, configurazione
 ```
 
 ### Regole dipendenze
-- `domain/` → nessuna dipendenza interna (no `adapter/`, no `infra/`)
-- `application/` → solo `domain/` + `port/`
-- `adapter/` → solo `port/` (non `application/` direttamente)
-- `infra/` → tutto (è il punto di wiring)
+- `api/` → contratti puri, zero dipendenze pesanti, zero implementazioni esterne.
+- `impl/` → dipende da `api/` e contiene la logica concreta, l'eventuale I/O e le librerie di terze parti.
+- Moduli esterni → dipendono SOLO da `api/` (tramite `api(project(":...:api"))`), mai da `impl/`.
 
-### Naming
-- Port in: `*UseCase` (es. `PublishReleaseUseCase`)
-- Port out: nome del ruolo (`ReleaseRepository`, `ReleasePublisher`) — no `I*`, no `*Dao`
-- Un servizio `application/` può implementare più `*UseCase` (vedi `ReleaseManager.java:27`)
+### Varianza & Polimorfismo
+- Il layout `api`/`impl` garantisce massima varianza: permette di sostituire l'implementazione concreta (es. `sql4j` SQLite vs Postgres, o transport `Netty` vs `VirtualThreads`, o Mock per test) senza toccare una singola riga di codice nei consumatori di `api`.
 
 ## B. Event-driven
 
-- Evento = fatto già accaduto → naming al passato (`OrderPlaced`, non `PlaceOrder`)
-- Tipi evento immutabili: `record` o estensione di `Event<E>` in `feature/event/api`
-- Pub/sub via `EventSystemPort` — mai dipendenza diretta su `EventSystem` impl
-- Registrazione listener via `@LinkEvent` + KSP processor (`feature/event/event-processor`) — no reflection runtime
-- Comandi → use-case (`port/in`); eventi → broadcast post-fatto
-- `CancellableEvent` solo per intercept pre-commit; default `Event` altrimenti
-- Separazione: produttore non conosce consumatori; consumatore non chiama produttore
+- Evento = fatto già accaduto → naming al passato (`OrderPlaced`, non `PlaceOrder`).
+- Tipi evento immutabili: `record` o estensione di `Event<E>` in `feature/event/api`.
+- Registrazione listener via `@LinkEvent` + KSP/Annotation processor — zero reflection runtime.
+- Separazione: il produttore emette l'evento senza conoscere i consumatori.
 
 ## C. Modulare (Gradle)
 
-- Ogni capability = subproject Gradle separato (`util/*`, `feature/*`, `network/*`, ecc.)
-- Split `api`/`impl` quando: multiple implementazioni possibili, oppure l'API è consumata da altri moduli senza trascinare l'impl
-- Hexagonal split (`port/`, `adapter/`, `application/`, `domain/`) solo se il modulo è abbastanza grande da giustificarlo — non obbligatorio per moduli piccoli
-- Naming: `<area>/<capability>[/{api,impl,…}]`
-- Dipendenze cicliche tra subproject: vietate (Gradle le rifiuta; `api` scope vs `implementation` scope per propagazione)
+- Ogni capability = subproject Gradle (`util/*`, `feature/*`, `network/*`, ecc.).
+- Split `api`/`impl` quando: l'API è consumata da altri moduli o sono previste varianti di implementazione/test.
+- Naming coerente: `<area>/<capability>[/{api,impl}]`.
+- Dipendenze cicliche tra subproject: vietate.
 
 ---
 
