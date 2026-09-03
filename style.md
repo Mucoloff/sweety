@@ -637,6 +637,80 @@ di aggiungere.
 
 ---
 
-# 24. Regola finale
+# 24. SOLID
+
+Principi già presenti nel documento in forma sparsa — qui unificati e con riferimento incrociato.
+
+## S — Single Responsibility
+
+Una classe/metodo ha **una sola ragione per cambiare**.
+
+- Vedi §7 (Design classi) e §23 (Niente superclassi che fanno tutto) — soglia concreta: ≈600 righe o >5 responsabilità ortogonali → split.
+- Sintomo: aggiungere una feature richiede toccare la stessa classe in 3+ posti diversi → estrarre prima di aggiungere.
+
+## O — Open/Closed
+
+Aperto a estensione, chiuso a modifica.
+
+- Vedi §21 (Modello plugin/Extension) — `Extension`, `UpdateableExtension`, `@ServiceComponent`: si estende il sistema senza toccare il core.
+- Vedi §18/§19 — `sealed` per domini chiusi e noti a compile-time, `abstract class`/interfacce per punti di estensione aperti. Non mescolare i due (un dominio è chiuso *o* aperto, non entrambi).
+
+## L — Liskov Substitution
+
+Ogni implementazione deve essere sostituibile al contratto dell'interfaccia senza sorprese.
+
+- Vedi §1 (Factory methods) — la factory è il punto giusto per garantirlo: valida gli invarianti **una volta**, alla creazione, così ogni istanza restituita rispetta davvero il contratto del tipo per tutta la sua vita. Se una sottoclasse/implementazione ha bisogno di *rilassare* precondizioni o *rafforzare* postcondizioni rispetto al contratto dichiarato → non è una vera implementazione di quel contratto, serve un tipo diverso.
+- Vedi §12 (Implementazioni) — `FileLogger`, `AsyncLogger` devono onorare lo stesso contratto di `Logger` senza eccezioni nascoste o comportamenti a sorpresa che il chiamante non può prevedere dal tipo dell'interfaccia.
+
+## I — Interface Segregation
+
+Preferire interfacce piccole e specifiche a una grande e generica.
+
+- Vedi §12 — un'interfaccia "definisce solo il contratto": se il contratto cresce e i consumatori iniziano a implementare metodi che non usano (no-op, `UnsupportedOperationException`), l'interfaccia va spezzata per ruolo.
+- Vedi §19.A (Port & Adapters) — `port/in`/`port/out` sono già segregate per use-case (`*UseCase`) e per ruolo (`*Repository`, `*Publisher`), non un'unica interfaccia "god" per modulo.
+
+## D — Dependency Inversion
+
+Dipendere da astrazioni, non da implementazioni concrete.
+
+- Vedi §20 — default constructor injection su interfacce/port, non su classi concrete.
+- Vedi §19.A — `application/` dipende solo da `domain/` + `port/`, mai da `adapter/` direttamente.
+- Anti-pattern già in §20: service locator (`Globals.get(X.class)`) e static factory globale per dipendenze runtime-swappable — entrambi invertono la dipendenza nella direzione sbagliata.
+
+---
+
+# 25. Test-first
+
+## Regola
+Prima di scrivere qualsiasi riga di codice di produzione, scrivere il test che la richiede.
+Nessuna eccezione per "è una cosa piccola" — se il codice non è nato da un test che falliva, non è
+nato correttamente.
+
+## Cosa va testato (JUnit, prima del codice)
+Logica pura, deterministica, input→output senza stato esterno vivo:
+- Algoritmi/scoring (selezione target, calcolo danno, arbitraggio priorità)
+- Math/quantizzazione (GCD, wrapping angoli, interpolazioni)
+- Parsing/encoding di protocollo (packet body, formati file)
+- Regole di dominio (permessi, RBAC, derivazione chiavi, rollout/bucketing)
+- Qualsiasi funzione che non tocca API di gioco live, rendering, rete viva
+
+## Cosa NON è testabile via JUnit (verifica manuale, non scusa per saltare i test)
+Codice che dipende da stato di un motore di gioco/finestra/rendering live non è mockabile in modo
+sensato — mockare l'intero stato per testare tre righe di glue-code costa più del codice stesso e
+produce test fragili che non provano nulla di reale. Per questa categoria la verifica resta manuale
+(avvio reale + osservazione), non un unit test finto:
+- Codice che legge/scrive stato di gioco live (posizione giocatore, mondo, inventario reale)
+- Rendering (chiamate GL/render pipeline)
+- Mixin (comportamento visibile solo a runtime nel gioco reale)
+- Percorsi rete live end-to-end (il codec puro sì, il socket vivo no)
+
+## Nota
+"Non testabile via JUnit" non significa "non va verificato" — significa che la verifica si sposta a
+runtime reale (vedi playbook di verifica manuale, prossima sezione se presente) invece che a un test
+automatico. Il codice puro dietro quella glue va comunque isolato ed estratto per essere testabile.
+
+---
+
+# 26. Regola finale
 
 > Codice semplice > codice "smart"
