@@ -3,6 +3,7 @@ package dev.sweety.config.common;
 import dev.sweety.config.common.serialization.ConfigSerializable;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -16,6 +17,10 @@ public class MapConfigurationSection implements ConfigurationSection {
 
     private final Map<String, Object> map;
     private final String basePath;
+
+    public MapConfigurationSection() {
+        this(new TreeMap<>());
+    }
 
     public MapConfigurationSection(Map<String, Object> map) {
         this(map, "");
@@ -118,5 +123,10 @@ public class MapConfigurationSection implements ConfigurationSection {
     public @Nullable ConfigurationSection getSection(String path) {
         Map<String, Object> sectionMap = getMap(path);
         return sectionMap != null ? new MapConfigurationSection(sectionMap, path(path)) : null;
+    }
+
+    @Override
+    public Map<String, Object> toMap() {
+        return Collections.unmodifiableMap(map);
     }
 }

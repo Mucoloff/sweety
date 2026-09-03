@@ -1,6 +1,7 @@
 plugins { id("sweety.java-conventions") }
 
 dependencies {
+    api(project(":util:persistence:configuration"))
     implementation(project(":util:math"))
     implementation(project(":util:thread"))
 

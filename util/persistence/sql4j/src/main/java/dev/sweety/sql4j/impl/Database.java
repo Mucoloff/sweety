@@ -232,6 +232,39 @@ public class Database implements AutoCloseable {
         return entityCache;
     }
 
+    /**
+     * Creates or retrieves a typed NoSQL document collection.
+     *
+     * @param collectionName the name of the collection
+     * @param documentClass the document class
+     * @param format the serialization format (YAML, JSON, RAW)
+     * @param idClass the identifier class (String, UUID, Long, Integer)
+     */
+    public <T, ID> dev.sweety.sql4j.document.DocumentCollection<T, ID> documentCollection(String collectionName, Class<T> documentClass, dev.sweety.sql4j.document.DocumentFormat format, Class<ID> idClass) {
+        return new dev.sweety.sql4j.document.DocumentCollectionImpl<>(collectionName, documentClass, format, idClass, connection);
+    }
+
+    /**
+     * Creates or retrieves a string-keyed typed document collection.
+     */
+    public <T> dev.sweety.sql4j.document.DocumentCollection<T, String> documentCollection(String collectionName, Class<T> documentClass, dev.sweety.sql4j.document.DocumentFormat format) {
+        return documentCollection(collectionName, documentClass, format, String.class);
+    }
+
+    /**
+     * Creates or retrieves a YAML-backed ConfigurationSection document collection.
+     */
+    public dev.sweety.sql4j.document.DocumentCollection<dev.sweety.config.common.ConfigurationSection, String> yamlDocuments(String collectionName) {
+        return documentCollection(collectionName, dev.sweety.config.common.ConfigurationSection.class, dev.sweety.sql4j.document.DocumentFormat.YAML, String.class);
+    }
+
+    /**
+     * Creates or retrieves a JSON-backed ConfigurationSection document collection.
+     */
+    public dev.sweety.sql4j.document.DocumentCollection<dev.sweety.config.common.ConfigurationSection, String> jsonDocuments(String collectionName) {
+        return documentCollection(collectionName, dev.sweety.config.common.ConfigurationSection.class, dev.sweety.sql4j.document.DocumentFormat.JSON, String.class);
+    }
+
     @Override
     public void close() {
         connection.close();

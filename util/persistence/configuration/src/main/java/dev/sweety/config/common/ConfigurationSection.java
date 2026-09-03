@@ -62,6 +62,14 @@ public interface ConfigurationSection {
     @Nullable
     Map<String, Object> getMap(String path);
 
+    /**
+     * Converts this configuration section into a standard Map representation.
+     */
+    default Map<String, Object> toMap() {
+        Map<String, Object> map = getMap("");
+        return map != null ? map : Map.of();
+    }
+
     @Nullable
     ConfigurationSection getSection(String path);
 

@@ -25,6 +25,7 @@ object YamlUtils {
         val yamlLoaderOptions = LoaderOptions()
         yamlLoaderOptions.maxAliasesForCollections = Int.MAX_VALUE
         yamlLoaderOptions.codePointLimit = Int.MAX_VALUE
+        yamlLoaderOptions.tagInspector = org.yaml.snakeyaml.inspector.TagInspector { true }
 
         Yaml(Constructor(yamlLoaderOptions), FlowListRepresenter(yamlDumperOptions), yamlDumperOptions)
     }
@@ -48,6 +49,22 @@ object YamlUtils {
 
     @JvmStatic
     fun yaml(): Yaml = yaml.get()
+
+    @JvmStatic
+    fun <T> yamlFor(clazz: Class<T>): Yaml {
+        val yamlDumperOptions = DumperOptions().apply {
+            defaultFlowStyle = DumperOptions.FlowStyle.BLOCK
+            indent = 2
+            width = 80
+            isPrettyFlow = false
+        }
+        val yamlLoaderOptions = LoaderOptions().apply {
+            maxAliasesForCollections = Int.MAX_VALUE
+            codePointLimit = Int.MAX_VALUE
+            tagInspector = org.yaml.snakeyaml.inspector.TagInspector { true }
+        }
+        return Yaml(Constructor(clazz, yamlLoaderOptions), FlowListRepresenter(yamlDumperOptions), yamlDumperOptions)
+    }
 
     @JvmStatic
     fun <T> write(obj: T): String = yaml().dump(obj)
@@ -74,16 +91,16 @@ object YamlUtils {
     }
 
     @JvmStatic
-    fun <T> load(reader: Reader, configClass: Class<T>): T = yaml().loadAs(reader, configClass)
+    fun <T> load(reader: Reader, configClass: Class<T>): T = yamlFor(configClass).load(reader)
 
     @JvmStatic
-    fun <T> read(obj: String, clazz: Class<T>): T = yaml().loadAs(obj, clazz)
+    fun <T> read(obj: String, clazz: Class<T>): T = yamlFor(clazz).load(obj)
 
     @JvmStatic
     fun <T> load(reader: Reader, configClass: Type): T {
         if (configClass is Class<*>) {
             @Suppress("UNCHECKED_CAST")
-            return yaml().loadAs(reader, configClass as Class<T>)
+            return load(reader, configClass as Class<T>)
         }
         return yaml().load(reader)
     }
@@ -92,7 +109,7 @@ object YamlUtils {
     fun <T> read(obj: String, clazz: Type): T {
         if (clazz is Class<*>) {
             @Suppress("UNCHECKED_CAST")
-            return yaml().loadAs(obj, clazz as Class<T>)
+            return read(obj, clazz as Class<T>)
         }
         return yaml().load(obj)
     }
