@@ -27,6 +27,8 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongCollection;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import dev.sweety.serialization.format.StructuredSink;
+import dev.sweety.serialization.format.StructuredSource;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2LongMap;
@@ -49,9 +51,54 @@ import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
+import dev.sweety.data.buffer.adapter.BufferStructuredAdapter;
+import dev.sweety.serialization.Reader;
+import dev.sweety.serialization.Writer;
+import dev.sweety.serialization.format.StructuredSink;
+import dev.sweety.serialization.format.StructuredSource;
+
 public abstract class AbstractBuffer<Self extends AbstractBuffer<Self>> implements BufferReader, BufferWriter, PackedBooleanAccessor<Self>, AutoCloseable {
     protected static final int MAX_ARRAY_SIZE = 1 << 23; // 8MB — ForwardData batches exceed 1MB at 3×1500p
     private static final int MAX_STRING_BYTES = 1 << 20;
+
+    private transient StructuredSink structuredSinkView;
+    private transient StructuredSource structuredSourceView;
+
+    /**
+     * Returns a format-agnostic {@link StructuredSink} view over this buffer.
+     */
+    public StructuredSink asSink() {
+        if (structuredSinkView == null) {
+            structuredSinkView = BufferStructuredAdapter.ofSink(this);
+        }
+        return structuredSinkView;
+    }
+
+    /**
+     * Returns a format-agnostic {@link StructuredSource} view over this buffer.
+     */
+    public StructuredSource asSource() {
+        if (structuredSourceView == null) {
+            structuredSourceView = BufferStructuredAdapter.ofSource(this);
+        }
+        return structuredSourceView;
+    }
+
+    /**
+     * Serializes an object into this buffer using the given format-agnostic {@link Writer}.
+     */
+    public <T> Self writeStructured(Writer<T, StructuredSink> writer, T value) {
+        writer.write(asSink(), value);
+        //noinspection unchecked
+        return (Self) this;
+    }
+
+    /**
+     * Deserializes an object from this buffer using the given format-agnostic {@link Reader}.
+     */
+    public <T> T readStructured(Reader<T, StructuredSource> reader) {
+        return reader.read(asSource());
+    }
 
     public abstract void clear();
 

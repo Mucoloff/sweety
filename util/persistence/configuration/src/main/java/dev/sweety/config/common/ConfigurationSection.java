@@ -673,4 +673,20 @@ public interface ConfigurationSection {
     static ConfigurationSection fromMap(Map<String, Object> map) {
         return new MapConfigurationSection(map);
     }
+
+    default void writeToBuffer(dev.sweety.data.buffer.AbstractBuffer<?> buffer) {
+        buffer.writeDynamic(toMap());
+    }
+
+    static ConfigurationSection fromBuffer(dev.sweety.data.buffer.AbstractBuffer<?> buffer) {
+        Object obj = buffer.readDynamic();
+        if (obj instanceof Map<?, ?> m) {
+            Map<String, Object> map = new TreeMap<>();
+            for (Map.Entry<?, ?> e : m.entrySet()) {
+                map.put(String.valueOf(e.getKey()), e.getValue());
+            }
+            return new MapConfigurationSection(map);
+        }
+        return new MapConfigurationSection(new TreeMap<>());
+    }
 }
