@@ -74,18 +74,19 @@ public final class RemoteSqlConnection extends SqlConnection {
     private RpcPreparedStatement.RpcResponse dispatch(String sql, Object[] params, boolean returnGenKeys)
             throws SQLException {
         boolean select = isSelect(sql);
-        byte[] payload = RpcCodec.encodeQuery(sql, params, returnGenKeys);
-        Packet request = select ? new DbQueryRequest(payload) : new DbMutationRequest(payload);
+        Packet request = select
+                ? new DbQueryRequest(sql, params, returnGenKeys)
+                : new DbMutationRequest(sql, params, returnGenKeys);
         try {
             Packet reply = client.sendRequest(dbServiceId, request).get(RPC_TIMEOUT_SEC, TimeUnit.SECONDS);
             if (select) {
                 DbQueryResponse resp = (DbQueryResponse) reply;
                 if (resp.error() != null) throw new SQLException("RPC query failed: " + resp.error());
-                return new RpcPreparedStatement.RpcResponse(true, resp.payload());
+                return RpcPreparedStatement.RpcResponse.ofRows(resp.columns(), resp.rows());
             } else {
                 DbMutationResponse resp = (DbMutationResponse) reply;
                 if (resp.error() != null) throw new SQLException("RPC mutation failed: " + resp.error());
-                return new RpcPreparedStatement.RpcResponse(false, resp.payload());
+                return RpcPreparedStatement.RpcResponse.ofMutation(resp.updateCount(), resp.generatedKey());
             }
         } catch (SQLException e) {
             throw e;
@@ -95,13 +96,12 @@ public final class RemoteSqlConnection extends SqlConnection {
     }
 
     private int[] dispatchBatch(String sql, Object[][] paramRows) throws SQLException {
-        byte[] payload = RpcCodec.encodeBatch(sql, paramRows);
         try {
-            Packet reply = client.sendRequest(dbServiceId, new DbBatchMutationRequest(payload))
+            Packet reply = client.sendRequest(dbServiceId, new DbBatchMutationRequest(sql, paramRows))
                     .get(RPC_TIMEOUT_SEC, TimeUnit.SECONDS);
             DbBatchMutationResponse resp = (DbBatchMutationResponse) reply;
             if (resp.error() != null) throw new SQLException("RPC batch mutation failed: " + resp.error());
-            return RpcCodec.decodeBatchResult(resp.payload());
+            return resp.updateCounts();
         } catch (SQLException e) {
             throw e;
         } catch (Exception e) {

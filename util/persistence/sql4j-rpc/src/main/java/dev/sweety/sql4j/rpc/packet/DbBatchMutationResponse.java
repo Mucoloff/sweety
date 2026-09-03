@@ -3,31 +3,51 @@ package dev.sweety.sql4j.rpc.packet;
 import dev.sweety.data.buffer.BufferReader;
 import dev.sweety.data.buffer.BufferWriter;
 import dev.sweety.netty.packet.model.Packet;
+import dev.sweety.sql4j.rpc.RpcCodec;
 
 /**
- * RPC response for a {@link DbBatchMutationRequest}: either an encoded per-row update-count
- * array ({@link #payload}, per JDBC {@code executeBatch()} semantics) or an {@link #error}.
+ * RPC response for a {@link DbBatchMutationRequest}: either a zero-copy per-row update-count
+ * array or an {@link #error}.
  */
 public final class DbBatchMutationResponse extends Packet {
 
-    private byte[] payload = new byte[0];
+    private int[] updateCounts;
+    private byte[] cachedPayload;
     private String error;
 
     public DbBatchMutationResponse() {}
 
+    public DbBatchMutationResponse(int[] updateCounts) {
+        this.updateCounts = updateCounts != null ? updateCounts : new int[0];
+        this.error = null;
+    }
+
     public DbBatchMutationResponse(byte[] payload) {
-        this.payload = payload != null ? payload : new byte[0];
+        this.cachedPayload = payload != null ? payload : new byte[0];
+        if (payload != null && payload.length > 0) {
+            this.updateCounts = RpcCodec.decodeBatchResult(payload);
+        } else {
+            this.updateCounts = new int[0];
+        }
         this.error = null;
     }
 
     public static DbBatchMutationResponse error(String error) {
         DbBatchMutationResponse r = new DbBatchMutationResponse();
         r.error = error != null ? error : "unknown error";
+        r.updateCounts = new int[0];
         return r;
     }
 
-    public byte[] payload() { return payload; }
+    public int[] updateCounts() { return updateCounts; }
     public String error() { return error; }
+
+    public byte[] payload() {
+        if (cachedPayload == null && error == null) {
+            cachedPayload = RpcCodec.encodeBatchResult(updateCounts);
+        }
+        return cachedPayload != null ? cachedPayload : new byte[0];
+    }
 
     @Override public void write(BufferWriter buffer) {
         boolean failed = error != null;
@@ -35,7 +55,7 @@ public final class DbBatchMutationResponse extends Packet {
         if (failed) {
             buffer.writeString(error);
         } else {
-            buffer.writeByteArray(payload);
+            RpcCodec.writeBatchResult(buffer, updateCounts);
         }
     }
 
@@ -43,10 +63,12 @@ public final class DbBatchMutationResponse extends Packet {
         boolean failed = buffer.readBoolean();
         if (failed) {
             error = buffer.readString();
-            payload = new byte[0];
+            updateCounts = new int[0];
+            cachedPayload = new byte[0];
         } else {
             error = null;
-            payload = buffer.readByteArray();
+            updateCounts = RpcCodec.readBatchResult(buffer);
+            cachedPayload = null;
         }
     }
 }

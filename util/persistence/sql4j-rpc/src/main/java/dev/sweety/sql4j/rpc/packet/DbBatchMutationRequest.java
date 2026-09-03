@@ -3,30 +3,51 @@ package dev.sweety.sql4j.rpc.packet;
 import dev.sweety.data.buffer.BufferReader;
 import dev.sweety.data.buffer.BufferWriter;
 import dev.sweety.netty.packet.model.Packet;
+import dev.sweety.sql4j.rpc.RpcCodec;
 
 /**
- * RPC request carrying an {@link dev.sweety.sql4j.rpc.RpcCodec}-encoded batch mutation payload
- * (one SQL text, N param rows) — the wire counterpart of a JDBC
- * {@code addBatch()}/{@code executeBatch()} sequence, sent as a single roundtrip instead of one
- * {@link DbMutationRequest} per row.
+ * RPC request carrying a batch mutation payload with zero-copy stream serialization.
  */
 public final class DbBatchMutationRequest extends Packet {
 
-    private byte[] payload = new byte[0];
+    private String sql;
+    private Object[][] paramRows;
+    private byte[] cachedPayload;
 
     public DbBatchMutationRequest() {}
 
-    public DbBatchMutationRequest(byte[] payload) {
-        this.payload = payload != null ? payload : new byte[0];
+    public DbBatchMutationRequest(String sql, Object[][] paramRows) {
+        this.sql = sql;
+        this.paramRows = paramRows;
     }
 
-    public byte[] payload() { return payload; }
+    public DbBatchMutationRequest(byte[] payload) {
+        this.cachedPayload = payload;
+        if (payload != null && payload.length > 0) {
+            RpcCodec.RpcBatchPayload b = RpcCodec.decodeBatch(payload);
+            this.sql = b.sql();
+            this.paramRows = b.paramRows();
+        }
+    }
+
+    public String sql() { return sql; }
+    public Object[][] paramRows() { return paramRows; }
+
+    public byte[] payload() {
+        if (cachedPayload == null) {
+            cachedPayload = RpcCodec.encodeBatch(sql, paramRows);
+        }
+        return cachedPayload;
+    }
 
     @Override public void write(BufferWriter buffer) {
-        buffer.writeByteArray(payload);
+        RpcCodec.writeBatch(buffer, sql, paramRows);
     }
 
     @Override public void read(BufferReader buffer) {
-        payload = buffer.readByteArray();
+        RpcCodec.RpcBatchPayload b = RpcCodec.readBatch(buffer);
+        this.sql = b.sql();
+        this.paramRows = b.paramRows();
+        this.cachedPayload = null;
     }
 }

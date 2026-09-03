@@ -70,9 +70,8 @@ public final class SqlGatewayHandler {
 
     private Packet handleQuery(DbQueryRequest request) {
         try {
-            RpcCodec.RpcQueryPayload q = RpcCodec.decodeQuery(request.payload());
-            RpcCodec.RpcRows result = executeSelect(q.sql(), q.params());
-            return new DbQueryResponse(RpcCodec.encodeRows(result.columns(), result.rows()));
+            RpcCodec.RpcRows result = executeSelect(request.sql(), request.params());
+            return new DbQueryResponse(result.columns(), result.rows());
         } catch (Exception e) {
             return DbQueryResponse.error(e.getMessage());
         }
@@ -80,9 +79,8 @@ public final class SqlGatewayHandler {
 
     private Packet handleMutation(DbMutationRequest request) {
         try {
-            RpcCodec.RpcQueryPayload q = RpcCodec.decodeQuery(request.payload());
-            long[] result = executeMutation(q.sql(), q.params(), q.returnGeneratedKeys());
-            return new DbMutationResponse(RpcCodec.encodeMutation((int) result[0], result[1]));
+            long[] result = executeMutation(request.sql(), request.params(), request.returnGeneratedKeys());
+            return new DbMutationResponse((int) result[0], result[1]);
         } catch (Exception e) {
             return DbMutationResponse.error(e.getMessage());
         }
@@ -98,9 +96,8 @@ public final class SqlGatewayHandler {
      */
     private Packet handleBatchMutation(DbBatchMutationRequest request) {
         try {
-            RpcCodec.RpcBatchPayload b = RpcCodec.decodeBatch(request.payload());
-            int[] counts = executeBatch(b.sql(), b.paramRows());
-            return new DbBatchMutationResponse(RpcCodec.encodeBatchResult(counts));
+            int[] counts = executeBatch(request.sql(), request.paramRows());
+            return new DbBatchMutationResponse(counts);
         } catch (Exception e) {
             return DbBatchMutationResponse.error(e.getMessage());
         }

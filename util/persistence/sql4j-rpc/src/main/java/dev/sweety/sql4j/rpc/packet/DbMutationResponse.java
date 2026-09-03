@@ -3,20 +3,34 @@ package dev.sweety.sql4j.rpc.packet;
 import dev.sweety.data.buffer.BufferReader;
 import dev.sweety.data.buffer.BufferWriter;
 import dev.sweety.netty.packet.model.Packet;
+import dev.sweety.sql4j.rpc.RpcCodec;
 
 /**
- * RPC response for a {@link DbMutationRequest}: either an encoded {updateCount, generatedKey}
- * result ({@link #payload}) or an {@link #error} string.
+ * RPC response for a {@link DbMutationRequest}: either a zero-copy {updateCount, generatedKey}
+ * result or an {@link #error} string.
  */
 public final class DbMutationResponse extends Packet {
 
-    private byte[] payload = new byte[0];
+    private int updateCount;
+    private long generatedKey;
+    private byte[] cachedPayload;
     private String error;
 
     public DbMutationResponse() {}
 
+    public DbMutationResponse(int updateCount, long generatedKey) {
+        this.updateCount = updateCount;
+        this.generatedKey = generatedKey;
+        this.error = null;
+    }
+
     public DbMutationResponse(byte[] payload) {
-        this.payload = payload != null ? payload : new byte[0];
+        this.cachedPayload = payload != null ? payload : new byte[0];
+        if (payload != null && payload.length > 0) {
+            long[] res = RpcCodec.decodeMutation(payload);
+            this.updateCount = (int) res[0];
+            this.generatedKey = res[1];
+        }
         this.error = null;
     }
 
@@ -26,8 +40,16 @@ public final class DbMutationResponse extends Packet {
         return r;
     }
 
-    public byte[] payload() { return payload; }
+    public int updateCount() { return updateCount; }
+    public long generatedKey() { return generatedKey; }
     public String error() { return error; }
+
+    public byte[] payload() {
+        if (cachedPayload == null && error == null) {
+            cachedPayload = RpcCodec.encodeMutation(updateCount, generatedKey);
+        }
+        return cachedPayload != null ? cachedPayload : new byte[0];
+    }
 
     @Override public void write(BufferWriter buffer) {
         boolean failed = error != null;
@@ -35,7 +57,7 @@ public final class DbMutationResponse extends Packet {
         if (failed) {
             buffer.writeString(error);
         } else {
-            buffer.writeByteArray(payload);
+            RpcCodec.writeMutation(buffer, updateCount, generatedKey);
         }
     }
 
@@ -43,10 +65,15 @@ public final class DbMutationResponse extends Packet {
         boolean failed = buffer.readBoolean();
         if (failed) {
             error = buffer.readString();
-            payload = new byte[0];
+            updateCount = 0;
+            generatedKey = 0L;
+            cachedPayload = new byte[0];
         } else {
             error = null;
-            payload = buffer.readByteArray();
+            long[] res = RpcCodec.readMutation(buffer);
+            this.updateCount = (int) res[0];
+            this.generatedKey = res[1];
+            this.cachedPayload = null;
         }
     }
 }

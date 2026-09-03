@@ -59,13 +59,29 @@ public final class RpcPreparedStatement implements PreparedStatement {
             int[] counts = new int[paramRows.length];
             for (int i = 0; i < paramRows.length; i++) {
                 RpcResponse resp = dispatch(sql, paramRows[i], false);
-                counts[i] = (int) RpcCodec.decodeMutation(resp.payload())[0];
+                if (resp.mutationResult() != null) {
+                    counts[i] = (int) resp.mutationResult()[0];
+                } else {
+                    counts[i] = (int) RpcCodec.decodeMutation(resp.payload())[0];
+                }
             }
             return counts;
         }
     }
 
-    public record RpcResponse(boolean isSelect, byte[] payload) {}
+    public record RpcResponse(boolean isSelect, byte[] payload, String[] columns, Object[][] rows, long[] mutationResult) {
+        public RpcResponse(boolean isSelect, byte[] payload) {
+            this(isSelect, payload, null, null, null);
+        }
+
+        public static RpcResponse ofRows(String[] columns, Object[][] rows) {
+            return new RpcResponse(true, null, columns, rows, null);
+        }
+
+        public static RpcResponse ofMutation(int updateCount, long generatedKey) {
+            return new RpcResponse(false, null, null, null, new long[]{updateCount, generatedKey});
+        }
+    }
 
     private final String sql;
     private final boolean returnGeneratedKeys;
@@ -154,16 +170,25 @@ public final class RpcPreparedStatement implements PreparedStatement {
     @Override
     public ResultSet executeQuery() throws SQLException {
         RpcResponse resp = dispatcher.dispatch(sql, params.toArray(), false);
-        RpcCodec.RpcRows decoded = RpcCodec.decodeRows(resp.payload());
-        queryRows = decoded.rows();
-        queryColumns = decoded.columns();
+        if (resp.rows() != null) {
+            queryRows = resp.rows();
+            queryColumns = resp.columns();
+        } else {
+            RpcCodec.RpcRows decoded = RpcCodec.decodeRows(resp.payload());
+            queryRows = decoded.rows();
+            queryColumns = decoded.columns();
+        }
         return new SyntheticResultSet(queryRows, queryColumns);
     }
 
     @Override
     public int executeUpdate() throws SQLException {
         RpcResponse resp = dispatcher.dispatch(sql, params.toArray(), returnGeneratedKeys);
-        mutationResult = RpcCodec.decodeMutation(resp.payload());
+        if (resp.mutationResult() != null) {
+            mutationResult = resp.mutationResult();
+        } else {
+            mutationResult = RpcCodec.decodeMutation(resp.payload());
+        }
         return (int) mutationResult[0];
     }
 
@@ -171,9 +196,14 @@ public final class RpcPreparedStatement implements PreparedStatement {
     public boolean execute() throws SQLException {
         if (isSelect(sql)) {
             RpcResponse resp = dispatcher.dispatch(sql, params.toArray(), false);
-            RpcCodec.RpcRows decoded = RpcCodec.decodeRows(resp.payload());
-            queryRows = decoded.rows();
-            queryColumns = decoded.columns();
+            if (resp.rows() != null) {
+                queryRows = resp.rows();
+                queryColumns = resp.columns();
+            } else {
+                RpcCodec.RpcRows decoded = RpcCodec.decodeRows(resp.payload());
+                queryRows = decoded.rows();
+                queryColumns = decoded.columns();
+            }
             return true;
         }
         executeUpdate();
