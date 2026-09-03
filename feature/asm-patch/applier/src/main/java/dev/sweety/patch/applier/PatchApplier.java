@@ -29,6 +29,10 @@ public class PatchApplier {
         this.jarWriter = new JarWriter();
     }
 
+    public static PatchApplier of(PatchType patchType, HashFunction hashFunction) {
+        return new PatchApplier(patchType, hashFunction);
+    }
+
     public String extension() {
         return extension;
     }
@@ -53,7 +57,8 @@ public class PatchApplier {
             if (tmp != null) {
                 try {
                     Files.deleteIfExists(tmp);
-                } catch (IOException ignored) {
+                } catch (IOException e) {
+                    // Best-effort temp cleanup
                 }
             }
         }

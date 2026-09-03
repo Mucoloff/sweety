@@ -37,6 +37,10 @@ public class PatchDiffEngine {
         this.normalizer = classNormalizer;
     }
 
+    public static PatchDiffEngine of(@NotNull HashFunction hashFunction, ClassNormalizer classNormalizer) {
+        return new PatchDiffEngine(hashFunction, classNormalizer);
+    }
+
     public Patch diff(@NotNull Archive oldArchive, @NotNull Archive newArchive, @NotNull String fromVersion, @NotNull String toVersion) {
         Objects.requireNonNull(oldArchive, "oldArchive cannot be null");
         Objects.requireNonNull(newArchive, "newArchive cannot be null");

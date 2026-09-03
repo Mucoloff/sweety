@@ -43,21 +43,44 @@ public final class SweetyObfuscator {
      * Creates a standard full-protection pipeline using the unified Obfuscator engine.
      */
     public static TransformPipeline.Builder createPipelineBuilder(ConfusableRegistry registry) {
-        return TransformPipeline.builder()
-                .add(new FieldOverloadCollisionTransformer(registry))
-                .add(new MethodOverloadCollisionTransformer(registry))
-                .add(new ClassRemapAndFlattenTransformer(registry))
-                .add(new VirtualizerTransformer(false, true, registry))
-                .add(new AntiTamperTransformer())
-                .add(new ControlFlowFlatteningTransformer())
-                .add(new OpaquePredicateTransformer())
-                .add(new PerMethodSaltedStringTransformer(true, registry))
-                .add(new IntegerEncodingTransformer())
-                .add(new DynamicEventExecutorTransformer(registry))
-                .add(new MethodSignatureScramblerTransformer(registry))
-                .add(new InvokeDynamicObfuscator(registry))
-                .add(new MetadataStripperTransformer())
-                .add(new AiDecoyInjectionTransformer(registry));
+        return createPipelineBuilder(ObfuscationProfile.FULL, registry);
+    }
+
+    /**
+     * Creates a customized protection pipeline tailored to the requested ObfuscationProfile.
+     */
+    public static TransformPipeline.Builder createPipelineBuilder(ObfuscationProfile profile, ConfusableRegistry registry) {
+        TransformPipeline.Builder builder = TransformPipeline.builder();
+        switch (profile != null ? profile : ObfuscationProfile.FULL) {
+            case LIGHTWEIGHT -> builder
+                    .add(new MetadataStripperTransformer())
+                    .add(new IntegerEncodingTransformer())
+                    .add(new StringEncryptionTransformer(true));
+            case MINECRAFT_PLUGIN -> builder
+                    .add(new FieldOverloadCollisionTransformer(registry))
+                    .add(new MethodOverloadCollisionTransformer(registry))
+                    .add(new ClassRemapAndFlattenTransformer(registry))
+                    .add(new PerMethodSaltedStringTransformer(true, registry))
+                    .add(new IntegerEncodingTransformer())
+                    .add(new InvokeDynamicObfuscator(registry))
+                    .add(new MetadataStripperTransformer());
+            case FULL -> builder
+                    .add(new FieldOverloadCollisionTransformer(registry))
+                    .add(new MethodOverloadCollisionTransformer(registry))
+                    .add(new ClassRemapAndFlattenTransformer(registry))
+                    .add(new VirtualizerTransformer(false, true, registry))
+                    .add(new AntiTamperTransformer())
+                    .add(new ControlFlowFlatteningTransformer())
+                    .add(new OpaquePredicateTransformer())
+                    .add(new PerMethodSaltedStringTransformer(true, registry))
+                    .add(new IntegerEncodingTransformer())
+                    .add(new DynamicEventExecutorTransformer(registry))
+                    .add(new MethodSignatureScramblerTransformer(registry))
+                    .add(new InvokeDynamicObfuscator(registry))
+                    .add(new MetadataStripperTransformer())
+                    .add(new AiDecoyInjectionTransformer(registry));
+        }
+        return builder;
     }
 
     /**

@@ -46,7 +46,8 @@ class JarWriter {
         } finally {
             try {
                 Files.deleteIfExists(temp);
-            } catch (IOException ignored) {
+            } catch (IOException e) {
+                // Best-effort cleanup of temp jar
             }
         }
     }

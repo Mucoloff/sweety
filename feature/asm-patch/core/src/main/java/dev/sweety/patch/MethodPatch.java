@@ -34,6 +34,10 @@ public final class MethodPatch {
         return new MethodPatch(name, desc, InjectionPoint.RETURN, null, null, null, injector);
     }
 
+    public static MethodPatch atTail(String name, String desc, BiConsumer<MethodVisitor, Integer> injector) {
+        return atReturn(name, desc, injector);
+    }
+
     public static MethodPatch atInvoke(String name, String desc, String targetOwner, String targetName, String targetDesc, BiConsumer<MethodVisitor, Integer> injector) {
         return new MethodPatch(name, desc, InjectionPoint.INVOKE, targetOwner, targetName, targetDesc, injector);
     }

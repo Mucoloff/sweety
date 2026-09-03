@@ -38,6 +38,10 @@ public class PatchGenerator {
         this.validator = Validators.forHash(hashFunction);
     }
 
+    public static PatchGenerator of(HashFunction hashFunction, ClassNormalizer normalizer, PatchType patchType) {
+        return new PatchGenerator(hashFunction, normalizer, patchType);
+    }
+
     public Path generate(Path input, Path output, Path patchDir, String patch, String fromVersion, String toVersion, PatchFilter filter) throws IOException {
         Path patchFile = patchDir.resolve(patch + this.extension);
 
