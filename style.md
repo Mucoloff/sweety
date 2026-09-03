@@ -542,14 +542,14 @@ Niente overengineering esagonale (no proliferazione inutile di folder `domain/po
 ## Default: constructor injection
 
 ```java
-// ✔️ — plain Java, zero magia
-public class ReleaseManager implements PublishReleaseUseCase {
-    private final ReleaseRepository repo;
-    private final ReleasePublisher publisher;
+// ✔️ — plain Java, zero magia (Constructor Injection)
+public class DefaultUserService implements UserService {
+    private final UserRepository repository;
+    private final EventPublisher publisher;
 
-    public ReleaseManager(ReleaseRepository repo, ReleasePublisher publisher) {
-        this.repo = repo;
-        this.publisher = publisher;
+    public DefaultUserService(UserRepository repository, EventPublisher publisher) {
+        this.repository = Objects.requireNonNull(repository, "repository");
+        this.publisher = Objects.requireNonNull(publisher, "publisher");
     }
 }
 ```
