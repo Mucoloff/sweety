@@ -144,4 +144,14 @@ public class PatchManager implements ResolvePatchPort {
             cache.put(from, path);
         }
     }
+
+    @Override
+    public Optional<Path> generatePatch(Artifact artifact, Channel channel, Version latest, Version current) {
+        CacheKey key = new CacheKey(artifact, channel, latest, null);
+        try {
+            return Optional.ofNullable(generatePatch(key, current));
+        } catch (IOException e) {
+            return Optional.empty();
+        }
+    }
 }

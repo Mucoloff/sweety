@@ -200,12 +200,16 @@ public class DownloadHandler implements HttpHandler {
     private static byte[] sha256(Path file) throws IOException {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] buf = new byte[64 * 1024];
-            try (InputStream in = new BufferedInputStream(Files.newInputStream(file))) {
-                int n;
-                while ((n = in.read(buf)) != -1) md.update(buf, 0, n);
+            byte[] buf = dev.sweety.data.buffer.BufferPool.DEFAULT.borrowBytes(64 * 1024);
+            try {
+                try (InputStream in = new BufferedInputStream(Files.newInputStream(file))) {
+                    int n;
+                    while ((n = in.read(buf, 0, buf.length)) != -1) md.update(buf, 0, n);
+                }
+                return md.digest();
+            } finally {
+                dev.sweety.data.buffer.BufferPool.DEFAULT.returnBytes(buf);
             }
-            return md.digest();
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 unavailable", e);
         }

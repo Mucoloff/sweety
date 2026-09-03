@@ -7,7 +7,6 @@ import dev.sweety.versioning.server.data.ReleaseState;
 import dev.sweety.versioning.server.service.PublishReleaseUseCase;
 import dev.sweety.versioning.server.service.RollbackReleaseUseCase;
 import dev.sweety.versioning.server.store.ReleaseRepository;
-import dev.sweety.versioning.version.ReleaseService;
 import dev.sweety.versioning.version.ReleaseInfo;
 import dev.sweety.versioning.version.Version;
 import dev.sweety.versioning.version.artifact.Artifact;
@@ -24,6 +23,9 @@ import java.nio.file.StandardCopyOption;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import dev.sweety.versioning.server.api.service.ReleaseService;
+import java.util.Optional;
 
 public class ReleaseManager implements ReleaseService, PublishReleaseUseCase, RollbackReleaseUseCase {
     private static final SimpleLogger LOGGER = SimpleLogger.of(ReleaseManager.class);
@@ -172,5 +174,16 @@ public class ReleaseManager implements ReleaseService, PublishReleaseUseCase, Ro
             }
         }
         return latest != null ? latest : latest(artifact, channel);
+    }
+
+    @Override
+    public Optional<Path> jarPath(@NotNull Artifact artifact, @NotNull Channel channel, @NotNull Version version) {
+        try {
+            ReleaseState s = getOrRegister(artifact);
+            Path path = resolveBaseJar(s, artifact, channel, version);
+            return Files.isRegularFile(path) ? Optional.of(path) : Optional.empty();
+        } catch (IOException e) {
+            return Optional.empty();
+        }
     }
 }

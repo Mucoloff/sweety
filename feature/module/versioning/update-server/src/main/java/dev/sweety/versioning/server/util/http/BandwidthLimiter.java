@@ -1,5 +1,6 @@
 package dev.sweety.versioning.server.util.http;
 
+import dev.sweety.data.buffer.BufferPool;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -85,20 +86,24 @@ public final class BandwidthLimiter {
      * @param sink nullable; when non-null, invoked with exactly the bytes written, in order
      */
     public long transfer(InputStream in, OutputStream out, ChunkSink sink) throws IOException {
-        byte[] buf = new byte[MAX_CHUNK];
-        int chunk = baseChunk;
-        long total = 0L;
-        int n;
-        while ((n = in.read(buf, 0, chunk)) != -1) {
-            if (n == 0) continue;
-            long wait = reserve(n);
-            sleepNanos(wait);
-            out.write(buf, 0, n);
-            if (sink != null) sink.accept(buf, 0, n);
-            total += n;
-            chunk = adapt(chunk, n, wait);
+        byte[] buf = BufferPool.DEFAULT.borrowBytes(MAX_CHUNK);
+        try {
+            int chunk = baseChunk;
+            long total = 0L;
+            int n;
+            while ((n = in.read(buf, 0, Math.min(chunk, buf.length))) != -1) {
+                if (n == 0) continue;
+                long wait = reserve(n);
+                sleepNanos(wait);
+                out.write(buf, 0, n);
+                if (sink != null) sink.accept(buf, 0, n);
+                total += n;
+                chunk = adapt(chunk, n, wait);
+            }
+            return total;
+        } finally {
+            BufferPool.DEFAULT.returnBytes(buf);
         }
-        return total;
     }
 
     /**
@@ -126,19 +131,23 @@ public final class BandwidthLimiter {
      */
     public byte[] readFully(InputStream in, int maxBytes) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream(Math.min(maxBytes, 64 * 1024));
-        byte[] buf = new byte[MAX_CHUNK];
-        int chunk = baseChunk, total = 0, n;
-        while ((n = in.read(buf, 0, chunk)) != -1) {
-            if (n == 0) continue;
-            total += n;
-            if (total > maxBytes) {
-                throw new IOException("Request body exceeds limit of " + maxBytes + " bytes");
+        byte[] buf = BufferPool.DEFAULT.borrowBytes(MAX_CHUNK);
+        try {
+            int chunk = baseChunk, total = 0, n;
+            while ((n = in.read(buf, 0, Math.min(chunk, buf.length))) != -1) {
+                if (n == 0) continue;
+                total += n;
+                if (total > maxBytes) {
+                    throw new IOException("Request body exceeds limit of " + maxBytes + " bytes");
+                }
+                acquire(n);
+                out.write(buf, 0, n);
+                chunk = adapt(chunk, n, 0L);
             }
-            acquire(n);
-            out.write(buf, 0, n);
-            chunk = adapt(chunk, n, 0L);
+            return out.toByteArray();
+        } finally {
+            BufferPool.DEFAULT.returnBytes(buf);
         }
-        return out.toByteArray();
     }
 
     /**
