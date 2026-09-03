@@ -49,16 +49,27 @@ public final class NativeTransport {
     private static final Type ACTIVE_TYPE;
 
     static {
-        if (Epoll.isAvailable()) {
-            ACTIVE_TYPE = Type.EPOLL;
-            LOGGER.info("Active native network transport: {}", Type.EPOLL.description());
-        } else if (KQueue.isAvailable()) {
-            ACTIVE_TYPE = Type.KQUEUE;
-            LOGGER.info("Active native network transport: {}", Type.KQUEUE.description());
-        } else {
-            ACTIVE_TYPE = Type.NIO;
-            LOGGER.info("Active native network transport: {}", Type.NIO.description());
+        Type detectedType = Type.NIO;
+        try {
+            Class<?> epollClass = Class.forName("io.netty.channel.epoll.Epoll");
+            java.lang.reflect.Method isAvailableMethod = epollClass.getMethod("isAvailable");
+            if ((boolean) isAvailableMethod.invoke(null)) {
+                detectedType = Type.EPOLL;
+            }
+        } catch (Throwable ignored) {}
+
+        if (detectedType == Type.NIO) {
+            try {
+                Class<?> kqueueClass = Class.forName("io.netty.channel.kqueue.KQueue");
+                java.lang.reflect.Method isAvailableMethod = kqueueClass.getMethod("isAvailable");
+                if ((boolean) isAvailableMethod.invoke(null)) {
+                    detectedType = Type.KQUEUE;
+                }
+            } catch (Throwable ignored) {}
         }
+
+        ACTIVE_TYPE = detectedType;
+        LOGGER.info("Active native network transport: {}", ACTIVE_TYPE.description());
     }
 
     private NativeTransport() {}
