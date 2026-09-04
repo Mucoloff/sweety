@@ -1,7 +1,7 @@
 package dev.sweety.event.impl;
 
 import dev.sweety.event.api.Event;
-import dev.sweety.event.api.EventSystemPort;
+import dev.sweety.event.api.EventSystem;
 import dev.sweety.event.api.MutableEvent;
 import dev.sweety.event.api.SubscriptionBuilder;
 import dev.sweety.event.api.function.Operation;
@@ -15,31 +15,31 @@ import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 
-public class EventSystem implements EventSystemPort {
+public class DefaultEventSystem implements EventSystem {
 
     private final CallbackRegistry registry;
     private final EventDispatcher dispatcher;
 
-    public EventSystem(@NotNull Executor asyncExecutor) {
+    public DefaultEventSystem(@NotNull Executor asyncExecutor) {
         this.registry = new CallbackRegistry();
         this.dispatcher = new EventDispatcher(asyncExecutor, registry, new ExecutionPlanner());
     }
 
     /** Uses a shared cached thread pool for async dispatch. */
-    public EventSystem() {
+    public DefaultEventSystem() {
         this(EventDispatcher.defaultAsyncExecutor());
     }
 
     /**
      * Accepts a {@link ThreadManager} for API compatibility — the manager itself is not used
      * by the dispatcher, but a default async executor is created internally.
-     * Prefer {@link #EventSystem(Executor)} for explicit control.
+     * Prefer {@link #DefaultEventSystem(Executor)} for explicit control.
      */
-    public EventSystem(@NotNull ThreadManager threadManager, @NotNull Executor asyncExecutor) {
+    public DefaultEventSystem(@NotNull ThreadManager threadManager, @NotNull Executor asyncExecutor) {
         this(asyncExecutor);
     }
 
-    public EventSystem(@NotNull ThreadManager threadManager) {
+    public DefaultEventSystem(@NotNull ThreadManager threadManager) {
         this(EventDispatcher.defaultAsyncExecutor());
     }
 

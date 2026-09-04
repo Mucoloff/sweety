@@ -7,7 +7,7 @@ import it.unimi.dsi.fastutil.Pair;
 
 import java.util.function.Function;
 
-public interface EventSystemPort {
+public interface EventSystem {
     <T extends Event<?>> void subscribe(Class<T> eventType, Listener<T> listener, int priority, State state);
 
     <T extends Event<?>> SubscriptionBuilder<T> on(Class<T> eventType);

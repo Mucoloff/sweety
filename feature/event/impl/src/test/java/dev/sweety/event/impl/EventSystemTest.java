@@ -27,11 +27,11 @@ import dev.sweety.thread.ThreadManager;
 
 class EventSystemTest {
 
-    private EventSystem system;
+    private DefaultEventSystem system;
 
     @BeforeEach
     void setUp() {
-        system = new EventSystem();
+        system = new DefaultEventSystem();
     }
 
     @Test
@@ -59,7 +59,7 @@ class EventSystemTest {
     @Test
     void customExecutorRunsParallelListeners() {
         try (ExecutorService exec = Executors.newSingleThreadExecutor()) {
-            EventSystem es = new EventSystem(new ThreadManager("event-test-exec"), exec);
+            DefaultEventSystem es = new DefaultEventSystem(new ThreadManager("event-test-exec"), exec);
             AtomicInteger count = new AtomicInteger();
             es.subscribe(ImmutableParallelEvent.class, e -> count.incrementAndGet(), 0, State.PRE);
             es.subscribe(ImmutableParallelEvent.class, e -> count.incrementAndGet(), 0, State.PRE);

@@ -1,7 +1,7 @@
 package dev.sweety.event.processor;
 
 import dev.sweety.event.api.Event;
-import dev.sweety.event.api.EventSystemPort;
+import dev.sweety.event.api.EventSystem;
 import dev.sweety.event.api.MutableEvent;
 import dev.sweety.event.api.function.Operation;
 import it.unimi.dsi.fastutil.Pair;
@@ -15,9 +15,9 @@ public class EventMapping {
 
     private final Map<Class<?>, Function<Object, ? extends Event<?>>> mappings = new ConcurrentHashMap<>();
 
-    private final EventSystemPort eventSystem;
+    private final EventSystem eventSystem;
 
-    public EventMapping(EventSystemPort eventSystem) {
+    public EventMapping(EventSystem eventSystem) {
         this.eventSystem = eventSystem;
     }
 

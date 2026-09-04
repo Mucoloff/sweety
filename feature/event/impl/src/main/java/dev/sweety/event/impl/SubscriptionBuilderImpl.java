@@ -8,13 +8,13 @@ import dev.sweety.event.api.listener.Listener;
 
 class DefaultSubscriptionBuilder<T extends Event<?>> implements SubscriptionBuilder<T> {
 
-    private final EventSystem system;
+    private final DefaultEventSystem system;
     private final Class<T> eventType;
     private int priority = 0;
     private State state = State.BOTH;
     private Boolean readOnlyOverride = null;
 
-    DefaultSubscriptionBuilder(EventSystem system, Class<T> eventType) {
+    DefaultSubscriptionBuilder(DefaultEventSystem system, Class<T> eventType) {
         this.system = system;
         this.eventType = eventType;
     }

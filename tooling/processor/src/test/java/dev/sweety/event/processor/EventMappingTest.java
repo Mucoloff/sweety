@@ -1,7 +1,7 @@
 package dev.sweety.event.processor;
 
 import dev.sweety.event.api.Event;
-import dev.sweety.event.api.EventSystemPort;
+import dev.sweety.event.api.EventSystem;
 import dev.sweety.event.api.MutableEvent;
 import dev.sweety.event.api.SubscriptionBuilder;
 import dev.sweety.event.api.listener.Listener;
@@ -28,8 +28,8 @@ class EventMappingTest {
     }
 
     // Stub: dispatch just returns the event; everything else throws.
-    static EventSystemPort passThroughSystem() {
-        return new EventSystemPort() {
+    static EventSystem passThroughSystem() {
+        return new EventSystem() {
             @Override public <T extends Event<?>> T dispatch(T event) { return event; }
             @Override public <T extends Event<?>> void subscribe(Class<T> t, Listener<T> l, int p, dev.sweety.event.api.info.State s) { throw new UnsupportedOperationException(); }
             @Override public <T extends Event<?>> SubscriptionBuilder<T> on(Class<T> t) { throw new UnsupportedOperationException(); }
