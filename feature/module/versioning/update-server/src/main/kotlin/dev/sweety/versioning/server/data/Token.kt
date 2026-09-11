@@ -74,6 +74,24 @@ open class Token(
         private const val HMAC_ALGO = "HmacSHA256"
 
         /**
+         * Generic, cryptographically secure RFC-4122 compliant UUID derivation via HMAC-SHA256.
+         */
+        @JvmStatic
+        @JvmOverloads
+        fun deriveUuid(secret: ByteArray = SECRET, feedBytes: (Mac) -> Unit): UUID {
+            val mac = Mac.getInstance(HMAC_ALGO)
+            mac.init(SecretKeySpec(secret, HMAC_ALGO))
+            feedBytes(mac)
+            val hmac = mac.doFinal()
+            val hashBuf = ByteBuffer.wrap(hmac)
+
+            // Format as RFC-4122 v4 UUID (type 4, variant 1)
+            val msb = (hashBuf.getLong() and 0x000000000000F000L.inv()) or 0x0000000000004000L
+            val lsb = (hashBuf.getLong() and 0x3fffffffffffffffL) or Long.MIN_VALUE
+            return UUID(msb, lsb)
+        }
+
+        /**
          * Fast, cryptographically secure RFC-4122 compliant UUID derivation via HMAC-SHA256.
          * Eliminates redundant CRC32 allocations while guaranteeing non-collision and tamper resistance.
          */
@@ -85,10 +103,7 @@ open class Token(
             channel: Channel,
             downloadType: DownloadType,
             expireAt: Long
-        ): UUID {
-            val mac = Mac.getInstance(HMAC_ALGO)
-            mac.init(SecretKeySpec(SECRET, HMAC_ALGO))
-
+        ): UUID = deriveUuid { mac ->
             val buffer = ByteBuffer.allocate(16 + 4 + 12 + 4 + 4 + 8).apply {
                 putLong(clientId.mostSignificantBits)
                 putLong(clientId.leastSignificantBits)
@@ -100,14 +115,7 @@ open class Token(
                 putInt(downloadType.ordinal)
                 putLong(expireAt)
             }
-
-            val hmac = mac.doFinal(buffer.array())
-            val hashBuf = ByteBuffer.wrap(hmac)
-
-            // Format as RFC-4122 v4 UUID (type 4, variant 1)
-            val msb = (hashBuf.getLong() and 0x000000000000F000L.inv()) or 0x0000000000004000L
-            val lsb = (hashBuf.getLong() and 0x3fffffffffffffffL) or Long.MIN_VALUE
-            return UUID(msb, lsb)
+            mac.update(buffer.array())
         }
 
         @JvmStatic
