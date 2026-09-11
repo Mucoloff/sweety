@@ -25,7 +25,7 @@ open class Token(
     open val from: Version?,
     open val downloadType: DownloadType,
     open val expireAt: Long,
-    open val token: UUID
+    open val token: UUID = generateTokenUuid(clientId, artifact, version, channel, downloadType, expireAt)
 ) : Expirable {
 
     @JvmOverloads
@@ -44,15 +44,7 @@ open class Token(
         version = version,
         from = from,
         downloadType = downloadType,
-        expireAt = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(delayMs),
-        token = generateTokenUuid(
-            clientId,
-            artifact,
-            version,
-            channel,
-            downloadType,
-            System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(delayMs)
-        )
+        expireAt = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(delayMs)
     )
 
     // Expirable contract & Java record compatibility accessors

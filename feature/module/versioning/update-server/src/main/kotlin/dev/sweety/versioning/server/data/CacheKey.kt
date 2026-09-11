@@ -6,25 +6,36 @@ import dev.sweety.versioning.version.channel.Channel
 import java.nio.file.Path
 import java.util.UUID
 
-open class CacheKey(
+open class CacheKey @JvmOverloads constructor(
     open val artifact: Artifact,
     open val channel: Channel,
     open val version: Version,
-    open val clientId: UUID
+    open val clientId: UUID? = null
 ) {
     fun artifact(): Artifact = artifact
     fun channel(): Channel = channel
     fun version(): Version = version
-    fun clientId(): UUID = clientId
+    fun clientId(): UUID? = clientId
+
+    open fun fileName(extension: String = ".jar"): String =
+        "${artifact.prettyName().lowercase()}-${version}$extension"
 
     open fun resolve(artifactRoot: Path): Path {
         val channelDir = artifactRoot.resolve(channel.prettyName())
         val versionDir = version.resolve(channelDir)
-        return versionDir.resolve("patch").resolve("cache").resolve(clientId.toString())
+        return if (clientId != null) {
+            versionDir.resolve("patch").resolve("cache").resolve(clientId.toString())
+        } else {
+            versionDir
+        }
     }
 
     open fun toPath(root: Path, extension: String): Path {
-        return resolve(root).resolve(artifact.prettyName() + extension)
+        return if (clientId != null) {
+            resolve(root).resolve(artifact.prettyName() + extension)
+        } else {
+            root.resolve(fileName(extension)).normalize()
+        }
     }
 
     open fun toPath(root: Path): Path {
