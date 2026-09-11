@@ -230,6 +230,13 @@ public class Column<T> {
 
     public void set(PreparedStatement ps, int index, Object instance) throws SQLException {
         Object value = get(instance);
+        if (nullable && !primaryKey && value instanceof Number n) {
+            long l = n.longValue();
+            if (l < 0 || (l == 0 && (relation || relationIdField != null || name.endsWith("_id") || name.endsWith("Id")))) {
+                ps.setObject(index, null);
+                return;
+            }
+        }
         if (value instanceof Enum<?> e) {
             ps.setObject(index, e.name());
         } else if ((relation || relationIdField != null) && value != null && !type().isInstance(value)) {
@@ -264,13 +271,13 @@ public class Column<T> {
             //noinspection unchecked
             TableAccessor<Object> objAccessor = (TableAccessor<Object>) accessor;
             switch (primitiveKind) {
-                case BOOLEAN -> objAccessor.setBoolean(instance, ordinalIndex, value instanceof Boolean b ? b : (Boolean.parseBoolean(String.valueOf(value))));
-                case BYTE -> objAccessor.setByte(instance, ordinalIndex, value instanceof Number n ? n.byteValue() : (Byte.parseByte(String.valueOf(value))));
-                case SHORT -> objAccessor.setShort(instance, ordinalIndex, value instanceof Number n ? n.shortValue() : (Short.parseShort(String.valueOf(value))));
-                case INT -> objAccessor.setInt(instance, ordinalIndex, value instanceof Number n ? n.intValue() : (Integer.parseInt(String.valueOf(value))));
-                case LONG -> objAccessor.setLong(instance, ordinalIndex, value instanceof Number n ? n.longValue() : (Long.parseLong(String.valueOf(value))));
-                case FLOAT -> objAccessor.setFloat(instance, ordinalIndex, value instanceof Number n ? n.floatValue() : (Float.parseFloat(String.valueOf(value))));
-                case DOUBLE -> objAccessor.setDouble(instance, ordinalIndex, value instanceof Number n ? n.doubleValue() : (Double.parseDouble(String.valueOf(value))));
+                case BOOLEAN -> objAccessor.setBoolean(instance, ordinalIndex, value instanceof Boolean b ? b : (value != null && Boolean.parseBoolean(String.valueOf(value))));
+                case BYTE -> objAccessor.setByte(instance, ordinalIndex, value instanceof Number n ? n.byteValue() : (value != null ? Byte.parseByte(String.valueOf(value)) : (byte) 0));
+                case SHORT -> objAccessor.setShort(instance, ordinalIndex, value instanceof Number n ? n.shortValue() : (value != null ? Short.parseShort(String.valueOf(value)) : (short) (nullable ? -1 : 0)));
+                case INT -> objAccessor.setInt(instance, ordinalIndex, value instanceof Number n ? n.intValue() : (value != null ? Integer.parseInt(String.valueOf(value)) : (nullable ? -1 : 0)));
+                case LONG -> objAccessor.setLong(instance, ordinalIndex, value instanceof Number n ? n.longValue() : (value != null ? Long.parseLong(String.valueOf(value)) : (nullable ? -1L : 0L)));
+                case FLOAT -> objAccessor.setFloat(instance, ordinalIndex, value instanceof Number n ? n.floatValue() : (value != null ? Float.parseFloat(String.valueOf(value)) : 0.0f));
+                case DOUBLE -> objAccessor.setDouble(instance, ordinalIndex, value instanceof Number n ? n.doubleValue() : (value != null ? Double.parseDouble(String.valueOf(value)) : 0.0));
                 case CHAR -> objAccessor.setChar(instance, ordinalIndex, value instanceof Character c ? c : (value != null && !value.toString().isEmpty() ? value.toString().charAt(0) : '\0'));
                 case OBJECT -> objAccessor.setObject(instance, ordinalIndex, value);
             }
@@ -279,7 +286,13 @@ public class Column<T> {
 
         try {
             if (value == null && type.isPrimitive()) {
-                field.set(instance, defaultPrimitiveValue(type));
+                if (nullable && (type == int.class || type == short.class)) {
+                    field.set(instance, -1);
+                } else if (nullable && type == long.class) {
+                    field.set(instance, -1L);
+                } else {
+                    field.set(instance, defaultPrimitiveValue(type));
+                }
             } else {
                 field.set(instance, value);
             }

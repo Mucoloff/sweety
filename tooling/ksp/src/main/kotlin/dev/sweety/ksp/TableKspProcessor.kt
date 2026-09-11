@@ -194,8 +194,11 @@ class TableKspProcessor(
             val qName = ann.annotationType.resolve().declaration.qualifiedName?.asString()
             when (qName) {
                 COLUMN_INFO -> {
-                    val customName = ann.arguments.firstOrNull { it.name?.asString() == "value" }?.value as? String ?: ""
+                    val customName = (ann.arguments.firstOrNull { it.name?.asString() == "value" }?.value
+                        ?: ann.arguments.firstOrNull { it.name?.asString() == "name" }?.value) as? String ?: ""
                     if (customName.isNotEmpty()) colName = customName
+                    val isNullAnn = ann.arguments.firstOrNull { it.name?.asString() == "nullable" }?.value as? Boolean ?: false
+                    if (isNullAnn) isNullable = true
                 }
                 PRIMARY_KEY -> isPrimaryKey = true
                 AUTO_INCREMENT -> isAutoInc = true
@@ -371,7 +374,17 @@ class TableKspProcessor(
         for (i in properties.indices) {
             val prop = properties[i]
             val getterCall = "instance.get${prop.propName.replaceFirstChar { it.uppercaseChar() }}()"
-            getBlock.addStatement("case \$L: return \$L", i, getterCall)
+            if (prop.fieldType.isPrimitive && prop.isNullable) {
+                if (prop.fieldType == TypeName.INT || prop.fieldType == TypeName.SHORT || prop.fieldType == TypeName.BYTE) {
+                    getBlock.addStatement("case \$L: return \$L < 0 ? null : \$L", i, getterCall, getterCall)
+                } else if (prop.fieldType == TypeName.LONG) {
+                    getBlock.addStatement("case \$L: return \$L < 0L ? null : \$L", i, getterCall, getterCall)
+                } else {
+                    getBlock.addStatement("case \$L: return \$L", i, getterCall)
+                }
+            } else {
+                getBlock.addStatement("case \$L: return \$L", i, getterCall)
+            }
         }
         getBlock.add("default:\n").indent()
             .addStatement("throw new \$T(\$S + colIndex)", UnsupportedOperationException::class.java, "getObject not supported for colIndex ")
@@ -400,6 +413,18 @@ class TableKspProcessor(
             } else if (prop.fieldType.isPrimitive) {
                 setBlock.beginControlFlow("if (value != null)")
                 setBlock.addStatement("instance.\$L((\$T) value)", setterName, prop.fieldType)
+                if (prop.isNullable) {
+                    setBlock.nextControlFlow("else")
+                    if (prop.fieldType == TypeName.INT || prop.fieldType == TypeName.SHORT || prop.fieldType == TypeName.BYTE) {
+                        setBlock.addStatement("instance.\$L(-1)", setterName)
+                    } else if (prop.fieldType == TypeName.LONG) {
+                        setBlock.addStatement("instance.\$L(-1L)", setterName)
+                    } else if (prop.fieldType == TypeName.FLOAT) {
+                        setBlock.addStatement("instance.\$L(-1f)", setterName)
+                    } else if (prop.fieldType == TypeName.DOUBLE) {
+                        setBlock.addStatement("instance.\$L(-1.0)", setterName)
+                    }
+                }
                 setBlock.endControlFlow()
             } else {
                 setBlock.addStatement("instance.\$L((\$T) value)", setterName, prop.fieldType)
@@ -419,7 +444,7 @@ class TableKspProcessor(
 private fun KSType.toJavaPoet(box: Boolean = false): TypeName {
     val decl = declaration
     val qName = decl.qualifiedName?.asString() ?: return TypeName.OBJECT
-    if (!box) {
+    if (!box && !isMarkedNullable) {
         when (qName) {
             "kotlin.Int" -> return TypeName.INT
             "kotlin.Long" -> return TypeName.LONG
