@@ -465,6 +465,9 @@ public final class SelectEntity<T> extends AbstractQuery<List<T>> implements Sel
                         }
                         case OBJECT -> {
                             Object val = rs.getObject(jdbcIdx);
+                            if (col.converter() != null) {
+                                val = col.converter().fromDatabase(val);
+                            }
                             val = Column.convertValue(val, col.type());
                             accessor.setObject(obj, colOrd, val);
                         }

@@ -21,11 +21,25 @@ public class HikariConnectionProvider implements ConnectionProvider {
         hikariConfig.setUsername(config.user());
         hikariConfig.setPassword(config.password());
         applyDialectTuning(hikariConfig, config.dialectType());
+        applySafetyDefaults(hikariConfig);
         this.dataSource = new HikariDataSource(hikariConfig);
     }
 
     public HikariConnectionProvider(HikariConfig hikariConfig) {
+        applySafetyDefaults(hikariConfig);
         this.dataSource = new HikariDataSource(hikariConfig);
+    }
+
+    /**
+     * Pool-exhaustion safety net. A borrowed connection not returned within the leak threshold is
+     * logged (with the borrowing stack trace) and reclaimed, so a single missed close() can no
+     * longer drain the pool to zero and freeze every license validation / ping update. Keepalive +
+     * validation recycle half-open TCP connections. Only sets values left at HikariCP defaults, so
+     * explicit tuning is preserved.
+     */
+    private static void applySafetyDefaults(HikariConfig cfg) {
+        if (cfg.getLeakDetectionThreshold() == 0L) cfg.setLeakDetectionThreshold(30_000L);
+        if (cfg.getKeepaliveTime() == 0L)          cfg.setKeepaliveTime(120_000L);
     }
 
     /**
@@ -48,6 +62,7 @@ public class HikariConnectionProvider implements ConnectionProvider {
         }
 
         applyDialectTuning(hikariConfig, config.dialect());
+        applySafetyDefaults(hikariConfig);
         this.dataSource = new HikariDataSource(hikariConfig);
     }
 

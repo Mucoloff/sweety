@@ -40,19 +40,22 @@ class PostgreSQLDialect implements Dialect {
         if (type == UUID.class)
             return "UUID";
 
-        if (type == LocalDate.class)
+        if (type == LocalDate.class || type == java.sql.Date.class)
             return "DATE";
 
-        if (type == LocalDateTime.class)
+        if (type == LocalDateTime.class || type == java.sql.Timestamp.class || type == java.time.Instant.class)
             return "TIMESTAMP";
 
         if (type == BigDecimal.class)
-            return "DECIMAL";
+            return "NUMERIC";
 
         if (type.isEnum())
             return "VARCHAR(255)";
 
-        return "VARCHAR(255)";
+        // String (and any unmapped type) → TEXT. Postgres TEXT is unlimited with identical
+        // performance to VARCHAR, so this removes the whole "value too long for varchar(255)"
+        // failure class (e.g. serialized server_settings) on fresh table creation.
+        return "TEXT";
     }
 
     @Override

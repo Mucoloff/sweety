@@ -121,7 +121,13 @@ public final class RemoteSqlConnection extends SqlConnection {
 
     private static boolean isSelect(String sql) {
         if (sql == null) return false;
-        String upper = sql.strip().toUpperCase();
-        return upper.startsWith("SELECT") || upper.startsWith("WITH");
+        String upper = sql.stripLeading().toUpperCase();
+        if (upper.startsWith("SELECT") || upper.startsWith("WITH"))
+            return true;
+        // INSERT/UPDATE/DELETE … RETURNING produces rows → route as query
+        if ((upper.startsWith("INSERT") || upper.startsWith("UPDATE") || upper.startsWith("DELETE"))
+                && upper.contains(" RETURNING "))
+            return true;
+        return false;
     }
 }

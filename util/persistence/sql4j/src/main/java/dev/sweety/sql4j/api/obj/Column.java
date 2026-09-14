@@ -40,6 +40,7 @@ public class Column<T> {
     private boolean nullable = true;
     private int ordinalIndex = -1;
     private PrimitiveKind primitiveKind = PrimitiveKind.OBJECT;
+    private ColumnConverter converter = null;
 
     public Column(Table<?> table, String name, Field field, Info info) {
         this.table = Objects.requireNonNull(table, "table cannot be null");
@@ -56,6 +57,13 @@ public class Column<T> {
             this.nullable = info.nullable();
             this.unique = info.unique();
             this.defaultValue = info.defaultValue().isEmpty() ? null : info.defaultValue();
+            if (info.converter() != ColumnConverter.None.class) {
+                try {
+                    this.converter = info.converter().getDeclaredConstructor().newInstance();
+                } catch (Exception e) {
+                    throw new Sql4jMappingException("Failed to instantiate converter for column '" + name + "'", e);
+                }
+            }
         }
     }
 
@@ -98,6 +106,15 @@ public class Column<T> {
 
     public PrimitiveKind primitiveKind() {
         return primitiveKind;
+    }
+
+    /** The value transform for this column, or {@code null} if none. */
+    public ColumnConverter converter() {
+        return converter;
+    }
+
+    public void setConverter(ColumnConverter converter) {
+        this.converter = converter;
     }
 
     public String name() {
@@ -230,6 +247,12 @@ public class Column<T> {
 
     public void set(PreparedStatement ps, int index, Object instance) throws SQLException {
         Object value = get(instance);
+        if (converter != null) {
+            // Column opts into a value transform (e.g. encrypt-on-write). The result is a
+            // plain scalar (String/byte[]), so it bypasses the enum/relation handling below.
+            ps.setObject(index, converter.toDatabase(value));
+            return;
+        }
         if (nullable && !primaryKey && value instanceof Number n) {
             long l = n.longValue();
             if (l < 0 || (l == 0 && (relation || relationIdField != null || name.endsWith("_id") || name.endsWith("Id")))) {
@@ -256,6 +279,11 @@ public class Column<T> {
     }
 
     public void set(Object instance, Object value) {
+        if (converter != null) {
+            // Column opts into a value transform (e.g. decrypt-on-read): undo it before the
+            // raw ResultSet value is coerced to the field type and stored on the entity.
+            value = converter.fromDatabase(value);
+        }
         Class<?> type = type();
         if (relationIdField != null && value != null && !type.isInstance(value)) {
             // It's an ID being set to a relation field (Entity). 
@@ -385,5 +413,12 @@ public class Column<T> {
         boolean unique() default false;
 
         String defaultValue() default "";
+
+        /**
+         * Optional per-column value transform applied on persist/hydrate (e.g. at-rest
+         * encryption). Defaults to {@link ColumnConverter.None} (no-op). See
+         * {@link ColumnConverter} for the two choke points and the WHERE-parameter caveat.
+         */
+        Class<? extends ColumnConverter> converter() default ColumnConverter.None.class;
     }
 }

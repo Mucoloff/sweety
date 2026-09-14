@@ -202,6 +202,21 @@ public class SQL4JProcessor extends AbstractProcessor {
                     boolean isNull = colAnn == null || "true".equals(getAnnotationValue(colAnn, "nullable"));
                     boolean isSoftDelete = getAnnotation(field, "dev.sweety.sql4j.api.obj.annotation.SoftDelete") != null;
 
+                    TypeName converterType = null;
+                    if (colAnn != null) {
+                        for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry : colAnn.getElementValues().entrySet()) {
+                            if ("converter".equals(entry.getKey().getSimpleName().toString())) {
+                                Object val = entry.getValue().getValue();
+                                if (val instanceof javax.lang.model.type.TypeMirror tm) {
+                                    String tmStr = tm.toString();
+                                    if (!"dev.sweety.sql4j.api.obj.ColumnConverter.None".equals(tmStr)) {
+                                        converterType = TypeName.get(tm);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     AnnotationMirror indexAnn = getAnnotation(field, "dev.sweety.sql4j.api.obj.annotation.Index");
                     String indexName = null;
                     boolean isUniqueIdx = false;
@@ -211,7 +226,7 @@ public class SQL4JProcessor extends AbstractProcessor {
                         isUniqueIdx = "true".equals(getAnnotationValue(indexAnn, "unique"));
                     }
 
-                    FieldData fd = new FieldData(fieldName, colName, fieldType, boxedFieldType, columnType, isPrivate, isPk, isAuto, isNull, isSoftDelete, indexName, isUniqueIdx);
+                    FieldData fd = new FieldData(fieldName, colName, fieldType, boxedFieldType, columnType, isPrivate, isPk, isAuto, isNull, isSoftDelete, indexName, isUniqueIdx, converterType);
                     fields.add(fd);
 
                     // Static Column reference
@@ -354,6 +369,9 @@ public class SQL4JProcessor extends AbstractProcessor {
                 if (fd.isUniqueIndex) staticBlock.addStatement("$L.setUnique(true)", colConst);
                 staticBlock.addStatement("INSTANCE.addIndex(new $T.IndexDef($S, $T.of($S), $L))",
                         ClassName.get("dev.sweety.sql4j.api.obj", "Table"), fd.indexName, List.class, fd.colName, fd.isUniqueIndex);
+            }
+            if (fd.converterType != null) {
+                staticBlock.addStatement("$L.setConverter(new $T())", colConst, fd.converterType);
             }
             staticBlock.addStatement("INSTANCE.addColumn($L)", colConst);
         }
@@ -824,7 +842,7 @@ public class SQL4JProcessor extends AbstractProcessor {
 
     private record FieldData(String fieldName, String colName, TypeName fieldType, TypeName boxedType, TypeName columnType,
                              boolean isPrivate, boolean isPrimaryKey, boolean isAutoInc, boolean isNullable, boolean isSoftDelete,
-                             String indexName, boolean isUniqueIndex) {
+                             String indexName, boolean isUniqueIndex, TypeName converterType) {
     }
 
     private record RelationData(String constName, String type, String fieldName, TypeName targetClass, String mappedBy,
