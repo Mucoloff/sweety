@@ -68,7 +68,25 @@ public final class SqlGatewayHandler {
         }
     }
 
+    private static boolean isDisallowedSql(String sql) {
+        if (sql == null || sql.isBlank()) return true;
+        String clean = sql.trim().toUpperCase(java.util.Locale.ROOT);
+        if (clean.startsWith("DROP") || clean.startsWith("ALTER") || clean.startsWith("TRUNCATE")
+                || clean.startsWith("GRANT") || clean.startsWith("REVOKE")) {
+            return true;
+        }
+        // Block stacked queries separated by semicolon
+        int semi = clean.indexOf(';');
+        if (semi != -1 && semi < clean.length() - 1 && !clean.substring(semi + 1).trim().isEmpty()) {
+            return true;
+        }
+        return false;
+    }
+
     private Packet handleQuery(DbQueryRequest request) {
+        if (isDisallowedSql(request.sql())) {
+            return DbQueryResponse.error("FORBIDDEN: Unauthorized SQL operation");
+        }
         try {
             RpcCodec.RpcRows result = executeSelect(request.sql(), request.params());
             return new DbQueryResponse(result.columns(), result.rows());
@@ -78,6 +96,9 @@ public final class SqlGatewayHandler {
     }
 
     private Packet handleMutation(DbMutationRequest request) {
+        if (isDisallowedSql(request.sql())) {
+            return DbMutationResponse.error("FORBIDDEN: Unauthorized SQL operation");
+        }
         try {
             long[] result = executeMutation(request.sql(), request.params(), request.returnGeneratedKeys());
             return new DbMutationResponse((int) result[0], result[1]);
@@ -95,6 +116,9 @@ public final class SqlGatewayHandler {
      * contract (generated keys are not portably available per-row across drivers for batches).
      */
     private Packet handleBatchMutation(DbBatchMutationRequest request) {
+        if (isDisallowedSql(request.sql())) {
+            return DbBatchMutationResponse.error("FORBIDDEN: Unauthorized SQL operation");
+        }
         try {
             int[] counts = executeBatch(request.sql(), request.paramRows());
             return new DbBatchMutationResponse(counts);

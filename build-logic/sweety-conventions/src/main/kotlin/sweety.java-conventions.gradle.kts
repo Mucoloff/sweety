@@ -37,8 +37,9 @@ dependencies {
     implementation("org.apache.httpcomponents:httpclient:4.5.14")
     implementation("commons-io:commons-io:2.20.0")
 
-    implementation("org.ow2.asm:asm:9.6")
-    implementation("com.google.guava:guava:32.0.1-android")
+    implementation("org.ow2.asm:asm:9.7.1")
+    implementation("org.ow2.asm:asm-commons:9.7.1")
+    implementation("com.google.guava:guava:33.4.0-jre")
 
     implementation("org.slf4j:slf4j-api:2.0.7")
     implementation("it.unimi.dsi:fastutil:8.5.13")
