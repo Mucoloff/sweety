@@ -97,4 +97,26 @@ class SegmentBufferTest {
         assertEquals(777, buf2.readVarInt());
         buf2.release();
     }
+
+    @Test
+    void threeWayBufferZeroCopyBridge() {
+        // Write in PacketBuffer -> read in SegmentBuffer
+        dev.sweety.netty.packet.buffer.PacketBuffer pkt = new dev.sweety.netty.packet.buffer.PacketBuffer();
+        pkt.writeVarInt(4321).writeString("net-to-panama");
+
+        SegmentBuffer segFromPkt = SegmentBuffer.wrap(pkt.asNioBuffer());
+        assertEquals(4321, segFromPkt.readVarInt());
+        assertEquals("net-to-panama", segFromPkt.readString());
+
+        // Write in SegmentBuffer -> read in PacketBuffer
+        SegmentBuffer seg = SegmentBuffer.confined();
+        try {
+            seg.writeVarInt(9876).writeString("panama-to-net");
+            dev.sweety.netty.packet.buffer.PacketBuffer pktFromSeg = dev.sweety.netty.packet.buffer.PacketBuffer.wrap(seg.asNioBuffer());
+            assertEquals(9876, pktFromSeg.readVarInt());
+            assertEquals("panama-to-net", pktFromSeg.readString());
+        } finally {
+            seg.release();
+        }
+    }
 }
