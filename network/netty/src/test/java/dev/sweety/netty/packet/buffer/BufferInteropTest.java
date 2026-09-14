@@ -99,6 +99,24 @@ class BufferInteropTest {
         assertEquals("wrapped", pkt.readString());
     }
 
+    @Test
+    void packetBuffer_toNioBuffer_and_wrapNioBuffer_zerocopy() {
+        PacketBuffer pkt = new PacketBuffer();
+        pkt.writeVarInt(4242).writeString("zero-copy-bridge");
+
+        NioBuffer nio = pkt.toNioBuffer();
+        assertEquals(4242, nio.readVarInt());
+        assertEquals("zero-copy-bridge", nio.readString());
+
+        // Reverse direction: wrap NioBuffer into PacketBuffer
+        NioBuffer nioSrc = NioBuffer.heap();
+        nioSrc.writeVarInt(8888).writeString("nio-to-packet");
+
+        PacketBuffer pktFromNio = PacketBuffer.wrap(nioSrc);
+        assertEquals(8888, pktFromNio.readVarInt());
+        assertEquals("nio-to-packet", pktFromNio.readString());
+    }
+
     /*@Test
     void segmentBuffer_asNioBuffer_zerocopy() {
         SegmentBuffer seg = SegmentBuffer.confined();

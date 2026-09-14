@@ -392,11 +392,25 @@ public class PacketBuffer extends AbstractBuffer<PacketBuffer> {
     }
 
     /**
+     * Wraps a {@link dev.sweety.data.buffer.NioBuffer} as a {@link PacketBuffer} (zero-copy).
+     */
+    public static PacketBuffer wrap(dev.sweety.data.buffer.NioBuffer nioBuffer) {
+        return wrap(nioBuffer.asNioBuffer());
+    }
+
+    /**
      * Returns a NIO {@link ByteBuffer} view of the readable bytes.
      * Backed by the same memory — use with care when the underlying ByteBuf is direct.
      */
     public ByteBuffer asNioBuffer() {
         return this.nettyBuffer.nioBuffer();
+    }
+
+    /**
+     * Returns a {@link dev.sweety.data.buffer.NioBuffer} view of the readable bytes (zero-copy).
+     */
+    public dev.sweety.data.buffer.NioBuffer toNioBuffer() {
+        return dev.sweety.data.buffer.NioBuffer.wrap(asNioBuffer());
     }
 
     @Override
