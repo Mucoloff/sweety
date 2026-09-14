@@ -1,4 +1,9 @@
-package dev.luce.data.buffer;
+package dev.sweety.data.buffer.panama;
+
+import dev.sweety.data.buffer.AbstractBuffer;
+import dev.sweety.data.buffer.NioBuffer;
+import dev.sweety.math.pool.Pooled;
+import dev.sweety.math.pool.Release;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -6,8 +11,6 @@ import java.lang.foreign.ValueLayout;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.function.Consumer;
-import dev.luce.math.pool.Pooled;
-import dev.luce.math.pool.Release;
 
 @Pooled(pool = SegmentBufferAllocator.class)
 public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
@@ -296,6 +299,13 @@ public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
     }
 
     @Override
+    public SegmentBuffer readBytes(byte[] data, int offset, int length) {
+        MemorySegment.copy(segment, ValueLayout.JAVA_BYTE, readerIndex, data, offset, length);
+        readerIndex += length;
+        return this;
+    }
+
+    @Override
     public SegmentBuffer writeBytes(byte[] data) {
         ensureWritable(data.length);
         MemorySegment.copy(data, 0, segment, ValueLayout.JAVA_BYTE, writerIndex, data.length);
@@ -438,6 +448,13 @@ public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
     }
 
     /**
+     * Returns a zero-copy {@link NioBuffer} view of the readable bytes.
+     */
+    public NioBuffer toNioBuffer() {
+        return NioBuffer.wrap(asNioBuffer());
+    }
+
+    /**
      * Wraps a {@link ByteBuffer} as a non-owning {@link SegmentBuffer}.
      * The returned buffer borrows memory from {@code bb} — valid while {@code bb} is reachable.
      */
@@ -447,6 +464,29 @@ public class SegmentBuffer extends AbstractBuffer<SegmentBuffer> {
         SegmentBuffer buf = new SegmentBuffer(null, seg);
         buf.writerIndex = sliced.capacity();
         return buf;
+    }
+
+    /**
+     * Wraps a {@link NioBuffer} as a non-owning {@link SegmentBuffer}.
+     */
+    public static SegmentBuffer wrap(NioBuffer nio) {
+        return wrap(nio.asNioBuffer());
+    }
+
+    /**
+     * Wraps a raw {@link MemorySegment} as a non-owning {@link SegmentBuffer}.
+     */
+    public static SegmentBuffer wrap(MemorySegment seg) {
+        SegmentBuffer buf = new SegmentBuffer(null, seg);
+        buf.writerIndex = (int) seg.byteSize();
+        return buf;
+    }
+
+    /**
+     * Access to the raw underlying {@link MemorySegment} for native FFM bindings.
+     */
+    public MemorySegment segment() {
+        return segment;
     }
 
     // ===================== SLICES (ZERO COPY) =====================

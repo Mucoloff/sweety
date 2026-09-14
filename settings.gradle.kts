@@ -41,7 +41,7 @@ group("", listOf(
     "minecraft:network", "minecraft:version", "minecraft:auth",
 
     "util:cache", "util:color", "util:exception", "util:file", "util:i18n", "util:logger",
-    "util:math", "util:media", "util:serialization", "util:signature", "util:system", "util:thread", "util:time",
+    "util:math", "util:buffer-panama", "util:media", "util:serialization", "util:signature", "util:system", "util:thread", "util:time",
     "util:persistence", "util:persistence:configuration", "util:persistence:sql4j",
     "util:persistence:sql4j-processor", "util:persistence:sql4j-rpc", "util:persistence:sql4j-benchmarks",
     "util:persistence:sql4j-integration-tests",

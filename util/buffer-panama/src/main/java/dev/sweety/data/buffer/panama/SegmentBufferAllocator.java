@@ -1,6 +1,7 @@
-package dev.luce.data.buffer;
+package dev.sweety.data.buffer.panama;
 
-import dev.luce.math.pool.Acquire;
+import dev.sweety.data.buffer.PooledBufferAllocator;
+import dev.sweety.math.pool.Acquire;
 
 import java.lang.foreign.Arena;
 import java.util.function.Consumer;
