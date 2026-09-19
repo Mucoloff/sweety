@@ -57,6 +57,29 @@ public final class IpRateLimiter {
         return bucket.tryConsume(refillPerNano, capacity, System.nanoTime());
     }
 
+    /**
+     * Explicitly evicts a key's bucket from the rate limiter (e.g. on client disconnect or manual unban).
+     */
+    public void clear(IpAddress key) {
+        if (key != null && !key.isBlank()) {
+            buckets.invalidate(key);
+        }
+    }
+
+    /**
+     * Clears all buckets from the rate limiter.
+     */
+    public void clearAll() {
+        buckets.invalidateAll();
+    }
+
+    /**
+     * Explicitly executes any pending Caffeine maintenance and idle evictions immediately.
+     */
+    public void cleanUp() {
+        buckets.cleanUp();
+    }
+
     private static final class Bucket {
         private double tokens;
         private long   lastRefillNanos;
