@@ -67,4 +67,46 @@ public class NettyFluentDslTest {
             server.stop();
         }
     }
+
+    @Test
+    public void testDualServerDistinctPorts() throws Exception {
+        OptimizedPacketRegistry registry = new OptimizedPacketRegistry();
+        registry.registerPacket(1, Ping.class);
+        registry.registerPacket(2, Echo.class);
+        registry.trim();
+
+        int tcpPort = 19446;
+        int udpPort = 19447;
+        CompletableFuture<Boolean> receivedPing = new CompletableFuture<>();
+        CompletableFuture<Boolean> receivedEcho = new CompletableFuture<>();
+
+        GenericServer server = Netty.dualServer("127.0.0.1", tcpPort, udpPort, registry)
+                .onReceive((ctx, packet) -> {
+                    if (packet instanceof dev.sweety.netty.messaging.transport.AddressedPacket addressed) {
+                        if (addressed.packet() instanceof Ping) {
+                            receivedPing.complete(true);
+                        }
+                    } else if (packet instanceof Echo) {
+                        receivedEcho.complete(true);
+                    }
+                })
+                .build();
+
+        GenericClient client = Netty.dualClient("127.0.0.1", tcpPort, udpPort, registry)
+                .build();
+
+        try {
+            server.start();
+            client.start();
+
+            client.sendPacket(new Ping());
+            client.sendPacket(new Echo());
+
+            assertTrue(receivedPing.get(3, TimeUnit.SECONDS), "UDP packet should be received via distinct UDP port");
+            assertTrue(receivedEcho.get(3, TimeUnit.SECONDS), "TCP packet should be received via distinct TCP port");
+        } finally {
+            client.stop();
+            server.stop();
+        }
+    }
 }

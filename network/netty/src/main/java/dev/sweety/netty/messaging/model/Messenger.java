@@ -180,6 +180,7 @@ public abstract class Messenger {
     }
 
     protected int port;
+    protected int udpPort = -1;
     protected String host;
 
     public int port() {
@@ -188,6 +189,15 @@ public abstract class Messenger {
 
     public Messenger port(int port) {
         this.port = port;
+        return this;
+    }
+
+    public int udpPort() {
+        return udpPort > 0 ? udpPort : port;
+    }
+
+    public Messenger udpPort(int udpPort) {
+        this.udpPort = udpPort;
         return this;
     }
 
@@ -341,7 +351,8 @@ public abstract class Messenger {
     private CompletableFuture<Channel> startTransport(Transport transport, AbstractBootstrap<?, ?> bootstrap) {
         final CompletableFuture<Channel> future = new CompletableFuture<>();
         try {
-            ChannelFuture channelFuture = transport.start(bootstrap, this.server, this.host, this.port);
+            int bindPort = (!transport.connectionOriented() && udpPort > 0) ? udpPort : this.port;
+            ChannelFuture channelFuture = transport.start(bootstrap, this.server, this.host, bindPort);
             channelFuture.addListener(f -> {
                 if (f.isSuccess()) future.complete(channelFuture.channel());
                 else future.completeExceptionally(f.cause());

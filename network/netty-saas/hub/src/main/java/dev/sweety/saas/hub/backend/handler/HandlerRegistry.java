@@ -22,28 +22,42 @@ public class HandlerRegistry {
     private HandlerRegistry() {
     }
 
-    private final Map<ServiceType, Class<? extends ServiceNodeHandler>> handlers = new HashMap<>();
+    private static final ServiceNodeHandler NOOP_HANDLER = new ServiceNodeHandler(null) {
+        @Override
+        public void handle(io.netty.channel.ChannelHandlerContext ctx, dev.sweety.netty.packet.model.Packet packet) {}
+
+        @Override
+        public boolean handled(dev.sweety.netty.packet.model.Packet packet) {
+            return false;
+        }
+    };
+
+    private final Map<ServiceType, java.util.function.Function<ServiceNode, ? extends ServiceNodeHandler>> factories = new HashMap<>();
+
+    public <T extends ServiceNodeHandler> void register(ServiceType type, java.util.function.Function<ServiceNode, T> factory) {
+        factories.put(type, factory);
+    }
 
     public <T extends ServiceNodeHandler> void register(ServiceType type, Class<T> clazz) {
-        handlers.put(type, clazz);
+        factories.put(type, node -> {
+            try {
+                return clazz.getDeclaredConstructor(ServiceNode.class).newInstance(node);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to instantiate handler for " + type, e);
+            }
+        });
     }
 
     public <T extends ServiceNodeHandler> T create(ServiceNode node) {
         final ServiceType type = node.type();
-        //noinspection unchecked
-        final Class<T> clazz = (Class<T>) handlers.get(type);
-        if (clazz == null) {
-            LOG.warn("Handler not found for type " + type + " node " + node.getClass().getName() + " using an empty handler");
-            //noinspection unchecked
-            return (T) new EmptyHandler(node);
+        @SuppressWarnings("unchecked")
+        final java.util.function.Function<ServiceNode, T> factory = (java.util.function.Function<ServiceNode, T>) factories.get(type);
+        if (factory == null) {
+            @SuppressWarnings("unchecked")
+            T noop = (T) NOOP_HANDLER;
+            return noop;
         }
-
-        try {
-            return clazz.getDeclaredConstructor(ServiceNode.class).newInstance(node);
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
-                 NoSuchMethodException e) {
-            throw new RuntimeException(e);
-        }
+        return factory.apply(node);
     }
 
 }

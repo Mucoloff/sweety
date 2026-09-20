@@ -39,6 +39,10 @@ public final class Netty {
         return server().dual().host(host).port(port).registry(registry);
     }
 
+    public static ServerBuilder dualServer(String host, int tcpPort, int udpPort, PacketRegistry registry) {
+        return server().dual().host(host).port(tcpPort).udpPort(udpPort).registry(registry);
+    }
+
     public static ClientBuilder tcpClient(String host, int port, PacketRegistry registry) {
         return client().tcp().host(host).port(port).registry(registry);
     }
@@ -51,10 +55,15 @@ public final class Netty {
         return client().dual().host(host).port(port).registry(registry);
     }
 
+    public static ClientBuilder dualClient(String host, int tcpPort, int udpPort, PacketRegistry registry) {
+        return client().dual().host(host).port(tcpPort).udpPort(udpPort).registry(registry);
+    }
+
     public static class ServerBuilder {
         private TransportMode mode = TransportMode.TCP;
         private String host = "127.0.0.1";
         private int port = 8080;
+        private int udpPort = -1;
         private PacketRegistry registry = new OptimizedPacketRegistry();
         private BiConsumer<ChannelHandlerContext, ChannelPromise> joinHandler;
         private BiConsumer<ChannelHandlerContext, ChannelPromise> quitHandler;
@@ -71,8 +80,24 @@ public final class Netty {
             return mode(TransportMode.TCP);
         }
 
+        public ServerBuilder tcp(String host, int port) {
+            this.host = host;
+            this.port = port;
+            return tcp();
+        }
+
         public ServerBuilder udp() {
             return mode(TransportMode.UDP);
+        }
+
+        public ServerBuilder udp(int udpPort) {
+            this.udpPort = udpPort;
+            return mode(TransportMode.DUAL);
+        }
+
+        public ServerBuilder udpPort(int udpPort) {
+            this.udpPort = udpPort;
+            return this;
         }
 
         public ServerBuilder dual() {
@@ -129,6 +154,9 @@ public final class Netty {
 
         public GenericServer build() {
             GenericServer server = new GenericServer(mode, host, port, registry);
+            if (udpPort > 0) {
+                server.udpPort(udpPort);
+            }
             server.setJoinHandler(joinHandler);
             server.setQuitHandler(quitHandler);
             server.setExceptionHandler(exceptionHandler);
@@ -149,9 +177,16 @@ public final class Netty {
         private BiConsumer<ChannelHandlerContext, Throwable> exceptionHandler;
         private BiConsumer<ChannelHandlerContext, Packet> packetReceiveHandler;
         private TriConsumer<ChannelHandlerContext, Packet, Boolean> packetSendHandler;
+        private int udpPort = -1;
 
         public ClientBuilder mode(TransportMode mode) {
             this.mode = mode;
+            return this;
+        }
+
+        public ClientBuilder connect(String host, int port) {
+            this.host = host;
+            this.port = port;
             return this;
         }
 
@@ -159,8 +194,24 @@ public final class Netty {
             return mode(TransportMode.TCP);
         }
 
+        public ClientBuilder tcp(String host, int port) {
+            this.host = host;
+            this.port = port;
+            return tcp();
+        }
+
         public ClientBuilder udp() {
             return mode(TransportMode.UDP);
+        }
+
+        public ClientBuilder udp(int udpPort) {
+            this.udpPort = udpPort;
+            return mode(TransportMode.DUAL);
+        }
+
+        public ClientBuilder udpPort(int udpPort) {
+            this.udpPort = udpPort;
+            return this;
         }
 
         public ClientBuilder dual() {
@@ -222,6 +273,9 @@ public final class Netty {
 
         public GenericClient build() {
             GenericClient client = new GenericClient(mode, host, port, registry, localPort);
+            if (udpPort > 0) {
+                client.udpPort(udpPort);
+            }
             client.setJoinHandler(joinHandler);
             client.setQuitHandler(quitHandler);
             client.setExceptionHandler(exceptionHandler);

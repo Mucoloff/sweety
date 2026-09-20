@@ -20,57 +20,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class ServicesPool extends DynamicBackendNodePool<ServiceNode> {
 
-    public static class ServiceCluster {
+    public static class ServiceCluster extends dev.sweety.netty.service.cluster.ServiceCluster<ServiceType, ServiceNode> {
         public final ServiceType type;
-        public final Set<ServiceNode> nodes = new ConcurrentHashSet<>();
-        public final Map<ServiceNode, Long> connectedAt = new ConcurrentHashMap<>();
-        private final CounterBalancer balancer;
-        private final AtomicInteger clusterCounter = new AtomicInteger();
 
         public ServiceCluster(ServiceType type) {
             this(type, Balancers.ROUND_ROBIN.get());
         }
 
         public ServiceCluster(ServiceType type, CounterBalancer balancer) {
+            super(type, ServiceNode.class, balancer);
             this.type = type;
-            this.balancer = balancer != null ? balancer : Balancers.ROUND_ROBIN.get();
-        }
-
-        public void add(ServiceNode node) {
-            nodes.add(node);
-            connectedAt.put(node, System.currentTimeMillis());
-        }
-
-        public void remove(ServiceNode node) {
-            nodes.remove(node);
-            connectedAt.remove(node);
-        }
-
-        public boolean isConnected() {
-            if (nodes.isEmpty()) return false;
-            for (ServiceNode node : nodes) {
-                if (node.context() != null && node.context().channel().isActive()) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        public boolean isEmpty() {
-            return nodes.isEmpty();
-        }
-
-        public CounterBalancer balancer() {
-            return balancer;
-        }
-
-        public ServiceNode nextNode(Packet packet, ChannelHandlerContext ctx) {
-            ServiceNode[] active = nodes.stream()
-                    .filter(n -> n.context() != null && n.context().channel().isActive() && n.tryAcceptPacket())
-                    .toArray(ServiceNode[]::new);
-            if (active.length == 0) return null;
-            if (active.length == 1) return active[0];
-            return balancer.nextNode(active, null, packet, ctx, clusterCounter);
         }
     }
 

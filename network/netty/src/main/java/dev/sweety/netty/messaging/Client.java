@@ -38,7 +38,7 @@ public abstract class Client extends Messenger {
         if (transportMode == dev.sweety.netty.messaging.transport.TransportMode.DUAL) {
             byte targetTransport = packetRegistry().getTransportMode(packet.getClass());
             if ((targetTransport & dev.sweety.netty.messaging.transport.TransportMode.FLAG_UDP) != 0) {
-                return sendUdp(new java.net.InetSocketAddress(host(), port()), packet);
+                return sendUdp(new java.net.InetSocketAddress(host(), udpPort()), packet);
             }
         }
         return super.sendPacket(channelContext(), packet);
@@ -49,7 +49,7 @@ public abstract class Client extends Messenger {
     }
 
     public <T> CompletableFuture<T> sendUdp(Packet packet) {
-        return sendUdp(new java.net.InetSocketAddress(host(), port()), packet);
+        return sendUdp(new java.net.InetSocketAddress(host(), udpPort()), packet);
     }
 
     public <T> CompletableFuture<T> sendPacket(Packet... packets) {

@@ -34,6 +34,65 @@ public enum Balancers {
     LOWEST_USAGE(fromParam(BackendNode::usageScore)),
     LOWEST_LATENCY(fromParam(BackendNode::latencyScore)),
     LOWEST_BANDWIDTH(fromParam(BackendNode::bandwidthScore)),
+    LEAST_CONNECTIONS(new Balancer() {
+        @Override
+        public <T extends BackendNode> T nextNode(T[] activeNodes, LogHelper logger, Packet packet, ChannelHandlerContext ctx) {
+            T best = activeNodes[0];
+            int minInFlight = best.inFlight().get();
+            for (int i = 1; i < activeNodes.length; i++) {
+                int current = activeNodes[i].inFlight().get();
+                if (current < minInFlight) {
+                    minInFlight = current;
+                    best = activeNodes[i];
+                }
+            }
+            return best;
+        }
+    }),
+
+    CONSISTENT_HASH(new Balancer() {
+        @Override
+        public <T extends BackendNode> T nextNode(T[] activeNodes, LogHelper logger, Packet packet, ChannelHandlerContext ctx) {
+            long key = 0L;
+            if (packet instanceof dev.sweety.netty.packet.internal.InternalPacket internal && internal.hasRequest()) {
+                dev.sweety.netty.packet.internal.RoutingContext routingCtx = internal.getRequest().context();
+                if (routingCtx instanceof dev.sweety.netty.packet.internal.RoutingContext.ShardRoutingContext shardCtx) {
+                    key = shardCtx.shardKey();
+                } else if (routingCtx instanceof dev.sweety.netty.packet.internal.RoutingContext.SessionRoutingContext sessionCtx && sessionCtx.clientSessionId() != null) {
+                    key = sessionCtx.clientSessionId().getMostSignificantBits();
+                } else if (routingCtx instanceof dev.sweety.netty.packet.internal.RoutingContext.CompositeRoutingContext compCtx) {
+                    key = compCtx.shardKey() != 0 ? compCtx.shardKey() : (compCtx.clientSessionId() != null ? compCtx.clientSessionId().getMostSignificantBits() : 0L);
+                }
+            }
+            if (key == 0L && ctx != null) {
+                key = ctx.channel().id().asLongText().hashCode();
+            }
+            int index = Math.floorMod(Long.hashCode(key), activeNodes.length);
+            return activeNodes[index];
+        }
+    }),
+
+    VIRTUAL_SHARD(new Balancer() {
+        private final dev.sweety.netty.routing.VirtualShardRouterAdapter<Packet, BackendNode> router =
+                new dev.sweety.netty.routing.VirtualShardRouterAdapter<>(p -> {
+                    if (p instanceof dev.sweety.netty.packet.internal.InternalPacket internal && internal.hasRequest()) {
+                        dev.sweety.netty.packet.internal.RoutingContext routingCtx = internal.getRequest().context();
+                        if (routingCtx instanceof dev.sweety.netty.packet.internal.RoutingContext.ShardRoutingContext shardCtx) {
+                            return shardCtx.shardKey();
+                        } else if (routingCtx instanceof dev.sweety.netty.packet.internal.RoutingContext.CompositeRoutingContext compCtx) {
+                            return compCtx.shardKey();
+                        }
+                    }
+                    return 0L;
+                });
+
+        @Override
+        public <T extends BackendNode> T nextNode(T[] activeNodes, LogHelper logger, Packet packet, ChannelHandlerContext ctx) {
+            java.util.List<T> list = java.util.Arrays.asList(activeNodes);
+            //noinspection unchecked
+            return (T) router.route(packet, (java.util.List<BackendNode>) (java.util.List<?>) list);
+        }
+    }),
 
     LOWEST_PACKET_CPU_TIME(new CounterBalancer() {
         @Override

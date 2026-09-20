@@ -60,12 +60,20 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
 
     private final ScheduledExecutorService healthCheckExecutor = Executors.newSingleThreadScheduledExecutor(ThreadUtil.factory("health-check"));
 
+    private final dev.sweety.netty.server.discovery.EndpointProvider endpointProvider;
     private final Batch.Constructor constructor;
 
     public <T extends IDynamicBackendNodePool<Node>> LoadBalancerServer(String host, int port, T backendPool,
                                                                         PacketRegistry packetRegistry) {
+        this(host, port, backendPool, packetRegistry, null);
+    }
+
+    public <T extends IDynamicBackendNodePool<Node>> LoadBalancerServer(String host, int port, T backendPool,
+                                                                        PacketRegistry packetRegistry,
+                                                                        dev.sweety.netty.server.discovery.EndpointProvider endpointProvider) {
         super(host, port, packetRegistry);
         this.backendPool = backendPool;
+        this.endpointProvider = endpointProvider;
         this.constructor = (id, ts, data) -> {
             try {
                 return packetRegistry.constructPacket(id, ts, ((PacketBuffer) data).getBytes());
@@ -361,6 +369,13 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
 
     @Override
     public void stop() {
+        try {
+            if (this.endpointProvider != null) {
+                this.endpointProvider.close();
+            }
+        } catch (Exception e) {
+            this.logger.error("Error closing endpoint provider: " + e.getMessage());
+        }
         if (this.ingressDisruptor != null) {
             this.ingressDisruptor.shutdown();
         }
@@ -456,5 +471,9 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
 
     public Batch.Constructor constructor() {
         return constructor;
+    }
+
+    public dev.sweety.netty.server.discovery.EndpointProvider endpointProvider() {
+        return endpointProvider;
     }
 }
