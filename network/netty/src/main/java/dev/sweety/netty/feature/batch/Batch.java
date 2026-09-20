@@ -9,6 +9,8 @@ import dev.sweety.netty.packet.buffer.PacketBufferAllocator;
 import dev.sweety.netty.packet.buffer.io.Codec;
 import dev.sweety.netty.packet.model.Packet;
 
+import dev.sweety.math.pool.ArrayPool;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -20,6 +22,15 @@ public final class Batch implements Codec {
     // driving an unbounded int[]/long[]/Packet[] allocation before any real data is validated
     // (same class of issue as the array-length guards elsewhere in AbstractBuffer).
     private static final int MAX_BATCH_PACKETS = 1 << 16;
+
+    private static final ArrayPool<int[]> INT_POOL = ArrayPool.builder(int[]::new, (int[] a) -> a.length)
+            .defaultSize(16)
+            .maxSize(16)
+            .build();
+    private static final ArrayPool<long[]> LONG_POOL = ArrayPool.builder(long[]::new, (long[] a) -> a.length)
+            .defaultSize(16)
+            .maxSize(16)
+            .build();
 
     private int packetCount;
     private int[] packetIds;
@@ -43,27 +54,33 @@ public final class Batch implements Codec {
             return;
         }
 
-        final int[] tempIds = new int[packets.length];
-        final long[] tempTimestamps = new long[packets.length];
+        final int minLen = packets.length;
+        final int[] tempIds = INT_POOL.acquire(minLen);
+        final long[] tempTimestamps = LONG_POOL.acquire(minLen);
         final List<Packet> validPackets = new ArrayList<>(packets.length);
         int validCount = 0;
 
-        for (final Packet packet : packets) {
-            if (packet == null || exclusion.test(packet)) continue;
-            final Integer mappedId = idMap.apply(packet.getClass());
-            if (mappedId == null || mappedId < 0) continue;
-            tempIds[validCount++] = mappedId;
-            tempTimestamps[validCount - 1] = packet.timestamp();
-            validPackets.add(packet);
+        try {
+            for (final Packet packet : packets) {
+                if (packet == null || exclusion.test(packet)) continue;
+                final Integer mappedId = idMap.apply(packet.getClass());
+                if (mappedId == null || mappedId < 0) continue;
+                tempIds[validCount++] = mappedId;
+                tempTimestamps[validCount - 1] = packet.timestamp();
+                validPackets.add(packet);
+            }
+
+            this.packetCount = validCount;
+            this.packetIds = new int[validCount];
+            this.packetTimestamps = new long[validCount];
+            this.packets = validPackets.toArray(Packet[]::new);
+
+            System.arraycopy(tempIds, 0, this.packetIds, 0, validCount);
+            System.arraycopy(tempTimestamps, 0, this.packetTimestamps, 0, validCount);
+        } finally {
+            INT_POOL.release(tempIds);
+            LONG_POOL.release(tempTimestamps);
         }
-
-        this.packetCount = validCount;
-        this.packetIds = new int[validCount];
-        this.packetTimestamps = new long[validCount];
-        this.packets = validPackets.toArray(Packet[]::new);
-
-        System.arraycopy(tempIds, 0, this.packetIds, 0, validCount);
-        System.arraycopy(tempTimestamps, 0, this.packetTimestamps, 0, validCount);
 
         this.metadataDecoded = true;
     }

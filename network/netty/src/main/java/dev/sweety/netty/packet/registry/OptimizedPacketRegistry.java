@@ -87,6 +87,14 @@ public class OptimizedPacketRegistry implements PacketRegistry {
     }
 
     @Override
+    public <T extends Packet> T constructPacket(int packetId, long timestamp, dev.sweety.netty.packet.buffer.PacketBuffer buffer)
+            throws InvocationTargetException, InstantiationException, IllegalAccessException {
+        RegisteredPacket registered = idToPacket.get(packetId);
+        if (registered == null) throw new IllegalArgumentException("Unknown packet id " + packetId);
+        return registered.create(timestamp, buffer);
+    }
+
+    @Override
     public boolean containsPacketId(int id) {
         return idToPacket.containsKey(id);
     }

@@ -182,14 +182,12 @@ public class PacketDecoder {
 
             final Packet packet;
             try {
-                byte[] bytes;
                 if (!payloadBuf.isReadable()) {
-                    bytes = new byte[0];
+                    packet = packetRegistry.constructPacket(id, timestamp, new byte[0]);
                 } else {
-                    bytes = new byte[payloadBuf.readableBytes()];
-                    payloadBuf.getBytes(payloadBuf.readerIndex(), bytes);
+                    final PacketBuffer pb = new PacketBuffer(payloadBuf);
+                    packet = packetRegistry.constructPacket(id, timestamp, pb);
                 }
-                packet = packetRegistry.constructPacket(id, timestamp, bytes);
             } catch (Exception e) {
                 throw PacketDecodeException.of("Failed to decode packet (" + id + ")", e);
             } finally {

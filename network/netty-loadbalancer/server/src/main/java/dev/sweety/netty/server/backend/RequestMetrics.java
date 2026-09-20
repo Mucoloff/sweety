@@ -1,7 +1,7 @@
 package dev.sweety.netty.server.backend;
 
+import dev.sweety.math.pool.ObjectPool;
 import dev.sweety.netty.metrics.EMA;
-
 import dev.sweety.math.list.Long2ObjectConcurrentOpenHashMap;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -16,7 +16,7 @@ public class RequestMetrics {
     private final EMA currentLoadEma = new EMA(0.35f); // per current pending load medio
 
     public void addRequest(long requestId, int load) {
-        pendingRequests.put(requestId, new RequestInfo(System.nanoTime(), load));
+        pendingRequests.put(requestId, RequestInfo.of(System.nanoTime(), load));
         totalLoadEma.update(load);
         currentLoadEma.update(load);
         currentLoad.addAndGet(load);
@@ -29,6 +29,7 @@ public class RequestMetrics {
         latencyEma.update(System.nanoTime() - info.timestamp());
         long l = currentLoad.addAndGet(-info.load());
         currentLoadEma.update(l);
+        info.release();
     }
 
     public void timeoutRequest(long requestId) {
@@ -36,6 +37,7 @@ public class RequestMetrics {
         if (info == null) return;
         long l = currentLoad.addAndGet(-info.load());
         currentLoadEma.update(l);
+        info.release();
     }
 
     public double getAverageLatency() {
@@ -55,6 +57,7 @@ public class RequestMetrics {
     }
 
     public void reset() {
+        pendingRequests.forEachEntry((k, v) -> v.release());
         pendingRequests.clear();
         latencyEma.reset();
         totalLoadEma.reset();
@@ -62,8 +65,46 @@ public class RequestMetrics {
         currentLoad.set(0L);
     }
 
-    public record RequestInfo(long timestamp, int load){
+    public static final class RequestInfo {
+        private static final ObjectPool<RequestInfo> POOL = ObjectPool.shared(RequestInfo::new)
+                .reset(RequestInfo::reset)
+                .build();
 
+        private long timestamp;
+        private int load;
+
+        public RequestInfo() {
+            this(0L, 0);
+        }
+
+        public RequestInfo(long timestamp, int load) {
+            this.timestamp = timestamp;
+            this.load = load;
+        }
+
+        public static RequestInfo of(long timestamp, int load) {
+            RequestInfo info = POOL.acquire();
+            info.timestamp = timestamp;
+            info.load = load;
+            return info;
+        }
+
+        public void release() {
+            POOL.release(this);
+        }
+
+        public void reset() {
+            this.timestamp = 0L;
+            this.load = 0;
+        }
+
+        public long timestamp() {
+            return timestamp;
+        }
+
+        public int load() {
+            return load;
+        }
     }
 
 }

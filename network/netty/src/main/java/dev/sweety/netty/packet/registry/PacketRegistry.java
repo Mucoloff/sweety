@@ -20,6 +20,11 @@ public interface PacketRegistry {
 
     <T extends Packet> T constructPacket(int packetId, long timestamp, byte[] data) throws InvocationTargetException, InstantiationException, IllegalAccessException;
 
+    default <T extends Packet> T constructPacket(int packetId, long timestamp, dev.sweety.netty.packet.buffer.PacketBuffer buffer) throws InvocationTargetException, InstantiationException, IllegalAccessException {
+        byte[] data = buffer != null && buffer.readableBytes() > 0 ? buffer.readByteArray() : new byte[0];
+        return constructPacket(packetId, timestamp, data);
+    }
+
     boolean containsPacketId(int id);
 
     default void registerPackets(Map<Integer, Class<? extends Packet>> packets) throws PacketRegistrationException {

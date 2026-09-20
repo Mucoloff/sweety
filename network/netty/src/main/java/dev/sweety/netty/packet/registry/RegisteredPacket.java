@@ -21,18 +21,26 @@ public class RegisteredPacket {
         }
     }
 
-    public <T extends Packet> T create(long timestamp, byte[] data)
+    public <T extends Packet> T create(long timestamp, PacketBuffer buf)
             throws InvocationTargetException, InstantiationException, IllegalAccessException {
         try {
             //noinspection unchecked
             final T packet = (T) noArgCtor.newInstance();
             packet.assignTimestamp(timestamp);
-            final PacketBuffer buf = new PacketBuffer(data);
             packet.read(buf);
-            buf.release();
             return packet;
         } catch (Throwable t) {
             throw t instanceof RuntimeException r ? r : new RuntimeException(t);
+        }
+    }
+
+    public <T extends Packet> T create(long timestamp, byte[] data)
+            throws InvocationTargetException, InstantiationException, IllegalAccessException {
+        final PacketBuffer buf = new PacketBuffer(data);
+        try {
+            return create(timestamp, buf);
+        } finally {
+            buf.release();
         }
     }
 

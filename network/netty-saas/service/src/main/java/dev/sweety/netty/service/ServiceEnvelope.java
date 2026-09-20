@@ -7,6 +7,8 @@ import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.model.PacketTransaction;
 import dev.sweety.netty.packet.registry.PacketRegistry;
 
+import dev.sweety.netty.packet.buffer.PacketBufferAllocator;
+
 /**
  * Routing envelope carried inside a {@link ServiceMessage}: {@code senderId}/{@code receiverId} are
  * numeric service ids the {@link HubServer} routes on, and the inner application packet travels as an
@@ -59,14 +61,22 @@ public final class ServiceEnvelope extends PacketTransaction.Transaction {
     public Packet decode(PacketRegistry registry) {
         if (innerId < 0) return null;
         try {
-            return registry.constructPacket(innerId, -1L, innerData);
+            if (innerData == null || innerData.length == 0) {
+                return registry.constructPacket(innerId, -1L, EMPTY);
+            }
+            final PacketBuffer buffer = new PacketBuffer(innerData);
+            try {
+                return registry.constructPacket(innerId, -1L, buffer);
+            } finally {
+                buffer.release();
+            }
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException("Failed to decode inner packet id " + innerId, e);
         }
     }
 
     private static byte[] serialize(Packet packet) {
-        PacketBuffer buffer = new PacketBuffer();
+        PacketBuffer buffer = PacketBufferAllocator.DEFAULT.buffer();
         try {
             packet.write(buffer);
             byte[] out = new byte[buffer.readableBytes()];

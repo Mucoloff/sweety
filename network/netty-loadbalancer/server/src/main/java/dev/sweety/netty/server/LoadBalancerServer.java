@@ -100,7 +100,7 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
                     new LiteBlockingWaitStrategy());
 
             final EventHandler<IngressEvent> handler = (event, sequence, endOfBatch) -> {
-                event.useAndInvalidate(this.pendingPackets::offerLast);
+                event.drainTo(this.pendingPackets);
 
                 if (endOfBatch)
                     this.drainPending();
@@ -169,17 +169,16 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
         final OrderedResponseQueue queue = this.reorder.enqueue(ctx, this::sendPacket);
         long sequenceId = queue.nextSequenceId();
 
-        final PacketContext packetContext = new PacketContext(packet, ctx, sequenceId);
         if (this.ingressRingBuffer != null) {
             final long seq = this.ingressRingBuffer.next();
             try {
-                this.ingressRingBuffer.get(seq).context = packetContext;
+                this.ingressRingBuffer.get(seq).set(packet, ctx, sequenceId);
             } finally {
                 this.ingressRingBuffer.publish(seq);
             }
             return;
         }
-        this.pendingPackets.offerLast(packetContext);
+        this.pendingPackets.offerLast(PacketContext.of(packet, ctx, sequenceId));
         this.drainPending();
     }
 
@@ -258,14 +257,17 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
             final long sequenceId = pq.sequenceId();
 
             if (!(packet instanceof InternalPacket internal)) {
+                pq.release();
                 continue;
             }
             if (!internal.hasRequest() && !internal.hasResponse()) {
+                pq.release();
                 continue;
             }
 
             if (internal.hasResponse()) {
                 complete(internal, ctx);
+                pq.release();
                 continue;
             }
 
@@ -304,6 +306,7 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
                         this.drainPending();
                     }
                 });
+                pq.release();
                 continue;
             }
 
@@ -352,6 +355,7 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
                     this.drainPending();
                 }
             });
+            pq.release();
         }
     }
 
@@ -388,12 +392,22 @@ public class LoadBalancerServer<Node extends BackendNode> extends Server {
     }
 
     private static final class IngressEvent {
-        private PacketContext context;
+        private Packet packet;
+        private ChannelHandlerContext ctx;
+        private long sequenceId;
 
-        public void useAndInvalidate(Consumer<PacketContext> action) {
-            if (this.context != null) {
-                action.accept(this.context);
-                this.context = null;
+        public void set(Packet packet, ChannelHandlerContext ctx, long sequenceId) {
+            this.packet = packet;
+            this.ctx = ctx;
+            this.sequenceId = sequenceId;
+        }
+
+        public void drainTo(BlockingDeque<PacketContext> queue) {
+            if (this.packet != null) {
+                queue.offerLast(PacketContext.of(this.packet, this.ctx, this.sequenceId));
+                this.packet = null;
+                this.ctx = null;
+                this.sequenceId = -1L;
             }
         }
     }

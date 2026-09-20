@@ -24,6 +24,7 @@ import io.netty.channel.ChannelPromise;
 import org.jetbrains.annotations.NotNull;
 
 import dev.sweety.math.list.Int2ObjectConcurrentOpenHashMap;
+import dev.sweety.math.pool.ObjectPool;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -33,8 +34,13 @@ import java.util.concurrent.TimeUnit;
 
 public abstract class Backend extends Client implements IBackend {
 
-    private static final ThreadLocal<ArrayList<Packet>> RESULT_POOL = ThreadLocal.withInitial(() -> new ArrayList<>(8));
-    private static final ThreadLocal<ArrayList<Packet>> FORWARD_POOL = ThreadLocal.withInitial(() -> new ArrayList<>(32));
+    private static final ObjectPool<ArrayList<Packet>> RESULT_POOL = ObjectPool.threadLocal(
+            () -> new ArrayList<Packet>(8)
+    ).reset(ArrayList::clear).build();
+
+    private static final ObjectPool<ArrayList<Packet>> FORWARD_POOL = ObjectPool.threadLocal(
+            () -> new ArrayList<Packet>(32)
+    ).reset(ArrayList::clear).build();
 
     private final SimpleLogger backendLogger;
     private final Batch.Constructor constructor;
@@ -96,15 +102,20 @@ public abstract class Backend extends Client implements IBackend {
 
     private ArrayList<Packet> calcCpuTime(final int sender, final int receiver, final Packet packet) {
         final long start = System.nanoTime();
-        final ArrayList<Packet> results = RESULT_POOL.get();
+        final ArrayList<Packet> results = RESULT_POOL.acquire();
         results.clear();
-        handleInternal(sender, receiver, packet, results);
-        final float duration = System.nanoTime() - start;
-        int pId = packetRegistry().getPacketId(packet.getClass());
-        if (pId >= 0) {
-            packetTimings.computeIfAbsent(pId, id -> new EMA(BackendSettings.EMA_ALPHA())).update(duration / 1_000_000f);
+        try {
+            handleInternal(sender, receiver, packet, results);
+            final float duration = System.nanoTime() - start;
+            int pId = packetRegistry().getPacketId(packet.getClass());
+            if (pId >= 0) {
+                packetTimings.computeIfAbsent(pId, id -> new EMA(BackendSettings.EMA_ALPHA())).update(duration / 1_000_000f);
+            }
+            return results;
+        } catch (Throwable t) {
+            RESULT_POOL.release(results);
+            throw t;
         }
-        return results;
     }
 
     private volatile boolean useThreadManager = false;
@@ -160,19 +171,27 @@ public abstract class Backend extends Client implements IBackend {
 
         if (decoded.length == 0) return Packer.EMPTY();
 
-        final ArrayList<Packet> forwarded = FORWARD_POOL.get();
+        final ArrayList<Packet> forwarded = FORWARD_POOL.acquire();
         forwarded.clear();
-        for (final Packet source : decoded) {
-            if (source == null) continue;
+        try {
+            for (final Packet source : decoded) {
+                if (source == null) continue;
 
-            final ArrayList<Packet> results = calcCpuTime(sender, receiver, source);
-            for (final Packet out : results) {
-                if (out == null || out instanceof InternalPacket) continue;
-                forwarded.add(out);
+                final ArrayList<Packet> results = calcCpuTime(sender, receiver, source);
+                try {
+                    for (final Packet out : results) {
+                        if (out == null || out instanceof InternalPacket) continue;
+                        forwarded.add(out);
+                    }
+                } finally {
+                    RESULT_POOL.release(results);
+                }
             }
+            if (forwarded.isEmpty()) return Packer.EMPTY();
+            return forwarded.toArray(Packet[]::new);
+        } finally {
+            FORWARD_POOL.release(forwarded);
         }
-        if (forwarded.isEmpty()) return Packer.EMPTY();
-        return forwarded.toArray(Packet[]::new);
     }
 
     private boolean containsAsyncTransactionRequest(final ForwardData request) {
