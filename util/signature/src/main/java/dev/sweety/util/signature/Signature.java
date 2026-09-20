@@ -33,7 +33,7 @@ import java.util.zip.CRC32C;
 public class Signature {
 
     public static final String BUILD_INFO_CLASS = "dev/sweety/build/BuildInfo.class";
-    public static final int WATERMARK_SIGNATURE = 0xDEADBEEF;
+    public static final int WATERMARK_SIGNATURE = ("dev/sweety/watermark/v2".hashCode() ^ 0x5A827999);
     private static final int MIN_SIZE = 4 + 4 + 4 + 8; // waterSig + nameLen + dataLen + crc
 
     private static final ThreadLocal<CRC32C> crc32ThreadLocal = ThreadLocal.withInitial(CRC32C::new);
