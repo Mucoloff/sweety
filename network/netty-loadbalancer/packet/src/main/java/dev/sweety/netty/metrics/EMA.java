@@ -1,33 +1,34 @@
 package dev.sweety.netty.metrics;
 
-import java.util.concurrent.atomic.AtomicReference;
-
+/**
+ * Backward-compatible wrapper delegating to {@link dev.sweety.math.stat.EMA}.
+ * Eliminates boxed AtomicReference allocations while preserving API for netty-saas and loadbalancer.
+ */
 public final class EMA {
 
-    private final double alpha; // 0 < alpha <= 1
-    private final AtomicReference<Double> value = new AtomicReference<>(0.0);
-    private volatile boolean initialized = false;
+    private final dev.sweety.math.stat.EMA delegate;
 
     public EMA(double alpha) {
-        this.alpha = alpha;
+        this.delegate = new dev.sweety.math.stat.EMA(alpha);
     }
 
-    public synchronized double update(double sample) {
-        if (!initialized) {
-            value.set(sample);
-            initialized = true;
-        } else {
-            value.updateAndGet(v -> alpha * sample + (1 - alpha) * v);
-        }
-        return value.get();
+    public double update(double sample) {
+        return delegate.update(sample);
     }
 
     public double get() {
-        return value.get();
+        return delegate.get();
     }
 
     public void reset() {
-        this.initialized = false;
-        this.value.set(0.0);
+        delegate.reset();
+    }
+
+    public boolean isInitialized() {
+        return delegate.isInitialized();
+    }
+
+    public dev.sweety.math.stat.EMA unwrap() {
+        return delegate;
     }
 }
