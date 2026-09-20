@@ -76,7 +76,6 @@ public abstract class Messenger {
     // and this handler drains the queue once writability returns. Per-channel state, since the
     // handler instance is @Sharable across every connection.
     /** A deferred write plus the future that must eventually resolve, one way or another. */
-    //todo questo può essere poolato?
     private record PendingWrite(Runnable writeAction, CompletableFuture<?> future) {}
 
     private static final AttributeKey<ArrayDeque<PendingWrite>> PENDING_WRITES = AttributeKey.valueOf("luce-pending-writes");
