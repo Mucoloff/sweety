@@ -2,10 +2,10 @@
 
 ## 🎯 Obiettivi
 - Codice leggibile, prevedibile e type-safe al 100%
-- Ridurre bug a compile-time (null safety rigorosa, stato inconsistente)
-- Sfruttare le feature moderne del linguaggio (JSpecify, Manifold, Java 21+, Kotlin)
-- Evitare overengineering e astrazioni inutili
-- Ottimizzare solo quando serve davvero e dove misurato
+- Ridurre bug a compile-time (null safety rigorosa, prevenzione stati inconsistenti)
+- Sfruttare le feature moderne dell'ecosistema (JSpecify, Manifold, Java 21+, Kotlin)
+- Evitare overengineering, wrapper inutili e astrazioni premature
+- Ottimizzare solo dove misurato tramite profiling reale
 
 ---
 
@@ -34,14 +34,14 @@ public final class User {
 
 ## Linee guida
 - Costruttori → `private`
-- Factory → nomi chiari:
+- Factory → nomi chiari ed espressivi:
   - `of(...)`
   - `from(...)`
   - `create(...)`
-- Validazione **solo in factory / entry point**
+- Validazione **solo in factory / entry point boundary**
 
 ### ✔️ Value objects → `record`
-Usare `record` per oggetti immutabili senza logica. `equals`, `hashCode`, `toString` gratis.
+Usare `record` per oggetti immutabili senza logica complessa. `equals`, `hashCode`, `toString` generati a costo zero.
 
 ```java
 public record Point(int x, int y) {}
@@ -53,22 +53,22 @@ public record Point(int x, int y) {}
 
 # 2. Null Safety (JSpecify Standard)
 
-## Il modello: Non-Null di Default (Kotlin Parity)
-Adottare lo standard moderno **JSpecify** (`org.jspecify:jspecify:1.0.0`).
-Tutto il codice Java del progetto adotta la semantica **Non-Null by Default**: ogni riferimento a un tipo `Type` è garantito non-null dal compilatore e dagli strumenti di analisi statica, esattamente come in Kotlin.
+## Il Modello: Non-Null di Default (Kotlin Parity)
+Adottare lo standard unificato **JSpecify** (`org.jspecify:jspecify:1.0.0`).
+Tutto il codice Java del progetto adotta la semantica **Non-Null by Default**: ogni riferimento a un tipo `Type` è garantito non-null dal compilatore e dall'IDE, esattamente come in Kotlin.
 
 ### Regole Fondamentali
-- ✔️ **Dichiarare `@NullMarked` a livello di package** tramite file `package-info.java` per ogni package Java:
+- ✔️ **Dichiarare `@NullMarked` a livello di package** tramite file `package-info.java` in ogni package Java:
   ```java
   @org.jspecify.annotations.NullMarked
   package dev.luce.protocol.auth.crypto;
   ```
-- ✔️ **`Type` = Non-Null**: In un contesto `@NullMarked`, qualsiasi tipo dichiarato (`String`, `Session`, `UUID`) **non può mai essere null**.
-- ✔️ **`@Nullable` solo se esplicito**: Usare `org.jspecify.annotations.Nullable` **esclusivamente** dove l'assenza di un valore è un esito semantico lecito e gestito (`String?` in Kotlin).
+- ✔️ **`Type` = Non-Null**: In un contesto `@NullMarked`, qualsiasi tipo dichiarato (`String`, `Session`, `UUID`) **non può mai essere null** (`String` Java == `String` Kotlin).
+- ✔️ **`@Nullable` solo se esplicito**: Usare `org.jspecify.annotations.Nullable` **esclusivamente** dove l'assenza di valore è un esito semantico lecito e gestito (`String?` in Kotlin).
   ```java
   public @Nullable Session findSession(String sessionId) { ... }
   ```
-- ❌ **Vietato usare annotazioni legacy frammentate**: Non usare `@NotNull`, `@NonNull` di JetBrains, Lombok, Spring, Checker Framework o Android. L'unico standard ammesso è **JSpecify**.
+- ❌ **Vietato usare annotazioni legacy frammentate**: Non usare `@NotNull` o `@NonNull` di JetBrains, Lombok, Spring, Checker Framework o Android. L'unico standard ammesso nel progetto è **JSpecify**.
 - ❌ **Vietato passare `null` nelle API pubbliche** salvo dove il parametro è esplicitamente marcato `@Nullable`.
 - ✔️ **`Optional` solo come return type** quando l'assenza di risultato è un outcome normale di una query/lookup.
 
@@ -114,7 +114,7 @@ Usa la struttura giusta per il problema, non "map ovunque".
 | concorrenza write-heavy | `ConcurrentHashMap`    | Partizionamento a bucket       |
 
 ### Getter di collezioni → sempre difensivo
-Non esporre mai la collezione interna direttamente.
+Non esporre mai la collezione mutabile interna direttamente.
 
 ```java
 // ✔️
@@ -126,7 +126,7 @@ public List<String> items() { return items; }
 
 ### ❌ Anti-pattern
 - usare `Map` quando serve una lista
-- usare `TreeSet` senza bisogno di ordinamento
+- usare `TreeSet` senza reale bisogno di ordinamento
 - esporre `List` mutabile come campo interno
 
 ---
@@ -148,24 +148,20 @@ data class User(val name: String)
 # 5. Pooling oggetti
 
 ## Regola forte
-❌ NON usare pooling di default. La JVM e la Garbage Collection moderna (ZGC / G1) allocano ed eliminano oggetti a ciclo di vita breve a costo quasi zero.
+❌ NON usare pooling di default. La JVM e il GC moderno allocano ed eliminano oggetti a vita breve a costo quasi zero.
 
 ## Usalo solo se:
 - Oggetti molto pesanti con risorse native allocate (off-heap buffer, DB connection, socket worker)
-- Il profiling (async-profiler, JFR) dimostra concreta saturazione GC o allocazioni in hot-loop a 20+ TPS
-- Buffer grandi e riciclabili in pipeline di rete ad alto throughput (es. Netty `ByteBufAllocator.DEFAULT`)
-
-## Alternative migliori
-- Immutabilità
-- Riuso locale su stack
-- Flyweight pattern
+- Profiling che dimostra concreta saturazione GC o allocazioni continue in hot-loop (tick loop 20 TPS o render pipeline)
+- Buffer grandi e riciclabili in pipeline di rete ad alto throughput (Netty `ByteBufAllocator.DEFAULT`)
+- Istanze mutabili pesanti in calcoli geometrici ripetitivi (vedi §11 Manifold Science)
 
 ---
 
 # 6. Validazione
 
 ## Regole
-- Solo nelle factory / boundary entry points
+- Solo nelle factory e nei boundary entry point
 - No controlli duplicati nel core
 - Fail fast
 
@@ -180,7 +176,7 @@ if (x <= 0) throw new IllegalArgumentException("Value must be positive: " + x);
 
 ## Regole
 - Classi `final` dove possibile
-- Niente setter (preferire immutabilità o builder con ritorno di nuova istanza)
+- Niente setter indiscriminati (preferire immutabilità o builder con ritorno di nuova istanza)
 - Responsabilità singola (Single Responsibility)
 
 ---
@@ -188,18 +184,17 @@ if (x <= 0) throw new IllegalArgumentException("Value must be positive: " + x);
 # 8. Performance
 
 ## Regola chiave
-> Non ottimizzare senza misurare. Usa async-profiler o JMH prima di cambiare design.
+> Non ottimizzare senza misurare. Usa async-profiler o JMH prima di stravolgere il design.
 
 ## Linee guida
 
 ### String Interpolation & Concatenation
 - ❌ **Vietato** concatenare con `+` dentro loop o hot-path.
-- ✔️ **Manifold Strings** (se attivo nel modulo): Usare string interpolation nativa `$var` e `${expr}`:
+- ✔️ **Manifold Strings**: Usare string interpolation nativa `$var` e `${expr}` per massima leggibilità a zero overhead runtime:
   ```java
-  // ✔️ Con Manifold: massima leggibilità, zero overhead
   String msg = "[$level][$name] $text";
   ```
-- ✔️ **Plain Java**: Usare `String.formatted(...)` per log/errori fuori dall'hot path, o `StringBuilder` pre-dimensionato per loop ad alte prestazioni.
+- ✔️ **Plain Java**: Usare `String.formatted(...)` per log/errori fuori dall'hot path, o `StringBuilder` pre-dimensionato per cicli critici.
 
 ### Lazy evaluation nei log
 Se un argomento è costoso da costruire, passare un `Supplier` invece del valore calcolato:
@@ -264,30 +259,31 @@ Il workspace adotta un'architettura ibrida pragmatica: Kotlin per modelli dati, 
 
 ---
 
-# 11. Manifold Framework: Analisi, Linee Guida e Matrice di Adozione
+# 11. Manifold Framework: Regole e Linee Guida di Adozione
 
-[Manifold](http://manifold.systems) estende il compilatore Java (`javac`) tramite compiler plugin senza generare build steps intermedi. Nel nostro ecosistema le feature di Manifold sono categorizzate e regolamentate come segue:
+[Manifold](http://manifold.systems) estende il compilatore Java (`javac`) tramite compiler plugin nativo. Nel nostro ecosistema le feature di Manifold sono regolamentate come segue:
 
 ## Matrice di Adozione
 
-| Feature | Modulo / Dipendenza | Stato | Utilizzo nel Progetto |
+| Feature | Modulo / Dipendenza | Stato | Linea Guida nel Progetto |
 | :--- | :--- | :--- | :--- |
-| **Operator Overloading** | `manifold-ext` | ✔️ **CORE APPROVED** | Vettori (`Vec2`, `Vec3`, `Matrix`), math (`BigDecimal`), indicizzazione con parentesi quadre `[]`, range e operatori relazionali. |
-| **Extension Methods** | `manifold-ext` | ✔️ **CORE APPROVED** | Estensione fluida di classi standard (`ByteBuf`, `String`, `Path`) senza verbose classi wrapper. |
-| **String Interpolation** | `manifold-strings` | ✔️ **CORE APPROVED** | Sintassi `$var` e `${expr}` al posto di concatenazioni e template verbosi. |
-| **Checked Exceptions** | `manifold-exceptions` | ✔️ **CORE APPROVED** | Eliminazione di `try/catch` boilerplate dentro functional interfaces e Streams. |
-| **Tuples & Multi-Return** | `manifold-tuple` | ✔️ **CORE APPROVED** | Tuple anonime e nominali per ritorni multipli leggeri in metodi interni privati. |
-| **Preprocessor** | `manifold-preprocessor` | ✔️ **FEATURE SPECIFIC** | Direttive `#if`, `#elif` per supportare molteplici versioni di target (Paper/Fabric, protocolli Minecraft, flag `#if DEBUG`). |
-| **Type-Safe JSON/YAML** | `manifold-json`, `manifold-yaml` | ✔️ **FEATURE SPECIFIC** | Parsing e typing da schema senza generatori di classi esterni per configurazioni o API esterne. |
-| **Structural Typing (`@Structural`)**| `manifold-ext` | ✔️ **ADAPTER ONLY** | Duck-typing type-safe per adattare classi terze non modificabili a nostre interfacce. |
-| **Type-Safe Reflection (`@Jailbreak`)**| `manifold-ext` | ⚠️ **TESTS ONLY** | **Ammesso solo in `src/test`** per testare edge case interni senza reflection runtime manuale. **Vietato in `src/main`**. |
-| **Properties (`@var`, `@val`)** | `manifold-props` | 🟡 **OPZIONALE** | Utile in DTO Java pure; per entità e DTO preferire `record` o Kotlin data classes. |
-| **Units & Science** | `manifold-science` | 🟡 **OPZIONALE** | Indicato per motori fisici, calcolo tick loop e tempo (`50.ms`, `20.tps`). |
-| **SQL / Templates (ManTL)** | `manifold-sql`, `templates` | ❌ **NON ADOTTATO** | Nel progetto usiamo già `sql4j` per il database e `jte` per il rendering HTML. |
+| **Operator Overloading** | `manifold-ext` | ✔️ **CORE APPROVED** | Vettori (`Vec2`, `Vec3`, `Matrix`), math (`BigDecimal`, `BigInteger`), range e indicizzazione con parentesi quadre `[]` via `get`/`set`. |
+| **Extension Methods** | `manifold-ext` | ✔️ **CORE APPROVED** | Estensione fluida di classi standard (`ByteBuf`, `String`, `Path`). Obbligo di package dedicati `*.extensions` e classi `<Target>Extensions`. |
+| **String Interpolation** | `manifold-strings` | ✔️ **CORE APPROVED** | Metodo preferito per log, messaggi e stringhe formattate con `$var` e `${expr}`. |
+| **Checked Exceptions** | `manifold-exceptions` | ✔️ **CORE APPROVED** | Trattamento unchecked stile Kotlin per eliminare `try/catch` boilerplate nei lambdas e negli stream funzionali (`stream().map(...)`). |
+| **Tuples & Multi-Return** | `manifold-tuple` | ✔️ **INTERNAL ONLY** | Approvato per ritorni multipli leggeri in metodi interni e privati. **Vietato** esporre tuple anonime sulle API pubbliche di modulo (usare `record`). |
+| **Preprocessor** | `manifold-preprocessor` | ✔️ **APPROVED** | Approvato per dead-code stripping a compile-time (`#if DEBUG`), profiling flags e target OS/JDK. (Il versioning Minecraft principale resta su Stonecutter). |
+| **Type-Safe JSON & YAML** | `manifold-json`, `yaml` | ✔️ **CONFIG / SCHEMAS** | Approvato per file di configurazione statici e schemi API esterni senza codegen. Per entità e modelli complessi usare Kotlin `data class`. |
+| **Structural Typing (`@Structural`)**| `manifold-ext` | ✔️ **ADAPTER & MIXINS** | Approvato per interoperabilità con classi terze e Minecraft/Fabric dove i mixin non iniettano l'interfaccia, evitando wrapper heap intermedi. |
+| **Properties (`@var`, `@val`)** | `manifold-props` | ✔️ **JAVA DTO ONLY** | Approvato per DTO e classi Java tradizionali mutabili per eliminare getter/setter. Per immutabilità preferire `record`; per moduli ibridi Kotlin data class. |
+| **Units & Science** | `manifold-science` | ✔️ **APPROVED W/ POOLING** | Approvato per definizioni temporali/fisiche (`50.ms`, `20.tps`). Negli hot-loop (tick loop / rendering) fare pooling/riuso di istanze mutabili o usare primitive per non appesantire la GC. |
+| **Parts (Composite Model)** | `manifold-parts` | ✔️ **APPROVED** | Approvato per modelli a componenti e composizione dinamica con polimorfismo O(1) (`@part` e `@link`). |
+| **Type-Safe Reflection (`@Jailbreak`)**| `manifold-ext` | ⚠️ **TESTS ONLY** | **Severamente vietato in `src/main`**. Ammesso solo ed esclusivamente in `src/test` quando strettamente necessario per failure injection o edge cases. |
+| **SQL & Templates** | `manifold-sql`, `templates` | ❌ **NON ADOTTATI** | Manteniamo i nostri standard consolidati: **`sql4j`** per il DB (con Kotlin data classes) e **`jte`** per i template HTML/UI. |
 
 ---
 
-## Dettaglio Feature Manifold Adottate
+## Dettaglio e Pattern d'Uso Manifold
 
 ### 1. Operator Overloading (`manifold-ext`)
 Consente di implementare operatori aritmetici, indicizzati e relazionali tramite convenzioni di metodi standard:
@@ -304,7 +300,7 @@ public record Vec3(double x, double y, double z) {
 }
 
 Vec3 pos = new Vec3(1, 2, 3);
-Vec3 next = (pos + new Vec3(0, 1, 0)) * 2.0; // Sintassi pulita nativa
+Vec3 next = (pos + new Vec3(0, 1, 0)) * 2.0; // Sintassi vettoriale pulita
 ```
 
 ### 2. Extension Methods (`manifold-ext`)
@@ -335,12 +331,12 @@ public final class ByteBufExtensions {
   }
 }
 
-// Uso diretto su qualsiasi istanza:
+// Chiamata diretta:
 int length = buf.readVarInt();
 ```
 
 ### 3. String Interpolation (`manifold-strings`)
-Evita la verbosità di `String.formatted` o concatenazioni `+`:
+Evita la concatenazione con `+` o la verbosità di `String.formatted`:
 ```java
 String user = "Alice";
 int score = 42;
@@ -348,7 +344,7 @@ logger.info("Player $user achieved score: ${score * 10}");
 ```
 
 ### 4. Gestione Eccezioni nei Lambdas (`manifold-exceptions`)
-Tratta le eccezioni checked come in Kotlin, eliminando wrapper superflui nei functional streams:
+Tratta le eccezioni checked come unchecked stile Kotlin, eliminando wrapper superflui nei functional streams:
 ```java
 // ✔️ Con Manifold: nessun try-catch wrap obbligatorio dentro .map()
 List<URI> uris = hosts.stream()
@@ -356,22 +352,85 @@ List<URI> uris = hosts.stream()
     .toList();
 ```
 
-### 5. Tuple ed Espressioni di Ritorno Multiplo (`manifold-tuple`)
-Usare per aggregazioni temporanee private senza dover inquinare il package con record fittizi:
+### 5. Tuples per Uso Interno (`manifold-tuple`)
+Usare per ritorni multipli leggeri all'interno di metodi privati senza creare record monouso fittizi:
 ```java
-var result = (status: 200, message: "OK", timestamp: System.currentTimeMillis());
-System.out.println("Status: " + result.status);
+private auto calculateSessionWindow() {
+  return (start: System.currentTimeMillis(), duration: 5000L);
+}
+
+var window = calculateSessionWindow();
+System.out.println("Start: " + window.start);
+```
+❌ **Regola**: Vietato esporre tuple anonime nelle interfacce pubbliche di `api/` (in quel caso creare un `record` formale).
+
+### 6. Preprocessor per Build Flags e Dead-Code Stripping (`manifold-preprocessor`)
+Usare per escludere a compile-time blocchi di debug o gestire target JDK/OS:
+```java
+#if DEBUG
+logger.trace("Keystream internal buffer: " + Arrays.toString(keystreamBuffer));
+#endif
+```
+*(Se `DEBUG` non è definita, il compilatore rimuove completamente il codice dal bytecode, eliminando allocazioni e stringhe sensibili).*
+
+### 7. Structural Typing per Mixin e Librerie Esterne (`@Structural`)
+Adattamento duck-typing di classi Minecraft o librerie esterne non modificabili senza creare wrapper allocati sull'heap:
+```java
+@Structural
+public interface PacketReceiver {
+  void receive(ByteBuf payload);
+}
+
+// Cast valido a compile-time se la classe esterna ha il metodo corrispondente:
+PacketReceiver receiver = (PacketReceiver) externalMinecraftChannel;
+receiver.receive(data);
 ```
 
-### 6. Test-Only Type-Safe Reflection (`@Jailbreak`)
-- **Regola Rigida**: Ammesso **esclusivamente** in `src/test/java`.
-- Sostituisce i fragili `field.setAccessible(true)` per testare stati privati o iniettare failure scenarios:
+### 8. Properties per DTO Java (`manifold-props`)
+Elimina il boilerplate di getter e setter nelle classi Java mutabili:
+```java
+public class UserProfileDto {
+  @var String username;
+  @var int score;
+}
+
+profile.username = "Alice"; // Chiama setter sintetico
+profile.score++;            // Chiama getter e setter
+```
+
+### 9. Units & Science: Considerazioni di Performance (`manifold-science`)
+Consentito per esprimere durate e grandezze fisiche in modo auto-esplicativo:
+```java
+Time tickInterval = 50.ms;
+Frequency tickRate = 20.tps;
+```
+⚠️ **Regola Performance**: Negli hot-path ad altissima frequenza (loop di simulazione fisica anti-cheat o frame di rendering a 144 FPS), monitorare l'overhead di allocazione degli oggetti dimensionali: preferire costanti primitive (`long TICK_INTERVAL_MS = 50L`) o fare pooling delle istanze mutabili per azzerare la pressione sul Garbage Collector.
+
+### 10. Parts per Composizione Dinamica (`manifold-parts`)
+Adottare per architetture a componenti dinamici dove si richiede polimorfismo interno O(1):
+```java
+interface Actor { void takeAction(); void attack(); }
+
+@part class Fighter implements Actor {
+  public void takeAction() { attack(); } // Dispatched dinamicamente sul composito
+  public void attack() { System.out.println("Attacco base"); }
+}
+
+class EnhancedActor implements Actor {
+  @link Actor base;
+  public void attack() { System.out.println("Attacco potenziato!"); }
+}
+```
+
+### 11. Testing con `@Jailbreak`
+- **Regola Rigida**: Ammesso **esclusivamente** in `src/test/java` quando strettamente necessario.
+- Sostituisce i fragili `setAccessible(true)` per simulare fallimenti o ispezionare stati interni:
 ```java
 // Solo in src/test!
 @Test
 void testInternalCounterReset() {
   @Jailbreak Session session = new Session("alice");
-  session.internalErrorCount = 5; // Accesso diretto type-safe al campo privato
+  session.internalErrorCount = 5;
   session.reset();
   assertEquals(0, session.internalErrorCount);
 }
@@ -389,6 +448,7 @@ void testInternalCounterReset() {
 - Getter che espongono collezioni mutabili interne
 - String concatenation in loop ad alte frequenze
 - `@Jailbreak` o Reflection diretta nel codice di produzione (`src/main`)
+- Esposizione di Tuple Manifold anonime su API pubbliche di modulo
 
 ---
 
@@ -408,7 +468,7 @@ void testInternalCounterReset() {
 - Per logica complessa → factory o builder dedicato
 
 ## Gerarchie
-- Usare `sealed` per domini chiusi e finiti a compile-time (pattern matching completo)
+- Usare `sealed` per domini chiusi e finiti a compile-time (pattern matching esaustivo)
 - Usare `abstract class` per logica condivisa
 - Evitare gerarchie profonde di ereditarietà (favorire composizione)
 
@@ -437,7 +497,7 @@ void testInternalCounterReset() {
 ## Reflection Runtime
 - Usare solo ai boundary esterni estremi (plugin terzi, integrazioni legacy)
 - **Severamente vietata** nel core business e nei loop di rete
-- Nessuna manipolazione di campi privati in `src/main`
+- Nessuna manipolazione di campi privati in `src/main` (vedi §11 `@Jailbreak`)
 
 ## Annotation Processing / KSP / Manifold Metaprogramming
 - Preferire sempre code generation a compile-time (Kapt, KSP, Java Annotation Processors)
@@ -452,6 +512,7 @@ void testInternalCounterReset() {
 - ❌ Mai swalloware le eccezioni: `catch (Exception ignored) {}` è severamente vietato
 - ✔️ Catch su eccezione specifica, mai catturare `Throwable` o `Exception` nuda
 - ✔️ Wrap con causa: `throw new RuntimeException("operation failed", cause)`
+- ✔️ Con `manifold-exceptions`, eliminare i try-catch wrapper all'interno di Functional Streams e Lambdas
 - ✔️ Ai top-level loop (Netty pipeline, tick executor) loggare lo stack trace completo e continuare con spiegazione esplicita a commento
 
 ```java
@@ -613,7 +674,7 @@ Prima di scrivere qualsiasi riga di logica di business, scrivere il test unitari
 - Mixin applicati a runtime nel bytecode del gioco
 
 ## Manifold `@Jailbreak` nei test
-Nei test JUnit è ammesso l'uso di `@Jailbreak` per accedere a membri protetti/privati al fine di testare rami complessi e casi limite senza ricorrere a fragile Java Reflection.
+Nei test JUnit è ammesso l'uso di `@Jailbreak` quando strettamente necessario per accedere a membri protetti/privati al fine di testare branch complessi o simulare failure scenarios senza ricorrere a fragile Java Reflection con `setAccessible(true)`.
 
 ---
 
