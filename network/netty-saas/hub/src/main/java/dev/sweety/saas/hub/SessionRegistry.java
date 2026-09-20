@@ -1,15 +1,16 @@
 package dev.sweety.saas.hub;
 
+import dev.sweety.math.list.Long2ObjectConcurrentOpenHashMap;
+
 import java.util.Collection;
 import java.util.Collections;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Registry holding active {@link DualTransportSession} instances keyed by 64-bit session ID.
  */
 public final class SessionRegistry {
 
-    private final ConcurrentHashMap<Long, DualTransportSession> sessions = new ConcurrentHashMap<>();
+    private final Long2ObjectConcurrentOpenHashMap<DualTransportSession> sessions = Long2ObjectConcurrentOpenHashMap.create();
 
     public void register(DualTransportSession session) {
         sessions.put(session.sessionId(), session);

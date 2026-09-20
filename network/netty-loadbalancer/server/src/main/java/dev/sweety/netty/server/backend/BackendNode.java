@@ -78,8 +78,7 @@ public class BackendNode implements IBackend {
     }
 
     private final AtomicReference<Snapshot> metrics = new AtomicReference<>(Snapshot.zero());
-
-    private final Map<Integer, Double> packetTimings = new ConcurrentHashMap<>();
+    private final dev.sweety.math.list.Int2DoubleConcurrentOpenHashMap packetTimings = dev.sweety.math.list.Int2DoubleConcurrentOpenHashMap.create();
 
     void updateMaxObserved(double avgLoad, double currentLoad, double currentTime) {
         metrics.updateAndGet(s -> new Snapshot(
@@ -104,20 +103,21 @@ public class BackendNode implements IBackend {
     public void onPacketReceive(final ChannelHandlerContext ctx, final Packet packet) {
         this.ctx = ctx;
         if (packet instanceof MetricsUpdatePacket metricsPacket) {
-            //update packet timings
-            packetTimings.putAll(metricsPacket.packetTimings());
+            //update packet timings without boxing
+            final Map<Integer, Double> incomingTimings = metricsPacket.packetTimings();
+            if (incomingTimings != null) {
+                incomingTimings.forEach(packetTimings::put);
+            }
 
             // update max observed scores
             double avgLoad = requestMetrics.getAverageBandwidthLoad();
             double currentLoad = requestMetrics.getCurrentAverageBandwidthLoad();
-            double sum_time = 0;
-            int count_time = 0;
-            for (Double timing : packetTimings.values()) {
-                if (timing == null) continue;
-                sum_time += timing;
-                count_time++;
-            }
-            final double current_time = count_time > 0 ? sum_time / count_time : 0.5;
+            double[] sumAndCount = new double[2];
+            packetTimings.forEachEntry((id, timing) -> {
+                sumAndCount[0] += timing;
+                sumAndCount[1]++;
+            });
+            final double current_time = sumAndCount[1] > 0 ? sumAndCount[0] / sumAndCount[1] : 0.5;
             updateMaxObserved(avgLoad, currentLoad, current_time);
 
             // Compute all new metric values and publish atomically as a single Snapshot.

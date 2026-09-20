@@ -7,9 +7,10 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelId;
 import io.netty.channel.ChannelPromise;
 
-import java.util.Map;
+import dev.sweety.math.list.Int2ObjectConcurrentOpenHashMap;
+import dev.sweety.math.list.Object2IntConcurrentOpenHashMap;
+
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Central relay of the service mesh: every {@link ServiceClient} dials in and self-identifies with a
@@ -21,9 +22,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class HubServer extends SimpleServer {
 
     /** serviceId → live channel. */
-    private final Map<Integer, ChannelHandlerContext> byId = new ConcurrentHashMap<>();
+    private final Int2ObjectConcurrentOpenHashMap<ChannelHandlerContext> byId = Int2ObjectConcurrentOpenHashMap.create();
     /** channel → serviceId, so a disconnect can drop the id mapping. */
-    private final Map<ChannelId, Integer> ctxToId = new ConcurrentHashMap<>();
+    private final Object2IntConcurrentOpenHashMap<ChannelId> ctxToId = Object2IntConcurrentOpenHashMap.create();
     private final HubRateGate rateGate = new HubRateGate();
     private final String sharedSecret;
 
@@ -103,8 +104,8 @@ public class HubServer extends SimpleServer {
     private void route(ChannelHandlerContext ctx, ServiceMessage message) {
         ServiceEnvelope envelope = message.hasRequest() ? message.getRequest() : message.getResponse();
         if (envelope == null) return;
-        Integer verifiedSenderId = ctxToId.get(ctx.channel().id());
-        if (verifiedSenderId == null) {
+        int verifiedSenderId = ctxToId.getInt(ctx.channel().id());
+        if (verifiedSenderId == -1) {
             logger.profile("hub").warn("dropping service message from an unidentified channel ("
                     + ctx.channel().remoteAddress() + ")");
             return;
@@ -131,8 +132,8 @@ public class HubServer extends SimpleServer {
 
     @Override
     public void quit(ChannelHandlerContext ctx, ChannelPromise promise) {
-        Integer serviceId = ctxToId.remove(ctx.channel().id());
-        if (serviceId != null) {
+        int serviceId = ctxToId.removeInt(ctx.channel().id());
+        if (serviceId != -1) {
             // Only drop the mapping if this exact channel still owns it (guards a race with re-identify).
             byId.remove(serviceId, ctx);
             logger.profile("hub").info("service " + serviceId + " disconnected");

@@ -91,6 +91,20 @@ public final class Long2ObjectConcurrentOpenHashMap<V> extends AbstractLong2Obje
         }
     }
 
+    /** Atomically compute and insert value if {@code k} is absent. */
+    public V computeIfAbsent(long k, java.util.function.LongFunction<? extends V> mappingFunction) {
+        Long2ObjectOpenHashMap<V> s = seg(k);
+        synchronized (s) {
+            V existing = s.get(k);
+            if (existing != null || s.containsKey(k)) return existing;
+            V computed = mappingFunction.apply(k);
+            if (computed != null) {
+                s.put(k, computed);
+            }
+            return computed;
+        }
+    }
+
     /** Atomically remove {@code k} only if it is currently mapped to {@code value}. */
     public boolean remove(long k, Object value) {
         Long2ObjectOpenHashMap<V> s = seg(k);
@@ -177,6 +191,26 @@ public final class Long2ObjectConcurrentOpenHashMap<V> extends AbstractLong2Obje
             for (Long2ObjectMap.Entry<V> e : s.long2ObjectEntrySet()) {
                 out.add(new BasicEntry<>(e.getLongKey(), e.getValue()));
             }
+        }
+        return out;
+    }
+
+    /** Weakly-consistent snapshot key set. */
+    @Override
+    public @NotNull it.unimi.dsi.fastutil.longs.LongSet keySet() {
+        it.unimi.dsi.fastutil.longs.LongOpenHashSet out = new it.unimi.dsi.fastutil.longs.LongOpenHashSet();
+        for (Long2ObjectOpenHashMap<V> s : seg) synchronized (s) {
+            out.addAll(s.keySet());
+        }
+        return out;
+    }
+
+    /** Weakly-consistent snapshot values collection. */
+    @Override
+    public @NotNull it.unimi.dsi.fastutil.objects.ObjectCollection<V> values() {
+        it.unimi.dsi.fastutil.objects.ObjectArrayList<V> out = new it.unimi.dsi.fastutil.objects.ObjectArrayList<>();
+        for (Long2ObjectOpenHashMap<V> s : seg) synchronized (s) {
+            out.addAll(s.values());
         }
         return out;
     }

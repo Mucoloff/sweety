@@ -1,10 +1,11 @@
 # 📘 Code Style Guide (Java + Kotlin)
 
 ## 🎯 Obiettivi
-- Codice leggibile e prevedibile
-- Ridurre bug (null, stato inconsistente)
-- Evitare overengineering
-- Ottimizzare solo quando serve davvero
+- Codice leggibile, prevedibile e type-safe al 100%
+- Ridurre bug a compile-time (null safety rigorosa, stato inconsistente)
+- Sfruttare le feature moderne del linguaggio (JSpecify, Manifold, Java 21+, Kotlin)
+- Evitare overengineering e astrazioni inutili
+- Ottimizzare solo quando serve davvero e dove misurato
 
 ---
 
@@ -23,7 +24,7 @@ public final class User {
   }
 
   public static User of(String name) {
-    if (name == null || name.isBlank()) {
+    if (name.isBlank()) {
       throw new IllegalArgumentException("Invalid name");
     }
     return new User(name);
@@ -37,7 +38,7 @@ public final class User {
   - `of(...)`
   - `from(...)`
   - `create(...)`
-- Validazione **solo in factory**
+- Validazione **solo in factory / entry point**
 
 ### ✔️ Value objects → `record`
 Usare `record` per oggetti immutabili senza logica. `equals`, `hashCode`, `toString` gratis.
@@ -50,37 +51,42 @@ public record Point(int x, int y) {}
 
 ---
 
-# 2. Null Safety
+# 2. Null Safety (JSpecify Standard)
 
-## Regole
-- ❌ Vietato passare `null` nelle API pubbliche
-- ✔️ Validare subito (fail-fast)
-- ✔️ `Optional` solo come return type
-- ✔️ Annotare parametri e return types con `@NotNull` / `@Nullable`
+## Il modello: Non-Null di Default (Kotlin Parity)
+Adottare lo standard moderno **JSpecify** (`org.jspecify:jspecify:1.0.0`).
+Tutto il codice Java del progetto adotta la semantica **Non-Null by Default**: ogni riferimento a un tipo `Type` è garantito non-null dal compilatore e dagli strumenti di analisi statica, esattamente come in Kotlin.
 
-### ✔️ Java
-```java
-public static Foo of(@NotNull String name) {
-  Objects.requireNonNull(name, "name");
-  return new Foo(name);
-}
+### Regole Fondamentali
+- ✔️ **Dichiarare `@NullMarked` a livello di package** tramite file `package-info.java` per ogni package Java:
+  ```java
+  @org.jspecify.annotations.NullMarked
+  package dev.luce.protocol.auth.crypto;
+  ```
+- ✔️ **`Type` = Non-Null**: In un contesto `@NullMarked`, qualsiasi tipo dichiarato (`String`, `Session`, `UUID`) **non può mai essere null**.
+- ✔️ **`@Nullable` solo se esplicito**: Usare `org.jspecify.annotations.Nullable` **esclusivamente** dove l'assenza di un valore è un esito semantico lecito e gestito (`String?` in Kotlin).
+  ```java
+  public @Nullable Session findSession(String sessionId) { ... }
+  ```
+- ❌ **Vietato usare annotazioni legacy frammentate**: Non usare `@NotNull`, `@NonNull` di JetBrains, Lombok, Spring, Checker Framework o Android. L'unico standard ammesso è **JSpecify**.
+- ❌ **Vietato passare `null` nelle API pubbliche** salvo dove il parametro è esplicitamente marcato `@Nullable`.
+- ✔️ **`Optional` solo come return type** quando l'assenza di risultato è un outcome normale di una query/lookup.
 
-public @Nullable String findName() { ... }
-```
-
-### ✔️ Kotlin
-```kotlin
-require(x != null)
-```
-
-## Nota
-Non fare controlli ovunque → solo ai **boundary (API / factory)**
+### Boundary vs Core Checks (Zero Duplicazioni)
+- **All'interno del core `@NullMarked`**: NON duplicare controlli difensivi manuali (`if (x == null)` o `Objects.requireNonNull(x)`). Il compilatore, NullAway e l'IDE garantiscono già che `x` non sia null.
+- **Ai Boundary esterni (API untrusted / Network / Deserializzazione)**: Validare subito con fail-fast:
+  ```java
+  public static Foo of(String name) {
+    Objects.requireNonNull(name, "name cannot be null");
+    return new Foo(name);
+  }
+  ```
 
 ### ❌ Optional anti-pattern
 - `Optional` come **parametro** di metodo → usa overload o `@Nullable`
-- `Optional` come **campo** → non ha senso semantico
-- `Optional` in collezioni (`List<Optional<T>>`) → usa lista filtrata
-- `Optional` solo come **return type** quando assenza è outcome normale
+- `Optional` come **campo** di classe/record → non ha senso semantico, usa `@Nullable`
+- `Optional` in collezioni (`List<Optional<T>>`) → filtra a monte
+- `Optional` solo come **return type**
 
 ```java
 // ❌
@@ -98,19 +104,14 @@ void process() { process(null); }
 ## Regola generale
 Usa la struttura giusta per il problema, non "map ovunque".
 
-| Uso                     | Struttura              |
-|-------------------------|------------------------|
-| accesso per chiave      | `HashMap`              |
-| ordinamento             | `TreeMap` / `TreeSet`  |
-| lista sequenziale       | `ArrayList`            |
-| set senza duplicati     | `HashSet`              |
-| concorrenza read-heavy  | `CopyOnWriteArrayList` |
-| concorrenza write-heavy | `ConcurrentHashMap`    |
-
-## Note importanti
-- `HashMap` → O(1) medio
-- `Tree*` → O(log n)
-- `List` → migliore per iterazione
+| Uso                     | Struttura              | Note                           |
+|-------------------------|------------------------|--------------------------------|
+| accesso per chiave      | `HashMap`              | O(1) medio                     |
+| ordinamento             | `TreeMap` / `TreeSet`  | O(log n)                       |
+| lista sequenziale       | `ArrayList`            | Ideale per iterazione sequenziale |
+| set senza duplicati     | `HashSet`              | O(1) medio                     |
+| concorrenza read-heavy  | `CopyOnWriteArrayList` | Read senza lock, write copiano |
+| concorrenza write-heavy | `ConcurrentHashMap`    | Partizionamento a bucket       |
 
 ### Getter di collezioni → sempre difensivo
 Non esporre mai la collezione interna direttamente.
@@ -133,9 +134,9 @@ public List<String> items() { return items; }
 # 4. Immutabilità
 
 ## Regole
-- Preferire oggetti immutabili
-- Campi `final` (Java)
-- `val` (Kotlin)
+- Preferire sempre oggetti immutabili
+- In Java: campi `private final` e `record`
+- In Kotlin: proprietà `val` e `data class`
 
 ### ✔️ Esempio Kotlin
 ```kotlin
@@ -147,30 +148,30 @@ data class User(val name: String)
 # 5. Pooling oggetti
 
 ## Regola forte
-❌ NON usare pooling di default
+❌ NON usare pooling di default. La JVM e la Garbage Collection moderna (ZGC / G1) allocano ed eliminano oggetti a ciclo di vita breve a costo quasi zero.
 
 ## Usalo solo se:
-- oggetti molto costosi
-- profiling dimostra problemi GC
-- risorse condivise (DB, thread, buffer grandi)
+- Oggetti molto pesanti con risorse native allocate (off-heap buffer, DB connection, socket worker)
+- Il profiling (async-profiler, JFR) dimostra concreta saturazione GC o allocazioni in hot-loop a 20+ TPS
+- Buffer grandi e riciclabili in pipeline di rete ad alto throughput (es. Netty `ByteBufAllocator.DEFAULT`)
 
 ## Alternative migliori
-- immutabilità
-- riuso locale
-- flyweight pattern (se dati ripetuti)
+- Immutabilità
+- Riuso locale su stack
+- Flyweight pattern
 
 ---
 
 # 6. Validazione
 
 ## Regole
-- Solo nelle factory / entry points
-- No duplicazioni
+- Solo nelle factory / boundary entry points
+- No controlli duplicati nel core
 - Fail fast
 
 ### ✔️ Esempio
 ```java
-if (x <= 0) throw new IllegalArgumentException();
+if (x <= 0) throw new IllegalArgumentException("Value must be positive: " + x);
 ```
 
 ---
@@ -178,50 +179,41 @@ if (x <= 0) throw new IllegalArgumentException();
 # 7. Design classi
 
 ## Regole
-- classi `final` dove possibile
-- niente setter (preferire immutabilità)
-- responsabilità singola
+- Classi `final` dove possibile
+- Niente setter (preferire immutabilità o builder con ritorno di nuova istanza)
+- Responsabilità singola (Single Responsibility)
 
 ---
 
 # 8. Performance
 
 ## Regola chiave
-> Non ottimizzare senza misurare
+> Non ottimizzare senza misurare. Usa async-profiler o JMH prima di cambiare design.
 
 ## Linee guida
-- evita micro-ottimizzazioni premature
-- preferisci codice semplice
-- usa profiling prima di cambiare design
 
-### String concatenation in hot path
-❌ Vietato `"prefix" + var` dentro loop o metodi chiamati frequentemente.
-✔️ Usare `StringBuilder` o template `String.formatted(...)`.
+### String Interpolation & Concatenation
+- ❌ **Vietato** concatenare con `+` dentro loop o hot-path.
+- ✔️ **Manifold Strings** (se attivo nel modulo): Usare string interpolation nativa `$var` e `${expr}`:
+  ```java
+  // ✔️ Con Manifold: massima leggibilità, zero overhead
+  String msg = "[$level][$name] $text";
+  ```
+- ✔️ **Plain Java**: Usare `String.formatted(...)` per log/errori fuori dall'hot path, o `StringBuilder` pre-dimensionato per loop ad alte prestazioni.
 
+### Lazy evaluation nei log
+Se un argomento è costoso da costruire, passare un `Supplier` invece del valore calcolato:
 ```java
-// ❌
-String msg = "[" + level + "][" + name + "] " + text;
-
-// ✔️
-String msg = "[%s][%s] %s".formatted(level, name, text);
-```
-
-### Lazy evaluation nei log (e in generale)
-Se un argomento è costoso da costruire, passare un `Supplier` invece del valore.
-
-```java
-// ❌ — always evaluated
+// ❌ — sempre valutato
 logger.debug("State: " + heavyCompute());
 
-// ✔️ — evaluated only if DEBUG enabled
+// ✔️ — valutato solo se il livello di log è attivo
 logger.debug(() -> "State: " + heavyCompute());
 ```
 
 ### Pattern matching (`switch` / `instanceof`)
-Preferire `switch` con pattern matching a catene `if-instanceof`.
-
+Preferire `switch` con pattern matching a lunghe catene di `if-instanceof`:
 ```java
-// ✔️
 return switch (obj) {
     case String s  -> s;
     case Integer i -> i.toString();
@@ -234,268 +226,283 @@ return switch (obj) {
 # 9. Concorrenza
 
 ## Regole
-- `volatile` solo per flag di visibilità (un singolo campo, no compound actions)
-- `AtomicReference` per swap atomico di oggetti
-- `ConcurrentHashMap.computeIfAbsent` per lazy init thread-safe
-- `CopyOnWriteArrayList` per read-heavy, write-rare
-- ❌ `synchronized` solo se davvero necessario — preferire strutture già thread-safe
+- `volatile` solo per flag di visibilità (un singolo campo booleano o enum, no compound actions)
+- `AtomicReference` per swap atomico di oggetti di stato/configurazione
+- `ConcurrentHashMap.computeIfAbsent` per lazy init thread-safe senza lock espliciti
+- `CopyOnWriteArrayList` per collezioni read-heavy con registrazioni listener rare
+- ❌ `synchronized` solo se strettamente necessario — preferire primitive `java.util.concurrent`
 
-### ✔️ Volatile corretto
-```java
-private volatile boolean running = true;   // flag semplice
-```
-
-### ✔️ AtomicReference per swap
+### ✔️ Swap atomico
 ```java
 private final AtomicReference<Config> config = new AtomicReference<>(defaultConfig);
 config.set(newConfig);
 ```
 
 ### ❌ Anti-pattern
-- `volatile` su un campo e poi operazioni compound su di esso (race condition)
-- `synchronized` su oggetti pubblici o statici condivisi
 - `volatile double score; score += x;` — race condition, non atomico
-- Due `volatile boolean` per double-checked init → usare `AtomicReference<State>`
-- `volatile T field` con setter pubblico su classe statica = singleton globale mutabile → preferire DI
-
-### Stato globale mutabile
-❌ `private static volatile X instance; public static void setInstance(X x)` — coupling nascosto.
-✔️ Passare la dipendenza via costruttore.
-Se stai costruendo un hook runtime-swappable giustificato, usa `AtomicReference<X>` e documenta perché.
+- `volatile` su un campo e poi operazioni compound su di esso
+- `synchronized` su oggetti pubblici, stringhe o istanze esterne
 
 ---
 
 # 10. Java + Kotlin insieme
 
-## Linee guida pratiche
+## Integrazione Bidirezionale Fluida
+Il workspace adotta un'architettura ibrida pragmatica: Kotlin per modelli dati, script e componenti ad alta densità sintattica; Java 21+ per networking ad alte prestazioni, runtime core e protocolli Netty.
 
-### Interoperabilità
-- Java → evita `null`
-- Kotlin → sfrutta null-safety
+### Parità di Null Safety tramite JSpecify
+- I moduli Java marcati con `@NullMarked` vengono interpretati dal compilatore Kotlin **senza generare platform types (`Type!`)**.
+- Un metodo Java `public Session getSession()` in package `@NullMarked` è visto da Kotlin rigorosamente come `Session` (non nullable).
+- Un metodo Java `public @Nullable Session findSession()` è visto da Kotlin come `Session?`.
+- Viceversa, i tipi Kotlin `Type` e `Type?` sono immediatamente consumabili da Java rispettando il medesimo contratto.
 
-### API condivise
-- preferire tipi semplici
-- evitare `Optional` lato Kotlin → usare nullable
+### Modelli Dati & Entità Persistence
+- Preferire **Kotlin `data class`** per entità DB (`sql4j`), DTO di protocollo e payload di configurazione complessi: generano automaticamente `copy()`, component destructors, getters/setters JVM e garantiscono compile-time null safety nativa.
 
-### Naming
-- Java → verboso e esplicito
-- Kotlin → più conciso ma chiaro
+### Estensioni e Metodi Fluent
+- Sfruttare sia le Kotlin Extension Functions che le Manifold Extension Methods per arricchire API esterne in modo coerente e pulito.
 
 ---
 
-# 11. Anti-pattern da evitare
+# 11. Manifold Framework: Analisi, Linee Guida e Matrice di Adozione
 
-- Factory ovunque senza motivo
-- Pooling inutile
-- Controlli null duplicati ovunque
-- Uso scorretto delle strutture dati
-- Ottimizzazioni premature
+[Manifold](http://manifold.systems) estende il compilatore Java (`javac`) tramite compiler plugin senza generare build steps intermedi. Nel nostro ecosistema le feature di Manifold sono categorizzate e regolamentate come segue:
+
+## Matrice di Adozione
+
+| Feature | Modulo / Dipendenza | Stato | Utilizzo nel Progetto |
+| :--- | :--- | :--- | :--- |
+| **Operator Overloading** | `manifold-ext` | ✔️ **CORE APPROVED** | Vettori (`Vec2`, `Vec3`, `Matrix`), math (`BigDecimal`), indicizzazione con parentesi quadre `[]`, range e operatori relazionali. |
+| **Extension Methods** | `manifold-ext` | ✔️ **CORE APPROVED** | Estensione fluida di classi standard (`ByteBuf`, `String`, `Path`) senza verbose classi wrapper. |
+| **String Interpolation** | `manifold-strings` | ✔️ **CORE APPROVED** | Sintassi `$var` e `${expr}` al posto di concatenazioni e template verbosi. |
+| **Checked Exceptions** | `manifold-exceptions` | ✔️ **CORE APPROVED** | Eliminazione di `try/catch` boilerplate dentro functional interfaces e Streams. |
+| **Tuples & Multi-Return** | `manifold-tuple` | ✔️ **CORE APPROVED** | Tuple anonime e nominali per ritorni multipli leggeri in metodi interni privati. |
+| **Preprocessor** | `manifold-preprocessor` | ✔️ **FEATURE SPECIFIC** | Direttive `#if`, `#elif` per supportare molteplici versioni di target (Paper/Fabric, protocolli Minecraft, flag `#if DEBUG`). |
+| **Type-Safe JSON/YAML** | `manifold-json`, `manifold-yaml` | ✔️ **FEATURE SPECIFIC** | Parsing e typing da schema senza generatori di classi esterni per configurazioni o API esterne. |
+| **Structural Typing (`@Structural`)**| `manifold-ext` | ✔️ **ADAPTER ONLY** | Duck-typing type-safe per adattare classi terze non modificabili a nostre interfacce. |
+| **Type-Safe Reflection (`@Jailbreak`)**| `manifold-ext` | ⚠️ **TESTS ONLY** | **Ammesso solo in `src/test`** per testare edge case interni senza reflection runtime manuale. **Vietato in `src/main`**. |
+| **Properties (`@var`, `@val`)** | `manifold-props` | 🟡 **OPZIONALE** | Utile in DTO Java pure; per entità e DTO preferire `record` o Kotlin data classes. |
+| **Units & Science** | `manifold-science` | 🟡 **OPZIONALE** | Indicato per motori fisici, calcolo tick loop e tempo (`50.ms`, `20.tps`). |
+| **SQL / Templates (ManTL)** | `manifold-sql`, `templates` | ❌ **NON ADOTTATO** | Nel progetto usiamo già `sql4j` per il database e `jte` per il rendering HTML. |
+
+---
+
+## Dettaglio Feature Manifold Adottate
+
+### 1. Operator Overloading (`manifold-ext`)
+Consente di implementare operatori aritmetici, indicizzati e relazionali tramite convenzioni di metodi standard:
+- `plus(T)`, `minus(T)`, `times(T)`, `div(T)`, `rem(T)` → `+`, `-`, `*`, `/`, `%`
+- `compareTo(T)` → `<`, `>`, `<=`, `>=`
+- `get(K)` e `set(K, V)` → indicizzazione `obj[k] = v`
+- `inc()` e `dec()` → `++`, `--`
+
+```java
+// ✔️ Esempio: Vettori e Calcolo Matematico
+public record Vec3(double x, double y, double z) {
+  public Vec3 plus(Vec3 o) { return new Vec3(x + o.x, y + o.y, z + o.z); }
+  public Vec3 times(double s) { return new Vec3(x * s, y * s, z * s); }
+}
+
+Vec3 pos = new Vec3(1, 2, 3);
+Vec3 next = (pos + new Vec3(0, 1, 0)) * 2.0; // Sintassi pulita nativa
+```
+
+### 2. Extension Methods (`manifold-ext`)
+Permette di estendere tipi esistenti senza ereditarietà o classi `*Utils` dispersive:
+- Collocare le estensioni in package dedicati `dev.<progetto>.extensions`.
+- Naming classe: `<TargetClass>Extensions` (es. `ByteBufExtensions`).
+- Metodi `public static` con il primo parametro marcato `@This`.
+
+```java
+package dev.luce.network.extensions;
+
+import io.netty.buffer.ByteBuf;
+import manifold.ext.rt.api.Extension;
+import manifold.ext.rt.api.This;
+
+@Extension
+public final class ByteBufExtensions {
+  public static int readVarInt(@This ByteBuf buf) {
+    int value = 0, position = 0;
+    byte currentByte;
+    while (true) {
+      currentByte = buf.readByte();
+      value |= (currentByte & 0x7F) << position;
+      if ((currentByte & 0x80) == 0) break;
+      position += 7;
+    }
+    return value;
+  }
+}
+
+// Uso diretto su qualsiasi istanza:
+int length = buf.readVarInt();
+```
+
+### 3. String Interpolation (`manifold-strings`)
+Evita la verbosità di `String.formatted` o concatenazioni `+`:
+```java
+String user = "Alice";
+int score = 42;
+logger.info("Player $user achieved score: ${score * 10}");
+```
+
+### 4. Gestione Eccezioni nei Lambdas (`manifold-exceptions`)
+Tratta le eccezioni checked come in Kotlin, eliminando wrapper superflui nei functional streams:
+```java
+// ✔️ Con Manifold: nessun try-catch wrap obbligatorio dentro .map()
+List<URI> uris = hosts.stream()
+    .map(URI::create)
+    .toList();
+```
+
+### 5. Tuple ed Espressioni di Ritorno Multiplo (`manifold-tuple`)
+Usare per aggregazioni temporanee private senza dover inquinare il package con record fittizi:
+```java
+var result = (status: 200, message: "OK", timestamp: System.currentTimeMillis());
+System.out.println("Status: " + result.status);
+```
+
+### 6. Test-Only Type-Safe Reflection (`@Jailbreak`)
+- **Regola Rigida**: Ammesso **esclusivamente** in `src/test/java`.
+- Sostituisce i fragili `field.setAccessible(true)` per testare stati privati o iniettare failure scenarios:
+```java
+// Solo in src/test!
+@Test
+void testInternalCounterReset() {
+  @Jailbreak Session session = new Session("alice");
+  session.internalErrorCount = 5; // Accesso diretto type-safe al campo privato
+  session.reset();
+  assertEquals(0, session.internalErrorCount);
+}
+```
+
+---
+
+# 12. Anti-pattern da evitare
+
+- Factory ovunque senza motivo reale
+- Pooling inutile su heap memory ordinaria
+- Controlli null duplicati nel core (usare `@NullMarked`)
+- Uso scorretto delle strutture dati (`Map<K, Boolean>` invece di `Set<K>`)
+- Ottimizzazioni premature senza profiling
 - Getter che espongono collezioni mutabili interne
-- String concatenation in loop / hot path
-- Lazy evaluation mancante su argomenti costosi
+- String concatenation in loop ad alte frequenze
+- `@Jailbreak` o Reflection diretta nel codice di produzione (`src/main`)
 
 ---
 
-# 12. API / Implementation Style
+# 13. API / Implementation Style
 
 ## Interfacce
-- Nome semplice e semantico (es. `Event`, `Logger`)
-- Definiscono solo il contratto
-- No prefissi tipo `I`
+- Nome semplice e semantico (es. `Event`, `Logger`, `PacketCodec`)
+- Definiscono solo il contratto puro
+- No prefissi arcaici tipo `I` (es. no `ILogger`)
 
 ## Implementazioni
-- Nome descrittivo (`FileLogger`, `AsyncLogger`)
-- Evitare `*Impl`
+- Nome descrittivo (`FileLogger`, `EpollPacketCodec`)
+- Evitare il suffisso generico `*Impl` a meno di implementazioni base astratte
 
 ## Factory
 - Preferire factory statiche nell'interfaccia per casi semplici
-- Per logica complessa → factory esterna
+- Per logica complessa → factory o builder dedicato
 
 ## Gerarchie
-- Usare `sealed` per domini chiusi
+- Usare `sealed` per domini chiusi e finiti a compile-time (pattern matching completo)
 - Usare `abstract class` per logica condivisa
-- Evitare gerarchie profonde
-
-## Organizzazione
-- Piccoli progetti → flat
-- Progetti grandi → `impl` separato
-
-## Regola
-Non creare interfacce senza motivo reale (multipla implementazione, test, estensibilità).
+- Evitare gerarchie profonde di ereditarietà (favorire composizione)
 
 ---
 
-# 13. IO Files
+# 14. IO Files
 
 ## File I/O
 
 ### Scrittura
-- Usare sempre stream (no byte[] per file grandi)
-- Non scrivere mai direttamente sul file finale
-- Usare pattern:
-  1. write temp file
-  2. fsync
-  3. atomic rename
+- Usare sempre stream (no array `byte[]` in memoria per file grandi)
+- Non scrivere mai direttamente sul file finale di destinazione
+- Usare il pattern sicuro a 3 passi:
+  1. Write su file temporaneo (`.tmp`)
+  2. `fsync` sul canale
+  3. Atomic rename / move sul file finale
 
 ### Lettura
-- Stream per file grandi
-- readAllBytes solo per file piccoli (meglio non farlo mai)
-
-### Note
-- ATOMIC_MOVE richiede stesso filesystem
-- Senza fsync → rischio perdita dati
+- Stream o buffer dedicati per file grandi
+- `Files.readAllBytes` ammesso solo per piccoli manifest/header garantiti (< 64 KB)
 
 ---
 
-# 14. Reflection vs Annotation Processing
+# 15. Reflection vs Annotation Processing
 
-## Reflection
-- Usare solo ai boundary (plugin, integrazione)
-- Evitare nel core business
-- Limitare a casi necessari
+## Reflection Runtime
+- Usare solo ai boundary esterni estremi (plugin terzi, integrazioni legacy)
+- **Severamente vietata** nel core business e nei loop di rete
+- Nessuna manipolazione di campi privati in `src/main`
 
-## Annotation Processing / KSP
-- Preferire per code generation
-- Usare per eliminare reflection runtime
-- Garantisce type safety e performance
-
-## Regola
-- Se puoi farlo a compile-time → fallo
-- Reflection è ultima scelta, non default
+## Annotation Processing / KSP / Manifold Metaprogramming
+- Preferire sempre code generation a compile-time (Kapt, KSP, Java Annotation Processors)
+- Elimina l'overhead di reflection a runtime
+- Garantisce type-safety e feedback immediato dal compilatore
 
 ---
 
-# 15. Exception Handling
+# 16. Exception Handling
 
 ## Regole
-- ❌ Mai swallowone: `catch (Exception ignored) {}` vietato
-- ✔️ Catch su tipo specifico, non bare `Exception` / `Throwable`
-- ✔️ O rethrow (con causa) **o** log con stack completo
-- ❌ `throw new RuntimeException(e.getMessage())` — perde la causa
-- ✔️ Wrap con causa: `throw new MyException("...", e)`
-- ✔️ Ai top-level entry point (executor task, main loop) log + continue accettabile — commentare il perché
+- ❌ Mai swalloware le eccezioni: `catch (Exception ignored) {}` è severamente vietato
+- ✔️ Catch su eccezione specifica, mai catturare `Throwable` o `Exception` nuda
+- ✔️ Wrap con causa: `throw new RuntimeException("operation failed", cause)`
+- ✔️ Ai top-level loop (Netty pipeline, tick executor) loggare lo stack trace completo e continuare con spiegazione esplicita a commento
 
-### ✔️ Esempio
 ```java
-// ❌
-try { x(); } catch (Exception ignored) {}
-
-// ❌ — perde causa
+// ❌ — perde la causa
 } catch (IOException e) { throw new RuntimeException(e.getMessage()); }
 
-// ✔️ — wrap con causa
-} catch (IOException e) { throw new MyRuntimeException("load failed", e); }
-
-// ✔️ — entry point, log + continue
-} catch (IOException e) {
-    LOG.error("Cleanup skip", e); // top-level loop, we must continue
-}
+// ✔️ — preserva la catena delle eccezioni
+} catch (IOException e) { throw new StorageException("Failed to persist session", e); }
 ```
 
 ---
 
-# 16. Resource Management
+# 17. Resource Management
 
 ## Regole
-- ✔️ Sempre `try-with-resources` per `AutoCloseable` (Stream, Connection, Channel, ClassLoader closeable)
-- ❌ `close()` manuale in blocco `finally` — error-prone
-- ✔️ API che **restituisce** una risorsa deve documentare chi è il proprietario (chi chiude)
-- ✔️ Risorse in catena: dichiarare ognuna su riga separata nell'head del try-with-resources
+- ✔️ Usare sempre `try-with-resources` per qualsiasi oggetto `AutoCloseable`
+- ❌ Mai chiamare `.close()` manualmente dentro blocchi `finally` (error-prone)
+- ✔️ Nelle catene di risorse, dichiarare ogni risorsa su riga separata nell'header del `try`
 
-### ✔️ Esempio
 ```java
-// ❌
-InputStream in = Files.newInputStream(path);
-try {
-    parse(in);
-} finally {
-    in.close(); // dimenticabile, nasconde eccezioni
-}
-
-// ✔️
-try (InputStream in = Files.newInputStream(path)) {
-    parse(in);
-}
-
-// ✔️ catena
-try (var conn = ds.getConnection();
-     var stmt = conn.prepareStatement(sql)) {
-    ...
+try (var in = Files.newInputStream(path);
+     var channel = Channels.newChannel(in)) {
+  process(channel);
 }
 ```
 
 ---
 
-# 17. equals / hashCode / toString
+# 18. equals / hashCode / toString
 
 ## Regole
-- ✔️ Override `equals` → **obbligatorio** override `hashCode`
-- ✔️ Entrambi dipendono dagli **stessi campi**
-- ✔️ Per value types → preferire `record` (li dà gratis)
-- ✔️ `toString()` per value types: usa `String.formatted`, non concatenazione
-- ❌ Mai confrontare `float`/`double` con `==` in `equals` → `Double.compare`
-
-### ✔️ Esempio
-```java
-// ✔️ record — equals/hashCode/toString gratis
-public record Point(double x, double y) {}
-
-// ✔️ classe manuale
-@Override public boolean equals(Object o) {
-    if (!(o instanceof Foo f)) return false;
-    return Double.compare(f.value, value) == 0 && name.equals(f.name);
-}
-@Override public int hashCode() { return Objects.hash(name, value); }
-@Override public String toString() { return "Foo[name=%s, value=%s]".formatted(name, value); }
-```
+- Se si fa l'override di `equals`, è **obbligatorio** l'override di `hashCode`
+- Entrambi devono dipendere **esattamente dagli stessi campi immutabili**
+- Per value types semplici: usare `record` (Java) o `data class` (Kotlin) che li implementano gratis
+- ❌ Mai confrontare `float` o `double` con `==` in `equals` → usare `Double.compare`
 
 ---
 
-# 18. Architettura applicativa (MVC / MVP / MVVM)
+# 19. Architettura applicativa (MVC / MVP / MVVM)
 
-Per moduli **con UI** (desktop, web front-end, IntelliJ plugin). Sistemi headless/server → §19.
-
-## MVC (Model-View-Controller)
-| Strato     | Responsabilità                              |
-|------------|---------------------------------------------|
-| Model      | stato + business rules, zero riferimenti UI |
-| View       | rendering passivo, ascolta/osserva Model    |
-| Controller | riceve input, traduce in mutazioni Model    |
-
-Usare quando: web server-side classico, framework con routing (Spring MVC, Ktor, Javalin).
-
-## MVP (Model-View-Presenter)
-| Strato    | Responsabilità                                                |
-|-----------|---------------------------------------------------------------|
-| Model     | dominio, come MVC                                             |
-| View      | dumb — espone contratto (`setText`, `onClick`), niente logica |
-| Presenter | logica UI, parla con Model via interfaccia View               |
-
-Usare quando: View difficile da testare (Swing, SWT, Android pre-Jetpack). Presenter è testabile in isolamento perché View è un'interfaccia.
-
-## MVVM (Model-View-ViewModel)
-| Strato    | Responsabilità                                                             |
-|-----------|----------------------------------------------------------------------------|
-| Model     | dominio                                                                    |
-| ViewModel | stato osservabile (Property, StateFlow, ObservableField) — zero ref a View |
-| View      | binding dichiarativo a ViewModel                                           |
-
-Usare quando: framework con data-binding nativo (JavaFX Property, Jetpack Compose, WPF).
-
-## Regola di selezione
-- Lascia che il **framework scelga il pattern**: Spring MVC → MVC, Jetpack → MVVM, Swing test-heavy → MVP.
-- Non mescolare pattern diversi nella stessa app.
-- Non applicare MVC/MVP/MVVM a moduli server/headless — usare §19.
+Per moduli con interfaccia grafica (Desktop, IntelliJ plugin, Web front-end):
+- **MVC**: Controller gestisce input utente, aggiorna il Model, la View osserva.
+- **MVP**: Per View disaccoppiate e testabili in isolamento tramite interfaccia contrattuale.
+- **MVVM**: Per framework con data-binding reattivo (StateFlow, Property).
+- Moduli headless e server non usano MVC/MVP/MVVM, ma l'architettura modulare di §20.
 
 ---
 
-# 19. Architettura modulare & Varianza (API / Implementation Split)
+# 20. Architettura modulare & Varianza (API / Implementation Split)
 
-Per moduli backend, feature, network e tooling. Tre pillar: split netto `api`/`impl`, feature packaging speculare, event-driven leggero.
-
-## A. Split `api` / `impl` & Feature Packaging
-
-Niente overengineering esagonale (no proliferazione inutile di folder `domain/port/adapter/infra`). Struttura flat, lineare e speculare:
+Per moduli backend, network, security e business core:
 
 ```
 <module>/
@@ -513,198 +520,104 @@ Niente overengineering esagonale (no proliferazione inutile di folder `domain/po
    └─ bootstrap / wiring       # lifecycle, setup, configurazione
 ```
 
-### Regole dipendenze
-- `api/` → contratti puri, zero dipendenze pesanti, zero implementazioni esterne.
-- `impl/` → dipende da `api/` e contiene la logica concreta, l'eventuale I/O e le librerie di terze parti.
-- Moduli esterni → dipendono SOLO da `api/` (tramite `api(project(":...:api"))`), mai da `impl/`.
-
-### Varianza & Polimorfismo
-- Il layout `api`/`impl` garantisce massima varianza: permette di sostituire l'implementazione concreta (es. `sql4j` SQLite vs Postgres, o transport `Netty` vs `VirtualThreads`, o Mock per test) senza toccare una singola riga di codice nei consumatori di `api`.
-
-## B. Event-driven
-
-- Evento = fatto già accaduto → naming al passato (`OrderPlaced`, non `PlaceOrder`).
-- Tipi evento immutabili: `record` o estensione di `Event<E>` in `feature/event/api`.
-- Registrazione listener via `@LinkEvent` + KSP/Annotation processor — zero reflection runtime.
-- Separazione: il produttore emette l'evento senza conoscere i consumatori.
-
-## C. Modulare (Gradle)
-
-- Ogni capability = subproject Gradle (`util/*`, `feature/*`, `network/*`, ecc.).
-- Split `api`/`impl` quando: l'API è consumata da altri moduli o sono previste varianti di implementazione/test.
-- Naming coerente: `<area>/<capability>[/{api,impl}]`.
-- Dipendenze cicliche tra subproject: vietate.
+### Regole Dipendenze
+- `api/` → contratti puri, zero dipendenze pesanti.
+- `impl/` → dipende da `api/` e implementa la logica concreta.
+- Moduli esterni dipendono esclusivamente da `api/`.
 
 ---
 
-# 20. DI e wiring
+# 21. DI e Wiring
 
-## Default: constructor injection
-
+## Default: Constructor Injection
+Costruttori espliciti con passaggio delle dipendenze:
 ```java
-// ✔️ — plain Java, zero magia (Constructor Injection)
-public class DefaultUserService implements UserService {
-    private final UserRepository repository;
-    private final EventPublisher publisher;
+public class DefaultSessionManager implements SessionManager {
+  private final SessionRepository repository;
+  private final EventPublisher publisher;
 
-    public DefaultUserService(UserRepository repository, EventPublisher publisher) {
-        this.repository = Objects.requireNonNull(repository, "repository");
-        this.publisher = Objects.requireNonNull(publisher, "publisher");
-    }
+  public DefaultSessionManager(SessionRepository repository, EventPublisher publisher) {
+    this.repository = Objects.requireNonNull(repository, "repository");
+    this.publisher = Objects.requireNonNull(publisher, "publisher");
+  }
 }
 ```
 
-## Annotation-driven DI
-
-Usare `@ServiceComponent` + `@Inject` + `ServiceManager` (`feature/service`) **solo** per moduli con:
-- plugin discovery dinamico
-- lifecycle automatico (`onEnable`/`onDisable`)
-- dependency graph non triviale
-
 ## Anti-pattern
-- ❌ Service locator: `Globals.get(X.class)` — coupling nascosto
-- ❌ Field injection fuori da `feature/service` impl
-- ❌ Static factory globale per dipendenze runtime-swappable (usare `AtomicReference` + DI — vedi §9)
+- ❌ Service Locator globale (`Globals.get(...)`)
+- ❌ Field injection con riflessione
+- ❌ Singleton globale mutabile statico
 
 ---
 
-# 21. Modello plugin / Extension
+# 22. Modello Plugin / Extension
 
-Tre modi di estendere il sistema — scegliere uno per dominio:
-
-| Modello                         | Quando                                                            | Moduli chiave                                       |
-|---------------------------------|-------------------------------------------------------------------|-----------------------------------------------------|
-| File-loaded `Extension`         | plugin caricati da JAR esterno, lifecycle toggle, class isolation | `feature/module/extension/{api,manager}`            |
-| Versioned `UpdateableExtension` | come sopra + auto-update                                          | `feature/module/extension-versioning/{api,manager}` |
-| DI `@ServiceComponent`          | componenti interni con DI e lifecycle, no class isolation         | `feature/service/{api,impl}`                        |
-
-Regola: non mescolare modelli nello stesso modulo.
+Tre modalità di estensione del sistema — sceglierne una per dominio:
+1. **File-loaded `Extension`**: JAR esterni con classloader isolato.
+2. **Versioned `UpdateableExtension`**: Plugin caricabili con auto-update e migrazione.
+3. **DI `@ServiceComponent`**: Componenti interni scoperti a compile-time o tramite SPI.
 
 ---
 
-# 22. Mappe come insiemi
+# 23. Mappe come insiemi
 
 ## Regola
-Non usare `Map<K, Boolean>` quando l'unica semantica è la presenza della
-chiave. Preferire `Set<K>` con `Set#contains`.
+Non usare `Map<K, Boolean>` quando l'unica semantica è la presenza della chiave. Preferire `Set<K>` con `Set#contains`.
 
-### ❌ Da evitare
 ```java
-Map<String, Boolean> staticTargets = new HashMap<>();
-staticTargets.put(name + desc, true);
-if (Boolean.TRUE.equals(staticTargets.get(name + desc))) { ... }
+// ❌ Da evitare
+Map<String, Boolean> activeUsers = new HashMap<>();
+activeUsers.put(id, true);
+if (Boolean.TRUE.equals(activeUsers.get(id))) { ... }
+
+// ✔️ Preferire
+Set<String> activeUsers = new HashSet<>();
+activeUsers.add(id);
+if (activeUsers.contains(id)) { ... }
 ```
 
-### ✔️ Preferire
-```java
-Set<String> staticTargets = new HashSet<>();
-staticTargets.add(name + desc);
-if (staticTargets.contains(name + desc)) { ... }
-```
+---
 
-`Map<K, Boolean>` è ammesso solo se servono valori `false` distinti
-dall'assenza (es. tristate: present-true / present-false / absent).
+# 24. Niente superclassi che fanno tutto
+
+Evitare classi monolitiche che accumulano centinaia di responsabilità ortogonali (> 600 righe di codice o > 5 responsabilità distinte).
+- Spezzare la logica in **Pipeline Passes** dedicati (es. `HeaderPass`, `PayloadPass`, `CryptoPass`).
+- Ogni pass ha un singolo compito e un punto di ingresso statico chiaro.
 
 ---
 
-# 23. Niente superclassi che fanno tutto
+# 25. SOLID
+
+- **S — Single Responsibility**: Una classe ha una sola ragione per cambiare.
+- **O — Open/Closed**: Aperto a estensione (tramite interfacce/SPI), chiuso a modifica (tramite `sealed` o API stabili).
+- **L — Liskov Substitution**: Le sottoclassi/implementazioni devono rispettare il contratto dichiarato dall'interfaccia senza lanciare eccezioni impreviste.
+- **I — Interface Segregation**: Interfacce piccole e focalizzate su un ruolo.
+- **D — Dependency Inversion**: Dipendere da contratti e interfacce astratte (`api/`), mai da implementazioni concrete (`impl/`).
+
+---
+
+# 26. Test-first
 
 ## Regola
-Evitare classi monolitiche che gestiscono molte responsabilità
-indipendenti (parser di N annotazioni, rewriter di N istruzioni, ecc.).
-Quando si supera il limite ragionevole (≈ 600 righe o più di 5
-responsabilità ortogonali), spezzare in classi/metodi separati ciascuno
-con una sola responsabilità.
+Prima di scrivere qualsiasi riga di logica di business, scrivere il test unitario che ne convalida l'esito.
 
-### Linee guida
-- Ogni annotazione/feature → suo pass dedicato (`AccessorPass`,
-  `InvokerPass`, `ShadowFieldPass`, …) con un singolo metodo statico
-  `apply(...)`.
-- L'orchestratore di alto livello chiama i pass uno dopo l'altro.
-- Lo stato condiviso passa come parametri espliciti, non come campi
-  dell'orchestratore.
+## Cosa va testato con JUnit
+- Algoritmi, crittografia, keystream, digest e token parsing
+- Math, matrici, vettori e collisioni
+- Codec di rete e serializzazione pacchetti
+- Regole di business e autorizzazioni
 
-### Sintomo del problema
-Se aggiungere una nuova annotazione richiede modificare un file > 1000
-righe in 3+ posti diversi, il design è già sbagliato — estrarre prima
-di aggiungere.
+## Cosa richiede verifica runtime reale
+- Socket di rete live Netty con handshake completo
+- Rendering GL e finestre native
+- Mixin applicati a runtime nel bytecode del gioco
+
+## Manifold `@Jailbreak` nei test
+Nei test JUnit è ammesso l'uso di `@Jailbreak` per accedere a membri protetti/privati al fine di testare rami complessi e casi limite senza ricorrere a fragile Java Reflection.
 
 ---
 
-# 24. SOLID
+# 27. Regola finale
 
-Principi già presenti nel documento in forma sparsa — qui unificati e con riferimento incrociato.
-
-## S — Single Responsibility
-
-Una classe/metodo ha **una sola ragione per cambiare**.
-
-- Vedi §7 (Design classi) e §23 (Niente superclassi che fanno tutto) — soglia concreta: ≈600 righe o >5 responsabilità ortogonali → split.
-- Sintomo: aggiungere una feature richiede toccare la stessa classe in 3+ posti diversi → estrarre prima di aggiungere.
-
-## O — Open/Closed
-
-Aperto a estensione, chiuso a modifica.
-
-- Vedi §21 (Modello plugin/Extension) — `Extension`, `UpdateableExtension`, `@ServiceComponent`: si estende il sistema senza toccare il core.
-- Vedi §18/§19 — `sealed` per domini chiusi e noti a compile-time, `abstract class`/interfacce per punti di estensione aperti. Non mescolare i due (un dominio è chiuso *o* aperto, non entrambi).
-
-## L — Liskov Substitution
-
-Ogni implementazione deve essere sostituibile al contratto dell'interfaccia senza sorprese.
-
-- Vedi §1 (Factory methods) — la factory è il punto giusto per garantirlo: valida gli invarianti **una volta**, alla creazione, così ogni istanza restituita rispetta davvero il contratto del tipo per tutta la sua vita. Se una sottoclasse/implementazione ha bisogno di *rilassare* precondizioni o *rafforzare* postcondizioni rispetto al contratto dichiarato → non è una vera implementazione di quel contratto, serve un tipo diverso.
-- Vedi §12 (Implementazioni) — `FileLogger`, `AsyncLogger` devono onorare lo stesso contratto di `Logger` senza eccezioni nascoste o comportamenti a sorpresa che il chiamante non può prevedere dal tipo dell'interfaccia.
-
-## I — Interface Segregation
-
-Preferire interfacce piccole e specifiche a una grande e generica.
-
-- Vedi §12 — un'interfaccia "definisce solo il contratto": se il contratto cresce e i consumatori iniziano a implementare metodi che non usano (no-op, `UnsupportedOperationException`), l'interfaccia va spezzata per ruolo.
-- Vedi §19.A (Split api/impl) — le interfacce in `api/` sono segregate per ruolo specifico e feature, non un'unica interfaccia "god" per modulo.
-
-## D — Dependency Inversion
-
-Dipendere da astrazioni, non da implementazioni concrete.
-
-- Vedi §20 — default constructor injection su interfacce/contratti di `api/`, non su classi concrete.
-- Vedi §19.A — i consumatori dipendono solo dai contratti in `api/`, mai dalle classi concrete in `impl/`.
-- Anti-pattern già in §20: service locator (`Globals.get(X.class)`) e static factory globale per dipendenze runtime-swappable — entrambi invertono la dipendenza nella direzione sbagliata.
-
----
-
-# 25. Test-first
-
-## Regola
-Prima di scrivere qualsiasi riga di codice di produzione, scrivere il test che la richiede.
-Nessuna eccezione per "è una cosa piccola" — se il codice non è nato da un test che falliva, non è
-nato correttamente.
-
-## Cosa va testato (JUnit, prima del codice)
-Logica pura, deterministica, input→output senza stato esterno vivo:
-- Algoritmi/scoring (selezione target, calcolo danno, arbitraggio priorità)
-- Math/quantizzazione (GCD, wrapping angoli, interpolazioni)
-- Parsing/encoding di protocollo (packet body, formati file)
-- Regole di dominio (permessi, RBAC, derivazione chiavi, rollout/bucketing)
-- Qualsiasi funzione che non tocca API di gioco live, rendering, rete viva
-
-## Cosa NON è testabile via JUnit (verifica manuale, non scusa per saltare i test)
-Codice che dipende da stato di un motore di gioco/finestra/rendering live non è mockabile in modo
-sensato — mockare l'intero stato per testare tre righe di glue-code costa più del codice stesso e
-produce test fragili che non provano nulla di reale. Per questa categoria la verifica resta manuale
-(avvio reale + osservazione), non un unit test finto:
-- Codice che legge/scrive stato di gioco live (posizione giocatore, mondo, inventario reale)
-- Rendering (chiamate GL/render pipeline)
-- Mixin (comportamento visibile solo a runtime nel gioco reale)
-- Percorsi rete live end-to-end (il codec puro sì, il socket vivo no)
-
-## Nota
-"Non testabile via JUnit" non significa "non va verificato" — significa che la verifica si sposta a
-runtime reale (vedi playbook di verifica manuale, prossima sezione se presente) invece che a un test
-automatico. Il codice puro dietro quella glue va comunque isolato ed estratto per essere testabile.
-
----
-
-# 26. Regola finale
-
-> Codice semplice > codice "smart"
+> Codice semplice > codice "smart".
+> La type-safety a compile-time vince sempre sulle verifiche manuali a runtime.

@@ -23,6 +23,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import org.jetbrains.annotations.NotNull;
 
+import dev.sweety.math.list.Int2ObjectConcurrentOpenHashMap;
+
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -90,7 +92,7 @@ public abstract class Backend extends Client implements IBackend {
         }
     }
 
-    private final Map<Integer, EMA> packetTimings = new ConcurrentHashMap<>();
+    private final Int2ObjectConcurrentOpenHashMap<EMA> packetTimings = Int2ObjectConcurrentOpenHashMap.create();
 
     private ArrayList<Packet> calcCpuTime(final int sender, final int receiver, final Packet packet) {
         final long start = System.nanoTime();

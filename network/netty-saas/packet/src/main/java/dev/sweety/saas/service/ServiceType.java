@@ -7,13 +7,16 @@ import dev.sweety.netty.packet.buffer.PacketBuffer;
 import dev.sweety.netty.packet.buffer.io.Encoder;
 import dev.sweety.netty.packet.buffer.io.callable.CallableDecoder;
 
+import dev.sweety.math.list.Int2ObjectConcurrentOpenHashMap;
+
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class ServiceType implements HasId, Encoder {
     private static final long seed = 0x9E3779B97F4A7C15L;
-    private static final Map<Integer, ServiceType> ID = new HashMap<>();
-    private static final Set<ServiceType> BASE = new HashSet<>();
+    private static final Int2ObjectConcurrentOpenHashMap<ServiceType> ID = Int2ObjectConcurrentOpenHashMap.create();
+    private static final Set<ServiceType> BASE = ConcurrentHashMap.newKeySet();
 
     public static final ServiceType NONE = new ServiceType();
 
@@ -32,20 +35,21 @@ public final class ServiceType implements HasId, Encoder {
     }
 
     public static ServiceType of(int id) {
-        return ID.getOrDefault(id, NONE);
+        ServiceType type = ID.get(id);
+        return type != null ? type : NONE;
     }
 
     public static ServiceType of(String name) {
         if (name == null) return NONE;
         int id = ChecksumUtils.crc32Int(name.getBytes(StandardCharsets.UTF_8), seed);
-        return ID.compute(id, (k, v) -> {
-            if (v == null) return new ServiceType(name);
-            if (v == NONE) return v;
-            if (v.id != id) throw new IllegalArgumentException("Hash collision for service type id: " + id);
-            if (!v.name.equals(name))
+        ServiceType existing = ID.get(id);
+        if (existing != null) {
+            if (existing != NONE && !existing.name.equals(name)) {
                 throw new IllegalArgumentException("Hash collision for service type name: " + name);
-            return v;
-        });
+            }
+            return existing;
+        }
+        return ID.computeIfAbsent(id, k -> new ServiceType(name));
     }
 
     public void required() {

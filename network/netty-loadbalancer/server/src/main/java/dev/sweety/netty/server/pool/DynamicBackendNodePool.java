@@ -23,7 +23,7 @@ public class DynamicBackendNodePool<T extends BackendNode> implements IDynamicBa
     protected final Map<ChannelHandlerContext, T> nodes = new ConcurrentHashMap<>();
     protected final Map<T, ChannelHandlerContext> reverseNodes = new ConcurrentHashMap<>();
 
-    protected final Map<Integer, T> cache = new ConcurrentHashMap<>();
+    protected final dev.sweety.math.list.Int2ObjectConcurrentOpenHashMap<T> cache = dev.sweety.math.list.Int2ObjectConcurrentOpenHashMap.create();
 
     protected final CounterBalancer balancer;
     protected final AtomicInteger counter = new AtomicInteger();

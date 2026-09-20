@@ -9,11 +9,12 @@ import io.netty.channel.ChannelHandlerContext;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import dev.sweety.math.list.Object2LongConcurrentOpenHashMap;
+
 import java.lang.reflect.Array;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -28,7 +29,7 @@ public class ServiceCluster<K, N extends BackendNode> {
     public final K key;
     protected final Class<N> nodeClass;
     public final Set<N> nodes = new ConcurrentHashSet<>();
-    public final Map<N, Long> connectedAt = new ConcurrentHashMap<>();
+    public final Object2LongConcurrentOpenHashMap<N> connectedAt = Object2LongConcurrentOpenHashMap.create();
     private final CounterBalancer balancer;
     private final AtomicInteger clusterCounter = new AtomicInteger();
 

@@ -76,6 +76,31 @@ public final class Int2ObjectConcurrentOpenHashMap<V> extends AbstractInt2Object
         synchronized (s) { return s.remove(k); }
     }
 
+    /** Atomically insert {@code v} only if {@code k} is absent; returns the existing value if present (else null). */
+    public V putIfAbsent(int k, V v) {
+        Int2ObjectOpenHashMap<V> s = seg(k);
+        synchronized (s) {
+            V existing = s.get(k);
+            if (existing != null || s.containsKey(k)) return existing;
+            s.put(k, v);
+            return null;
+        }
+    }
+
+    /** Atomically compute and insert value if {@code k} is absent. */
+    public V computeIfAbsent(int k, java.util.function.IntFunction<? extends V> mappingFunction) {
+        Int2ObjectOpenHashMap<V> s = seg(k);
+        synchronized (s) {
+            V existing = s.get(k);
+            if (existing != null || s.containsKey(k)) return existing;
+            V computed = mappingFunction.apply(k);
+            if (computed != null) {
+                s.put(k, computed);
+            }
+            return computed;
+        }
+    }
+
     /** Atomically remove {@code k} only if it is currently mapped to {@code value}. */
     public boolean remove(int k, Object value) {
         Int2ObjectOpenHashMap<V> s = seg(k);
@@ -161,6 +186,26 @@ public final class Int2ObjectConcurrentOpenHashMap<V> extends AbstractInt2Object
             for (Int2ObjectMap.Entry<V> e : s.int2ObjectEntrySet()) {
                 out.add(new BasicEntry<>(e.getIntKey(), e.getValue()));
             }
+        }
+        return out;
+    }
+
+    /** Weakly-consistent snapshot key set. */
+    @Override
+    public @NotNull it.unimi.dsi.fastutil.ints.IntSet keySet() {
+        it.unimi.dsi.fastutil.ints.IntOpenHashSet out = new it.unimi.dsi.fastutil.ints.IntOpenHashSet();
+        for (Int2ObjectOpenHashMap<V> s : seg) synchronized (s) {
+            out.addAll(s.keySet());
+        }
+        return out;
+    }
+
+    /** Weakly-consistent snapshot values collection. */
+    @Override
+    public @NotNull it.unimi.dsi.fastutil.objects.ObjectCollection<V> values() {
+        it.unimi.dsi.fastutil.objects.ObjectArrayList<V> out = new it.unimi.dsi.fastutil.objects.ObjectArrayList<>();
+        for (Int2ObjectOpenHashMap<V> s : seg) synchronized (s) {
+            out.addAll(s.values());
         }
         return out;
     }

@@ -89,6 +89,15 @@ public final class LongConcurrentOpenHashSet extends AbstractLongSet {
         for (LongOpenHashSet s : seg) synchronized (s) { s.clear(); }
     }
 
+    /** Remove every element matching {@code filter}. Returns true if anything was removed. */
+    public boolean removeIf(java.util.function.LongPredicate filter) {
+        boolean changed = false;
+        for (LongOpenHashSet s : seg) synchronized (s) {
+            changed |= s.removeIf(filter);
+        }
+        return changed;
+    }
+
     /** Weakly-consistent snapshot iterator — safe to iterate while other threads mutate. */
     @Override
     public @NotNull LongIterator iterator() {

@@ -2,13 +2,13 @@ package dev.sweety.netty.server.backend;
 
 import dev.sweety.netty.metrics.EMA;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import dev.sweety.math.list.Long2ObjectConcurrentOpenHashMap;
+
 import java.util.concurrent.atomic.AtomicLong;
 
 public class RequestMetrics {
 
-    private final Map<Long, RequestInfo> pendingRequests = new ConcurrentHashMap<>();
+    private final Long2ObjectConcurrentOpenHashMap<RequestInfo> pendingRequests = Long2ObjectConcurrentOpenHashMap.create();
 
     private final AtomicLong currentLoad = new AtomicLong(0L);
     private final EMA latencyEma = new EMA(0.75f);  // per latency media

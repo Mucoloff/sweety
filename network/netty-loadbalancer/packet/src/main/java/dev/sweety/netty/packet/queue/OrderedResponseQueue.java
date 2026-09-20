@@ -3,9 +3,8 @@ package dev.sweety.netty.packet.queue;
 import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
 import io.netty.channel.ChannelHandlerContext;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.BiConsumer;
 
@@ -21,8 +20,8 @@ public class OrderedResponseQueue {
     private final LongAdder nextSequence = new LongAdder();
     private long nextToSend = 0;
 
-    // Buffer per le risposte fuori ordine: sequenceId -> risposta
-    private final Map<Long, Packet[]> pendingResponses = new ConcurrentHashMap<>();
+    // Buffer per le risposte fuori ordine: sequenceId -> risposta (protetto da sendLock)
+    private final Long2ObjectOpenHashMap<Packet[]> pendingResponses = new Long2ObjectOpenHashMap<>();
 
     private final Object sendLock = new Object();
 
@@ -95,6 +94,8 @@ public class OrderedResponseQueue {
      * @return il numero di risposte in attesa di essere inviate
      */
     public int pendingCount() {
-        return pendingResponses.size();
+        synchronized (sendLock) {
+            return pendingResponses.size();
+        }
     }
 }

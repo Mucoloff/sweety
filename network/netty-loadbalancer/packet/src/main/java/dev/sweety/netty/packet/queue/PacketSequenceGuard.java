@@ -2,8 +2,8 @@ package dev.sweety.netty.packet.queue;
 
 import dev.sweety.netty.packet.model.Packet;
 
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import dev.sweety.math.list.LongConcurrentOpenHashSet;
+
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -43,7 +43,7 @@ public class PacketSequenceGuard {
     private final Policy policy;
     private final int windowSize;
     private final AtomicLong nextSequence = new AtomicLong(0);
-    private final Set<Long> receivedInWindow = ConcurrentHashMap.newKeySet();
+    private final LongConcurrentOpenHashSet receivedInWindow = LongConcurrentOpenHashSet.create();
     private volatile int currentState = 0;
 
     public PacketSequenceGuard() {
