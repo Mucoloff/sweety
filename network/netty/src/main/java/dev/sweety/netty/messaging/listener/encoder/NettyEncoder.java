@@ -1,6 +1,7 @@
 package dev.sweety.netty.messaging.listener.encoder;
 
 import dev.sweety.netty.messaging.listener.PacketCodecSupport;
+import dev.sweety.netty.messaging.model.Messenger;
 import dev.sweety.netty.packet.model.Packet;
 import dev.sweety.netty.packet.registry.PacketRegistry;
 import io.netty.buffer.ByteBuf;
@@ -20,6 +21,10 @@ public class NettyEncoder extends MessageToByteEncoder<Packet> {
 
     @Override
     protected void encode(ChannelHandlerContext ctx, Packet packet, ByteBuf out) throws Exception {
+        final Integer channelSeed = ctx.channel().attr(Messenger.SESSION_SEED).get();
+        if (channelSeed != null && channelSeed != this.packetEncoder.getSessionSeed()) {
+            this.packetEncoder.setSessionSeed(channelSeed);
+        }
         PacketCodecSupport.encodeStream(this.packetEncoder, packet, out);
     }
 }

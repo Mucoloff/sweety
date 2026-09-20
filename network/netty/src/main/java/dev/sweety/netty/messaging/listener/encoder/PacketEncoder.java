@@ -22,10 +22,7 @@ public class PacketEncoder {
     private static final int MAX_PAYLOAD_SIZE = 16 << 20; // 16 MB — reject outgoing packets this large (mirrors decoder's MAX_UNCOMPRESSED_SIZE)
     private static final long MAX_COMPRESS_NANOS = 250_000_000L; // 250ms — deflate wall-clock guard
 
-    private static final ByteBuffer SEED_BUFFER = ByteBuffer.wrap(new byte[]{
-            (byte) (Messenger.SEED >>> 24), (byte) (Messenger.SEED >>> 16),
-            (byte) (Messenger.SEED >>> 8),  (byte)  Messenger.SEED
-    }).asReadOnlyBuffer();
+    private int sessionSeed = Messenger.BOOTSTRAP_SEED;
     final PacketRegistry packetRegistry;
     /** Per-connection timestamp memory: each PacketEncoder is created fresh per channel (see Messenger), so this never leaks across connections. */
     private final TimestampState timestampState = new TimestampState();
@@ -34,13 +31,21 @@ public class PacketEncoder {
         this.packetRegistry = packetRegistry;
     }
 
+    public void setSessionSeed(int sessionSeed) {
+        this.sessionSeed = sessionSeed;
+    }
+
+    public int getSessionSeed() {
+        return sessionSeed;
+    }
+
     public void encode(final Packet packet, final PacketBuffer out) throws PacketEncodeException {
-        encode(packet, out, this.packetRegistry, this.timestampState);
+        encode(packet, out, this.packetRegistry, this.timestampState, this.sessionSeed);
     }
 
     /** Stateless one-shot encode: always writes an absolute timestamp, no delta. */
     public static void encode(final Packet packet, final PacketBuffer out, final PacketRegistry packetRegistry) throws PacketEncodeException {
-        encode(packet, out, packetRegistry, null);
+        encode(packet, out, packetRegistry, null, Messenger.BOOTSTRAP_SEED);
     }
 
     /**
@@ -54,6 +59,10 @@ public class PacketEncoder {
     }
 
     public static void encode(final Packet packet, final PacketBuffer out, final PacketRegistry packetRegistry, final TimestampState timestampState) throws PacketEncodeException {
+        encode(packet, out, packetRegistry, timestampState, Messenger.BOOTSTRAP_SEED);
+    }
+
+    public static void encode(final Packet packet, final PacketBuffer out, final PacketRegistry packetRegistry, final TimestampState timestampState, int sessionSeed) throws PacketEncodeException {
         int packetId = packetRegistry.getPacketId(packet.getClass());
         if (packetId == -1)
             throw new PacketEncodeException("Returned PacketId by registry is invalid (-1)");
@@ -86,7 +95,10 @@ public class PacketEncoder {
 
         // Compute checksum directly on ByteBuf
         CRC32C crc32 = BufferPool.DEFAULT.acquireCrc32c();
-        crc32.update(SEED_BUFFER.duplicate());
+        crc32.update((byte) (sessionSeed >>> 24));
+        crc32.update((byte) (sessionSeed >>> 16));
+        crc32.update((byte) (sessionSeed >>> 8));
+        crc32.update((byte) sessionSeed);
 
         if (hasPayload) {
             final boolean compressed;

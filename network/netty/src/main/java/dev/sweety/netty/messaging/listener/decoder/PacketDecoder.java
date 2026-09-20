@@ -24,10 +24,7 @@ public class PacketDecoder {
     private static final int MAX_COMPRESSION_RATIO = 100; // decompressed/compressed sanity limit (zipbomb ratio cap)
     private static final long MAX_DECOMPRESS_NANOS = 250_000_000L; // 250ms — CPU-bomb wall-clock guard on inflate loop
 
-    private static final ByteBuffer SEED_BUFFER = ByteBuffer.wrap(new byte[]{
-            (byte) (Messenger.SEED >>> 24), (byte) (Messenger.SEED >>> 16),
-            (byte) (Messenger.SEED >>> 8), (byte) Messenger.SEED
-    }).asReadOnlyBuffer();
+    private int sessionSeed = Messenger.BOOTSTRAP_SEED;
     private final PacketRegistry packetRegistry;
     /**
      * Per-connection timestamp memory: each PacketDecoder is created fresh per channel (see Messenger), so this never leaks across connections.
@@ -38,6 +35,14 @@ public class PacketDecoder {
         this.packetRegistry = packetRegistry;
     }
 
+    public void setSessionSeed(int sessionSeed) {
+        this.sessionSeed = sessionSeed;
+    }
+
+    public int getSessionSeed() {
+        return sessionSeed;
+    }
+
     private static boolean cantRead(final PacketBuffer in, int len) {
         if (in.readableBytes() >= len) return false;
         in.resetReaderIndex();
@@ -45,14 +50,18 @@ public class PacketDecoder {
     }
 
     public void decode(final PacketBuffer in, final List<Packet> out) throws PacketDecodeException {
-        decode(in, out, this.packetRegistry, this.timestampState);
+        decode(in, out, this.packetRegistry, this.timestampState, this.sessionSeed);
     }
 
     /**
      * Stateless one-shot decode: always expects an absolute timestamp, mirroring {@link dev.sweety.netty.messaging.listener.encoder.PacketEncoder#encode(Packet, PacketBuffer, PacketRegistry)}.
      */
     public static void decode(final PacketBuffer in, final List<Packet> out, final PacketRegistry packetRegistry) throws PacketDecodeException {
-        decode(in, out, packetRegistry, null);
+        decode(in, out, packetRegistry, null, Messenger.BOOTSTRAP_SEED);
+    }
+
+    public static void decode(final PacketBuffer in, final List<Packet> out, final PacketRegistry packetRegistry, final TimestampState timestampState) throws PacketDecodeException {
+        decode(in, out, packetRegistry, timestampState, Messenger.BOOTSTRAP_SEED);
     }
 
     /**
@@ -65,7 +74,7 @@ public class PacketDecoder {
         private boolean has;
     }
 
-    public static void decode(final PacketBuffer in, final List<Packet> out, final PacketRegistry packetRegistry, final TimestampState timestampState) throws PacketDecodeException {
+    public static void decode(final PacketBuffer in, final List<Packet> out, final PacketRegistry packetRegistry, final TimestampState timestampState, int sessionSeed) throws PacketDecodeException {
         if (in.readableBytes() - Integer.BYTES < 2) return; // minimal header
         in.markReaderIndex();
 
@@ -88,7 +97,10 @@ public class PacketDecoder {
 
             // Validate checksum
             final CRC32C crc32 = BufferPool.DEFAULT.acquireCrc32c();
-            crc32.update(SEED_BUFFER.duplicate());
+            crc32.update((byte) (sessionSeed >>> 24));
+            crc32.update((byte) (sessionSeed >>> 16));
+            crc32.update((byte) (sessionSeed >>> 8));
+            crc32.update((byte) sessionSeed);
 
             final ByteBuf payloadBuf;
             if (!hasPayload) {

@@ -30,6 +30,10 @@ public class NettyDecoder extends ByteToMessageDecoder {
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
+        final Integer channelSeed = ctx.channel().attr(Messenger.SESSION_SEED).get();
+        if (channelSeed != null && channelSeed != this.packetDecoder.getSessionSeed()) {
+            this.packetDecoder.setSessionSeed(channelSeed);
+        }
         final ArrayList<Packet> packets = PacketCodecSupport.decodePackets(this.packetDecoder, in, ctx.channel().remoteAddress());
         PacketCodecSupport.dispatch(ctx, packets, this.messenger, out);
     }

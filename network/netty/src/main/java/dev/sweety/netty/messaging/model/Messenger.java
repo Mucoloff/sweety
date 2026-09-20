@@ -44,8 +44,17 @@ public abstract class Messenger {
     protected final TransportMode transportMode;
     private final boolean server;
     private final EventLoopGroup boss, worker;
-    // ===================================/
-    public static final int SEED = 0x000FFFFF;
+    public static final AttributeKey<Integer> SESSION_SEED = AttributeKey.valueOf("sweety-session-seed");
+    public static final int BOOTSTRAP_SEED = dev.sweety.netty.messaging.handshake.SessionHandshakeEngine.PROTOCOL_BOOTSTRAP_SEED;
+
+    public static void setChannelSeed(Channel channel, int seed) {
+        channel.attr(SESSION_SEED).set(seed);
+    }
+
+    public static int getChannelSeed(Channel channel) {
+        Integer seed = channel.attr(SESSION_SEED).get();
+        return seed != null ? seed : BOOTSTRAP_SEED;
+    }
 
     @ChannelHandler.Sharable
     private static final class IdleDisconnectHandler extends ChannelInboundHandlerAdapter {
@@ -67,6 +76,7 @@ public abstract class Messenger {
     // and this handler drains the queue once writability returns. Per-channel state, since the
     // handler instance is @Sharable across every connection.
     /** A deferred write plus the future that must eventually resolve, one way or another. */
+    //todo questo può essere poolato?
     private record PendingWrite(Runnable writeAction, CompletableFuture<?> future) {}
 
     private static final AttributeKey<ArrayDeque<PendingWrite>> PENDING_WRITES = AttributeKey.valueOf("luce-pending-writes");
