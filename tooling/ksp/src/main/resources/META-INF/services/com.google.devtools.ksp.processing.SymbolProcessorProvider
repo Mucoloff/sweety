@@ -1,3 +1,4 @@
 dev.sweety.ksp.PacketKspProcessorProvider
 dev.sweety.ksp.EventKspProcessorProvider
 dev.sweety.ksp.TableKspProcessorProvider
+dev.sweety.ksp.SoAKspProcessorProvider

@@ -1,5 +1,7 @@
 package dev.sweety.sql4j.api.crypto;
 
+import dev.sweety.math.list.Long2ObjectConcurrentOpenHashMap;
+
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -8,7 +10,6 @@ import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Service managing per-user Data Encryption Keys (DEKs) protected by a Master KEK (Key Encryption Key).
@@ -23,8 +24,8 @@ public final class CryptoKeyService {
     private static final int GCM_IV_LENGTH = 12;
 
     private final byte[] masterKek;
-    private final ConcurrentHashMap<Long, byte[]> dekCache = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<Long, byte[]> encryptedDekStore = new ConcurrentHashMap<>();
+    private final Long2ObjectConcurrentOpenHashMap<byte[]> dekCache = Long2ObjectConcurrentOpenHashMap.create();
+    private final Long2ObjectConcurrentOpenHashMap<byte[]> encryptedDekStore = Long2ObjectConcurrentOpenHashMap.create();
     private final SecureRandom random = new SecureRandom();
 
     private CryptoKeyService(byte[] masterKek) {

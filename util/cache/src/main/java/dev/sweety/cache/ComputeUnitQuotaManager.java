@@ -1,9 +1,8 @@
 package dev.sweety.cache;
 
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import dev.sweety.math.list.Long2ObjectConcurrentOpenHashMap;
 
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Multi-tier Compute Unit (CU) Quota Manager.
@@ -90,7 +89,7 @@ public final class ComputeUnitQuotaManager {
         public synchronized void addExtraCredits(long credits) { this.extraCredits += credits; }
     }
 
-    private final ConcurrentHashMap<Long, UserQuota> userQuotas = new ConcurrentHashMap<>();
+    private final Long2ObjectConcurrentOpenHashMap<UserQuota> userQuotas = Long2ObjectConcurrentOpenHashMap.create();
     private final long default5hLimit;
     private final long defaultWeeklyLimit;
 
