@@ -66,9 +66,7 @@ public final class ResourceLeakDetector<T> {
 
     public ResourceLeakTracker<T> track(T obj) {
         Level level = defaultLevel;
-        if (level == Level.DISABLED || obj == null) {
-            return null;
-        }
+        if (level == Level.DISABLED || obj == null) return null;
 
         reportLeaks();
 

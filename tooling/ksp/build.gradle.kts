@@ -8,6 +8,7 @@ dependencies {
     implementation(project(":util:persistence:sql4j"))
 
     compileOnly("com.google.devtools.ksp:symbol-processing-api:2.3.8")
+    testImplementation("com.google.devtools.ksp:symbol-processing-api:2.3.8")
 
     implementation("com.squareup:javapoet:1.13.0")
 }
